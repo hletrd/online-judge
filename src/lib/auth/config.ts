@@ -38,18 +38,22 @@ export const authConfig: NextAuthConfig = {
       },
     }),
   ],
-  session: { strategy: "database" },
+  session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
   },
   callbacks: {
-    async session({ session, user }) {
-      const dbUser = await db.query.users.findFirst({
-        where: eq(users.id, user.id),
-      });
-      if (dbUser) {
-        session.user.id = dbUser.id;
-        session.user.role = dbUser.role as any;
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = (user as any).role;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token) {
+        session.user.id = token.id as string;
+        session.user.role = token.role as UserRole;
       }
       return session;
     },
