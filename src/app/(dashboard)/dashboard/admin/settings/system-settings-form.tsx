@@ -15,6 +15,8 @@ type SystemSettingsFormProps = {
   initialSiteDescription: string;
   defaultSiteTitle: string;
   defaultSiteDescription: string;
+  currentSiteTitle: string;
+  currentSiteDescription: string;
 };
 
 export function SystemSettingsForm({
@@ -22,6 +24,8 @@ export function SystemSettingsForm({
   initialSiteDescription,
   defaultSiteTitle,
   defaultSiteDescription,
+  currentSiteTitle,
+  currentSiteDescription,
 }: SystemSettingsFormProps) {
   const router = useRouter();
   const t = useTranslations("admin.settings");
@@ -61,7 +65,9 @@ export function SystemSettingsForm({
           onChange={(event) => setSiteTitle(event.target.value)}
           placeholder={defaultSiteTitle}
         />
-        <p className="text-xs text-muted-foreground">{t("siteTitleHint")}</p>
+        <p className="text-xs text-muted-foreground">
+          {t("siteTitleHint", { current: currentSiteTitle })}
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -73,7 +79,9 @@ export function SystemSettingsForm({
           placeholder={defaultSiteDescription}
           rows={3}
         />
-        <p className="text-xs text-muted-foreground">{t("siteDescriptionHint")}</p>
+        <p className="text-xs text-muted-foreground">
+          {t("siteDescriptionHint", { current: currentSiteDescription })}
+        </p>
       </div>
 
       <Button type="submit" disabled={isLoading}>

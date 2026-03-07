@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import {
   Sidebar,
@@ -15,7 +17,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield } from "lucide-react";
+import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut } from "lucide-react";
 import type { UserRole } from "@/types";
 
 interface AppSidebarProps {
@@ -46,7 +48,9 @@ const adminItems = [
 export function AppSidebar({ user, siteTitle }: AppSidebarProps) {
   const pathname = usePathname();
   const t = useTranslations("nav");
+  const tAuth = useTranslations("auth");
   const tCommon = useTranslations("common");
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const roleLabels = {
     student: tCommon("roles.student"),
     instructor: tCommon("roles.instructor"),
@@ -56,6 +60,11 @@ export function AppSidebar({ user, siteTitle }: AppSidebarProps) {
 
   const filteredNav = navItems.filter(item => item.roles.includes(user.role));
   const filteredAdmin = adminItems.filter(item => item.roles.includes(user.role));
+
+  async function handleSignOut() {
+    setIsSigningOut(true);
+    await signOut({ callbackUrl: "/login" });
+  }
 
   return (
     <Sidebar>
@@ -106,12 +115,23 @@ export function AppSidebar({ user, siteTitle }: AppSidebarProps) {
         )}
       </SidebarContent>
       <SidebarFooter className="border-t p-4">
-        <div className="flex items-center gap-2">
-          <User className="h-4 w-4" />
-          <div className="flex flex-col text-sm">
-            <span className="font-medium">{user.name} ({user.username})</span>
-            <span className="text-xs text-muted-foreground">{roleLabels[user.role]}</span>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            <div className="flex flex-col text-sm">
+              <span className="font-medium">{user.name} ({user.username})</span>
+              <span className="text-xs text-muted-foreground">{roleLabels[user.role]}</span>
+            </div>
           </div>
+
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={() => void handleSignOut()} disabled={isSigningOut}>
+                <LogOut className="h-4 w-4" />
+                <span>{isSigningOut ? tCommon("loading") : tAuth("signOut")}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </div>
       </SidebarFooter>
     </Sidebar>

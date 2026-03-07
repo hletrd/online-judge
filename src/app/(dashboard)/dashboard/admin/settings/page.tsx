@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
-import { getResolvedSystemSettings } from "@/lib/system-settings";
+import { getResolvedSystemSettings, getSystemSettings } from "@/lib/system-settings";
 import { SystemSettingsForm } from "./system-settings-form";
 
 export default async function AdminSettingsPage() {
@@ -12,10 +12,11 @@ export default async function AdminSettingsPage() {
 
   const t = await getTranslations("admin.settings");
   const tCommon = await getTranslations("common");
-  const settings = await getResolvedSystemSettings({
+  const resolvedSettings = await getResolvedSystemSettings({
     siteTitle: tCommon("appName"),
     siteDescription: tCommon("appDescription"),
   });
+  const storedSettings = await getSystemSettings();
 
   return (
     <div className="space-y-6">
@@ -31,10 +32,12 @@ export default async function AdminSettingsPage() {
         </CardHeader>
         <CardContent>
           <SystemSettingsForm
-            initialSiteTitle={settings.siteTitle}
-            initialSiteDescription={settings.siteDescription}
+            initialSiteTitle={storedSettings?.siteTitle ?? ""}
+            initialSiteDescription={storedSettings?.siteDescription ?? ""}
             defaultSiteTitle={tCommon("appName")}
             defaultSiteDescription={tCommon("appDescription")}
+            currentSiteTitle={resolvedSettings.siteTitle}
+            currentSiteDescription={resolvedSettings.siteDescription}
           />
         </CardContent>
       </Card>

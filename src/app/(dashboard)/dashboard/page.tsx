@@ -5,14 +5,37 @@ import { Badge } from "@/components/ui/badge";
 import { Cpu, HardDrive, Clock, MemoryStick } from "lucide-react";
 import { db } from "@/lib/db";
 import { languageConfigs } from "@/lib/db/schema";
+import {
+  getJudgeLanguageDefinition,
+  JUDGE_LANGUAGE_CONFIGS,
+  serializeJudgeCommand,
+} from "@/lib/judge/languages";
+import { getResolvedSystemSettings } from "@/lib/system-settings";
+import { getRuntimeSystemInfo } from "@/lib/system-info";
 import { eq } from "drizzle-orm";
 
 export default async function DashboardPage() {
   const t = await getTranslations("dashboard");
+  const tCommon = await getTranslations("common");
   const tJudge = await getTranslations("judge");
   const tLangs = await getTranslations("languages");
+  const settings = await getResolvedSystemSettings({
+    siteTitle: tCommon("appName"),
+    siteDescription: tCommon("appDescription"),
+  });
 
   const langs = await db.select().from(languageConfigs).where(eq(languageConfigs.isEnabled, true));
+  const enabledLanguages = langs.flatMap((language) => {
+    const definition = getJudgeLanguageDefinition(language.language);
+
+    if (!definition) {
+      return [];
+    }
+
+    return [{ id: language.id, definition }];
+  });
+  const runtimeSystemInfo = await getRuntimeSystemInfo();
+  const pythonRuntime = JUDGE_LANGUAGE_CONFIGS.python.compiler;
 
   return (
     <div className="space-y-6">
@@ -20,7 +43,7 @@ export default async function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("welcome")}</CardTitle>
+          <CardTitle>{t("welcome", { siteTitle: settings.siteTitle })}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">{t("welcomeDescription")}</p>
@@ -32,19 +55,26 @@ export default async function DashboardPage() {
           <CardTitle>{tJudge("title")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
             <div className="flex items-center gap-3 rounded-lg border p-3">
               <Cpu className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-xs text-muted-foreground">{tJudge("cpuLabel")}</p>
-                <p className="text-sm font-medium">{tJudge("cpu")}</p>
+                <p className="text-sm font-medium">{runtimeSystemInfo.cpu}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-3">
               <HardDrive className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-xs text-muted-foreground">{tJudge("osLabel")}</p>
-                <p className="text-sm font-medium">{tJudge("os")}</p>
+                <p className="text-sm font-medium">{runtimeSystemInfo.os}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border p-3">
+              <MemoryStick className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="text-xs text-muted-foreground">{tJudge("pythonLabel")}</p>
+                <p className="text-sm font-medium">{pythonRuntime ?? tCommon("unknown")}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-3">
@@ -69,7 +99,7 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>{tLangs("title")}</CardTitle>
-          <CardDescription>{tJudge("architecture")}</CardDescription>
+          <CardDescription>{runtimeSystemInfo.architecture}</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -81,13 +111,17 @@ export default async function DashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {langs.map((lang) => (
-                <TableRow key={lang.id}>
+              {enabledLanguages.map(({ id, definition }) => (
+                <TableRow key={id}>
                   <TableCell>
-                    <Badge variant="secondary">{lang.displayName} {lang.standard ? `(${lang.standard})` : ""}</Badge>
+                    <Badge variant="secondary">
+                      {definition.displayName} {definition.standard ? `(${definition.standard})` : ""}
+                    </Badge>
                   </TableCell>
-                  <TableCell className="font-mono text-sm">{lang.compiler || "-"}</TableCell>
-                  <TableCell className="font-mono text-sm">{lang.compileCommand || "-"}</TableCell>
+                  <TableCell className="font-mono text-sm">{definition.compiler || "-"}</TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {serializeJudgeCommand(definition.compileCommand) || "-"}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
