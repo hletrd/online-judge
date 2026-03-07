@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +8,6 @@ import { Label } from "@/components/ui/label";
 import { changePassword } from "@/lib/actions/change-password";
 
 export function ChangePasswordForm() {
-  const router = useRouter();
-  const { update } = useSession();
   const t = useTranslations("changePassword");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -44,10 +40,8 @@ export function ChangePasswordForm() {
       setError(t(result.error ?? "error"));
       setLoading(false);
     } else {
-      // Trigger session update to clear mustChangePassword from JWT
-      await update();
-      router.push("/dashboard");
-      router.refresh();
+      // Full reload to refresh JWT with mustChangePassword cleared
+      window.location.href = "/dashboard";
     }
   }
 
