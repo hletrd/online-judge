@@ -22,6 +22,7 @@ export default async function ProblemsPage() {
   if (!session?.user) redirect("/login");
 
   const t = await getTranslations("problems");
+  const tCommon = await getTranslations("common");
   
   // Fetch public problems or problems authored by the user
   const allProblems = await db
@@ -49,30 +50,30 @@ export default async function ProblemsPage() {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">{t("title")}</h2>
         {(session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "instructor") && (
-          <Button>Create Problem</Button>
+          <Button>{t("create")}</Button>
         )}
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Available Problems</CardTitle>
+          <CardTitle>{t("available")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Author</TableHead>
-                <TableHead>Time Limit</TableHead>
-                <TableHead>Memory Limit</TableHead>
-                <TableHead>Visibility</TableHead>
-                <TableHead>Action</TableHead>
+                <TableHead>{t("table.title")}</TableHead>
+                <TableHead>{t("table.author")}</TableHead>
+                <TableHead>{t("table.timeLimit")}</TableHead>
+                <TableHead>{t("table.memoryLimit")}</TableHead>
+                <TableHead>{t("table.visibility")}</TableHead>
+                <TableHead>{t("table.action")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {allProblems.map((problem) => (
                 <TableRow key={problem.id}>
                   <TableCell className="font-medium">{problem.title}</TableCell>
-                  <TableCell>{problem.author?.name || "System"}</TableCell>
+                  <TableCell>{problem.author?.name || tCommon("system")}</TableCell>
                   <TableCell>{problem.timeLimitMs} ms</TableCell>
                   <TableCell>{problem.memoryLimitMb} MB</TableCell>
                   <TableCell>
@@ -82,7 +83,7 @@ export default async function ProblemsPage() {
                   </TableCell>
                   <TableCell>
                     <Link href={`/dashboard/problems/${problem.id}`}>
-                      <Button variant="outline" size="sm">Solve</Button>
+                      <Button variant="outline" size="sm">{t("solve")}</Button>
                     </Link>
                   </TableCell>
                 </TableRow>
@@ -90,7 +91,7 @@ export default async function ProblemsPage() {
               {allProblems.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    No problems available.
+                    {t("noProblems")}
                   </TableCell>
                 </TableRow>
               )}

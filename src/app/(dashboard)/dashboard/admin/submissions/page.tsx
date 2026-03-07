@@ -21,6 +21,7 @@ export default async function AdminSubmissionsPage() {
   if (session.user.role !== "admin" && session.user.role !== "super_admin") redirect("/dashboard");
 
   const t = await getTranslations("admin.submissions");
+  const tCommon = await getTranslations("common");
   
   const allSubmissions = await db
     .select({
@@ -47,27 +48,27 @@ export default async function AdminSubmissionsPage() {
       <h2 className="text-2xl font-bold mb-4">{t("title")}</h2>
       <Card>
         <CardHeader>
-          <CardTitle>Recent Submissions (All Users)</CardTitle>
+          <CardTitle>{t("recent")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Problem</TableHead>
-                <TableHead>Language</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Score</TableHead>
-                <TableHead>Submitted At</TableHead>
+                <TableHead>{t("table.id")}</TableHead>
+                <TableHead>{t("table.user")}</TableHead>
+                <TableHead>{t("table.problem")}</TableHead>
+                <TableHead>{t("table.language")}</TableHead>
+                <TableHead>{t("table.status")}</TableHead>
+                <TableHead>{t("table.score")}</TableHead>
+                <TableHead>{t("table.submittedAt")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {allSubmissions.map((sub) => (
                 <TableRow key={sub.id}>
                   <TableCell className="font-mono text-xs">{sub.id.substring(0, 8)}</TableCell>
-                  <TableCell>{sub.user?.name || "Unknown"}</TableCell>
-                  <TableCell>{sub.problem?.title || "Unknown"}</TableCell>
+                  <TableCell>{sub.user?.name || tCommon("unknown")}</TableCell>
+                  <TableCell>{sub.problem?.title || tCommon("unknown")}</TableCell>
                   <TableCell>{sub.language}</TableCell>
                   <TableCell>
                     <Badge variant={sub.status === "accepted" ? "default" : sub.status === "pending" || sub.status === "judging" ? "secondary" : "destructive"}>
@@ -83,7 +84,7 @@ export default async function AdminSubmissionsPage() {
               {allSubmissions.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground">
-                    No submissions found.
+                    {t("noSubmissions")}
                   </TableCell>
                 </TableRow>
               )}

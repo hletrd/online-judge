@@ -17,7 +17,13 @@
     "previous": "이전",
     "language": "언어",
     "english": "English",
-    "korean": "한국어"
+    "korean": "한국어",
+    "unknown": "알 수 없음",
+    "action": "작업",
+    "system": "시스템",
+    "active": "활성",
+    "inactive": "비활성",
+    "view": "보기"
   },
   "auth": {
     "signIn": "로그인",
@@ -48,31 +54,124 @@
   "problems": {
     "title": "문제",
     "detail": "문제 상세",
-    "description": "프로그래밍 문제를 탐색하고 풀어보세요."
+    "description": "프로그래밍 문제를 탐색하고 풀어보세요.",
+    "available": "이용 가능한 문제",
+    "create": "문제 생성",
+    "solve": "풀기",
+    "table": {
+      "title": "제목",
+      "author": "작성자",
+      "timeLimit": "시간 제한",
+      "memoryLimit": "메모리 제한",
+      "visibility": "공개 여부",
+      "action": "작업"
+    },
+    "noProblems": "이용 가능한 문제가 없습니다.",
+    "submitSolution": "솔루션 제출",
+    "selectLanguage": "언어 선택",
+    "writeCodePlaceholder": "여기에 코드를 작성하세요...",
+    "descriptionTitle": "설명",
+    "noDescription": "제공된 설명이 없습니다."
   },
   "submissions": {
     "title": "내 제출 내역",
     "detail": "제출 상세",
-    "description": "제출 기록과 결과를 확인하세요."
+    "description": "제출 기록과 결과를 확인하세요.",
+    "mySubmissions": "내 제출",
+    "table": {
+      "id": "ID",
+      "problem": "문제",
+      "language": "언어",
+      "status": "상태",
+      "score": "점수",
+      "submittedAt": "제출 일시",
+      "action": "작업"
+    },
+    "noSubmissions": "아직 제출한 내역이 없습니다.",
+    "submissionId": "제출",
+    "sourceCode": "소스 코드",
+    "compileOutput": "컴파일/오류 출력",
+    "testCaseResults": "테스트 케이스 결과",
+    "testCaseResultsDesc": "각 테스트 케이스의 실행 상세 정보입니다.",
+    "testCaseTable": {
+      "testCase": "테스트 케이스",
+      "status": "상태",
+      "time": "시간 (ms)",
+      "memory": "메모리 (KB)"
+    },
+    "noResults": "아직 결과가 없습니다.",
+    "score": "점수",
+    "time": "시간",
+    "memory": "메모리",
+    "submitted": "제출",
+    "user": "사용자"
   },
   "groups": {
     "title": "그룹",
     "detail": "그룹 상세",
-    "description": "등록된 그룹과 과제를 확인하세요."
+    "description": "등록된 그룹과 과제를 확인하세요.",
+    "myGroups": "내 그룹",
+    "create": "그룹 생성",
+    "table": {
+      "name": "이름",
+      "description": "설명",
+      "instructor": "강사",
+      "action": "작업"
+    },
+    "noGroups": "등록된 그룹이 없습니다.",
+    "archived": "보관됨",
+    "active": "활성",
+    "assignments": "과제",
+    "assignmentTable": {
+      "title": "제목",
+      "startsAt": "시작 일시",
+      "deadline": "마감 일시",
+      "status": "상태"
+    },
+    "statusUpcoming": "예정",
+    "statusClosed": "마감",
+    "statusOpen": "진행 중",
+    "noAssignments": "현재 이용 가능한 과제가 없습니다."
   },
   "admin": {
     "users": {
       "title": "사용자 관리",
-      "description": "사용자, 역할, 권한을 관리합니다."
+      "description": "사용자, 역할, 권한을 관리합니다.",
+      "usersList": "사용자 목록",
+      "table": {
+        "email": "이메일",
+        "name": "이름",
+        "role": "역할",
+        "status": "상태",
+        "joined": "가입일"
+      },
+      "noUsers": "사용자를 찾을 수 없습니다."
     },
     "submissions": {
       "title": "전체 제출 내역",
-      "description": "시스템 전체의 제출 내역을 확인하고 관리합니다."
+      "description": "시스템 전체의 제출 내역을 확인하고 관리합니다.",
+      "recent": "최근 제출 (모든 사용자)",
+      "table": {
+        "id": "ID",
+        "user": "사용자",
+        "problem": "문제",
+        "language": "언어",
+        "status": "상태",
+        "score": "점수",
+        "submittedAt": "제출 일시"
+      },
+      "noSubmissions": "제출 내역이 없습니다."
     }
   },
   "profile": {
     "title": "프로필",
-    "description": "계정 설정 및 환경설정을 관리합니다."
+    "description": "계정 설정 및 환경설정을 관리합니다.",
+    "userProfile": "사용자 프로필",
+    "userProfileDesc": "계정 상세 정보 및 역할입니다.",
+    "userId": "사용자 ID",
+    "name": "이름",
+    "email": "이메일",
+    "role": "역할"
   },
   "changePassword": {
     "title": "비밀번호 변경",

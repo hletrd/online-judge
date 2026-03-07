@@ -21,6 +21,7 @@ export default async function GroupsPage() {
   if (!session?.user) redirect("/login");
 
   const t = await getTranslations("groups");
+  const tCommon = await getTranslations("common");
   
   let myGroups;
 
@@ -61,7 +62,7 @@ export default async function GroupsPage() {
       name: e.group.name,
       description: e.group.description,
       instructor: {
-        name: e.instructor?.name || "Unknown",
+        name: e.instructor?.name || tCommon("unknown"),
       }
     }));
   }
@@ -71,21 +72,21 @@ export default async function GroupsPage() {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">{t("title")}</h2>
         {(session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "instructor") && (
-          <Button>Create Group</Button>
+          <Button>{t("create")}</Button>
         )}
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>My Groups</CardTitle>
+          <CardTitle>{t("myGroups")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Instructor</TableHead>
-                <TableHead>Action</TableHead>
+                <TableHead>{t("table.name")}</TableHead>
+                <TableHead>{t("table.description")}</TableHead>
+                <TableHead>{t("table.instructor")}</TableHead>
+                <TableHead>{t("table.action")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -93,10 +94,10 @@ export default async function GroupsPage() {
                 <TableRow key={group.id}>
                   <TableCell className="font-medium">{group.name}</TableCell>
                   <TableCell>{group.description || "-"}</TableCell>
-                  <TableCell>{group.instructor?.name || "Unknown"}</TableCell>
+                  <TableCell>{group.instructor?.name || tCommon("unknown")}</TableCell>
                   <TableCell>
                     <Link href={`/dashboard/groups/${group.id}`}>
-                      <Button variant="outline" size="sm">View</Button>
+                      <Button variant="outline" size="sm">{tCommon("view")}</Button>
                     </Link>
                   </TableCell>
                 </TableRow>
@@ -104,7 +105,7 @@ export default async function GroupsPage() {
               {myGroups.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    You are not enrolled in any groups.
+                    {t("noGroups")}
                   </TableCell>
                 </TableRow>
               )}

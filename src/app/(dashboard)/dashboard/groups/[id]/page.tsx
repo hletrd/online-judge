@@ -16,6 +16,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
   const groupId = resolvedParams.id;
 
   const t = await getTranslations("groups");
+  const tCommon = await getTranslations("common");
   
   const group = await db.query.groups.findFirst({
     where: eq(groups.id, groupId),
@@ -46,27 +47,27 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold mb-2">{group.name}</h2>
-        <p className="text-muted-foreground">{group.description || "No description provided."}</p>
+        <p className="text-muted-foreground">{group.description || tCommon("unknown")}</p>
         <div className="mt-2 flex gap-2">
-          <Badge variant="outline">Instructor: {group.instructor?.name || "Unknown"}</Badge>
+          <Badge variant="outline">Instructor: {group.instructor?.name || tCommon("unknown")}</Badge>
           <Badge variant={group.isArchived ? "destructive" : "default"}>
-            {group.isArchived ? "Archived" : "Active"}
+            {group.isArchived ? t("archived") : t("active")}
           </Badge>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Assignments</CardTitle>
+          <CardTitle>{t("assignments")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Starts At</TableHead>
-                <TableHead>Deadline</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t("assignmentTable.title")}</TableHead>
+                <TableHead>{t("assignmentTable.startsAt")}</TableHead>
+                <TableHead>{t("assignmentTable.deadline")}</TableHead>
+                <TableHead>{t("assignmentTable.status")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -82,11 +83,11 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
                     <TableCell>{assignment.deadline ? new Date(assignment.deadline).toLocaleString() : "-"}</TableCell>
                     <TableCell>
                       {isUpcoming ? (
-                        <Badge variant="secondary">Upcoming</Badge>
+                        <Badge variant="secondary">{t("statusUpcoming")}</Badge>
                       ) : isPast ? (
-                        <Badge variant="outline">Closed</Badge>
+                        <Badge variant="outline">{t("statusClosed")}</Badge>
                       ) : (
-                        <Badge className="bg-green-500">Open</Badge>
+                        <Badge className="bg-green-500">{t("statusOpen")}</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -95,7 +96,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
               {groupAssignments.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    No assignments currently available.
+                    {t("noAssignments")}
                   </TableCell>
                 </TableRow>
               )}

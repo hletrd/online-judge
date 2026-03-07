@@ -21,6 +21,7 @@ export default async function UserManagementPage() {
   if (session.user.role !== "admin" && session.user.role !== "super_admin") redirect("/dashboard");
 
   const t = await getTranslations("admin.users");
+  const tCommon = await getTranslations("common");
   const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
 
   return (
@@ -28,17 +29,17 @@ export default async function UserManagementPage() {
       <h2 className="text-2xl font-bold mb-4">{t("title")}</h2>
       <Card>
         <CardHeader>
-          <CardTitle>Users</CardTitle>
+          <CardTitle>{t("usersList")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined</TableHead>
+                <TableHead>{t("table.email")}</TableHead>
+                <TableHead>{t("table.name")}</TableHead>
+                <TableHead>{t("table.role")}</TableHead>
+                <TableHead>{t("table.status")}</TableHead>
+                <TableHead>{t("table.joined")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -51,9 +52,9 @@ export default async function UserManagementPage() {
                   </TableCell>
                   <TableCell>
                     {user.isActive ? (
-                      <Badge className="bg-green-500">Active</Badge>
+                      <Badge className="bg-green-500">{tCommon("active")}</Badge>
                     ) : (
-                      <Badge variant="destructive">Inactive</Badge>
+                      <Badge variant="destructive">{tCommon("inactive")}</Badge>
                     )}
                   </TableCell>
                   <TableCell>
@@ -64,7 +65,7 @@ export default async function UserManagementPage() {
               {allUsers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    No users found.
+                    {t("noUsers")}
                   </TableCell>
                 </TableRow>
               )}

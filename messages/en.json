@@ -17,7 +17,13 @@
     "previous": "Previous",
     "language": "Language",
     "english": "English",
-    "korean": "Korean"
+    "korean": "Korean",
+    "unknown": "Unknown",
+    "action": "Action",
+    "system": "System",
+    "active": "Active",
+    "inactive": "Inactive",
+    "view": "View"
   },
   "auth": {
     "signIn": "Sign in",
@@ -48,31 +54,124 @@
   "problems": {
     "title": "Problems",
     "detail": "Problem Detail",
-    "description": "Browse and solve programming problems."
+    "description": "Browse and solve programming problems.",
+    "available": "Available Problems",
+    "create": "Create Problem",
+    "solve": "Solve",
+    "table": {
+      "title": "Title",
+      "author": "Author",
+      "timeLimit": "Time Limit",
+      "memoryLimit": "Memory Limit",
+      "visibility": "Visibility",
+      "action": "Action"
+    },
+    "noProblems": "No problems available.",
+    "submitSolution": "Submit Solution",
+    "selectLanguage": "Select Language",
+    "writeCodePlaceholder": "Write your code here...",
+    "descriptionTitle": "Description",
+    "noDescription": "No description provided."
   },
   "submissions": {
     "title": "My Submissions",
     "detail": "Submission Detail",
-    "description": "View your submission history and results."
+    "description": "View your submission history and results.",
+    "mySubmissions": "My Submissions",
+    "table": {
+      "id": "ID",
+      "problem": "Problem",
+      "language": "Language",
+      "status": "Status",
+      "score": "Score",
+      "submittedAt": "Submitted At",
+      "action": "Action"
+    },
+    "noSubmissions": "You haven't made any submissions yet.",
+    "submissionId": "Submission",
+    "sourceCode": "Source Code",
+    "compileOutput": "Compile/Error Output",
+    "testCaseResults": "Test Case Results",
+    "testCaseResultsDesc": "Execution details for each evaluated test case.",
+    "testCaseTable": {
+      "testCase": "Test Case",
+      "status": "Status",
+      "time": "Time (ms)",
+      "memory": "Memory (KB)"
+    },
+    "noResults": "No results available yet.",
+    "score": "Score",
+    "time": "Time",
+    "memory": "Memory",
+    "submitted": "Submitted",
+    "user": "User"
   },
   "groups": {
     "title": "Groups",
     "detail": "Group Detail",
-    "description": "View your enrolled groups and assignments."
+    "description": "View your enrolled groups and assignments.",
+    "myGroups": "My Groups",
+    "create": "Create Group",
+    "table": {
+      "name": "Name",
+      "description": "Description",
+      "instructor": "Instructor",
+      "action": "Action"
+    },
+    "noGroups": "You are not enrolled in any groups.",
+    "archived": "Archived",
+    "active": "Active",
+    "assignments": "Assignments",
+    "assignmentTable": {
+      "title": "Title",
+      "startsAt": "Starts At",
+      "deadline": "Deadline",
+      "status": "Status"
+    },
+    "statusUpcoming": "Upcoming",
+    "statusClosed": "Closed",
+    "statusOpen": "Open",
+    "noAssignments": "No assignments currently available."
   },
   "admin": {
     "users": {
       "title": "User Management",
-      "description": "Manage users, roles, and permissions."
+      "description": "Manage users, roles, and permissions.",
+      "usersList": "Users",
+      "table": {
+        "email": "Email",
+        "name": "Name",
+        "role": "Role",
+        "status": "Status",
+        "joined": "Joined"
+      },
+      "noUsers": "No users found."
     },
     "submissions": {
       "title": "All Submissions",
-      "description": "View and manage all submissions across the system."
+      "description": "View and manage all submissions across the system.",
+      "recent": "Recent Submissions (All Users)",
+      "table": {
+        "id": "ID",
+        "user": "User",
+        "problem": "Problem",
+        "language": "Language",
+        "status": "Status",
+        "score": "Score",
+        "submittedAt": "Submitted At"
+      },
+      "noSubmissions": "No submissions found."
     }
   },
   "profile": {
     "title": "Profile",
-    "description": "Manage your account settings and preferences."
+    "description": "Manage your account settings and preferences.",
+    "userProfile": "User Profile",
+    "userProfileDesc": "Your account details and role.",
+    "userId": "User ID",
+    "name": "Name",
+    "email": "Email",
+    "role": "Role"
   },
   "changePassword": {
     "title": "Change Password",

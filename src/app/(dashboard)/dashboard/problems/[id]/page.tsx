@@ -19,6 +19,7 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
   const problemId = resolvedParams.id;
 
   const t = await getTranslations("problems");
+  const tCommon = await getTranslations("common");
   
   const problem = await db.query.problems.findFirst({
     where: eq(problems.id, problemId),
@@ -46,15 +47,15 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
           <div className="flex gap-2 text-sm text-muted-foreground mb-4">
             <Badge variant="outline">Time Limit: {problem.timeLimitMs}ms</Badge>
             <Badge variant="outline">Memory Limit: {problem.memoryLimitMb}MB</Badge>
-            <Badge variant="secondary">Author: {problem.author?.name || "System"}</Badge>
+            <Badge variant="secondary">Author: {problem.author?.name || tCommon("system")}</Badge>
           </div>
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>Description</CardTitle>
+            <CardTitle>{t("descriptionTitle")}</CardTitle>
           </CardHeader>
           <CardContent className="prose dark:prose-invert max-w-none">
-            <div dangerouslySetInnerHTML={{ __html: problem.description || "No description provided." }} />
+            <div dangerouslySetInnerHTML={{ __html: problem.description || t("noDescription") }} />
           </CardContent>
         </Card>
       </div>
@@ -62,16 +63,16 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
       <div>
         <Card className="sticky top-6">
           <CardHeader>
-            <CardTitle>Submit Solution</CardTitle>
+            <CardTitle>{t("submitSolution")}</CardTitle>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" action="/api/v1/submissions" method="POST">
               <input type="hidden" name="problemId" value={problem.id} />
               <div className="space-y-2">
-                <Label htmlFor="language">Language</Label>
+                <Label htmlFor="language">{t("selectLanguage")}</Label>
                 <Select name="language" defaultValue="python">
                   <SelectTrigger id="language">
-                    <SelectValue placeholder="Select Language" />
+                    <SelectValue placeholder={t("selectLanguage")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="c17">C17 (GCC)</SelectItem>
@@ -86,11 +87,11 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
                   id="sourceCode" 
                   name="sourceCode" 
                   className="font-mono min-h-[300px]" 
-                  placeholder="Write your code here..." 
+                  placeholder={t("writeCodePlaceholder")} 
                   required
                 />
               </div>
-              <Button type="submit" className="w-full">Submit</Button>
+              <Button type="submit" className="w-full">{tCommon("submit")}</Button>
             </form>
           </CardContent>
         </Card>

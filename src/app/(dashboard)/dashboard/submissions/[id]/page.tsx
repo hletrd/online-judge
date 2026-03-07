@@ -16,6 +16,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
   const submissionId = resolvedParams.id;
 
   const t = await getTranslations("submissions");
+  const tCommon = await getTranslations("common");
   
   const submission = await db.query.submissions.findFirst({
     where: eq(submissions.id, submissionId),
@@ -56,27 +57,27 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
     <div className="space-y-6">
       <div className="flex justify-between items-start">
         <div>
-          <h2 className="text-2xl font-bold mb-2">Submission {submission.id.substring(0,8)}</h2>
+          <h2 className="text-2xl font-bold mb-2">{t("submissionId", { id: submission.id.substring(0,8) })}</h2>
           <div className="flex gap-2">
-            <Badge variant="outline">User: {submission.user?.name}</Badge>
-            <Badge variant="outline">Problem: {submission.problem?.title}</Badge>
-            <Badge variant="outline">Language: {submission.language}</Badge>
+            <Badge variant="outline">{t("user")}: {submission.user?.name}</Badge>
+            <Badge variant="outline">{t("table.problem")}: {submission.problem?.title}</Badge>
+            <Badge variant="outline">{t("table.language")}: {submission.language}</Badge>
             <Badge variant={submission.status === "accepted" ? "default" : submission.status === "pending" || submission.status === "judging" ? "secondary" : "destructive"}>
               {submission.status}
             </Badge>
           </div>
         </div>
         <div className="text-right text-sm text-muted-foreground">
-          <p>Submitted: {submission.submittedAt ? new Date(submission.submittedAt).toLocaleString() : "-"}</p>
-          <p>Score: {submission.score !== null ? submission.score : "-"}</p>
-          <p>Time: {submission.executionTimeMs ? `${submission.executionTimeMs} ms` : "-"}</p>
-          <p>Memory: {submission.memoryUsedKb ? `${submission.memoryUsedKb} KB` : "-"}</p>
+          <p>{t("submitted")}: {submission.submittedAt ? new Date(submission.submittedAt).toLocaleString() : "-"}</p>
+          <p>{t("score")}: {submission.score !== null ? submission.score : "-"}</p>
+          <p>{t("time")}: {submission.executionTimeMs ? `${submission.executionTimeMs} ms` : "-"}</p>
+          <p>{t("memory")}: {submission.memoryUsedKb ? `${submission.memoryUsedKb} KB` : "-"}</p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Source Code</CardTitle>
+          <CardTitle>{t("sourceCode")}</CardTitle>
         </CardHeader>
         <CardContent>
           <pre className="p-4 bg-muted rounded-lg overflow-x-auto">
@@ -88,7 +89,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
       {submission.compileOutput && (
         <Card>
           <CardHeader>
-            <CardTitle>Compile/Error Output</CardTitle>
+            <CardTitle>{t("compileOutput")}</CardTitle>
           </CardHeader>
           <CardContent>
             <pre className="p-4 bg-muted rounded-lg overflow-x-auto text-red-500">
@@ -100,17 +101,17 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
 
       <Card>
         <CardHeader>
-          <CardTitle>Test Case Results</CardTitle>
-          <CardDescription>Execution details for each evaluated test case.</CardDescription>
+          <CardTitle>{t("testCaseResults")}</CardTitle>
+          <CardDescription>{t("testCaseResultsDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Test Case</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Time (ms)</TableHead>
-                <TableHead>Memory (KB)</TableHead>
+                <TableHead>{t("testCaseTable.testCase")}</TableHead>
+                <TableHead>{t("testCaseTable.status")}</TableHead>
+                <TableHead>{t("testCaseTable.time")}</TableHead>
+                <TableHead>{t("testCaseTable.memory")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -129,7 +130,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
               {results.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    No results available yet.
+                    {t("noResults")}
                   </TableCell>
                 </TableRow>
               )}

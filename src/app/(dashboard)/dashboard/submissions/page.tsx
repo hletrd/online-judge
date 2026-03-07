@@ -22,6 +22,7 @@ export default async function SubmissionsPage() {
   if (!session?.user) redirect("/login");
 
   const t = await getTranslations("submissions");
+  const tCommon = await getTranslations("common");
   
   const userSubmissions = await db
     .select({
@@ -46,19 +47,19 @@ export default async function SubmissionsPage() {
       <h2 className="text-2xl font-bold mb-4">{t("title")}</h2>
       <Card>
         <CardHeader>
-          <CardTitle>My Submissions</CardTitle>
+          <CardTitle>{t("mySubmissions")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Problem</TableHead>
-                <TableHead>Language</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Score</TableHead>
-                <TableHead>Submitted At</TableHead>
-                <TableHead>Action</TableHead>
+                <TableHead>{t("table.id")}</TableHead>
+                <TableHead>{t("table.problem")}</TableHead>
+                <TableHead>{t("table.language")}</TableHead>
+                <TableHead>{t("table.status")}</TableHead>
+                <TableHead>{t("table.score")}</TableHead>
+                <TableHead>{t("table.submittedAt")}</TableHead>
+                <TableHead>{t("table.action")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -71,7 +72,7 @@ export default async function SubmissionsPage() {
                         {sub.problem.title}
                       </Link>
                     ) : (
-                      "Unknown"
+                      tCommon("unknown")
                     )}
                   </TableCell>
                   <TableCell>{sub.language}</TableCell>
@@ -86,7 +87,7 @@ export default async function SubmissionsPage() {
                   </TableCell>
                   <TableCell>
                     <Link href={`/dashboard/submissions/${sub.id}`}>
-                      <Button variant="outline" size="sm">View</Button>
+                      <Button variant="outline" size="sm">{tCommon("view")}</Button>
                     </Link>
                   </TableCell>
                 </TableRow>
@@ -94,7 +95,7 @@ export default async function SubmissionsPage() {
               {userSubmissions.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground">
-                    You haven't made any submissions yet.
+                    {t("noSubmissions")}
                   </TableCell>
                 </TableRow>
               )}
