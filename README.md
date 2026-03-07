@@ -31,19 +31,22 @@
 - **Role-based access** — Super admin, admin, instructor, and student roles with granular permissions
 - **Configurable site identity and timezone** — Admins can override the site title, description, and default timezone used for rendered timestamps across the application
 - **Classroom management** — Groups, enrollments, and assignments with deadlines and late penalties
+- **Instructor assignment oversight** — Group-scoped assignment status boards with scoped drill-down into assignment-linked student submissions
 - **Problem management** — Sanitized descriptions, configurable time/memory limits, public/private/hidden visibility, and test-case editing before submissions exist
+- **Admin login history** — Credential login outcomes with safe filtering and pagination for admin-only review
 - **Secure code execution** — Docker containers with no network, seccomp profiles, memory/CPU limits, and non-root users
 - **Multi-language support** — C, C++, Python, JavaScript, TypeScript, Rust, Go, and Swift with admin-customizable compile options
-- **Submission workflow** — JSON submission flow, live status polling, per-test-case results, and paginated submission history
+- **Submission workflow** — JSON submission flow, live status polling, per-test-case results, paginated submission history, draft recovery, and mixed legacy/hex submission ID support
 
 ## Current Status
 
 - Phase 0 remediation is complete: submission flow works, the judge worker executes submissions, instructors can manage test cases during problem authoring, the problem edit page exists, and the group creation flow is wired
 - High-priority Phase 1 work is also in place: dashboard `loading.tsx` / `error.tsx` / `not-found.tsx`, submission polling, paginated submissions, solved/attempted problem indicators, translated status badges, callback-aware login, sanitized problem descriptions, theme switching, richer code surfaces, and admin-managed site identity/timezone settings
+- Local main also includes the dashboard-rendering-audit-and-editor-upgrades batch: instructor assignment status boards with scoped submission drill-down, admin login logs, theme-aware CodeMirror surfaces, draft recovery, guarded delete flows, and 32-character hex submission IDs. These changes are verified locally but not yet confirmed on `oj-demo.atik.kr`.
 - As of 2026-03-07, commit `6951d46` is deployed to `oj-demo.atik.kr`; the demo host has the `system_settings.time_zone` column applied and the public login page returns HTTP 200
 - Security hardening now includes login rate limiting, explicit auth/judge env validation, stronger API access checks, problem/test-case exposure fixes, and shared security headers
 - As of 2026-03-07, a remote smoke test against `oj-demo.atik.kr` succeeded with instructor-authenticated `POST /api/v1/problems` calls and left six private Korean practice problems on the demo host for API verification
-- Remaining roadmap items are still open: assignment CRUD, group membership management, audit logging, CI, and backup/observability work
+- Remaining roadmap items are still open: assignment CRUD, group membership management, broader audit/event logging, CI, and backup/observability work
 
 ## Getting Started
 

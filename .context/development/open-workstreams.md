@@ -1,17 +1,23 @@
 # Open Workstreams
 
-Last updated: 2026-03-07
+Last updated: 2026-03-08
 
-These items are present in the local worktree but are not part of the shipped timezone rollout.
+The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verified and its plan docs are reconciled. The items below remain open outside that completed batch.
 
-## Do not document as completed yet
+## Recently closed locally
 
-- Assignment-aware submission and group assignment flows
-- Login-event logging and related admin surfaces
+- Assignment-aware submission validation, the group-scoped assignment board, and scoped instructor submission drill-down
+- Login-event logging plus the admin login-log dashboard/navigation surface
+- Theme switching, CodeMirror code surfaces, markdown rendering, draft recovery, mixed submission IDs, and guarded delete flows
+
+## Still open
+
+- Assignment CRUD and group membership management
+- Broader audit/event logging beyond credential login history
 - Additional language/runtime expansion work
-- Broader editor/runtime polish that is still mixed with unfinished changes
+- CI and backup/observability work
 
 ## Safety note
 
-- The local worktree is intentionally still dirty in several app and schema files.
-- Future sessions should isolate and verify the next coherent batch before updating user-facing docs or deployment notes again.
+- The demo host is still only confirmed at commit `6951d46`; do not describe the newer local dashboard/audit/editor upgrades as deployed until the next remote rollout is verified.
+- Future sessions should isolate the next coherent batch before updating deployment-facing docs again.

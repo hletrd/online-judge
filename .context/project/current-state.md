@@ -1,6 +1,6 @@
 # Current State
 
-Last updated: 2026-03-07
+Last updated: 2026-03-08
 
 ## Shipped and deployed
 
@@ -9,6 +9,12 @@ Last updated: 2026-03-07
 - Rendered timestamps now use the configured timezone on student/admin submission pages, admin user pages, and group assignment schedule views.
 - Local verification passed for the timezone rollout with `npx tsc --noEmit`, `npm run build`, and `npm run test:e2e -- --grep "@smoke"`.
 - Remote deployment verification confirmed `online-judge.service` and `online-judge-worker.service` are active, the public login page returns HTTP 200, and the on-host `system_settings` table includes `time_zone`.
+
+## Locally verified, not yet deployed
+
+- The `dashboard-rendering-audit-and-editor-upgrades` plan is complete in the local repository.
+- Local main now includes the instructor assignment status board and scoped assignment submission drill-down, admin login logs, theme switching, CodeMirror-based code surfaces, markdown-safe problem rendering, source-draft recovery, mixed submission ID support, and guarded user/problem delete flows.
+- Local verification passed on 2026-03-08 with directory TypeScript diagnostics, `npm run build`, `npx playwright test --list`, `npm run test:e2e -- --grep @smoke`, and `npx playwright test`.
 
 ## Operational notes
 
@@ -19,7 +25,7 @@ Last updated: 2026-03-07
 
 ## Documentation sync points
 
-- `README.md` should describe the timezone-aware system settings behavior and the current deployed state.
-- `docs/deployment.md` should mention the deployed revision, the `time_zone` schema requirement, and the seeded-credential caveat on the shared demo host.
-- `docs/review.md` should list the timezone rollout in the status update section.
-- `AGENTS.md` should reflect that `system_settings` now carries title, description, and timezone overrides.
+- `README.md` now distinguishes the last confirmed demo deployment from the newer locally verified dashboard/audit/editor upgrades.
+- `docs/deployment.md` now captures the deployed revision, the `time_zone` schema requirement, and the shared-host credential/env caveats.
+- `docs/review.md` now records the timezone rollout plus the newer locally verified-but-undeployed dashboard/audit/editor batch.
+- `AGENTS.md` already reflects that `system_settings` carries title, description, and timezone overrides.
