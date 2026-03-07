@@ -40,6 +40,7 @@ async function seed() {
         passwordHash,
         role: "super_admin",
         isActive: true,
+        mustChangePassword: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       })

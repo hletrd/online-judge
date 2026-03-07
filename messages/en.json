@@ -74,6 +74,19 @@
     "title": "Profile",
     "description": "Manage your account settings and preferences."
   },
+  "changePassword": {
+    "title": "Change Password",
+    "description": "You must change your password before continuing.",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm New Password",
+    "changeButton": "Change Password",
+    "changing": "Changing...",
+    "passwordMismatch": "Passwords do not match",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "currentPasswordIncorrect": "Current password is incorrect",
+    "error": "An error occurred"
+  },
   "judge": {
     "title": "Judge Environment",
     "cpu": "Ampere Altra (ARM64)",

@@ -74,6 +74,19 @@
     "title": "프로필",
     "description": "계정 설정 및 환경설정을 관리합니다."
   },
+  "changePassword": {
+    "title": "비밀번호 변경",
+    "description": "계속하기 전에 비밀번호를 변경해야 합니다.",
+    "currentPassword": "현재 비밀번호",
+    "newPassword": "새 비밀번호",
+    "confirmPassword": "새 비밀번호 확인",
+    "changeButton": "비밀번호 변경",
+    "changing": "변경 중...",
+    "passwordMismatch": "비밀번호가 일치하지 않습니다",
+    "passwordTooShort": "비밀번호는 8자 이상이어야 합니다",
+    "currentPasswordIncorrect": "현재 비밀번호가 올바르지 않습니다",
+    "error": "오류가 발생했습니다"
+  },
   "judge": {
     "title": "채점 환경",
     "cpu": "Ampere Altra (ARM64)",

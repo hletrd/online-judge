@@ -34,6 +34,7 @@ export const authConfig: NextAuthConfig = {
           email: user.email,
           name: user.name,
           role: user.role as UserRole,
+          mustChangePassword: user.mustChangePassword ?? false,
         };
       },
     }),
@@ -43,10 +44,20 @@ export const authConfig: NextAuthConfig = {
     signIn: "/login",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
+        token.mustChangePassword = (user as any).mustChangePassword ?? false;
+      }
+      if (trigger === "update") {
+        // Re-fetch user to get updated mustChangePassword
+        const freshUser = await db.query.users.findFirst({
+          where: eq(users.id, token.id as string),
+        });
+        if (freshUser) {
+          token.mustChangePassword = freshUser.mustChangePassword ?? false;
+        }
       }
       return token;
     },
@@ -54,6 +65,7 @@ export const authConfig: NextAuthConfig = {
       if (token) {
         session.user.id = token.id as string;
         session.user.role = token.role as UserRole;
+        session.user.mustChangePassword = token.mustChangePassword as boolean;
       }
       return session;
     },
