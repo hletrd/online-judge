@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { username, email, name, password, role } = body;
+    const normalizedEmail = typeof email === "string" && email.trim() !== "" ? email.trim() : null;
 
     if (!username || typeof username !== "string") {
       return NextResponse.json({ error: "Username is required" }, { status: 400 });
@@ -72,13 +73,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Username already in use" }, { status: 409 });
     }
 
+    if (normalizedEmail) {
+      const existingEmail = await db.query.users.findFirst({ where: eq(users.email, normalizedEmail) });
+      if (existingEmail) {
+        return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+      }
+    }
+
     const passwordHash = await hash(password, 12);
     const id = nanoid();
 
     await db.insert(users).values({
       id,
       username,
-      email,
+      email: normalizedEmail,
       name,
       passwordHash,
       role: role || "student",

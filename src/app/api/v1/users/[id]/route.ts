@@ -67,9 +67,31 @@ export async function PATCH(
     const { name, username, email, role, isActive, password } = body;
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
+    const normalizedEmail = typeof email === "string" && email.trim() !== "" ? email.trim() : null;
+
+    if (username !== undefined) {
+      const existingUsername = await db.query.users.findFirst({
+        where: eq(users.username, username),
+      });
+
+      if (existingUsername && existingUsername.id !== id) {
+        return NextResponse.json({ error: "Username already in use" }, { status: 409 });
+      }
+    }
+
+    if (email !== undefined && normalizedEmail) {
+      const existingEmail = await db.query.users.findFirst({
+        where: eq(users.email, normalizedEmail),
+      });
+
+      if (existingEmail && existingEmail.id !== id) {
+        return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+      }
+    }
+
     if (name !== undefined) updates.name = name;
     if (username !== undefined) updates.username = username;
-    if (email !== undefined) updates.email = email;
+    if (email !== undefined) updates.email = normalizedEmail;
     if (isActive !== undefined && isAdmin(user.role)) updates.isActive = isActive;
     if (role !== undefined) {
       if (!isAdmin(user.role)) return forbidden();
