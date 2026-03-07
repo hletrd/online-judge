@@ -7,7 +7,6 @@ import { db } from "@/lib/db";
 import { languageConfigs } from "@/lib/db/schema";
 import {
   getJudgeLanguageDefinition,
-  JUDGE_LANGUAGE_CONFIGS,
   serializeJudgeCommand,
 } from "@/lib/judge/languages";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
@@ -35,7 +34,6 @@ export default async function DashboardPage() {
     return [{ id: language.id, definition }];
   });
   const runtimeSystemInfo = await getRuntimeSystemInfo();
-  const pythonRuntime = JUDGE_LANGUAGE_CONFIGS.python.compiler;
 
   return (
     <div className="space-y-6">
@@ -55,7 +53,7 @@ export default async function DashboardPage() {
           <CardTitle>{tJudge("title")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="flex items-center gap-3 rounded-lg border p-3">
               <Cpu className="h-5 w-5 text-muted-foreground" />
               <div>
@@ -68,13 +66,6 @@ export default async function DashboardPage() {
               <div>
                 <p className="text-xs text-muted-foreground">{tJudge("osLabel")}</p>
                 <p className="text-sm font-medium">{runtimeSystemInfo.os}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border p-3">
-              <MemoryStick className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">{tJudge("pythonLabel")}</p>
-                <p className="text-sm font-medium">{pythonRuntime ?? tCommon("unknown")}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-3">
