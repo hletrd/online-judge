@@ -101,8 +101,8 @@ export default async function DashboardPage() {
           <CardTitle>{tLangs("title")}</CardTitle>
           <CardDescription>{runtimeSystemInfo.architecture}</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Table>
+        <CardContent className="min-w-0">
+          <Table className="min-w-max">
             <TableHeader>
               <TableRow>
                 <TableHead>{tLangs("language")}</TableHead>

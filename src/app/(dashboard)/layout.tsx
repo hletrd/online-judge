@@ -38,7 +38,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <LocaleSwitcher />
           </div>
         </header>
-        <main id="dashboard-main-content" className="flex-1 p-6">
+        <main id="dashboard-main-content" className="min-w-0 flex-1 p-6">
           {children}
         </main>
       </SidebarInset>
