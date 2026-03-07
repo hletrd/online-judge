@@ -1,12 +1,16 @@
 <p align="center">
+  <img src="src/app/icon.svg" alt="Online Judge" width="96" height="96" />
+</p>
+
+<h1 align="center">Online Judge</h1>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js" alt="Next.js 16" />
   <img src="https://img.shields.io/badge/TypeScript-5-blue?logo=typescript" alt="TypeScript" />
   <img src="https://img.shields.io/badge/SQLite-Drizzle_ORM-green?logo=sqlite" alt="SQLite" />
   <img src="https://img.shields.io/badge/Docker-Sandboxed-2496ED?logo=docker" alt="Docker" />
   <img src="https://img.shields.io/badge/Auth.js-v5-purple?logo=auth0" alt="Auth.js" />
 </p>
-
-<h1 align="center">Online Judge</h1>
 
 <p align="center">
   A secure online judge system for student programming assignments.<br/>
