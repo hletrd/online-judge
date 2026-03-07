@@ -2,6 +2,15 @@ const DEFAULT_POLL_URL = "http://localhost:3000/api/v1/judge/poll";
 const DEFAULT_POLL_INTERVAL_MS = 2000;
 const JUDGE_AUTH_TOKEN_PLACEHOLDER = "your-judge-auth-token";
 
+function normalizeBooleanEnv(value: string | undefined) {
+  if (!value) {
+    return false;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+}
+
 export function getJudgePollUrl() {
   return process.env.JUDGE_POLL_URL?.trim() || DEFAULT_POLL_URL;
 }
@@ -34,4 +43,8 @@ export function getJudgeAuthToken() {
   }
 
   return authToken;
+}
+
+export function shouldDisableCustomSeccomp() {
+  return normalizeBooleanEnv(process.env.JUDGE_DISABLE_CUSTOM_SECCOMP);
 }

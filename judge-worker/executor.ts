@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { compareOutput } from "./comparator";
-import { getJudgeAuthToken, getJudgePollUrl } from "./config";
+import { getJudgeAuthToken, getJudgePollUrl, shouldDisableCustomSeccomp } from "./config";
 import { LANGUAGE_CONFIGS } from "./languages";
 
 const EXECUTION_CPU_LIMIT = "1";
@@ -14,6 +15,11 @@ const COMPILATION_TIMEOUT_MS = 10_000;
 const MIN_TIMEOUT_MS = 100;
 const CONTAINER_TMPFS = "/tmp:rw,noexec,nosuid,size=64m";
 const SECCOMP_PROFILE_PATH = path.resolve(process.cwd(), "docker/seccomp-profile.json");
+const SECCOMP_INIT_ERROR_SNIPPETS = [
+  "OCI runtime create failed",
+  "error during container init",
+  "fsmount:fscontext:proc: operation not permitted",
+];
 
 export interface Submission {
   id: string;
@@ -52,6 +58,10 @@ type DockerCommandResult = {
   timedOut: boolean;
   oomKilled: boolean;
   durationMs: number;
+};
+
+type DockerExecutionOptions = {
+  useCustomSeccomp: boolean;
 };
 
 function getMemoryLimitMb(memoryLimitMb: number) {
@@ -131,7 +141,18 @@ async function removeContainer(containerName: string) {
   }
 }
 
-async function runDockerCommand(options: DockerCommandOptions): Promise<DockerCommandResult> {
+function shouldUseCustomSeccompProfile() {
+  return !shouldDisableCustomSeccomp() && existsSync(SECCOMP_PROFILE_PATH);
+}
+
+function shouldRetryWithoutCustomSeccomp(stderr: string) {
+  return SECCOMP_INIT_ERROR_SNIPPETS.every((snippet) => stderr.includes(snippet));
+}
+
+async function runDockerCommandOnce(
+  options: DockerCommandOptions,
+  executionOptions: DockerExecutionOptions
+): Promise<DockerCommandResult> {
   const containerName = `oj-${randomUUID()}`;
   const dockerArgs = [
     "run",
@@ -152,9 +173,11 @@ async function runDockerCommand(options: DockerCommandOptions): Promise<DockerCo
     `${options.workspaceDir}:/workspace`,
     "-w",
     "/workspace",
-    "--security-opt",
-    `seccomp=${SECCOMP_PROFILE_PATH}`,
   ];
+
+  if (executionOptions.useCustomSeccomp) {
+    dockerArgs.push("--security-opt", `seccomp=${SECCOMP_PROFILE_PATH}`);
+  }
 
   if (options.input !== undefined) {
     dockerArgs.push("-i");
@@ -213,6 +236,20 @@ async function runDockerCommand(options: DockerCommandOptions): Promise<DockerCo
 
     child.stdin.end();
   });
+}
+
+async function runDockerCommand(options: DockerCommandOptions): Promise<DockerCommandResult> {
+  const useCustomSeccomp = shouldUseCustomSeccompProfile();
+  const firstAttempt = await runDockerCommandOnce(options, { useCustomSeccomp });
+
+  if (useCustomSeccomp && shouldRetryWithoutCustomSeccomp(firstAttempt.stderr)) {
+    console.warn(
+      `Custom seccomp profile failed for ${options.image}; retrying with Docker default seccomp.`
+    );
+    return runDockerCommandOnce(options, { useCustomSeccomp: false });
+  }
+
+  return firstAttempt;
 }
 
 export async function executeSubmission(submission: Submission): Promise<void> {
