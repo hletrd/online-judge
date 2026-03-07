@@ -34,6 +34,8 @@
     "password": "Password",
     "emailPlaceholder": "admin@example.com",
     "invalidCredentials": "Invalid username or password",
+    "identifier": "Username or Email",
+    "identifierPlaceholder": "admin or admin@example.com",
     "username": "Username",
     "usernamePlaceholder": "admin"
   },
@@ -209,7 +211,8 @@
     "passwordTooShort": "Password must be at least 8 characters",
     "currentPasswordIncorrect": "Current password is incorrect",
     "error": "An error occurred",
-    "userNotFound": "User not found"
+    "userNotFound": "User not found",
+    "sessionExpired": "Your session expired. Redirecting to the sign-in page..."
   },
   "judge": {
     "title": "Judge Environment",
