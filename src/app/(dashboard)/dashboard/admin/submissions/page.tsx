@@ -47,7 +47,6 @@ export default async function AdminSubmissionsPage({
     runtime_error: tSubmissions("status.runtime_error"),
     compile_error: tSubmissions("status.compile_error"),
   };
-  
   const allSubmissions = await db
     .select({
       id: submissions.id,
@@ -56,11 +55,13 @@ export default async function AdminSubmissionsPage({
       submittedAt: submissions.submittedAt,
       score: submissions.score,
       user: {
+        id: users.id,
         name: users.name,
       },
       problem: {
+        id: problems.id,
         title: problems.title,
-      }
+      },
     })
     .from(submissions)
     .leftJoin(users, eq(submissions.userId, users.id))
@@ -104,9 +105,29 @@ export default async function AdminSubmissionsPage({
             <TableBody>
               {visibleSubmissions.map((sub) => (
                 <TableRow key={sub.id}>
-                  <TableCell className="font-mono text-xs">{sub.id.substring(0, 8)}</TableCell>
-                  <TableCell>{sub.user?.name || tCommon("unknown")}</TableCell>
-                  <TableCell>{sub.problem?.title || tCommon("unknown")}</TableCell>
+                  <TableCell className="font-mono text-xs">
+                    <Link href={`/dashboard/submissions/${sub.id}`} className="text-primary hover:underline">
+                      {sub.id.substring(0, 8)}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    {sub.user ? (
+                      <Link href={`/dashboard/admin/users/${sub.user.id}`} className="text-primary hover:underline">
+                        {sub.user.name}
+                      </Link>
+                    ) : (
+                      tCommon("unknown")
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {sub.problem ? (
+                      <Link href={`/dashboard/problems/${sub.problem.id}`} className="text-primary hover:underline">
+                        {sub.problem.title}
+                      </Link>
+                    ) : (
+                      tCommon("unknown")
+                    )}
+                  </TableCell>
                   <TableCell>{sub.language}</TableCell>
                   <TableCell>
                     <Badge variant={getSubmissionStatusVariant(sub.status)}>

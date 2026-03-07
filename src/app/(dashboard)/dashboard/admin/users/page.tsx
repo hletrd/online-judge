@@ -14,6 +14,7 @@ import { users } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import UserActions from "./user-actions";
 import AddUserDialog from "./add-user-dialog";
 import EditUserDialog from "./edit-user-dialog";
@@ -60,7 +61,11 @@ export default async function UserManagementPage() {
             <TableBody>
               {allUsers.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.username}</TableCell>
+                  <TableCell className="font-medium">
+                    <Link href={`/dashboard/admin/users/${user.id}`} className="text-primary hover:underline">
+                      {user.username}
+                    </Link>
+                  </TableCell>
                   <TableCell>{user.className || tCommon("notSet")}</TableCell>
                   <TableCell>{user.email || "-"}</TableCell>
                   <TableCell>{user.name}</TableCell>
