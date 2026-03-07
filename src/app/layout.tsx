@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { getResolvedSystemSettings } from "@/lib/system-settings";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -11,10 +12,14 @@ const geistMono = Geist_Mono({
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("common");
+  const settings = await getResolvedSystemSettings({
+    siteTitle: t("appName"),
+    siteDescription: t("appDescription"),
+  });
 
   return {
-    title: t("appName"),
-    description: t("appDescription"),
+    title: settings.siteTitle,
+    description: settings.siteDescription,
   };
 }
 

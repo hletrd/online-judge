@@ -26,6 +26,7 @@ interface AppSidebarProps {
     email?: string | null;
     role: UserRole;
   };
+  siteTitle: string;
 }
 
 const navItems = [
@@ -39,9 +40,10 @@ const navItems = [
 const adminItems = [
   { titleKey: "userManagement" as const, href: "/dashboard/admin/users", icon: Shield, roles: ["super_admin", "admin"] },
   { titleKey: "allSubmissions" as const, href: "/dashboard/admin/submissions", icon: FileCode, roles: ["super_admin", "admin"] },
+  { titleKey: "systemSettings" as const, href: "/dashboard/admin/settings", icon: GraduationCap, roles: ["super_admin", "admin"] },
 ];
 
-export function AppSidebar({ user }: AppSidebarProps) {
+export function AppSidebar({ user, siteTitle }: AppSidebarProps) {
   const pathname = usePathname();
   const t = useTranslations("nav");
   const tCommon = useTranslations("common");
@@ -60,7 +62,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
       <SidebarHeader className="border-b p-4">
         <div className="flex items-center gap-2">
           <GraduationCap className="h-6 w-6" />
-          <span className="text-lg font-bold">{tCommon("appName")}</span>
+          <span className="text-lg font-bold">{siteTitle}</span>
         </div>
       </SidebarHeader>
       <SidebarContent>

@@ -6,12 +6,17 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
+import { getResolvedSystemSettings } from "@/lib/system-settings";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
   const t = await getTranslations("common");
+  const settings = await getResolvedSystemSettings({
+    siteTitle: t("appName"),
+    siteDescription: t("appDescription"),
+  });
 
   return (
     <SidebarProvider>
@@ -21,12 +26,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
       >
         {t("skipToContent")}
       </a>
-      <AppSidebar user={session.user} />
+      <AppSidebar user={session.user} siteTitle={settings.siteTitle} />
       <SidebarInset>
         <header className="flex h-14 items-center gap-2 border-b px-4">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-6" />
-          <h1 className="text-sm font-semibold">{t("appName")}</h1>
+          <h1 className="text-sm font-semibold">{settings.siteTitle}</h1>
           <div className="ml-auto">
             <LocaleSwitcher />
           </div>
