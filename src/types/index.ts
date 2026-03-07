@@ -1,0 +1,13 @@
+export type UserRole = "super_admin" | "admin" | "instructor" | "student";
+export type ProblemVisibility = "public" | "private" | "hidden";
+export type SubmissionStatus =
+  | "pending"
+  | "queued"
+  | "judging"
+  | "accepted"
+  | "wrong_answer"
+  | "time_limit"
+  | "memory_limit"
+  | "runtime_error"
+  | "compile_error";
+export type Language = "c" | "cpp" | "python";
