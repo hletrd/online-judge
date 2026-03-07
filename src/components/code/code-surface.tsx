@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { cpp } from "@codemirror/lang-cpp";
 import {
@@ -184,10 +184,23 @@ export function CodeSurface({
   const highlightCompartmentRef = useRef(new Compartment());
   const editabilityCompartmentRef = useRef(new Compartment());
   const placeholderCompartmentRef = useRef(new Compartment());
-
-  onValueChangeRef.current = onValueChange;
+  const contentAttributesCompartmentRef = useRef(new Compartment());
+  const [initialEditorConfig] = useState(() => ({
+    ariaLabel,
+    ariaLabelledby,
+    id,
+    language,
+    placeholderText,
+    readOnly,
+    resolvedTheme,
+    value,
+  }));
 
   const editorStyle = useMemo(() => getSurfaceStyle(minHeight, tone), [minHeight, tone]);
+
+  useEffect(() => {
+    onValueChangeRef.current = onValueChange;
+  }, [onValueChange]);
 
   useEffect(() => {
     if (!editorHostRef.current) {
@@ -195,17 +208,28 @@ export function CodeSurface({
     }
 
     const state = EditorState.create({
-      doc: value,
+      doc: initialEditorConfig.value,
       extensions: [
         ...baseExtensions,
-        languageCompartmentRef.current.of(getLanguageExtension(language)),
-        highlightCompartmentRef.current.of(getHighlightExtension(resolvedTheme === "dark")),
-        editabilityCompartmentRef.current.of(getEditabilityExtension(readOnly)),
-        placeholderCompartmentRef.current.of(
-          !readOnly && placeholderText ? placeholder(placeholderText) : []
+        languageCompartmentRef.current.of(getLanguageExtension(initialEditorConfig.language)),
+        highlightCompartmentRef.current.of(
+          getHighlightExtension(initialEditorConfig.resolvedTheme === "dark")
         ),
-        EditorView.contentAttributes.of(
-          getContentAttributes(id, ariaLabel, ariaLabelledby, readOnly)
+        editabilityCompartmentRef.current.of(getEditabilityExtension(initialEditorConfig.readOnly)),
+        placeholderCompartmentRef.current.of(
+          !initialEditorConfig.readOnly && initialEditorConfig.placeholderText
+            ? placeholder(initialEditorConfig.placeholderText)
+            : []
+        ),
+        contentAttributesCompartmentRef.current.of(
+          EditorView.contentAttributes.of(
+            getContentAttributes(
+              initialEditorConfig.id,
+              initialEditorConfig.ariaLabel,
+              initialEditorConfig.ariaLabelledby,
+              initialEditorConfig.readOnly
+            )
+          )
         ),
         EditorView.updateListener.of((update) => {
           if (!update.docChanged || isSyncingRef.current) {
@@ -228,7 +252,7 @@ export function CodeSurface({
       view.destroy();
       editorViewRef.current = null;
     };
-  }, [ariaLabel, ariaLabelledby, id, readOnly]);
+  }, [initialEditorConfig]);
 
   useEffect(() => {
     const view = editorViewRef.current;
@@ -269,9 +293,14 @@ export function CodeSurface({
         placeholderCompartmentRef.current.reconfigure(
           !readOnly && placeholderText ? placeholder(placeholderText) : []
         ),
+        contentAttributesCompartmentRef.current.reconfigure(
+          EditorView.contentAttributes.of(
+            getContentAttributes(id, ariaLabel, ariaLabelledby, readOnly)
+          )
+        ),
       ],
     });
-  }, [placeholderText, readOnly]);
+  }, [ariaLabel, ariaLabelledby, id, placeholderText, readOnly]);
 
   useEffect(() => {
     const view = editorViewRef.current;

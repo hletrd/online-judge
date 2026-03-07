@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Monitor, MoonStar, SunMedium, SunMoon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
@@ -27,30 +27,32 @@ const themeOptions: Array<{
   { value: "system", icon: Monitor, labelKey: "system" },
 ];
 
-function getThemeIcon(theme: ThemeOption | undefined) {
+function subscribeToHydration() {
+  return () => {};
+}
+
+function isThemeOption(value: string | undefined): value is ThemeOption {
+  return value === "light" || value === "dark" || value === "system";
+}
+
+function ThemeTriggerIcon({ className, theme }: { className?: string; theme: ThemeOption | undefined }) {
   switch (theme) {
     case "light":
-      return SunMedium;
+      return <SunMedium className={className} />;
     case "dark":
-      return MoonStar;
+      return <MoonStar className={className} />;
     case "system":
-      return Monitor;
+      return <Monitor className={className} />;
     default:
-      return SunMoon;
+      return <SunMoon className={className} />;
   }
 }
 
 export function ThemeToggle({ className }: { className?: string }) {
   const t = useTranslations("common");
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const selectedTheme = mounted ? ((theme as ThemeOption | undefined) ?? "system") : "system";
-  const TriggerIcon = getThemeIcon(mounted ? selectedTheme : undefined);
+  const mounted = useSyncExternalStore(subscribeToHydration, () => true, () => false);
+  const selectedTheme = mounted && isThemeOption(theme) ? theme : "system";
 
   return (
     <DropdownMenu>
@@ -62,13 +64,20 @@ export function ThemeToggle({ className }: { className?: string }) {
         )}
         disabled={!mounted}
       >
-        <TriggerIcon className="h-4 w-4" />
+        <ThemeTriggerIcon className="h-4 w-4" theme={mounted ? selectedTheme : undefined} />
         <span className="sr-only">{t("theme")}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
         <DropdownMenuGroup>
           <DropdownMenuLabel>{t("theme")}</DropdownMenuLabel>
-          <DropdownMenuRadioGroup value={selectedTheme} onValueChange={setTheme}>
+          <DropdownMenuRadioGroup
+            value={selectedTheme}
+            onValueChange={(value) => {
+              if (isThemeOption(value)) {
+                setTheme(value);
+              }
+            }}
+          >
             {themeOptions.map(({ value, icon: Icon, labelKey }) => (
               <DropdownMenuRadioItem key={value} value={value} className="gap-2">
                 <Icon className="h-4 w-4 text-muted-foreground" />
