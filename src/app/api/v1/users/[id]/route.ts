@@ -7,7 +7,8 @@ import { hash } from "bcryptjs";
 
 const safeUserSelect = {
   id: users.id,
-  email: users.email,
+  username: users.username,
+        email: users.email,
   name: users.name,
   role: users.role,
   isActive: users.isActive,
@@ -63,10 +64,11 @@ export async function PATCH(
     if (!found) return notFound("User");
 
     const body = await request.json();
-    const { name, email, role, isActive, password } = body;
+    const { name, username, email, role, isActive, password } = body;
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (name !== undefined) updates.name = name;
+    if (username !== undefined) updates.username = username;
     if (email !== undefined) updates.email = email;
     if (isActive !== undefined && isAdmin(user.role)) updates.isActive = isActive;
     if (role !== undefined) {

@@ -7,6 +7,7 @@ export async function getApiUser(request: NextRequest) {
   return {
     id: token.id as string,
     role: token.role as string,
+    username: token.username as string,
     email: token.email as string,
     name: token.name as string,
   };

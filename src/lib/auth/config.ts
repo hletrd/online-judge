@@ -11,17 +11,17 @@ export const authConfig: NextAuthConfig = {
     Credentials({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.username || !credentials?.password) return null;
 
-        const email = credentials.email as string;
+        const username = credentials.username as string;
         const password = credentials.password as string;
 
         const user = await db.query.users.findFirst({
-          where: eq(users.email, email),
+          where: eq(users.username, username),
         });
 
         if (!user || !user.passwordHash || !user.isActive) return null;
@@ -31,7 +31,7 @@ export const authConfig: NextAuthConfig = {
 
         return {
           id: user.id,
-          email: user.email,
+          username: user.username,
           name: user.name,
           role: user.role as UserRole,
           mustChangePassword: user.mustChangePassword ?? false,

@@ -14,23 +14,24 @@ export async function updateProfile(
     return { success: false, error: "Not authenticated" };
   }
 
-  if (!name || name.trim() === "" || !email || email.trim() === "") {
-    return { success: false, error: "Name and email are required" };
+  if (!name || name.trim() === "") {
+    return { success: false, error: "Name is required" };
   }
 
   // Check if email is taken by someone else
-  const existingUser = await db.query.users.findFirst({
-    where: eq(users.email, email),
-  });
-
-  if (existingUser && existingUser.id !== session.user.id) {
-    return { success: false, error: "Email already in use" };
+  if (email) {
+    const existingUser = await db.query.users.findFirst({
+      where: eq(users.email, email),
+    });
+    if (existingUser && existingUser.id !== session.user.id) {
+      return { success: false, error: "Email already in use" };
+    }
   }
 
   db.update(users)
     .set({
       name: name.trim(),
-      email: email.trim(),
+      email: email ? email.trim() : null,
       updatedAt: new Date(),
     })
     .where(eq(users.id, session.user.id))

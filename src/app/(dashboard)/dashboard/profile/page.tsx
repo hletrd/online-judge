@@ -31,6 +31,10 @@ export default async function ProfilePage() {
             <Input id="id" value={session.user.id} readOnly disabled />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="username">{t("username", { fallback: "Username" })}</Label>
+            <Input id="username" value={session.user.username} readOnly disabled />
+          </div>
+          <div className="space-y-2">
             <Label>{t("role")}</Label>
             <div>
               <Badge variant="default" className="text-sm capitalize">{session.user.role}</Badge>

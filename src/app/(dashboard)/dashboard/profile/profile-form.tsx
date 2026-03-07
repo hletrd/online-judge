@@ -55,13 +55,12 @@ export default function ProfileForm({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="email">{t("email")}</Label>
+        <Label htmlFor="email">{t("email")} (Optional)</Label>
         <Input 
           id="email" 
           type="email" 
           value={email} 
           onChange={(e) => setEmail(e.target.value)} 
-          required 
         />
       </div>
       <Button type="submit" disabled={isLoading}>

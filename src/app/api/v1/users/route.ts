@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     let results = await db
       .select({
         id: users.id,
+        username: users.username,
         email: users.email,
         name: users.name,
         role: users.role,
@@ -51,9 +52,12 @@ export async function POST(request: NextRequest) {
     if (!isAdmin(user.role)) return forbidden();
 
     const body = await request.json();
-    const { email, name, password, role } = body;
+    const { username, email, name, password, role } = body;
 
-    if (!email || typeof email !== "string") {
+    if (!username || typeof username !== "string") {
+      return NextResponse.json({ error: "Username is required" }, { status: 400 });
+    }
+    if (email !== undefined && typeof email !== "string") {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
     if (!name || typeof name !== "string") {
@@ -63,9 +67,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
     }
 
-    const existing = await db.query.users.findFirst({ where: eq(users.email, email) });
+    const existing = await db.query.users.findFirst({ where: eq(users.username, username) });
     if (existing) {
-      return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+      return NextResponse.json({ error: "Username already in use" }, { status: 409 });
     }
 
     const passwordHash = await hash(password, 12);
@@ -73,6 +77,7 @@ export async function POST(request: NextRequest) {
 
     await db.insert(users).values({
       id,
+      username,
       email,
       name,
       passwordHash,
@@ -85,6 +90,7 @@ export async function POST(request: NextRequest) {
     const created = await db
       .select({
         id: users.id,
+        username: users.username,
         email: users.email,
         name: users.name,
         role: users.role,

@@ -12,7 +12,8 @@ export const users = sqliteTable("users", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => nanoid()),
-  email: text("email").unique().notNull(),
+  username: text("username").unique().notNull(),
+  email: text("email"),
   name: text("name").notNull(),
   passwordHash: text("password_hash"),
   role: text("role").notNull().default("student"),

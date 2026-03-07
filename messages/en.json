@@ -33,7 +33,9 @@
     "email": "Email",
     "password": "Password",
     "emailPlaceholder": "admin@example.com",
-    "invalidCredentials": "Invalid email or password"
+    "invalidCredentials": "Invalid username or password",
+    "username": "Username",
+    "usernamePlaceholder": "admin"
   },
   "nav": {
     "navigation": "Navigation",
@@ -151,9 +153,13 @@
         "name": "Name",
         "role": "Role",
         "status": "Status",
-        "joined": "Joined"
+        "joined": "Joined",
+        "username": "Username"
       },
-      "noUsers": "No users found."
+      "noUsers": "No users found.",
+      "addUser": "Add User",
+      "activate": "Activate",
+      "deactivate": "Deactivate"
     },
     "submissions": {
       "title": "All Submissions",

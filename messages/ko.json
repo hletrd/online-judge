@@ -33,7 +33,9 @@
     "email": "이메일",
     "password": "비밀번호",
     "emailPlaceholder": "admin@example.com",
-    "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다"
+    "invalidCredentials": "사용자명 또는 비밀번호가 올바르지 않습니다",
+    "username": "사용자명",
+    "usernamePlaceholder": "admin"
   },
   "nav": {
     "navigation": "메뉴",
@@ -151,9 +153,13 @@
         "name": "이름",
         "role": "역할",
         "status": "상태",
-        "joined": "가입일"
+        "joined": "가입일",
+        "username": "사용자명"
       },
-      "noUsers": "사용자를 찾을 수 없습니다."
+      "noUsers": "사용자를 찾을 수 없습니다.",
+      "addUser": "사용자 추가",
+      "activate": "활성화",
+      "deactivate": "비활성화"
     },
     "submissions": {
       "title": "전체 제출 내역",

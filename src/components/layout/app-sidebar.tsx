@@ -21,6 +21,7 @@ import type { UserRole } from "@/types";
 interface AppSidebarProps {
   user: {
     id: string;
+    username?: string | null;
     name?: string | null;
     email?: string | null;
     role: UserRole;
@@ -99,7 +100,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         <div className="flex items-center gap-2">
           <User className="h-4 w-4" />
           <div className="flex flex-col text-sm">
-            <span className="font-medium">{user.name}</span>
+            <span className="font-medium">{user.name} ({user.username})</span>
             <span className="text-xs text-muted-foreground">{user.role.replace("_", " ")}</span>
           </div>
         </div>

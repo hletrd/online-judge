@@ -14,6 +14,8 @@ import { users } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import UserActions from "./user-actions";
+import AddUserDialog from "./add-user-dialog";
 
 export default async function UserManagementPage() {
   const session = await auth();
@@ -26,7 +28,10 @@ export default async function UserManagementPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">{t("title")}</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">{t("title")}</h2>
+        <AddUserDialog />
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>{t("usersList")}</CardTitle>
@@ -35,17 +40,20 @@ export default async function UserManagementPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>{t("table.username", { fallback: "Username" })}</TableHead>
                 <TableHead>{t("table.email")}</TableHead>
                 <TableHead>{t("table.name")}</TableHead>
                 <TableHead>{t("table.role")}</TableHead>
                 <TableHead>{t("table.status")}</TableHead>
                 <TableHead>{t("table.joined")}</TableHead>
+                <TableHead>{tCommon("action")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {allUsers.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell>{user.email}</TableCell>
+                  <TableCell className="font-medium">{user.username}</TableCell>
+                  <TableCell>{user.email || "-"}</TableCell>
                   <TableCell>{user.name}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{user.role}</Badge>
@@ -60,11 +68,18 @@ export default async function UserManagementPage() {
                   <TableCell>
                     {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "-"}
                   </TableCell>
+                  <TableCell>
+                    <UserActions 
+                      userId={user.id} 
+                      isActive={!!user.isActive} 
+                      isSelf={user.id === session.user.id} 
+                    />
+                  </TableCell>
                 </TableRow>
               ))}
               {allUsers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     {t("noUsers")}
                   </TableCell>
                 </TableRow>

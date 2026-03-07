@@ -35,7 +35,7 @@ async function seed() {
     db.insert(schema.users)
       .values({
         id: nanoid(),
-        email: "admin@example.com",
+        username: "admin", email: "admin@example.com",
         name: "Super Admin",
         passwordHash,
         role: "super_admin",
@@ -47,7 +47,7 @@ async function seed() {
       .run();
 
     console.log("Seeded super admin user:");
-    console.log("  Email: admin@example.com");
+    console.log("  Username: admin");
     console.log("  Password: admin123");
     console.log("  Role: super_admin");
   }

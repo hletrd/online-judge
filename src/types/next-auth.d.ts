@@ -4,7 +4,8 @@ declare module "next-auth" {
   interface Session {
     user: {
       id: string;
-      email: string;
+      username: string;
+      email?: string | null;
       name: string;
       role: UserRole;
       mustChangePassword: boolean;
