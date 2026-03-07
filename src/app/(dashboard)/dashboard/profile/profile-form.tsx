@@ -11,10 +11,12 @@ import { useRouter } from "next/navigation";
 
 export default function ProfileForm({ 
   initialName, 
-  initialEmail 
+  initialEmail,
+  initialClassName,
 }: { 
   initialName: string; 
   initialEmail: string; 
+  initialClassName: string;
 }) {
   const t = useTranslations("profile");
   const tCommon = useTranslations("common");
@@ -22,6 +24,7 @@ export default function ProfileForm({
 
   const [name, setName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
+  const [className, setClassName] = useState(initialClassName);
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -29,7 +32,7 @@ export default function ProfileForm({
     setIsLoading(true);
 
     try {
-      const result = await updateProfile(name, email);
+      const result = await updateProfile({ name, email, className });
       if (result.success) {
         toast.success(t("updateSuccess"));
         router.refresh();
@@ -51,16 +54,27 @@ export default function ProfileForm({
           id="name" 
           value={name} 
           onChange={(e) => setName(e.target.value)} 
+          placeholder={t("namePlaceholder")}
           required 
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="email">{t("email")} (Optional)</Label>
+        <Label htmlFor="className">{t("className")}</Label>
+        <Input
+          id="className"
+          value={className}
+          onChange={(e) => setClassName(e.target.value)}
+          placeholder={t("classNamePlaceholder")}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="email">{t("email")}</Label>
         <Input 
           id="email" 
           type="email" 
           value={email} 
           onChange={(e) => setEmail(e.target.value)} 
+          placeholder={t("emailPlaceholder")}
         />
       </div>
       <Button type="submit" disabled={isLoading}>

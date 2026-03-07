@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "Online Judge",
+    "appDescription": "Online judge system for programming assignments",
     "comingSoon": "Coming Soon",
     "underConstruction": "This page is under construction.",
     "loading": "Loading...",
@@ -23,7 +24,24 @@
     "system": "System",
     "active": "Active",
     "inactive": "Inactive",
-    "view": "View"
+    "view": "View",
+    "optional": "Optional",
+    "copy": "Copy",
+    "copied": "Copied",
+    "done": "Done",
+    "close": "Close",
+    "skipToContent": "Skip to main content",
+    "toggleSidebar": "Toggle Sidebar",
+    "sidebarTitle": "Sidebar",
+    "sidebarDescription": "Displays the mobile sidebar.",
+    "class": "Class",
+    "notSet": "Not set",
+    "roles": {
+      "student": "Student",
+      "instructor": "Instructor",
+      "admin": "Admin",
+      "super_admin": "Super Admin"
+    }
   },
   "auth": {
     "signIn": "Sign in",
@@ -55,6 +73,15 @@
     "welcome": "Welcome to Online Judge",
     "welcomeDescription": "Select a menu item from the sidebar to get started."
   },
+  "dashboardState": {
+    "loadingDescription": "Loading the dashboard content...",
+    "errorTitle": "Something went wrong",
+    "errorDescription": "The dashboard could not finish loading. Try again or head back to the dashboard home.",
+    "notFoundTitle": "Page not found",
+    "notFoundDescription": "The dashboard page you requested does not exist or is no longer available.",
+    "tryAgain": "Try Again",
+    "backToDashboard": "Back to Dashboard"
+  },
   "problems": {
     "title": "Problems",
     "detail": "Problem Detail",
@@ -64,6 +91,7 @@
     "solve": "Solve",
     "table": {
       "title": "Title",
+      "progress": "Progress",
       "author": "Author",
       "timeLimit": "Time Limit",
       "memoryLimit": "Memory Limit",
@@ -78,12 +106,71 @@
     "noDescription": "No description provided.",
     "createTitle": "Create New Problem",
     "createDescription": "Define the problem statement and resource limits.",
+    "editTitle": "Edit Problem",
+    "editDescription": "Update the problem statement, limits, and test cases.",
     "titleLabel": "Title",
     "descLabel": "Description (Markdown/HTML)",
     "timeLimitLabel": "Time Limit (ms)",
     "memoryLimitLabel": "Memory Limit (MB)",
     "visibilityLabel": "Visibility",
-    "createSuccess": "Problem created successfully"
+    "createSuccess": "Problem created successfully",
+    "updateSuccess": "Problem updated successfully",
+    "titleRequired": "Title is required",
+    "titleTooLong": "Title must be 200 characters or less",
+    "descriptionTooLong": "Description must be 50,000 characters or less",
+    "invalidTimeLimit": "Time limit must be between 100 and 10,000 milliseconds",
+    "invalidMemoryLimit": "Memory limit must be between 16 and 1,024 MB",
+    "testCasesTitle": "Test Cases",
+    "testCasesDescription": "Add the inputs and expected outputs the judge should use for this problem.",
+    "addTestCase": "Add Test Case",
+    "removeTestCase": "Remove",
+    "noTestCases": "No test cases yet. Add at least one to make the problem judgeable.",
+    "testCaseLabel": "Test Case {number}",
+    "testCaseInputLabel": "Input",
+    "testCaseOutputLabel": "Expected Output",
+    "testCaseVisibleLabel": "Visible to students",
+    "testCaseInputRequired": "Each test case needs an input",
+    "testCaseOutputRequired": "Each test case needs an expected output",
+    "tooManyTestCases": "You can add up to 100 test cases per problem",
+    "testCasesLocked": "Test cases cannot be changed after submissions exist for this problem",
+    "testCasesLockedNotice": "Test cases are locked because this problem already has submissions. You can still edit the statement and limits.",
+    "createError": "Failed to create problem",
+    "updateError": "Failed to update problem",
+    "timeLimitValue": "{value} ms",
+    "memoryLimitValue": "{value} MB",
+    "sourceCodeLabel": "Source Code",
+    "submissionErrors": {
+      "unauthorized": "Please sign in again and retry your submission.",
+      "forbidden": "You do not have permission to submit to this problem.",
+      "problemRequired": "Problem information is missing. Refresh the page and try again.",
+      "languageRequired": "Please select a language.",
+      "sourceCodeRequired": "Please enter your source code.",
+      "sourceCodeTooLarge": "Your source code exceeds the allowed size limit.",
+      "invalidSubmissionStatus": "Invalid submission status.",
+      "submissionLoadFailed": "Failed to load submissions.",
+      "submissionCreateFailed": "Failed to submit your solution."
+    },
+    "visibilityOptions": {
+      "public": "Public",
+      "private": "Private",
+      "hidden": "Hidden"
+    },
+    "filters": {
+      "all": "All",
+      "solved": "Solved",
+      "unsolved": "Unsolved",
+      "attempted": "Attempted"
+    },
+    "progress": {
+      "solved": "Solved",
+      "attempted": "Attempted",
+      "untried": "Untried"
+    },
+    "badges": {
+      "timeLimit": "Time Limit: {value} ms",
+      "memoryLimit": "Memory Limit: {value} MB",
+      "author": "Author: {name}"
+    }
   },
   "submissions": {
     "title": "My Submissions",
@@ -100,11 +187,12 @@
       "action": "Action"
     },
     "noSubmissions": "You haven't made any submissions yet.",
-    "submissionId": "Submission",
+    "submissionId": "Submission #{id}",
     "sourceCode": "Source Code",
     "compileOutput": "Compile/Error Output",
     "testCaseResults": "Test Case Results",
     "testCaseResultsDesc": "Execution details for each evaluated test case.",
+    "liveUpdatesActive": "Results are updating automatically while this submission is in the queue or being judged.",
     "testCaseTable": {
       "testCase": "Test Case",
       "status": "Status",
@@ -114,9 +202,25 @@
     "noResults": "No results available yet.",
     "score": "Score",
     "time": "Time",
+    "timeValue": "{value} ms",
     "memory": "Memory",
+    "memoryValue": "{value} KB",
     "submitted": "Submitted",
-    "user": "User"
+    "user": "User",
+    "status": {
+      "pending": "Pending",
+      "queued": "Queued",
+      "judging": "Judging",
+      "accepted": "Accepted",
+      "wrong_answer": "Wrong Answer",
+      "time_limit": "Time Limit Exceeded",
+      "memory_limit": "Memory Limit Exceeded",
+      "runtime_error": "Runtime Error",
+      "compile_error": "Compile Error"
+    },
+    "pagination": {
+      "showingRange": "Showing {start}-{end}"
+    }
   },
   "groups": {
     "title": "Groups",
@@ -124,6 +228,15 @@
     "description": "View your enrolled groups and assignments.",
     "myGroups": "My Groups",
     "create": "Create Group",
+    "createDialogTitle": "Create Group",
+    "createDialogDescription": "Create a new class group for assignments and enrollments.",
+    "createSuccess": "Group created successfully",
+    "createError": "Failed to create group",
+    "nameLabel": "Group Name",
+    "descriptionLabel": "Description",
+    "nameRequired": "Group name is required",
+    "nameTooLong": "Group name must be 100 characters or less",
+    "descriptionTooLong": "Description must be 500 characters or less",
     "table": {
       "name": "Name",
       "description": "Description",
@@ -143,25 +256,58 @@
     "statusUpcoming": "Upcoming",
     "statusClosed": "Closed",
     "statusOpen": "Open",
-    "noAssignments": "No assignments currently available."
+    "noAssignments": "No assignments currently available.",
+    "instructorLabel": "Instructor: {name}"
   },
   "admin": {
     "users": {
       "title": "User Management",
-      "description": "Manage users, roles, and permissions.",
+      "addUser": "Add User",
       "usersList": "Users",
+      "createSuccess": "User created successfully",
+      "updateSuccess": "User updated successfully",
+      "activatedSuccess": "User activated successfully",
+      "deactivatedSuccess": "User deactivated successfully",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "editUser": "Edit User",
+      "noUsers": "No users found.",
+      "autoGeneratedPasswordNotice": "A secure one-time password will be generated automatically when you create this user.",
+      "generatedPasswordTitle": "Copy the generated password",
+      "generatedPasswordDescription": "This password is shown only once. Copy it now and share it securely with the user.",
+      "generatedPasswordLabel": "Generated password",
+      "generatedPasswordWarning": "Once you close this dialog, you will not be able to see this password again.",
+      "generatedPasswordCopied": "Generated password copied to clipboard",
+      "generatedPasswordCopyFailed": "Failed to copy the generated password",
+      "newPasswordLabel": "New Password",
+      "newPasswordHint": "Leave blank to keep the current password.",
       "table": {
+        "username": "Username",
         "email": "Email",
         "name": "Name",
         "role": "Role",
         "status": "Status",
-        "joined": "Joined",
-        "username": "Username"
+        "joined": "Joined"
       },
-      "noUsers": "No users found.",
-      "addUser": "Add User",
-      "activate": "Activate",
-      "deactivate": "Deactivate"
+      "roleOptions": {
+        "student": "Student",
+        "instructor": "Instructor",
+        "admin": "Admin",
+        "super_admin": "Super Admin"
+      },
+      "unauthorized": "You are not authorized to perform this action",
+      "cannotDeactivateSelf": "You cannot deactivate your own account",
+      "userNotFound": "User not found",
+      "cannotDeactivateSuperAdmin": "The super admin account cannot be deactivated",
+      "updateUserStatusFailed": "Failed to update user status",
+      "usernameAndNameRequired": "Username and name are required",
+      "usernameInUse": "Username already in use",
+      "emailInUse": "Email already in use",
+      "onlySuperAdminCanChangeSuperAdminRole": "Only a super admin can change the super admin role",
+      "cannotChangeSuperAdminRole": "The super admin role cannot be changed",
+      "passwordTooShort": "Password must be at least 8 characters",
+      "updateUserFailed": "Failed to update user",
+      "createUserFailed": "Failed to create user"
     },
     "submissions": {
       "title": "All Submissions",
@@ -186,9 +332,14 @@
     "userProfileDesc": "Your account details and role.",
     "userId": "User ID",
     "name": "Name",
+    "namePlaceholder": "Your display name",
     "email": "Email",
+    "emailPlaceholder": "your.email@example.com",
+    "className": "Class",
+    "classNamePlaceholder": "e.g. Class 1-2",
     "role": "Role",
     "editProfile": "Edit Profile",
+    "editProfileDesc": "Update the name, class, and contact details associated with your account.",
     "changePassword": "Change Password",
     "changePasswordDesc": "Update your account password for security.",
     "changePasswordBtn": "Change Password",
@@ -196,6 +347,9 @@
     "updateError": "Failed to update profile",
     "notAuthenticated": "Not authenticated",
     "nameRequired": "Name is required",
+    "nameTooLong": "Name must be 100 characters or less",
+    "invalidEmail": "Please enter a valid email address",
+    "classNameTooLong": "Class must be 100 characters or less",
     "emailInUse": "Email already in use",
     "username": "Username"
   },

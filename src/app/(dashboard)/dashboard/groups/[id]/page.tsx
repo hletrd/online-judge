@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { groups, enrollments, assignments } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -33,7 +33,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
 
   // Access check: only enrolled students or admins/instructor
   const isEnrolled = await db.query.enrollments.findFirst({
-    where: eq(enrollments.groupId, groupId) && eq(enrollments.userId, session.user.id)
+    where: and(eq(enrollments.groupId, groupId), eq(enrollments.userId, session.user.id)),
   });
 
   if (!isEnrolled && group.instructorId !== session.user.id && session.user.role !== "admin" && session.user.role !== "super_admin") {
@@ -49,7 +49,9 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
         <h2 className="text-3xl font-bold mb-2">{group.name}</h2>
         <p className="text-muted-foreground">{group.description || tCommon("unknown")}</p>
         <div className="mt-2 flex gap-2">
-          <Badge variant="outline">Instructor: {group.instructor?.name || tCommon("unknown")}</Badge>
+          <Badge variant="outline">
+            {t("instructorLabel", { name: group.instructor?.name || tCommon("unknown") })}
+          </Badge>
           <Badge variant={group.isArchived ? "destructive" : "default"}>
             {group.isArchived ? t("archived") : t("active")}
           </Badge>

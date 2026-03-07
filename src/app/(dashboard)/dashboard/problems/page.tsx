@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import { CheckCircle2, CircleDashed, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -10,21 +11,57 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
-import { problems, users } from "@/lib/db/schema";
-import { desc, eq, or } from "drizzle-orm";
+import { problems, submissions, users } from "@/lib/db/schema";
+import { desc, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { canAccessProblem } from "@/lib/auth/permissions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-export default async function ProblemsPage() {
+type ProblemProgress = "solved" | "attempted" | "untried";
+type ProblemFilter = "all" | "solved" | "unsolved" | "attempted";
+
+const FILTER_VALUES: readonly ProblemFilter[] = ["all", "solved", "unsolved", "attempted"];
+
+function getProblemProgress(statuses: Array<string | null>): ProblemProgress {
+  if (statuses.some((status) => status === "accepted")) {
+    return "solved";
+  }
+
+  if (statuses.length > 0) {
+    return "attempted";
+  }
+
+  return "untried";
+}
+
+export default async function ProblemsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ progress?: string }>;
+}) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const rawFilter = resolvedSearchParams?.progress;
+  const currentFilter = FILTER_VALUES.includes(rawFilter as ProblemFilter)
+    ? (rawFilter as ProblemFilter)
+    : "all";
+
   const t = await getTranslations("problems");
   const tCommon = await getTranslations("common");
-  
-  // Fetch public problems or problems authored by the user
+  const visibilityLabels = {
+    public: t("visibilityOptions.public"),
+    private: t("visibilityOptions.private"),
+    hidden: t("visibilityOptions.hidden"),
+  };
+  const canManageProblems =
+    session.user.role === "admin" ||
+    session.user.role === "super_admin" ||
+    session.user.role === "instructor";
+
   const allProblems = await db
     .select({
       id: problems.id,
@@ -32,24 +69,113 @@ export default async function ProblemsPage() {
       timeLimitMs: problems.timeLimitMs,
       memoryLimitMb: problems.memoryLimitMb,
       visibility: problems.visibility,
+      authorId: problems.authorId,
       createdAt: problems.createdAt,
       author: {
         name: users.name,
-      }
+      },
     })
     .from(problems)
     .leftJoin(users, eq(problems.authorId, users.id))
-    .where(or(
-      eq(problems.visibility, "public"),
-      eq(problems.authorId, session.user.id)
-    ))
     .orderBy(desc(problems.createdAt));
 
+  const accessibleProblems = canManageProblems
+    ? allProblems
+    : (
+        await Promise.all(
+          allProblems.map(async (problem) => ({
+            problem,
+            hasAccess: await canAccessProblem(problem.id, session.user.id, session.user.role),
+          }))
+        )
+      )
+        .filter((entry) => entry.hasAccess)
+        .map((entry) => entry.problem);
+
+  const userSubmissionRows = await db
+    .select({
+      problemId: submissions.problemId,
+      status: submissions.status,
+    })
+    .from(submissions)
+    .where(eq(submissions.userId, session.user.id));
+
+  const problemStatuses = new Map<string, Array<string | null>>();
+  for (const submission of userSubmissionRows) {
+    const currentStatuses = problemStatuses.get(submission.problemId) ?? [];
+    currentStatuses.push(submission.status);
+    problemStatuses.set(submission.problemId, currentStatuses);
+  }
+
+  const problemsWithProgress = accessibleProblems.map((problem) => ({
+    ...problem,
+    progress: getProblemProgress(problemStatuses.get(problem.id) ?? []),
+  }));
+
+  const filteredProblems = problemsWithProgress.filter((problem) => {
+    if (currentFilter === "all") {
+      return true;
+    }
+
+    if (currentFilter === "solved") {
+      return problem.progress === "solved";
+    }
+
+    if (currentFilter === "attempted") {
+      return problem.progress === "attempted";
+    }
+
+    return problem.progress !== "solved";
+  });
+
+  const progressLabels = {
+    solved: t("progress.solved"),
+    attempted: t("progress.attempted"),
+    untried: t("progress.untried"),
+  };
+  const filterLabels = {
+    all: t("filters.all"),
+    solved: t("filters.solved"),
+    unsolved: t("filters.unsolved"),
+    attempted: t("filters.attempted"),
+  };
+
+  function renderProgress(problemProgress: ProblemProgress) {
+    if (problemProgress === "solved") {
+      return (
+        <span className="inline-flex items-center gap-2 text-emerald-600">
+          <CheckCircle2 className="size-4" />
+          {progressLabels.solved}
+        </span>
+      );
+    }
+
+    if (problemProgress === "attempted") {
+      return (
+        <span className="inline-flex items-center gap-2 text-amber-600">
+          <XCircle className="size-4" />
+          {progressLabels.attempted}
+        </span>
+      );
+    }
+
+    return (
+      <span className="inline-flex items-center gap-2 text-muted-foreground">
+        <CircleDashed className="size-4" />
+        {progressLabels.untried}
+      </span>
+    );
+  }
+
+  function getFilterHref(filter: ProblemFilter) {
+    return filter === "all" ? "/dashboard/problems" : `/dashboard/problems?progress=${filter}`;
+  }
+
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
+    <div className="space-y-4">
+      <div className="mb-4 flex justify-between items-center">
         <h2 className="text-2xl font-bold">{t("title")}</h2>
-        {(session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "instructor") && (
+        {canManageProblems && (
           <Link href="/dashboard/problems/create">
             <Button>{t("create")}</Button>
           </Link>
@@ -60,10 +186,21 @@ export default async function ProblemsPage() {
           <CardTitle>{t("available")}</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {FILTER_VALUES.map((filter) => (
+              <Link key={filter} href={getFilterHref(filter)}>
+                <Button variant={currentFilter === filter ? "default" : "outline"} size="sm">
+                  {filterLabels[filter]}
+                </Button>
+              </Link>
+            ))}
+          </div>
+
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>{t("table.title")}</TableHead>
+                <TableHead>{t("table.progress")}</TableHead>
                 <TableHead>{t("table.author")}</TableHead>
                 <TableHead>{t("table.timeLimit")}</TableHead>
                 <TableHead>{t("table.memoryLimit")}</TableHead>
@@ -72,27 +209,37 @@ export default async function ProblemsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {allProblems.map((problem) => (
+              {filteredProblems.map((problem) => (
                 <TableRow key={problem.id}>
                   <TableCell className="font-medium">{problem.title}</TableCell>
+                  <TableCell>{renderProgress(problem.progress)}</TableCell>
                   <TableCell>{problem.author?.name || tCommon("system")}</TableCell>
-                  <TableCell>{problem.timeLimitMs} ms</TableCell>
-                  <TableCell>{problem.memoryLimitMb} MB</TableCell>
+                  <TableCell>{t("timeLimitValue", { value: problem.timeLimitMs ?? 2000 })}</TableCell>
+                  <TableCell>{t("memoryLimitValue", { value: problem.memoryLimitMb ?? 256 })}</TableCell>
                   <TableCell>
                     <Badge variant={problem.visibility === "public" ? "default" : "secondary"}>
-                      {problem.visibility}
+                      {visibilityLabels[problem.visibility as keyof typeof visibilityLabels] ?? problem.visibility}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Link href={`/dashboard/problems/${problem.id}`}>
-                      <Button variant="outline" size="sm">{t("solve")}</Button>
-                    </Link>
+                    <div className="flex flex-wrap gap-2">
+                      <Link href={`/dashboard/problems/${problem.id}`}>
+                        <Button variant="outline" size="sm">{t("solve")}</Button>
+                      </Link>
+                      {(problem.authorId === session.user.id ||
+                        session.user.role === "admin" ||
+                        session.user.role === "super_admin") && (
+                        <Link href={`/dashboard/problems/${problem.id}/edit`}>
+                          <Button size="sm">{tCommon("edit")}</Button>
+                        </Link>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
-              {allProblems.length === 0 && (
+              {filteredProblems.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     {t("noProblems")}
                   </TableCell>
                 </TableRow>

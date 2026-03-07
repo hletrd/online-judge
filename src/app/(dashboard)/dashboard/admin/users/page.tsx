@@ -25,6 +25,12 @@ export default async function UserManagementPage() {
 
   const t = await getTranslations("admin.users");
   const tCommon = await getTranslations("common");
+  const roleLabels = {
+    student: tCommon("roles.student"),
+    instructor: tCommon("roles.instructor"),
+    admin: tCommon("roles.admin"),
+    super_admin: tCommon("roles.super_admin"),
+  };
   const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
 
   return (
@@ -41,7 +47,8 @@ export default async function UserManagementPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("table.username", { fallback: "Username" })}</TableHead>
+                <TableHead>{t("table.username")}</TableHead>
+                <TableHead>{tCommon("class")}</TableHead>
                 <TableHead>{t("table.email")}</TableHead>
                 <TableHead>{t("table.name")}</TableHead>
                 <TableHead>{t("table.role")}</TableHead>
@@ -54,10 +61,11 @@ export default async function UserManagementPage() {
               {allUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.username}</TableCell>
+                  <TableCell>{user.className || tCommon("notSet")}</TableCell>
                   <TableCell>{user.email || "-"}</TableCell>
                   <TableCell>{user.name}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{user.role}</Badge>
+                    <Badge variant="outline">{roleLabels[user.role as keyof typeof roleLabels] ?? user.role}</Badge>
                   </TableCell>
                   <TableCell>
                     {user.isActive ? (
@@ -76,6 +84,7 @@ export default async function UserManagementPage() {
                         username: user.username,
                         email: user.email,
                         name: user.name,
+                        className: user.className,
                         role: user.role
                       }} />
                       <UserActions 
@@ -90,10 +99,10 @@ export default async function UserManagementPage() {
               ))}
               {allUsers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
-                    {t("noUsers")}
-                  </TableCell>
-                </TableRow>
+                    <TableCell colSpan={8} className="text-center text-muted-foreground">
+                      {t("noUsers")}
+                    </TableCell>
+                  </TableRow>
               )}
             </TableBody>
           </Table>

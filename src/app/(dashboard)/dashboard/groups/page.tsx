@@ -15,6 +15,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import CreateGroupDialog from "./create-group-dialog";
 
 export default async function GroupsPage() {
   const session = await auth();
@@ -72,7 +73,7 @@ export default async function GroupsPage() {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">{t("title")}</h2>
         {(session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "instructor") && (
-          <Button>{t("create")}</Button>
+          <CreateGroupDialog />
         )}
       </div>
       <Card>

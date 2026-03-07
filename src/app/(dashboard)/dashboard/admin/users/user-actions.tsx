@@ -11,16 +11,14 @@ export default function UserActions({ userId, isActive, isSelf, userRole }: { us
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const t = useTranslations("admin.users");
-  const tCommon = useTranslations("common");
-
   function handleToggle() {
     startTransition(async () => {
       const result = await toggleUserActive(userId, !isActive);
       if (result.success) {
-        toast.success(`User ${!isActive ? "activated" : "deactivated"} successfully`);
+        toast.success(t(isActive ? "deactivatedSuccess" : "activatedSuccess"));
         router.refresh();
       } else {
-        toast.error(result.error || tCommon("error"));
+        toast.error(t(result.error));
       }
     });
   }
@@ -34,7 +32,7 @@ export default function UserActions({ userId, isActive, isSelf, userRole }: { us
       onClick={handleToggle}
       disabled={isPending}
     >
-      {isActive ? t("deactivate", { fallback: "Deactivate" }) : t("activate", { fallback: "Activate" })}
+      {isActive ? t("deactivate") : t("activate")}
     </Button>
   );
 }

@@ -3,7 +3,9 @@ import { db } from "@/lib/db";
 import { problems } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, isInstructor } from "@/lib/api/auth";
-import { nanoid } from "nanoid";
+import { canAccessProblem } from "@/lib/auth/permissions";
+import { createProblemWithTestCases } from "@/lib/problem-management";
+import { problemMutationSchema } from "@/lib/validators/problem-management";
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,15 +18,29 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
     const visibility = searchParams.get("visibility");
 
-    const query = db.select().from(problems).orderBy(desc(problems.createdAt)).limit(limit).offset(offset);
+    const allProblems = await db.select().from(problems).orderBy(desc(problems.createdAt));
 
-    const allProblems = await query;
+    const accessibleProblems =
+      user.role === "admin" || user.role === "super_admin"
+        ? allProblems
+        : (
+            await Promise.all(
+              allProblems.map(async (problem) => ({
+                problem,
+                hasAccess: await canAccessProblem(problem.id, user.id, user.role),
+              }))
+            )
+          )
+            .filter((entry) => entry.hasAccess)
+            .map((entry) => entry.problem);
 
     const filtered = visibility
-      ? allProblems.filter((p) => p.visibility === visibility)
-      : allProblems;
+      ? accessibleProblems.filter((problem) => problem.visibility === visibility)
+      : accessibleProblems;
 
-    return NextResponse.json({ data: filtered, page, limit });
+    const paginatedProblems = filtered.slice(offset, offset + limit);
+
+    return NextResponse.json({ data: paginatedProblems, page, limit, total: filtered.length });
   } catch (error) {
     console.error("GET /api/v1/problems error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -38,29 +54,34 @@ export async function POST(request: NextRequest) {
     if (!isInstructor(user.role)) return forbidden();
 
     const body = await request.json();
-    const { title, description, timeLimitMs, memoryLimitMb, visibility } = body;
-
-    if (!title || typeof title !== "string" || title.trim() === "") {
-      return NextResponse.json({ error: "Title is required" }, { status: 400 });
-    }
-
-    const id = nanoid();
-    await db.insert(problems).values({
-      id,
-      title: title.trim(),
-      description: description || "",
-      timeLimitMs: timeLimitMs || 2000,
-      memoryLimitMb: memoryLimitMb || 256,
-      visibility: visibility || "private",
-      authorId: user.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    const parsedInput = problemMutationSchema.safeParse({
+      title: body.title,
+      description: body.description ?? "",
+      timeLimitMs: body.timeLimitMs ?? 2000,
+      memoryLimitMb: body.memoryLimitMb ?? 256,
+      visibility: body.visibility ?? "private",
+      testCases: body.testCases ?? [],
     });
 
-    const problem = await db.query.problems.findFirst({ where: eq(problems.id, id) });
+    if (!parsedInput.success) {
+      return NextResponse.json(
+        { error: parsedInput.error.issues[0]?.message ?? "createError" },
+        { status: 400 }
+      );
+    }
+
+    const id = createProblemWithTestCases(parsedInput.data, user.id);
+
+    const problem = await db.query.problems.findFirst({
+      where: eq(problems.id, id),
+      with: {
+        testCases: true,
+      },
+    });
+
     return NextResponse.json({ data: problem }, { status: 201 });
   } catch (error) {
     console.error("POST /api/v1/problems error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "createError" }, { status: 500 });
   }
 }

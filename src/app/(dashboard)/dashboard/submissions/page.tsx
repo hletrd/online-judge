@@ -16,13 +16,35 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { getSubmissionStatusVariant } from "@/lib/submissions/status";
 
-export default async function SubmissionsPage() {
+const PAGE_SIZE = 25;
+
+export default async function SubmissionsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const currentPage = Math.max(1, Number(resolvedSearchParams?.page ?? "1") || 1);
+  const offset = (currentPage - 1) * PAGE_SIZE;
+
   const t = await getTranslations("submissions");
   const tCommon = await getTranslations("common");
+  const statusLabels = {
+    pending: t("status.pending"),
+    queued: t("status.queued"),
+    judging: t("status.judging"),
+    accepted: t("status.accepted"),
+    wrong_answer: t("status.wrong_answer"),
+    time_limit: t("status.time_limit"),
+    memory_limit: t("status.memory_limit"),
+    runtime_error: t("status.runtime_error"),
+    compile_error: t("status.compile_error"),
+  };
   
   const userSubmissions = await db
     .select({
@@ -40,16 +62,28 @@ export default async function SubmissionsPage() {
     .leftJoin(problems, eq(submissions.problemId, problems.id))
     .where(eq(submissions.userId, session.user.id))
     .orderBy(desc(submissions.submittedAt))
-    .limit(50);
+    .limit(PAGE_SIZE + 1)
+    .offset(offset);
+
+  const hasNextPage = userSubmissions.length > PAGE_SIZE;
+  const visibleSubmissions = hasNextPage ? userSubmissions.slice(0, PAGE_SIZE) : userSubmissions;
+  const rangeStart = visibleSubmissions.length === 0 ? 0 : offset + 1;
+  const rangeEnd = offset + visibleSubmissions.length;
 
   return (
-    <div>
+    <div className="space-y-4">
       <h2 className="text-2xl font-bold mb-4">{t("title")}</h2>
       <Card>
         <CardHeader>
           <CardTitle>{t("mySubmissions")}</CardTitle>
         </CardHeader>
         <CardContent>
+          {visibleSubmissions.length > 0 && (
+            <p className="mb-4 text-sm text-muted-foreground">
+              {t("pagination.showingRange", { start: rangeStart, end: rangeEnd })}
+            </p>
+          )}
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -63,7 +97,7 @@ export default async function SubmissionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {userSubmissions.map((sub) => (
+              {visibleSubmissions.map((sub) => (
                 <TableRow key={sub.id}>
                   <TableCell className="font-mono text-xs">{sub.id.substring(0, 8)}</TableCell>
                   <TableCell>
@@ -77,8 +111,8 @@ export default async function SubmissionsPage() {
                   </TableCell>
                   <TableCell>{sub.language}</TableCell>
                   <TableCell>
-                    <Badge variant={sub.status === "accepted" ? "default" : sub.status === "pending" || sub.status === "judging" ? "secondary" : "destructive"}>
-                      {sub.status}
+                    <Badge variant={getSubmissionStatusVariant(sub.status)}>
+                      {statusLabels[sub.status as keyof typeof statusLabels] ?? sub.status}
                     </Badge>
                   </TableCell>
                   <TableCell>{sub.score !== null ? sub.score : "-"}</TableCell>
@@ -92,7 +126,7 @@ export default async function SubmissionsPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {userSubmissions.length === 0 && (
+              {visibleSubmissions.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground">
                     {t("noSubmissions")}
@@ -103,6 +137,28 @@ export default async function SubmissionsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <div className="flex items-center justify-end gap-2">
+        {currentPage > 1 ? (
+          <Link href={`/dashboard/submissions?page=${currentPage - 1}`}>
+            <Button variant="outline">{tCommon("previous")}</Button>
+          </Link>
+        ) : (
+          <Button variant="outline" disabled>
+            {tCommon("previous")}
+          </Button>
+        )}
+
+        {hasNextPage ? (
+          <Link href={`/dashboard/submissions?page=${currentPage + 1}`}>
+            <Button variant="outline">{tCommon("next")}</Button>
+          </Link>
+        ) : (
+          <Button variant="outline" disabled>
+            {tCommon("next")}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

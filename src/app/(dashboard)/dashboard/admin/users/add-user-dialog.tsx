@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createUser } from "@/lib/actions/user-management";
@@ -21,27 +21,62 @@ export default function AddUserDialog() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [className, setClassName] = useState("");
   const [role, setRole] = useState("student");
-  const [password, setPassword] = useState("");
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [copiedPassword, setCopiedPassword] = useState(false);
+
+  const roleLabels = {
+    student: t("roleOptions.student"),
+    instructor: t("roleOptions.instructor"),
+    admin: t("roleOptions.admin"),
+  };
+
+  function resetFormState() {
+    setUsername("");
+    setEmail("");
+    setName("");
+    setClassName("");
+    setRole("student");
+    setGeneratedPassword(null);
+    setCopiedPassword(false);
+  }
+
+  async function copyPassword(password: string) {
+    try {
+      await navigator.clipboard.writeText(password);
+      setCopiedPassword(true);
+      toast.success(t("generatedPasswordCopied"));
+    } catch {
+      toast.error(t("generatedPasswordCopyFailed"));
+    }
+  }
+
+  async function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen);
+
+    if (!nextOpen) {
+      resetFormState();
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const result = await createUser({ username, email, name, role, password });
+      const result = await createUser({ username, email, name, className, role });
       if (result.success) {
-        toast.success("User created successfully");
-        setOpen(false);
         router.refresh();
-        // Reset form
-        setUsername("");
-        setEmail("");
-        setName("");
-        setRole("student");
-        setPassword("");
+
+        if (result.generatedPassword) {
+          setGeneratedPassword(result.generatedPassword);
+          await copyPassword(result.generatedPassword);
+        }
+
+        toast.success(t("createSuccess"));
       } else {
-        toast.error(result.error || tCommon("error"));
+        toast.error(t(result.error));
       }
     } catch {
       toast.error(tCommon("error"));
@@ -51,51 +86,76 @@ export default function AddUserDialog() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button>{t("addUser", { fallback: "Add User" })}</Button>} />
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger render={<Button>{t("addUser")}</Button>} />
       <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>{t("addUser", { fallback: "Add User" })}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="new-username">{t("table.username", { fallback: "Username" })}</Label>
-            <Input id="new-username" value={username} onChange={e => setUsername(e.target.value)} required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="new-name">{t("table.name", { fallback: "Name" })}</Label>
-            <Input id="new-name" value={name} onChange={e => setName(e.target.value)} required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="new-email">{t("table.email", { fallback: "Email" })} (Optional)</Label>
-            <Input id="new-email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="new-role">{t("table.role", { fallback: "Role" })}</Label>
-            <Select value={role} onValueChange={v => { if (v) setRole(v); }}>
-              <SelectTrigger id="new-role">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="student">Student</SelectItem>
-                <SelectItem value="instructor">Instructor</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="new-password">Password (Optional, default: password123)</Label>
-            <Input id="new-password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
-              {tCommon("cancel")}
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? tCommon("loading") : tCommon("create")}
-            </Button>
-          </DialogFooter>
-        </form>
+        {generatedPassword ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>{t("generatedPasswordTitle")}</DialogTitle>
+              <DialogDescription>{t("generatedPasswordDescription")}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="generated-password">{t("generatedPasswordLabel")}</Label>
+                <Input id="generated-password" value={generatedPassword} readOnly className="font-mono" />
+              </div>
+              <p className="text-sm text-muted-foreground">{t("generatedPasswordWarning")}</p>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => copyPassword(generatedPassword)}>
+                {copiedPassword ? tCommon("copied") : tCommon("copy")}
+              </Button>
+              <Button type="button" onClick={() => handleOpenChange(false)}>
+                {tCommon("done")}
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>{t("addUser")}</DialogTitle>
+              <DialogDescription>{t("autoGeneratedPasswordNotice")}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="new-username">{t("table.username")}</Label>
+              <Input id="new-username" value={username} onChange={e => setUsername(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-name">{t("table.name")}</Label>
+              <Input id="new-name" value={name} onChange={e => setName(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-className">{tCommon("class")}</Label>
+              <Input id="new-className" value={className} onChange={e => setClassName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-email">{t("table.email")} ({tCommon("optional")})</Label>
+              <Input id="new-email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-role">{t("table.role")}</Label>
+              <Select value={role} onValueChange={v => { if (v) setRole(v); }}>
+                <SelectTrigger id="new-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="student">{roleLabels.student}</SelectItem>
+                  <SelectItem value="instructor">{roleLabels.instructor}</SelectItem>
+                  <SelectItem value="admin">{roleLabels.admin}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isLoading}>
+                {tCommon("cancel")}
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? tCommon("loading") : tCommon("create")}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

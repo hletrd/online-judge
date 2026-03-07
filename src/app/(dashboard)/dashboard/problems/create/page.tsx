@@ -16,11 +16,11 @@ export default async function CreateProblemPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <h2 className="text-2xl font-bold">{t("createTitle", { fallback: "Create New Problem" })}</h2>
+      <h2 className="text-2xl font-bold">{t("createTitle")}</h2>
       
       <Card>
         <CardHeader>
-          <CardTitle>{t("createDescription", { fallback: "Define the problem statement and resource limits." })}</CardTitle>
+          <CardTitle>{t("createDescription")}</CardTitle>
         </CardHeader>
         <CardContent>
           <CreateProblemForm />

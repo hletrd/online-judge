@@ -1,0 +1,29 @@
+import { z } from "zod";
+
+function trimString(value: unknown) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  return value.trim();
+}
+
+export const problemVisibilityValues = ["public", "private", "hidden"] as const;
+
+export const problemTestCaseSchema = z.object({
+  input: z.string().min(1, "testCaseInputRequired"),
+  expectedOutput: z.string().min(1, "testCaseOutputRequired"),
+  isVisible: z.boolean().default(false),
+});
+
+export const problemMutationSchema = z.object({
+  title: z.preprocess(trimString, z.string().min(1, "titleRequired").max(200, "titleTooLong")),
+  description: z.string().max(50000, "descriptionTooLong").default(""),
+  timeLimitMs: z.number().int().min(100, "invalidTimeLimit").max(10000, "invalidTimeLimit"),
+  memoryLimitMb: z.number().int().min(16, "invalidMemoryLimit").max(1024, "invalidMemoryLimit"),
+  visibility: z.enum(problemVisibilityValues),
+  testCases: z.array(problemTestCaseSchema).max(100, "tooManyTestCases").default([]),
+});
+
+export type ProblemTestCaseInput = z.infer<typeof problemTestCaseSchema>;
+export type ProblemMutationInput = z.infer<typeof problemMutationSchema>;

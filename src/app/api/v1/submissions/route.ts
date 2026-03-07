@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { submissions } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { getApiUser, unauthorized, isAdmin } from "@/lib/api/auth";
 import { nanoid } from "nanoid";
+import {
+  MAX_SOURCE_CODE_SIZE_BYTES,
+  isSubmissionStatus,
+} from "@/lib/security/constants";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,34 +21,30 @@ export async function GET(request: NextRequest) {
     const problemId = searchParams.get("problemId");
     const status = searchParams.get("status");
 
-    let results;
-
-    if (isAdmin(user.role)) {
-      results = await db.query.submissions.findMany({
-        orderBy: [desc(submissions.submittedAt)],
-        limit,
-        offset,
-      });
-    } else {
-      results = await db.query.submissions.findMany({
-        where: eq(submissions.userId, user.id),
-        orderBy: [desc(submissions.submittedAt)],
-        limit,
-        offset,
-      });
+    if (status && !isSubmissionStatus(status)) {
+      return NextResponse.json({ error: "invalidSubmissionStatus" }, { status: 400 });
     }
 
-    if (problemId) {
-      results = results.filter((s) => s.problemId === problemId);
-    }
-    if (status) {
-      results = results.filter((s) => s.status === status);
-    }
+    const userFilter = isAdmin(user.role) ? undefined : eq(submissions.userId, user.id);
+    const problemFilter = problemId ? eq(submissions.problemId, problemId) : undefined;
+    const statusFilter = status ? eq(submissions.status, status) : undefined;
+    const filters = [userFilter, problemFilter, statusFilter].flatMap((filter) =>
+      filter ? [filter] : []
+    );
+    const whereClause =
+      filters.length === 0 ? undefined : filters.length === 1 ? filters[0] : and(...filters);
+
+    const results = await db.query.submissions.findMany({
+      where: whereClause,
+      orderBy: [desc(submissions.submittedAt)],
+      limit,
+      offset,
+    });
 
     return NextResponse.json({ data: results, page, limit });
   } catch (error) {
     console.error("GET /api/v1/submissions error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "submissionLoadFailed" }, { status: 500 });
   }
 }
 
@@ -57,13 +57,22 @@ export async function POST(request: NextRequest) {
     const { problemId, language, sourceCode, assignmentId } = body;
 
     if (!problemId || typeof problemId !== "string") {
-      return NextResponse.json({ error: "problemId is required" }, { status: 400 });
+      return NextResponse.json({ error: "problemRequired" }, { status: 400 });
     }
     if (!language || typeof language !== "string") {
-      return NextResponse.json({ error: "language is required" }, { status: 400 });
+      return NextResponse.json({ error: "languageRequired" }, { status: 400 });
     }
     if (!sourceCode || typeof sourceCode !== "string") {
-      return NextResponse.json({ error: "sourceCode is required" }, { status: 400 });
+      return NextResponse.json({ error: "sourceCodeRequired" }, { status: 400 });
+    }
+
+    if (Buffer.byteLength(sourceCode, "utf8") > MAX_SOURCE_CODE_SIZE_BYTES) {
+      return NextResponse.json(
+        {
+          error: "sourceCodeTooLarge",
+        },
+        { status: 413 }
+      );
     }
 
     const id = nanoid();
@@ -84,6 +93,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ data: submission }, { status: 201 });
   } catch (error) {
     console.error("POST /api/v1/submissions error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "submissionCreateFailed" }, { status: 500 });
   }
 }

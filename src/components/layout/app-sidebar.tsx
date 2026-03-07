@@ -33,17 +33,24 @@ const navItems = [
   { titleKey: "problems" as const, href: "/dashboard/problems", icon: BookOpen, roles: ["super_admin", "admin", "instructor", "student"] },
   { titleKey: "submissions" as const, href: "/dashboard/submissions", icon: Send, roles: ["super_admin", "admin", "instructor", "student"] },
   { titleKey: "groups" as const, href: "/dashboard/groups", icon: Users, roles: ["super_admin", "admin", "instructor", "student"] },
+  { titleKey: "profile" as const, href: "/dashboard/profile", icon: User, roles: ["super_admin", "admin", "instructor", "student"] },
 ];
 
 const adminItems = [
   { titleKey: "userManagement" as const, href: "/dashboard/admin/users", icon: Shield, roles: ["super_admin", "admin"] },
-  { titleKey: "allSubmissions" as const, href: "/dashboard/admin/submissions", icon: FileCode, roles: ["super_admin", "admin", "instructor"] },
+  { titleKey: "allSubmissions" as const, href: "/dashboard/admin/submissions", icon: FileCode, roles: ["super_admin", "admin"] },
 ];
 
 export function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname();
   const t = useTranslations("nav");
   const tCommon = useTranslations("common");
+  const roleLabels = {
+    student: tCommon("roles.student"),
+    instructor: tCommon("roles.instructor"),
+    admin: tCommon("roles.admin"),
+    super_admin: tCommon("roles.super_admin"),
+  };
 
   const filteredNav = navItems.filter(item => item.roles.includes(user.role));
   const filteredAdmin = adminItems.filter(item => item.roles.includes(user.role));
@@ -101,7 +108,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           <User className="h-4 w-4" />
           <div className="flex flex-col text-sm">
             <span className="font-medium">{user.name} ({user.username})</span>
-            <span className="text-xs text-muted-foreground">{user.role.replace("_", " ")}</span>
+            <span className="text-xs text-muted-foreground">{roleLabels[user.role]}</span>
           </div>
         </div>
       </SidebarFooter>

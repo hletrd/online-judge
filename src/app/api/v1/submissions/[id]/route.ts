@@ -16,9 +16,17 @@ export async function GET(
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, id),
       with: {
+        user: {
+          columns: { name: true },
+        },
+        problem: {
+          columns: { id: true, title: true },
+        },
         results: {
           with: {
-            testCase: true,
+            testCase: {
+              columns: { sortOrder: true },
+            },
           },
         },
       },

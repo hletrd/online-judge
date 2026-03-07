@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { problems } from "@/lib/db/schema";
+import { problems, submissions, testCases } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, notFound, isAdmin } from "@/lib/api/auth";
+import { canAccessProblem } from "@/lib/auth/permissions";
+import { updateProblemWithTestCases } from "@/lib/problem-management";
+import { problemMutationSchema } from "@/lib/validators/problem-management";
 
 export async function GET(
   request: NextRequest,
@@ -16,7 +19,23 @@ export async function GET(
     const problem = await db.query.problems.findFirst({ where: eq(problems.id, id) });
     if (!problem) return notFound("Problem");
 
-    return NextResponse.json({ data: problem });
+    const hasAccess = await canAccessProblem(id, user.id, user.role);
+    if (!hasAccess) return forbidden();
+
+    const canManageProblem = isAdmin(user.role) || problem.authorId === user.id;
+
+    if (!canManageProblem) {
+      return NextResponse.json({ data: problem });
+    }
+
+    const managedProblem = await db.query.problems.findFirst({
+      where: eq(problems.id, id),
+      with: {
+        testCases: true,
+      },
+    });
+
+    return NextResponse.json({ data: managedProblem ?? problem });
   } catch (error) {
     console.error("GET /api/v1/problems/[id] error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -39,22 +58,57 @@ export async function PATCH(
     if (!isAuthor && !isAdmin(user.role)) return forbidden();
 
     const body = await request.json();
-    const { title, description, timeLimitMs, memoryLimitMb, visibility } = body;
+    const existingTestCases = await db.query.testCases.findMany({
+      where: eq(testCases.problemId, id),
+    });
+    const hasExistingSubmissions = Boolean(
+      await db.query.submissions.findFirst({
+        where: eq(submissions.problemId, id),
+        columns: { id: true },
+      })
+    );
 
-    const updates: Record<string, unknown> = { updatedAt: new Date() };
-    if (title !== undefined) updates.title = title;
-    if (description !== undefined) updates.description = description;
-    if (timeLimitMs !== undefined) updates.timeLimitMs = timeLimitMs;
-    if (memoryLimitMb !== undefined) updates.memoryLimitMb = memoryLimitMb;
-    if (visibility !== undefined) updates.visibility = visibility;
+    if (body.testCases !== undefined && hasExistingSubmissions) {
+      return NextResponse.json({ error: "testCasesLocked" }, { status: 409 });
+    }
 
-    await db.update(problems).set(updates).where(eq(problems.id, id));
+    const parsedInput = problemMutationSchema.safeParse({
+      title: body.title ?? problem.title,
+      description: body.description ?? problem.description ?? "",
+      timeLimitMs: body.timeLimitMs ?? problem.timeLimitMs ?? 2000,
+      memoryLimitMb: body.memoryLimitMb ?? problem.memoryLimitMb ?? 256,
+      visibility: body.visibility ?? problem.visibility ?? "private",
+      testCases:
+        body.testCases ??
+        existingTestCases
+          .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
+          .map((testCase) => ({
+            input: testCase.input,
+            expectedOutput: testCase.expectedOutput,
+            isVisible: testCase.isVisible ?? false,
+          })),
+    });
 
-    const updated = await db.query.problems.findFirst({ where: eq(problems.id, id) });
+    if (!parsedInput.success) {
+      return NextResponse.json(
+        { error: parsedInput.error.issues[0]?.message ?? "updateError" },
+        { status: 400 }
+      );
+    }
+
+    updateProblemWithTestCases(id, parsedInput.data);
+
+    const updated = await db.query.problems.findFirst({
+      where: eq(problems.id, id),
+      with: {
+        testCases: true,
+      },
+    });
+
     return NextResponse.json({ data: updated });
   } catch (error) {
     console.error("PATCH /api/v1/problems/[id] error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "updateError" }, { status: 500 });
   }
 }
 

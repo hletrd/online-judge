@@ -15,6 +15,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <SidebarProvider>
+      <a
+        href="#dashboard-main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow-md"
+      >
+        {t("skipToContent")}
+      </a>
       <AppSidebar user={session.user} />
       <SidebarInset>
         <header className="flex h-14 items-center gap-2 border-b px-4">
@@ -25,7 +31,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <LocaleSwitcher />
           </div>
         </header>
-        <main className="flex-1 p-6">
+        <main id="dashboard-main-content" className="flex-1 p-6">
           {children}
         </main>
       </SidebarInset>

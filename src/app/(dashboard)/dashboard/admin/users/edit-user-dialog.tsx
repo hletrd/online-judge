@@ -17,6 +17,7 @@ interface EditUserDialogProps {
     username: string;
     email: string | null;
     name: string;
+    className?: string | null;
     role: string;
   };
 }
@@ -31,21 +32,29 @@ export default function EditUserDialog({ user }: EditUserDialogProps) {
   const [username, setUsername] = useState(user.username);
   const [email, setEmail] = useState(user.email || "");
   const [name, setName] = useState(user.name);
+  const [className, setClassName] = useState(user.className || "");
   const [role, setRole] = useState(user.role);
   const [password, setPassword] = useState("");
+
+  const roleLabels = {
+    student: t("roleOptions.student"),
+    instructor: t("roleOptions.instructor"),
+    admin: t("roleOptions.admin"),
+    super_admin: t("roleOptions.super_admin"),
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const result = await editUser(user.id, { username, email, name, role, password });
+      const result = await editUser(user.id, { username, email, name, className, role, password });
       if (result.success) {
-        toast.success("User updated successfully");
+        toast.success(t("updateSuccess"));
         setOpen(false);
         router.refresh();
       } else {
-        toast.error(result.error || tCommon("error"));
+        toast.error(t(result.error));
       }
     } catch {
       toast.error(tCommon("error"));
@@ -56,41 +65,46 @@ export default function EditUserDialog({ user }: EditUserDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" size="sm">{tCommon("edit", { fallback: "Edit" })}</Button>} />
+      <DialogTrigger render={<Button variant="outline" size="sm">{tCommon("edit")}</Button>} />
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{tCommon("edit", { fallback: "Edit User" })}</DialogTitle>
+          <DialogTitle>{t("editUser")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="edit-username">{t("table.username", { fallback: "Username" })}</Label>
+            <Label htmlFor="edit-username">{t("table.username")}</Label>
             <Input id="edit-username" value={username} onChange={e => setUsername(e.target.value)} required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="edit-name">{t("table.name", { fallback: "Name" })}</Label>
+            <Label htmlFor="edit-name">{t("table.name")}</Label>
             <Input id="edit-name" value={name} onChange={e => setName(e.target.value)} required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="edit-email">{t("table.email", { fallback: "Email" })} (Optional)</Label>
+            <Label htmlFor="edit-className">{tCommon("class")}</Label>
+            <Input id="edit-className" value={className} onChange={e => setClassName(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-email">{t("table.email")} ({tCommon("optional")})</Label>
             <Input id="edit-email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="edit-role">{t("table.role", { fallback: "Role" })}</Label>
+            <Label htmlFor="edit-role">{t("table.role")}</Label>
             <Select value={role} onValueChange={v => { if (v) setRole(v); }} disabled={user.role === "super_admin"}>
               <SelectTrigger id="edit-role">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="student">Student</SelectItem>
-                <SelectItem value="instructor">Instructor</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                {user.role === "super_admin" && <SelectItem value="super_admin">Super Admin</SelectItem>}
+                <SelectItem value="student">{roleLabels.student}</SelectItem>
+                <SelectItem value="instructor">{roleLabels.instructor}</SelectItem>
+                <SelectItem value="admin">{roleLabels.admin}</SelectItem>
+                {user.role === "super_admin" && <SelectItem value="super_admin">{roleLabels.super_admin}</SelectItem>}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="edit-password">New Password (Leave blank to keep current)</Label>
+            <Label htmlFor="edit-password">{t("newPasswordLabel")}</Label>
             <Input id="edit-password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+            <p className="text-sm text-muted-foreground">{t("newPasswordHint")}</p>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>

@@ -6,10 +6,11 @@ import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { canAccessProblem } from "@/lib/auth/permissions";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
+import { ProblemSubmissionForm } from "./problem-submission-form";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default async function ProblemDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -37,20 +38,34 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
   // Fetch languages
   const langs = await db.select().from(languageConfigs).where(eq(languageConfigs.isEnabled, true));
 
-  // Basic access control (simplified for now)
-  if (problem.visibility === "private" && problem.authorId !== session.user.id && session.user.role !== "admin" && session.user.role !== "super_admin") {
+  const hasAccess = await canAccessProblem(problem.id, session.user.id, session.user.role);
+
+  if (!hasAccess) {
     redirect("/dashboard/problems");
   }
+
+  const safeDescription = problem.description ? sanitizeHtml(problem.description) : null;
+  const canEdit =
+    problem.authorId === session.user.id ||
+    session.user.role === "admin" ||
+    session.user.role === "super_admin";
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold mb-2">{problem.title}</h2>
-          <div className="flex gap-2 text-sm text-muted-foreground mb-4">
-            <Badge variant="outline">Time Limit: {problem.timeLimitMs}ms</Badge>
-            <Badge variant="outline">Memory Limit: {problem.memoryLimitMb}MB</Badge>
-            <Badge variant="secondary">Author: {problem.author?.name || tCommon("system")}</Badge>
+          <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+            <h2 className="text-3xl font-bold">{problem.title}</h2>
+            {canEdit && (
+              <Link href={`/dashboard/problems/${problem.id}/edit`}>
+                <Button variant="outline">{tCommon("edit")}</Button>
+              </Link>
+            )}
+          </div>
+          <div className="mb-4 flex gap-2 text-sm text-muted-foreground">
+            <Badge variant="outline">{t("badges.timeLimit", { value: problem.timeLimitMs ?? 2000 })}</Badge>
+            <Badge variant="outline">{t("badges.memoryLimit", { value: problem.memoryLimitMb ?? 256 })}</Badge>
+            <Badge variant="secondary">{t("badges.author", { name: problem.author?.name || tCommon("system") })}</Badge>
           </div>
         </div>
         <Card>
@@ -58,7 +73,11 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
             <CardTitle>{t("descriptionTitle")}</CardTitle>
           </CardHeader>
           <CardContent className="prose dark:prose-invert max-w-none">
-            <div dangerouslySetInnerHTML={{ __html: problem.description || t("noDescription") }} />
+            {safeDescription ? (
+              <div dangerouslySetInnerHTML={{ __html: safeDescription }} />
+            ) : (
+              <p>{t("noDescription")}</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -69,35 +88,15 @@ export default async function ProblemDetailPage({ params }: { params: Promise<{ 
             <CardTitle>{t("submitSolution")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4" action="/api/v1/submissions" method="POST">
-              <input type="hidden" name="problemId" value={problem.id} />
-              <div className="space-y-2">
-                <Label htmlFor="language">{t("selectLanguage")}</Label>
-                <Select name="language" defaultValue="python">
-                  <SelectTrigger id="language">
-                    <SelectValue placeholder={t("selectLanguage")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {langs.map((lang) => (
-                      <SelectItem key={lang.id} value={lang.language}>
-                        {lang.displayName} {lang.standard ? `(${lang.standard})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sourceCode">Source Code</Label>
-                <Textarea 
-                  id="sourceCode" 
-                  name="sourceCode" 
-                  className="font-mono min-h-[300px]" 
-                  placeholder={t("writeCodePlaceholder")} 
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full">{tCommon("submit")}</Button>
-            </form>
+            <ProblemSubmissionForm
+              problemId={problem.id}
+              languages={langs.map((lang) => ({
+                id: lang.id,
+                language: lang.language,
+                displayName: lang.displayName,
+                standard: lang.standard,
+              }))}
+            />
           </CardContent>
         </Card>
       </div>

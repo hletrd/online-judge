@@ -4,6 +4,7 @@ import { groups, enrollments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, isAdmin, isInstructor } from "@/lib/api/auth";
 import { nanoid } from "nanoid";
+import { createGroupSchema } from "@/lib/validators/groups";
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,16 +51,21 @@ export async function POST(request: NextRequest) {
     if (!isInstructor(user.role)) return forbidden();
 
     const body = await request.json();
-    const { name, description } = body;
+    const parsedInput = createGroupSchema.safeParse(body);
 
-    if (!name || typeof name !== "string" || name.trim() === "") {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    if (!parsedInput.success) {
+      return NextResponse.json(
+        { error: parsedInput.error.issues[0]?.message ?? "createError" },
+        { status: 400 }
+      );
     }
+
+    const { name, description } = parsedInput.data;
 
     const id = nanoid();
     await db.insert(groups).values({
       id,
-      name: name.trim(),
+      name,
       description: description || null,
       instructorId: user.id,
       createdAt: new Date(),
@@ -70,6 +76,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ data: group }, { status: 201 });
   } catch (error) {
     console.error("POST /api/v1/groups error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "createError" }, { status: 500 });
   }
 }

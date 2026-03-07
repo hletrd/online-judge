@@ -14,14 +14,39 @@ import { submissions, users, problems } from "@/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { getSubmissionStatusVariant } from "@/lib/submissions/status";
 
-export default async function AdminSubmissionsPage() {
+const PAGE_SIZE = 50;
+
+export default async function AdminSubmissionsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   const session = await auth();
   if (!session?.user) redirect("/login");
   if (session.user.role !== "admin" && session.user.role !== "super_admin") redirect("/dashboard");
 
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const currentPage = Math.max(1, Number(resolvedSearchParams?.page ?? "1") || 1);
+  const offset = (currentPage - 1) * PAGE_SIZE;
+
   const t = await getTranslations("admin.submissions");
   const tCommon = await getTranslations("common");
+  const tSubmissions = await getTranslations("submissions");
+  const statusLabels = {
+    pending: tSubmissions("status.pending"),
+    queued: tSubmissions("status.queued"),
+    judging: tSubmissions("status.judging"),
+    accepted: tSubmissions("status.accepted"),
+    wrong_answer: tSubmissions("status.wrong_answer"),
+    time_limit: tSubmissions("status.time_limit"),
+    memory_limit: tSubmissions("status.memory_limit"),
+    runtime_error: tSubmissions("status.runtime_error"),
+    compile_error: tSubmissions("status.compile_error"),
+  };
   
   const allSubmissions = await db
     .select({
@@ -41,16 +66,28 @@ export default async function AdminSubmissionsPage() {
     .leftJoin(users, eq(submissions.userId, users.id))
     .leftJoin(problems, eq(submissions.problemId, problems.id))
     .orderBy(desc(submissions.submittedAt))
-    .limit(100);
+    .limit(PAGE_SIZE + 1)
+    .offset(offset);
+
+  const hasNextPage = allSubmissions.length > PAGE_SIZE;
+  const visibleSubmissions = hasNextPage ? allSubmissions.slice(0, PAGE_SIZE) : allSubmissions;
+  const rangeStart = visibleSubmissions.length === 0 ? 0 : offset + 1;
+  const rangeEnd = offset + visibleSubmissions.length;
 
   return (
-    <div>
+    <div className="space-y-4">
       <h2 className="text-2xl font-bold mb-4">{t("title")}</h2>
       <Card>
         <CardHeader>
           <CardTitle>{t("recent")}</CardTitle>
         </CardHeader>
         <CardContent>
+          {visibleSubmissions.length > 0 && (
+            <p className="mb-4 text-sm text-muted-foreground">
+              {tSubmissions("pagination.showingRange", { start: rangeStart, end: rangeEnd })}
+            </p>
+          )}
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -61,29 +98,35 @@ export default async function AdminSubmissionsPage() {
                 <TableHead>{t("table.status")}</TableHead>
                 <TableHead>{t("table.score")}</TableHead>
                 <TableHead>{t("table.submittedAt")}</TableHead>
+                <TableHead>{tCommon("action")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {allSubmissions.map((sub) => (
+              {visibleSubmissions.map((sub) => (
                 <TableRow key={sub.id}>
                   <TableCell className="font-mono text-xs">{sub.id.substring(0, 8)}</TableCell>
                   <TableCell>{sub.user?.name || tCommon("unknown")}</TableCell>
                   <TableCell>{sub.problem?.title || tCommon("unknown")}</TableCell>
                   <TableCell>{sub.language}</TableCell>
                   <TableCell>
-                    <Badge variant={sub.status === "accepted" ? "default" : sub.status === "pending" || sub.status === "judging" ? "secondary" : "destructive"}>
-                      {sub.status}
+                    <Badge variant={getSubmissionStatusVariant(sub.status)}>
+                      {statusLabels[sub.status as keyof typeof statusLabels] ?? sub.status}
                     </Badge>
                   </TableCell>
                   <TableCell>{sub.score !== null ? sub.score : "-"}</TableCell>
                   <TableCell>
                     {sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : "-"}
                   </TableCell>
+                  <TableCell>
+                    <Link href={`/dashboard/submissions/${sub.id}`}>
+                      <Button variant="outline" size="sm">{tCommon("view")}</Button>
+                    </Link>
+                  </TableCell>
                 </TableRow>
               ))}
-              {allSubmissions.length === 0 && (
+              {visibleSubmissions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     {t("noSubmissions")}
                   </TableCell>
                 </TableRow>
@@ -92,6 +135,28 @@ export default async function AdminSubmissionsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <div className="flex items-center justify-end gap-2">
+        {currentPage > 1 ? (
+          <Link href={`/dashboard/admin/submissions?page=${currentPage - 1}`}>
+            <Button variant="outline">{tCommon("previous")}</Button>
+          </Link>
+        ) : (
+          <Button variant="outline" disabled>
+            {tCommon("previous")}
+          </Button>
+        )}
+
+        {hasNextPage ? (
+          <Link href={`/dashboard/admin/submissions?page=${currentPage + 1}`}>
+            <Button variant="outline">{tCommon("next")}</Button>
+          </Link>
+        ) : (
+          <Button variant="outline" disabled>
+            {tCommon("next")}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

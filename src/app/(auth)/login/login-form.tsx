@@ -62,6 +62,7 @@ export function LoginForm() {
           name="username"
           type="text"
           placeholder={t("identifierPlaceholder")}
+          autoComplete="username"
           required
         />
       </div>
@@ -71,11 +72,14 @@ export function LoginForm() {
           id="password"
           name="password"
           type="password"
+          autoComplete="current-password"
           required
         />
       </div>
       {error && (
-        <p className="text-sm text-destructive">{error}</p>
+        <p className="text-sm text-destructive" role="alert" aria-live="polite">
+          {error}
+        </p>
       )}
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? t("signingIn") : t("signIn")}
