@@ -12,7 +12,6 @@ import {
   assignmentProblems,
   submissions,
   submissionResults,
-  languageConfigs,
 } from "./schema";
 
 export const usersRelations = relations(users, ({ many }) => ({

@@ -1,5 +1,4 @@
-import { LANGUAGE_CONFIGS, type LanguageConfig } from "./languages";
-import { compareOutput } from "./comparator";
+import { LANGUAGE_CONFIGS } from "./languages";
 
 export interface Submission {
   id: string;
