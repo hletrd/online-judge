@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Online Judge SQLite backup every day
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+Unit=online-judge-backup.service
+
+[Install]
+WantedBy=timers.target

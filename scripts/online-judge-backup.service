@@ -1,0 +1,9 @@
+[Unit]
+Description=Online Judge SQLite backup
+After=network.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/online-judge
+ExecStart=/bin/bash -lc 'mkdir -p /home/ubuntu/backups/online-judge && /bin/bash /home/ubuntu/online-judge/scripts/backup-db.sh "/home/ubuntu/backups/online-judge/judge-$(date +%%Y%%m%%d-%%H%%M%%S).db"'
