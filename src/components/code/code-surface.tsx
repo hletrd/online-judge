@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { cpp } from "@codemirror/lang-cpp";
 import { javascript } from "@codemirror/lang-javascript";
@@ -42,10 +42,6 @@ type CodeSurfaceProps = {
   readOnly?: boolean;
   tone?: CodeSurfaceTone;
   value: string;
-};
-
-type CodeSurfaceStyle = CSSProperties & {
-  [key: `--${string}`]: string | number | undefined;
 };
 
 const baseTheme = EditorView.theme({
@@ -132,30 +128,12 @@ function getEditabilityExtension(readOnly: boolean) {
   return [EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)];
 }
 
-function getSurfaceStyle(minHeight: number, tone: CodeSurfaceTone): CodeSurfaceStyle {
-  if (tone === "danger") {
-    return {
-      "--code-surface-active-line": "color-mix(in oklch, var(--destructive) 9%, var(--muted))",
-      "--code-surface-background": "color-mix(in oklch, var(--destructive) 5%, var(--card))",
-      "--code-surface-border": "color-mix(in oklch, var(--destructive) 20%, var(--border))",
-      "--code-surface-caret": "var(--destructive)",
-      "--code-surface-foreground": "color-mix(in oklch, var(--destructive) 72%, var(--card-foreground))",
-      "--code-surface-min-height": `${minHeight}px`,
-      "--code-surface-placeholder": "var(--muted-foreground)",
-      "--code-surface-selection": "color-mix(in oklch, var(--destructive) 16%, var(--card))",
-    };
-  }
-
-  return {
-    "--code-surface-active-line": "color-mix(in oklch, var(--accent) 78%, var(--card))",
-    "--code-surface-background": "var(--card)",
-    "--code-surface-border": "var(--border)",
-    "--code-surface-caret": "var(--foreground)",
-    "--code-surface-foreground": "var(--card-foreground)",
-    "--code-surface-min-height": `${minHeight}px`,
-    "--code-surface-placeholder": "var(--muted-foreground)",
-    "--code-surface-selection": "color-mix(in oklch, var(--ring) 18%, var(--card))",
-  };
+function getMinHeightExtension(minHeight: number) {
+  return EditorView.theme({
+    ".cm-content": {
+      minHeight: `${minHeight}px`,
+    },
+  });
 }
 
 function getContentAttributes(
@@ -195,6 +173,7 @@ export function CodeSurface({
   const isSyncingRef = useRef(false);
   const languageCompartmentRef = useRef(new Compartment());
   const highlightCompartmentRef = useRef(new Compartment());
+  const minHeightCompartmentRef = useRef(new Compartment());
   const editabilityCompartmentRef = useRef(new Compartment());
   const placeholderCompartmentRef = useRef(new Compartment());
   const contentAttributesCompartmentRef = useRef(new Compartment());
@@ -203,13 +182,12 @@ export function CodeSurface({
     ariaLabelledby,
     id,
     language,
+    minHeight,
     placeholderText,
     readOnly,
     resolvedTheme,
     value,
   }));
-
-  const editorStyle = useMemo(() => getSurfaceStyle(minHeight, tone), [minHeight, tone]);
 
   useEffect(() => {
     onValueChangeRef.current = onValueChangeAction;
@@ -228,6 +206,7 @@ export function CodeSurface({
         highlightCompartmentRef.current.of(
           getHighlightExtension(initialEditorConfig.resolvedTheme === "dark")
         ),
+        minHeightCompartmentRef.current.of(getMinHeightExtension(initialEditorConfig.minHeight)),
         editabilityCompartmentRef.current.of(getEditabilityExtension(initialEditorConfig.readOnly)),
         placeholderCompartmentRef.current.of(
           !initialEditorConfig.readOnly && initialEditorConfig.placeholderText
@@ -301,6 +280,18 @@ export function CodeSurface({
     }
 
     view.dispatch({
+      effects: minHeightCompartmentRef.current.reconfigure(getMinHeightExtension(minHeight)),
+    });
+  }, [minHeight]);
+
+  useEffect(() => {
+    const view = editorViewRef.current;
+
+    if (!view) {
+      return;
+    }
+
+    view.dispatch({
       effects: [
         editabilityCompartmentRef.current.reconfigure(getEditabilityExtension(readOnly)),
         placeholderCompartmentRef.current.reconfigure(
@@ -342,11 +333,11 @@ export function CodeSurface({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border bg-card shadow-sm transition-colors",
+        "code-surface overflow-hidden rounded-xl border bg-card shadow-sm transition-colors",
+        tone === "danger" ? "code-surface-danger" : "code-surface-default",
         readOnly ? "focus-within:border-border" : "focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/15",
         className
       )}
-      style={editorStyle}
     >
       <div ref={editorHostRef} />
     </div>

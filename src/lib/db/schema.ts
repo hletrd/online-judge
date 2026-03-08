@@ -190,17 +190,24 @@ export const testCases = sqliteTable(
   (table) => [index("test_cases_problem_idx").on(table.problemId)]
 );
 
-export const problemGroupAccess = sqliteTable("problem_group_access", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => nanoid()),
-  problemId: text("problem_id")
-    .notNull()
-    .references(() => problems.id, { onDelete: "cascade" }),
-  groupId: text("group_id")
-    .notNull()
-    .references(() => groups.id, { onDelete: "cascade" }),
-});
+export const problemGroupAccess = sqliteTable(
+  "problem_group_access",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    problemId: text("problem_id")
+      .notNull()
+      .references(() => problems.id, { onDelete: "cascade" }),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("pga_problem_idx").on(table.problemId),
+    index("pga_group_idx").on(table.groupId),
+  ]
+);
 
 export const assignments = sqliteTable("assignments", {
   id: text("id")
@@ -223,19 +230,26 @@ export const assignments = sqliteTable("assignments", {
   ),
 });
 
-export const assignmentProblems = sqliteTable("assignment_problems", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => nanoid()),
-  assignmentId: text("assignment_id")
-    .notNull()
-    .references(() => assignments.id, { onDelete: "cascade" }),
-  problemId: text("problem_id")
-    .notNull()
-    .references(() => problems.id, { onDelete: "cascade" }),
-  points: integer("points").default(100),
-  sortOrder: integer("sort_order").default(0),
-});
+export const assignmentProblems = sqliteTable(
+  "assignment_problems",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    assignmentId: text("assignment_id")
+      .notNull()
+      .references(() => assignments.id, { onDelete: "cascade" }),
+    problemId: text("problem_id")
+      .notNull()
+      .references(() => problems.id, { onDelete: "cascade" }),
+    points: integer("points").default(100),
+    sortOrder: integer("sort_order").default(0),
+  },
+  (table) => [
+    index("ap_assignment_idx").on(table.assignmentId),
+    index("ap_problem_idx").on(table.problemId),
+  ]
+);
 
 export const submissions = sqliteTable(
   "submissions",
@@ -255,6 +269,8 @@ export const submissions = sqliteTable(
     language: text("language").notNull(),
     sourceCode: text("source_code").notNull(),
     status: text("status").default("pending"),
+    judgeClaimToken: text("judge_claim_token"),
+    judgeClaimedAt: integer("judge_claimed_at", { mode: "timestamp" }),
     compileOutput: text("compile_output"),
     executionTimeMs: integer("execution_time_ms"),
     memoryUsedKb: integer("memory_used_kb"),
@@ -267,6 +283,8 @@ export const submissions = sqliteTable(
   (table) => [
     index("submissions_user_problem_idx").on(table.userId, table.problemId),
     index("submissions_status_idx").on(table.status),
+    index("submissions_user_idx").on(table.userId),
+    index("submissions_problem_idx").on(table.problemId),
   ]
 );
 
@@ -300,18 +318,42 @@ export const systemSettings = sqliteTable("system_settings", {
   ),
 });
 
-export const submissionResults = sqliteTable("submission_results", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => nanoid()),
-  submissionId: text("submission_id")
-    .notNull()
-    .references(() => submissions.id, { onDelete: "cascade" }),
-  testCaseId: text("test_case_id")
-    .notNull()
-    .references(() => testCases.id, { onDelete: "cascade" }),
-  status: text("status").notNull(),
-  actualOutput: text("actual_output"),
-  executionTimeMs: integer("execution_time_ms"),
-  memoryUsedKb: integer("memory_used_kb"),
-});
+export const rateLimits = sqliteTable(
+  "rate_limits",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    key: text("key").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    windowStartedAt: integer("window_started_at").notNull(),
+    blockedUntil: integer("blocked_until"),
+    lastAttempt: integer("last_attempt").notNull(),
+    createdAt: integer("created_at").$defaultFn(() => Date.now()),
+  },
+  (table) => [
+    uniqueIndex("rate_limits_key_idx").on(table.key),
+  ]
+);
+
+export const submissionResults = sqliteTable(
+  "submission_results",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    submissionId: text("submission_id")
+      .notNull()
+      .references(() => submissions.id, { onDelete: "cascade" }),
+    testCaseId: text("test_case_id")
+      .notNull()
+      .references(() => testCases.id, { onDelete: "cascade" }),
+    status: text("status").notNull(),
+    actualOutput: text("actual_output"),
+    executionTimeMs: integer("execution_time_ms"),
+    memoryUsedKb: integer("memory_used_kb"),
+  },
+  (table) => [
+    index("sr_submission_idx").on(table.submissionId),
+  ]
+);

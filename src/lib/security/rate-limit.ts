@@ -1,91 +1,126 @@
-import {
-  LOGIN_RATE_LIMIT_BLOCK_MS,
-  LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
-  LOGIN_RATE_LIMIT_WINDOW_MS,
-} from "@/lib/security/constants";
+import { db } from "@/lib/db";
+import { rateLimits } from "@/lib/db/schema";
+import { extractClientIp } from "@/lib/security/ip";
+import { eq, lt } from "drizzle-orm";
+import { nanoid } from "nanoid";
 
-type RateLimitEntry = {
-  attempts: number;
-  windowStartedAt: number;
-  blockedUntil: number;
-};
+const RATE_LIMIT_MAX_ATTEMPTS = parseInt(process.env.RATE_LIMIT_MAX_ATTEMPTS || "5", 10);
+const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10);
+const RATE_LIMIT_BLOCK_MS = parseInt(process.env.RATE_LIMIT_BLOCK_MS || "900000", 10);
+const RATE_LIMIT_EVICTION_AGE_MS = 24 * 60 * 60 * 1000;
 
-declare global {
-  var __onlineJudgeRateLimitStore: Map<string, RateLimitEntry> | undefined;
+export { RATE_LIMIT_MAX_ATTEMPTS, RATE_LIMIT_WINDOW_MS, RATE_LIMIT_BLOCK_MS };
+
+export function getRateLimitKey(action: string, headers: Headers) {
+  return `${action}:${extractClientIp(headers)}`;
 }
 
-const rateLimitStore = globalThis.__onlineJudgeRateLimitStore ?? new Map<string, RateLimitEntry>();
+export function getUsernameRateLimitKey(action: string, username: string) {
+  return `${action}:user:${username.toLowerCase()}`;
+}
 
-if (!globalThis.__onlineJudgeRateLimitStore) {
-  globalThis.__onlineJudgeRateLimitStore = rateLimitStore;
+function evictStaleEntries() {
+  const cutoff = Date.now() - RATE_LIMIT_EVICTION_AGE_MS;
+  try {
+    db.delete(rateLimits).where(lt(rateLimits.lastAttempt, cutoff)).run();
+  } catch {
+    // Eviction is best-effort
+  }
 }
 
 function getEntry(key: string) {
   const now = Date.now();
-  const existing = rateLimitStore.get(key);
+  const existing = db.select().from(rateLimits).where(eq(rateLimits.key, key)).get();
 
   if (!existing) {
     return {
       now,
-      entry: {
-        attempts: 0,
-        windowStartedAt: now,
-        blockedUntil: 0,
-      },
+      entry: { attempts: 0, windowStartedAt: now, blockedUntil: 0 },
+      exists: false,
     };
   }
 
-  if (existing.windowStartedAt + LOGIN_RATE_LIMIT_WINDOW_MS <= now) {
+  if (existing.windowStartedAt + RATE_LIMIT_WINDOW_MS <= now) {
     return {
       now,
       entry: {
         attempts: 0,
         windowStartedAt: now,
-        blockedUntil: existing.blockedUntil > now ? existing.blockedUntil : 0,
+        blockedUntil: existing.blockedUntil && existing.blockedUntil > now ? existing.blockedUntil : 0,
       },
+      exists: true,
     };
   }
 
-  return { now, entry: existing };
-}
-
-export function getRateLimitKey(action: string, headers: Headers) {
-  const forwardedFor = headers
-    .get("x-forwarded-for")
-    ?.split(",")[0]
-    ?.trim();
-
-  const realIp = headers.get("x-real-ip")?.trim();
-  const clientIp = forwardedFor || realIp || "unknown";
-
-  return `${action}:${clientIp}`;
+  return {
+    now,
+    entry: {
+      attempts: existing.attempts,
+      windowStartedAt: existing.windowStartedAt,
+      blockedUntil: existing.blockedUntil ?? 0,
+    },
+    exists: true,
+  };
 }
 
 export function isRateLimited(key: string) {
   const { now, entry } = getEntry(key);
 
   if (entry.blockedUntil > now) {
-    rateLimitStore.set(key, entry);
     return true;
   }
 
   return false;
 }
 
+export function isAnyKeyRateLimited(...keys: string[]) {
+  return keys.some((key) => isRateLimited(key));
+}
+
 export function recordRateLimitFailure(key: string) {
-  const { now, entry } = getEntry(key);
+  const { now, entry, exists } = getEntry(key);
   const attempts = entry.attempts + 1;
+  const blockedUntil =
+    attempts >= RATE_LIMIT_MAX_ATTEMPTS ? now + RATE_LIMIT_BLOCK_MS : entry.blockedUntil;
 
-  const nextEntry: RateLimitEntry = {
-    attempts,
-    windowStartedAt: entry.windowStartedAt,
-    blockedUntil:
-      attempts >= LOGIN_RATE_LIMIT_MAX_ATTEMPTS ? now + LOGIN_RATE_LIMIT_BLOCK_MS : entry.blockedUntil,
-  };
+  if (exists) {
+    db.update(rateLimits)
+      .set({
+        attempts,
+        windowStartedAt: entry.windowStartedAt,
+        blockedUntil: blockedUntil || null,
+        lastAttempt: now,
+      })
+      .where(eq(rateLimits.key, key))
+      .run();
+  } else {
+    db.insert(rateLimits)
+      .values({
+        id: nanoid(),
+        key,
+        attempts,
+        windowStartedAt: entry.windowStartedAt,
+        blockedUntil: blockedUntil || null,
+        lastAttempt: now,
+      })
+      .run();
+  }
 
-  rateLimitStore.set(key, nextEntry);
+  evictStaleEntries();
+}
+
+export function recordRateLimitFailureMulti(...keys: string[]) {
+  for (const key of keys) {
+    recordRateLimitFailure(key);
+  }
 }
 
 export function clearRateLimit(key: string) {
-  rateLimitStore.delete(key);
+  db.delete(rateLimits).where(eq(rateLimits.key, key)).run();
+}
+
+export function clearRateLimitMulti(...keys: string[]) {
+  for (const key of keys) {
+    clearRateLimit(key);
+  }
 }

@@ -12,12 +12,45 @@ function clearAuthSessionCookies(response: NextResponse) {
   return response;
 }
 
+function createSecuredNextResponse(request: NextRequest) {
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const isDev = process.env.NODE_ENV === "development";
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+
+  const scriptSrc = isDev
+    ? `'self' 'nonce-${nonce}' 'unsafe-eval'`
+    : `'self' 'nonce-${nonce}'`;
+
+  const csp = [
+    "default-src 'self'",
+    `script-src ${scriptSrc}`,
+    "style-src 'self' https://cdn.jsdelivr.net",
+    "font-src 'self' https://cdn.jsdelivr.net data:",
+    "img-src 'self' data: blob:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join("; ");
+
+  response.headers.set("Content-Security-Policy", csp);
+
+  return response;
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const token = await getToken({
     req: request,
     secret: getValidatedAuthSecret(),
-    secureCookie: shouldUseSecureAuthCookie(request),
+    secureCookie: shouldUseSecureAuthCookie(),
   });
 
   const isAuthPage = pathname.startsWith("/login");
@@ -34,7 +67,7 @@ export async function proxy(request: NextRequest) {
     : null;
 
   if (isAuthPage && token && !activeUser) {
-    return clearAuthSessionCookies(NextResponse.next());
+    return clearAuthSessionCookies(createSecuredNextResponse(request));
   }
 
   if ((isProtectedRoute || isChangePasswordPage) && !activeUser) {
@@ -65,7 +98,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/change-password", request.url));
   }
 
-  return NextResponse.next();
+  return createSecuredNextResponse(request);
 }
 
 export const config = {

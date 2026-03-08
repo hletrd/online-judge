@@ -7,15 +7,18 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import type { UserRole } from "@/types";
 import {
-  clearRateLimit,
+  clearRateLimitMulti,
   getRateLimitKey,
-  isRateLimited,
-  recordRateLimitFailure,
+  getUsernameRateLimitKey,
+  isAnyKeyRateLimited,
+  recordRateLimitFailureMulti,
 } from "@/lib/security/rate-limit";
 import {
   getAuthSessionCookieName,
   getValidatedAuthSecret,
+  shouldTrustAuthHost,
   shouldUseSecureSessionCookie,
+  validateAuthUrl,
 } from "@/lib/security/env";
 import {
   getLoginEventContextFromUser,
@@ -25,6 +28,7 @@ import {
   type LoginEventRequestSummary,
   sanitizeLoginEventContext,
 } from "@/lib/auth/login-events";
+import { extractClientIp } from "@/lib/security/ip";
 
 type AuthUserRecord = {
   id: string;
@@ -73,6 +77,7 @@ function syncTokenWithUser(token: JWT, user: AuthUserRecord) {
   return token;
 }
 
+validateAuthUrl();
 const secureSessionCookie = shouldUseSecureSessionCookie();
 
 export const authConfig: NextAuthConfig = {
@@ -97,10 +102,15 @@ export const authConfig: NextAuthConfig = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, request) {
-        const rateLimitKey = getRateLimitKey("login", request.headers);
+        const ipRateLimitKey = getRateLimitKey("login", request.headers);
         const attemptedIdentifier = typeof credentials?.username === "string" ? credentials.username : null;
+        const usernameRateLimitKey = attemptedIdentifier
+          ? getUsernameRateLimitKey("login", attemptedIdentifier)
+          : null;
 
-        if (isRateLimited(rateLimitKey)) {
+        const rateLimitKeys = [ipRateLimitKey, ...(usernameRateLimitKey ? [usernameRateLimitKey] : [])];
+
+        if (isAnyKeyRateLimited(...rateLimitKeys)) {
           recordLoginEvent({
             outcome: "rate_limited",
             attemptedIdentifier,
@@ -127,7 +137,7 @@ export const authConfig: NextAuthConfig = {
         }
 
         if (!user || !user.passwordHash || !user.isActive) {
-          recordRateLimitFailure(rateLimitKey);
+          recordRateLimitFailureMulti(...rateLimitKeys);
           recordLoginEvent({
             outcome: "invalid_credentials",
             attemptedIdentifier: identifier,
@@ -139,7 +149,7 @@ export const authConfig: NextAuthConfig = {
 
         const isValid = await compare(password, user.passwordHash);
         if (!isValid) {
-          recordRateLimitFailure(rateLimitKey);
+          recordRateLimitFailureMulti(...rateLimitKeys);
           recordLoginEvent({
             outcome: "invalid_credentials",
             attemptedIdentifier: identifier,
@@ -149,7 +159,7 @@ export const authConfig: NextAuthConfig = {
           return null;
         }
 
-        clearRateLimit(rateLimitKey);
+        clearRateLimitMulti(...rateLimitKeys);
 
         return createSuccessfulLoginResponse(
           {
@@ -163,11 +173,7 @@ export const authConfig: NextAuthConfig = {
           },
           {
             attemptedIdentifier: identifier,
-            ipAddress:
-              request.headers
-                .get("x-forwarded-for")
-                ?.split(",")[0]
-                ?.trim() || request.headers.get("x-real-ip")?.trim() || null,
+            ipAddress: extractClientIp(request.headers),
             userAgent: request.headers.get("user-agent")?.trim() || null,
             requestMethod: request.method?.trim().toUpperCase() || null,
             requestPath: (() => {
@@ -182,7 +188,7 @@ export const authConfig: NextAuthConfig = {
       },
     }),
   ],
-  trustHost: true,
+  trustHost: shouldTrustAuthHost(),
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",

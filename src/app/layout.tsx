@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import { Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { headers } from "next/headers";
 import { ThemeProvider } from "@/components/theme-provider";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import "./globals.css";
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("common");
@@ -31,6 +26,8 @@ export default async function RootLayout({
 }>) {
   const locale = await getLocale();
   const messages = await getMessages();
+  const headersList = await headers();
+  const nonce = headersList.get("x-nonce") ?? undefined;
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -40,17 +37,17 @@ export default async function RootLayout({
           as="style"
           crossOrigin="anonymous"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+          integrity="sha384-GIdEBaqGN9mNkDkMkzMHW8EKUqtpPIe/sLj1X7DIrnc9uPtLROJgmuDlh+3rBw0j"
         />
       </head>
-      <body
-        className={`${geistMono.variable} antialiased`}
-      >
+      <body className="antialiased">
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
             enableSystem
             disableTransitionOnChange
+            nonce={nonce}
           >
             {children}
           </ThemeProvider>

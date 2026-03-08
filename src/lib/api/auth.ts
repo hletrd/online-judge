@@ -3,20 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { shouldUseSecureAuthCookie } from "@/lib/auth/secure-cookie";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { authUserSelect } from "@/lib/db/selects";
 import { getValidatedAuthSecret } from "@/lib/security/env";
+import { validateCsrf } from "@/lib/security/csrf";
 import type { UserRole } from "@/types";
 import { eq } from "drizzle-orm";
-
-const apiUserSelect = {
-  id: users.id,
-  role: users.role,
-  username: users.username,
-  email: users.email,
-  name: users.name,
-  className: users.className,
-  isActive: users.isActive,
-  mustChangePassword: users.mustChangePassword,
-};
 
 export function getTokenUserId(token: { id?: unknown; sub?: unknown } | null | undefined) {
   if (typeof token?.id === "string" && token.id.length > 0) {
@@ -36,7 +27,7 @@ export async function getActiveAuthUserById(userId: string | null | undefined) {
   }
 
   const user = await db
-    .select(apiUserSelect)
+    .select(authUserSelect)
     .from(users)
     .where(eq(users.id, userId))
     .then((rows) => rows[0] ?? null);
@@ -60,10 +51,14 @@ export async function getApiUser(request: NextRequest) {
   const token = await getToken({
     req: request,
     secret: getValidatedAuthSecret(),
-    secureCookie: shouldUseSecureAuthCookie(request),
+    secureCookie: shouldUseSecureAuthCookie(),
   });
 
   return getActiveAuthUserById(getTokenUserId(token));
+}
+
+export function csrfForbidden(request: NextRequest): NextResponse | null {
+  return validateCsrf(request);
 }
 
 export function unauthorized() {
