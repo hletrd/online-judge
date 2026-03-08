@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  AUTH_SECRET: ci-auth-secret-32-characters-minimum
+  AUTH_URL: http://localhost:3110
+  JUDGE_AUTH_TOKEN: ci-judge-auth-token-32-characters-minimum
+
+jobs:
+  quality:
+    name: Quality checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: "**/package-lock.json"
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@v5
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json', '**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+            ${{ runner.os }}-nextjs-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Run production build
+        run: npm run build
+
+  e2e:
+    name: End-to-end tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: quality
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: "**/package-lock.json"
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@v5
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json', '**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+            ${{ runner.os }}-nextjs-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Reset SQLite database
+        run: |
+          mkdir -p data
+          rm -f data/judge.db data/judge.db-shm data/judge.db-wal
+
+      - name: Apply database schema
+        run: npm run db:push
+
+      - name: Seed database
+        run: npm run seed
+
+      - name: Synchronize language configs
+        run: npm run languages:sync
+
+      - name: Verify backup and restore scripts
+        run: |
+          npm run backup:db -- "$RUNNER_TEMP/online-judge-backup.db"
+          npm run backup:verify -- "$RUNNER_TEMP/online-judge-backup.db" "$RUNNER_TEMP/online-judge-restore.db"
+
+      - name: Build app for Playwright webServer
+        run: npm run build
+
+      - name: Run Playwright test suite
+        run: npx playwright test
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-artifacts
+          path: |
+            .sisyphus/evidence/playwright/html-report
+            .sisyphus/evidence/playwright/artifacts
+          if-no-files-found: ignore
+          retention-days: 14
