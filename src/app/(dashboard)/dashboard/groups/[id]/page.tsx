@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
@@ -173,6 +174,10 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
     <div className="space-y-6">
       <div className="space-y-4">
         <div>
+          <Link href="/dashboard/groups" className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="size-4" />
+            {tCommon("back")}
+          </Link>
           <h2 className="text-3xl font-bold">{group.name}</h2>
           <div className="description-copy text-muted-foreground">
             {group.description || tCommon("unknown")}

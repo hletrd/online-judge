@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { apiFetch } from "@/lib/api/client";
 import { toast } from "sonner";
 
 type ProblemVisibility = "public" | "private" | "hidden";
@@ -122,7 +123,7 @@ export default function CreateProblemForm({
 
     try {
       const isEditing = mode === "edit" && initialProblem;
-      const res = await fetch(isEditing ? `/api/v1/problems/${initialProblem.id}` : "/api/v1/problems", {
+      const res = await apiFetch(isEditing ? `/api/v1/problems/${initialProblem.id}` : "/api/v1/problems", {
         method: isEditing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

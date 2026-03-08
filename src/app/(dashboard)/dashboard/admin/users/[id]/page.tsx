@@ -8,6 +8,7 @@ import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import UserActions from "../user-actions";
 
@@ -42,6 +43,10 @@ export default async function AdminUserDetailPage({
 
   return (
     <div className="space-y-4">
+      <Link href="/dashboard/admin/users" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="size-4" />
+        {tCommon("back")}
+      </Link>
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold">{user.name}</h2>
@@ -56,9 +61,6 @@ export default async function AdminUserDetailPage({
             userRole={user.role}
             triggerVariant={user.isActive ? "destructive" : "outline"}
           />
-          <Link href="/dashboard/admin/users" className="text-sm text-primary hover:underline">
-            {t("usersList")}
-          </Link>
         </div>
       </div>
 

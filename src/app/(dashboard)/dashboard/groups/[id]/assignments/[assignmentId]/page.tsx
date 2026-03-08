@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { eq } from "drizzle-orm";
 import { Badge } from "@/components/ui/badge";
@@ -163,6 +164,10 @@ export default async function GroupAssignmentDetailPage({
   if (!canViewBoard) {
     return (
       <div className="space-y-6">
+        <Link href={`/dashboard/groups/${groupId}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="size-4" />
+          {tCommon("back")}
+        </Link>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -325,6 +330,10 @@ export default async function GroupAssignmentDetailPage({
 
   return (
     <div className="space-y-6">
+      <Link href={`/dashboard/groups/${groupId}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="size-4" />
+        {tCommon("back")}
+      </Link>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">

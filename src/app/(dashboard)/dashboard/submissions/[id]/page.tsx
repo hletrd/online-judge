@@ -17,6 +17,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
   const submissionId = resolvedParams.id;
 
   const t = await getTranslations("submissions");
+  const tCommon = await getTranslations("common");
   const locale = await getLocale();
   const timeZone = await getResolvedSystemTimeZone();
   const statusLabels = {
@@ -101,6 +102,8 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
         })),
       }}
       headingLabel={t("submissionId", { id: formatSubmissionIdPrefix(submission.id) })}
+      backHref="/dashboard/submissions"
+      backLabel={tCommon("back")}
       statusLabels={statusLabels}
       submittedLabel={t("submitted")}
       scoreLabel={t("score")}

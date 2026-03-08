@@ -8,6 +8,7 @@ import { CodeEditor } from "@/components/code/code-editor";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { apiFetch } from "@/lib/api/client";
 import { useSourceDraft } from "@/hooks/use-source-draft";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 
@@ -80,7 +81,7 @@ export function ProblemSubmissionForm({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/v1/submissions", {
+      const response = await apiFetch("/api/v1/submissions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -108,9 +109,8 @@ export function ProblemSubmissionForm({
       }
 
       allowNextNavigation();
-      clearAllDrafts();
       router.push(`/dashboard/submissions/${submissionId}`);
-      router.refresh();
+      clearAllDrafts();
     } catch (error) {
       console.error("Failed to submit solution:", error);
       toast.error(tCommon("error"));

@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { CodeViewer } from "@/components/code/code-viewer";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { apiFetch } from "@/lib/api/client";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { ACTIVE_SUBMISSION_STATUSES, getSubmissionStatusVariant } from "@/lib/submissions/status";
 
@@ -41,6 +44,8 @@ type SubmissionDetailView = {
 type SubmissionDetailClientProps = {
   initialSubmission: SubmissionDetailView;
   headingLabel: string;
+  backHref: string;
+  backLabel: string;
   statusLabels: Record<string, string>;
   submittedLabel: string;
   scoreLabel: string;
@@ -145,7 +150,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
 
     async function refreshSubmission() {
       try {
-        const response = await fetch(`/api/v1/submissions/${submission.id}`, {
+        const response = await apiFetch(`/api/v1/submissions/${submission.id}`, {
           cache: "no-store",
         });
 
@@ -179,6 +184,10 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
       <div className="flex justify-between items-start gap-4">
         <div className="space-y-3">
           <div>
+            <Link href={props.backHref} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="size-4" />
+              {props.backLabel}
+            </Link>
             <h2 className="mb-2 text-2xl font-bold">{props.headingLabel}</h2>
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline">

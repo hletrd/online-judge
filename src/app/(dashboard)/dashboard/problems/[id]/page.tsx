@@ -18,6 +18,7 @@ import { ProblemSubmissionForm } from "./problem-submission-form";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ProblemDeleteButton } from "./problem-delete-button";
+import { ArrowLeft } from "lucide-react";
 
 export default async function ProblemDetailPage({
   params,
@@ -149,7 +150,13 @@ export default async function ProblemDetailPage({
       <div className="space-y-6">
         <div>
           <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
-            <h2 className="text-3xl font-bold">{problem.title}</h2>
+            <div>
+              <Link href="/dashboard/problems" className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="size-4" />
+                {tCommon("back")}
+              </Link>
+              <h2 className="text-3xl font-bold">{problem.title}</h2>
+            </div>
             {canEdit && (
               <div className="flex flex-wrap gap-2">
                 <Link href={`/dashboard/problems/${problem.id}/edit`}>
@@ -171,7 +178,6 @@ export default async function ProblemDetailPage({
             <CardTitle>{t("descriptionTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
-            {canEdit && <p className="mb-4 text-sm text-muted-foreground">{t("deleteHelpText")}</p>}
             {problem.description ? (
               <ProblemDescription
                 className="text-sm sm:text-base"

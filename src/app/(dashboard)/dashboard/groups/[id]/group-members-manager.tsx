@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api/client";
 import { DestructiveActionDialog } from "@/components/destructive-action-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -90,7 +91,7 @@ export function GroupMembersManager({
     setIsAdding(true);
 
     try {
-      const response = await fetch(`/api/v1/groups/${groupId}/members`, {
+      const response = await apiFetch(`/api/v1/groups/${groupId}/members`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -133,7 +134,7 @@ export function GroupMembersManager({
 
   async function handleRemoveMember(member: GroupMember) {
     try {
-      const response = await fetch(`/api/v1/groups/${groupId}/members/${member.userId}`, {
+      const response = await apiFetch(`/api/v1/groups/${groupId}/members/${member.userId}`, {
         method: "DELETE",
       });
       const payload = await response.json().catch(() => ({}));

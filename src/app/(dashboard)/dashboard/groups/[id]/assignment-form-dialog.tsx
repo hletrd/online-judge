@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -166,7 +167,7 @@ export default function AssignmentFormDialog({
     setIsLoading(true);
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         isEditing
           ? `/api/v1/groups/${groupId}/assignments/${initialAssignment?.id}`
           : `/api/v1/groups/${groupId}/assignments`,

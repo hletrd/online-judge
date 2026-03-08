@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api/client";
 import { DestructiveActionDialog } from "@/components/destructive-action-dialog";
 
 type AssignmentDeleteButtonProps = {
@@ -31,7 +32,7 @@ export function AssignmentDeleteButton({
 
   async function handleDelete() {
     try {
-      const response = await fetch(`/api/v1/groups/${groupId}/assignments/${assignmentId}`, {
+      const response = await apiFetch(`/api/v1/groups/${groupId}/assignments/${assignmentId}`, {
         method: "DELETE",
       });
 
