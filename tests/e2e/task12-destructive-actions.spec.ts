@@ -1,9 +1,10 @@
 import type { Page } from "@playwright/test";
 import { hash } from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import {
+  auditEvents,
   assignmentProblems,
   assignments,
   groups,
@@ -57,6 +58,8 @@ async function seedProblemDeleteFixtures(authorId: string, submissionUserId: str
   const safeProblemId = nanoid();
   const groupId = nanoid();
   const assignmentId = nanoid();
+  const blockedProblemTitle = `Task 12 Blocked Problem ${runtimeSuffix}`;
+  const safeProblemTitle = `Task 12 Safe Problem ${runtimeSuffix}`;
 
   db.insert(problems)
     .values([
@@ -66,7 +69,7 @@ async function seedProblemDeleteFixtures(authorId: string, submissionUserId: str
         description: "Blocked delete verification problem",
         memoryLimitMb: 256,
         timeLimitMs: 2000,
-        title: `Task 12 Blocked Problem ${runtimeSuffix}`,
+        title: blockedProblemTitle,
         updatedAt: new Date(),
         visibility: "private",
       },
@@ -76,7 +79,7 @@ async function seedProblemDeleteFixtures(authorId: string, submissionUserId: str
         description: "Safe delete verification problem",
         memoryLimitMb: 256,
         timeLimitMs: 2000,
-        title: `Task 12 Safe Problem ${runtimeSuffix}`,
+        title: safeProblemTitle,
         updatedAt: new Date(),
         visibility: "private",
       },
@@ -125,7 +128,7 @@ async function seedProblemDeleteFixtures(authorId: string, submissionUserId: str
     })
     .run();
 
-  return { blockedProblemId, safeProblemId };
+  return { blockedProblemId, blockedProblemTitle, safeProblemId, safeProblemTitle };
 }
 
 test("task 12 destructive flows revoke user access and guard problem deletes", async ({
@@ -151,7 +154,7 @@ test("task 12 destructive flows revoke user access and guard problem deletes", a
   }
 
   const student = await createRuntimeStudent(runtimeSuffix.replace(/[^a-zA-Z0-9]/g, ""));
-  const { blockedProblemId, safeProblemId } = await seedProblemDeleteFixtures(
+  const { blockedProblemId, safeProblemId, safeProblemTitle } = await seedProblemDeleteFixtures(
     runtimeAdmin.id,
     student.id,
     runtimeSuffix.replace(/[^a-zA-Z0-9]/g, "")
@@ -193,6 +196,14 @@ test("task 12 destructive flows revoke user access and guard problem deletes", a
     await expect(studentPage).toHaveURL(/\/login\?callbackUrl=%2Fdashboard%2Fproblems$/);
     await expect(studentPage.getByRole("button", { name: "Sign in" })).toBeVisible();
 
+    const accessDeactivatedAudit = await db.query.auditEvents.findFirst({
+      where: and(
+        eq(auditEvents.action, "user.access_deactivated"),
+        eq(auditEvents.resourceId, student.id)
+      ),
+    });
+    expect(accessDeactivatedAudit).not.toBeUndefined();
+
     const protectedApiResult = await studentPage.evaluate(async () => {
       const response = await fetch("/api/v1/problems");
       return {
@@ -216,6 +227,14 @@ test("task 12 destructive flows revoke user access and guard problem deletes", a
     await loginWithCredentials(studentPage, student.username, RUNTIME_STUDENT_PASSWORD);
     await studentPage.goto("/dashboard/problems", { waitUntil: "networkidle" });
     await expect(studentPage).toHaveURL(/\/dashboard\/problems$/);
+
+    const accessRestoredAudit = await db.query.auditEvents.findFirst({
+      where: and(
+        eq(auditEvents.action, "user.access_restored"),
+        eq(auditEvents.resourceId, student.id)
+      ),
+    });
+    expect(accessRestoredAudit).not.toBeUndefined();
   });
 
   await test.step("problem delete stays blocked when submissions and assignment links exist", async () => {
@@ -272,7 +291,7 @@ test("task 12 destructive flows revoke user access and guard problem deletes", a
     const response = await safeDeleteResponse;
     expect(response.status()).toBe(200);
     await expect(page).toHaveURL(/\/dashboard\/problems$/);
-    await expect(page.getByText("Problem deleted successfully")).toBeVisible();
+    await expect(page.getByRole("link", { name: safeProblemTitle, exact: true })).toHaveCount(0);
 
     const deletedProblemResult = await page.evaluate(async (problemId) => {
       const getResponse = await fetch(`/api/v1/problems/${problemId}`);
@@ -283,6 +302,15 @@ test("task 12 destructive flows revoke user access and guard problem deletes", a
     }, safeProblemId);
 
     expect(deletedProblemResult.status).toBe(404);
+
+    const problemDeletedAudit = await db.query.auditEvents.findFirst({
+      where: and(
+        eq(auditEvents.action, "problem.deleted"),
+        eq(auditEvents.resourceId, safeProblemId)
+      ),
+    });
+    expect(problemDeletedAudit?.resourceLabel).toBe(safeProblemTitle);
+
     await captureEvidence(page, testInfo, "task12-problem-delete-safe");
   });
 
