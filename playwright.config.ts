@@ -1,8 +1,8 @@
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
-const localServerUrl = "http://127.0.0.1:3110";
 const localBaseUrl = "http://localhost:3110";
+const localServerUrl = localBaseUrl;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? localBaseUrl;
 const evidenceRoot = path.join(".sisyphus", "evidence", "playwright");
 
@@ -37,13 +37,14 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {
-        command: "npm run start -- --hostname 127.0.0.1 --port 3110",
+        command: "npm run db:push && npm run start -- --hostname localhost --port 3110",
         env: {
           ...process.env,
           AUTH_URL: localBaseUrl,
+          AUTH_TRUST_HOST: "true",
           JUDGE_AUTH_TOKEN: process.env.JUDGE_AUTH_TOKEN ?? "playwright-local-token-for-smoke",
         },
-        reuseExistingServer: true,
+        reuseExistingServer: false,
         timeout: 120_000,
         url: localServerUrl,
       },

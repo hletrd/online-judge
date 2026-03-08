@@ -270,6 +270,7 @@ test("group assignment invariants keep access rows clean and require assignment 
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
         },
         body: JSON.stringify({
           problemId,
@@ -533,6 +534,9 @@ test("group assignment management supports member add, assignment CRUD, and stud
     const blockedGroupDelete = await adminPage.evaluate(async (groupId) => {
       const response = await fetch(`/api/v1/groups/${groupId}`, {
         method: "DELETE",
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+        },
       });
 
       return {

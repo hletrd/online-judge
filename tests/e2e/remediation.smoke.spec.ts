@@ -84,7 +84,10 @@ test("@smoke preserves remediation login, problem, submission, and group flows",
     const lockedPatch = await page.evaluate(async (id) => {
       const response = await fetch(`/api/v1/problems/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+        },
         body: JSON.stringify({
           testCases: [{ input: "1\n", expectedOutput: "1\n", isVisible: false }],
         }),

@@ -31,6 +31,7 @@ async function createProblem(page: Page, title: string) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
       },
       body: JSON.stringify({
         description: "Task 7 unsaved-changes browser history verification.",

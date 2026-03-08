@@ -3,7 +3,7 @@ import { hash } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "../../../src/lib/db";
-import { users } from "../../../src/lib/db/schema";
+import { submissions, users } from "../../../src/lib/db/schema";
 
 const DEFAULT_PLAYWRIGHT_BASE_URL = "http://localhost:3110";
 const RUNTIME_ADMIN_EMAIL = "pwadmin_runtime@example.com";
@@ -24,6 +24,8 @@ export async function ensureRuntimeAdminUser() {
   });
 
   if (existingUser) {
+    db.delete(submissions).where(eq(submissions.userId, existingUser.id)).run();
+
     db.update(users)
       .set({
         email: RUNTIME_ADMIN_EMAIL,
