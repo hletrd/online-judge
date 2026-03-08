@@ -46,5 +46,15 @@ export function getJudgeAuthToken() {
 }
 
 export function shouldDisableCustomSeccomp() {
-  return normalizeBooleanEnv(process.env.JUDGE_DISABLE_CUSTOM_SECCOMP);
+  const disabled = normalizeBooleanEnv(process.env.JUDGE_DISABLE_CUSTOM_SECCOMP);
+
+  if (disabled) {
+    console.warn(
+      "WARNING: JUDGE_DISABLE_CUSTOM_SECCOMP is set. " +
+      "Custom seccomp profile is disabled. " +
+      "This MUST NOT be used in production environments."
+    );
+  }
+
+  return disabled;
 }

@@ -6,6 +6,7 @@ import { nanoid } from "nanoid";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { isJudgeAuthorized } from "@/lib/judge/auth";
 import { isSubmissionStatus } from "@/lib/security/constants";
+import { judgeStatusReportSchema } from "@/lib/validators/api";
 
 const IN_PROGRESS_STATUSES = new Set(["queued", "judging"]);
 
@@ -14,6 +15,7 @@ type ClaimedSubmissionRow = {
   userId: string;
   problemId: string;
   assignmentId: string | null;
+  claimToken: string | null;
   language: string;
   sourceCode: string;
   status: string | null;
@@ -31,11 +33,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const claimToken = nanoid();
+    const claimCreatedAt = new Date();
+
     const claimed = sqlite
       .prepare(
         `
           UPDATE submissions
-          SET status = 'queued'
+          SET
+            status = 'queued',
+            judge_claim_token = @claimToken,
+            judge_claimed_at = @claimCreatedAt
           WHERE id = (
             SELECT id
             FROM submissions
@@ -48,6 +56,7 @@ export async function GET(request: NextRequest) {
             user_id AS userId,
             problem_id AS problemId,
             assignment_id AS assignmentId,
+            judge_claim_token AS claimToken,
             language,
             source_code AS sourceCode,
             status,
@@ -59,7 +68,7 @@ export async function GET(request: NextRequest) {
             submitted_at AS submittedAt
         `
       )
-      .get() as ClaimedSubmissionRow | undefined;
+      .get({ claimToken, claimCreatedAt }) as ClaimedSubmissionRow | undefined;
 
     if (!claimed) {
       return NextResponse.json({ data: null });
@@ -74,6 +83,7 @@ export async function GET(request: NextRequest) {
       summary: `Claimed submission ${claimed.id} for judging`,
       details: {
         assignmentId: claimed.assignmentId,
+        claimTokenPresent: Boolean(claimed.claimToken),
         language: claimed.language,
         problemId: claimed.problemId,
         status: claimed.status,
@@ -120,17 +130,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { submissionId, status, compileOutput, results } = body;
+    const parsed = judgeStatusReportSchema.safeParse(await request.json());
 
-    if (!submissionId || typeof submissionId !== "string") {
-      return NextResponse.json({ error: "submissionId is required" }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "invalidJudgeResult" },
+        { status: 400 }
+      );
     }
-    if (!status || typeof status !== "string") {
-      return NextResponse.json({ error: "status is required" }, { status: 400 });
-    }
+
+    const { submissionId, claimToken, status, compileOutput, results } = parsed.data;
+
     if (!isSubmissionStatus(status)) {
-      return NextResponse.json({ error: "Invalid submission status" }, { status: 400 });
+      return NextResponse.json({ error: "invalidSubmissionStatus" }, { status: 400 });
+    }
+
+    if (results?.some((result) => !isSubmissionStatus(result.status))) {
+      return NextResponse.json({ error: "invalidJudgeResult" }, { status: 400 });
     }
 
     const submission = await db.query.submissions.findFirst({
@@ -138,7 +154,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (!submission) {
-      return NextResponse.json({ error: "Submission not found" }, { status: 404 });
+      return NextResponse.json({ error: "submissionNotFound" }, { status: 404 });
+    }
+
+    if (!submission.judgeClaimToken || submission.judgeClaimToken !== claimToken) {
+      return NextResponse.json({ error: "invalidJudgeClaim" }, { status: 403 });
     }
 
     if (IN_PROGRESS_STATUSES.has(status)) {
@@ -146,6 +166,7 @@ export async function POST(request: NextRequest) {
         .update(submissions)
         .set({
           status,
+          judgeClaimedAt: submission.judgeClaimedAt ?? new Date(),
         })
         .where(eq(submissions.id, submissionId));
 
@@ -161,6 +182,7 @@ export async function POST(request: NextRequest) {
         resourceLabel: submission.id,
         summary: `Marked submission ${submission.id} as ${status}`,
         details: {
+          claimTokenPresent: true,
           previousStatus: submission.status,
           status,
         },
@@ -194,6 +216,8 @@ export async function POST(request: NextRequest) {
       .update(submissions)
       .set({
         status,
+        judgeClaimToken: null,
+        judgeClaimedAt: null,
         compileOutput: compileOutput ?? null,
         score,
         executionTimeMs: maxExecutionTimeMs,
@@ -237,6 +261,7 @@ export async function POST(request: NextRequest) {
       resourceLabel: submission.id,
       summary: `Recorded final verdict ${status} for submission ${submission.id}`,
       details: {
+        claimTokenCleared: true,
         compileOutputPresent: Boolean(compileOutput),
         previousStatus: submission.status,
         resultCount: Array.isArray(results) ? results.length : 0,

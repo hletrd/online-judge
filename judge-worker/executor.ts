@@ -24,6 +24,7 @@ const SECCOMP_INIT_ERROR_SNIPPETS = [
 
 export interface Submission {
   id: string;
+  claimToken: string;
   language: Language;
   sourceCode: string;
   timeLimitMs: number;
@@ -50,6 +51,7 @@ type DockerCommandOptions = {
   input?: string;
   timeoutMs: number;
   memoryLimitMb: number;
+  readOnlyWorkspace?: boolean;
 };
 
 type DockerCommandResult = {
@@ -155,6 +157,10 @@ async function runDockerCommandOnce(
   executionOptions: DockerExecutionOptions
 ): Promise<DockerCommandResult> {
   const containerName = `oj-${randomUUID()}`;
+  const workspaceMount = options.readOnlyWorkspace
+    ? `${options.workspaceDir}:/workspace:ro`
+    : `${options.workspaceDir}:/workspace`;
+  const pidsLimit = options.readOnlyWorkspace ? "4" : "16";
   const dockerArgs = [
     "run",
     "--name",
@@ -166,12 +172,18 @@ async function runDockerCommandOnce(
     "--cpus",
     EXECUTION_CPU_LIMIT,
     "--pids-limit",
-    "16",
+    pidsLimit,
     "--read-only",
     "--tmpfs",
     CONTAINER_TMPFS,
+    "--cap-drop=ALL",
+    "--security-opt=no-new-privileges",
+    "--ulimit",
+    "fsize=52428800:52428800",
+    "--ulimit",
+    "nofile=64:64",
     "-v",
-    `${options.workspaceDir}:/workspace`,
+    workspaceMount,
     "-w",
     "/workspace",
   ];
@@ -256,17 +268,17 @@ async function runDockerCommand(options: DockerCommandOptions): Promise<DockerCo
 export async function executeSubmission(submission: Submission): Promise<void> {
   const config = LANGUAGE_CONFIGS[submission.language];
   if (!config) {
-    await reportResult(submission.id, "compile_error", "Unsupported language", []);
+    await reportResult(submission.id, submission.claimToken, "compile_error", "Unsupported language", []);
     return;
   }
 
-  await reportSubmissionStatus(submission.id, "judging");
+  await reportSubmissionStatus(submission.id, submission.claimToken, "judging");
 
   const workspaceDir = await mkdtemp(path.join(tmpdir(), "online-judge-"));
   let compileOutput = "";
 
   try {
-    await chmod(workspaceDir, 0o777);
+    await chmod(workspaceDir, 0o755);
     await writeFile(
       getWorkspaceSourcePath(workspaceDir, config.extension),
       submission.sourceCode,
@@ -285,13 +297,14 @@ export async function executeSubmission(submission: Submission): Promise<void> {
       compileOutput = [compilation.stdout, compilation.stderr].filter(Boolean).join("\n").trim();
 
       if (compilation.timedOut) {
-        await reportResult(submission.id, "compile_error", "Compilation timed out", []);
+        await reportResult(submission.id, submission.claimToken, "compile_error", "Compilation timed out", []);
         return;
       }
 
       if (compilation.oomKilled || compilation.exitCode !== 0) {
         await reportResult(
           submission.id,
+          submission.claimToken,
           "compile_error",
           compileOutput || "Compilation failed",
           []
@@ -310,6 +323,7 @@ export async function executeSubmission(submission: Submission): Promise<void> {
         input: testCase.input,
         timeoutMs: Math.max(MIN_TIMEOUT_MS, submission.timeLimitMs),
         memoryLimitMb: submission.memoryLimitMb,
+        readOnlyWorkspace: true,
       });
 
       let status = "accepted";
@@ -337,11 +351,18 @@ export async function executeSubmission(submission: Submission): Promise<void> {
       }
     }
 
-    await reportResult(submission.id, getFinalSubmissionStatus(results), compileOutput, results);
+    await reportResult(
+      submission.id,
+      submission.claimToken,
+      getFinalSubmissionStatus(results),
+      compileOutput,
+      results
+    );
   } catch (error) {
     console.error(`Failed to execute submission ${submission.id}:`, error);
     await reportResult(
       submission.id,
+      submission.claimToken,
       "runtime_error",
       error instanceof Error ? error.message : "Judge execution failed",
       []
@@ -353,6 +374,7 @@ export async function executeSubmission(submission: Submission): Promise<void> {
 
 async function reportResult(
   submissionId: string,
+  claimToken: string,
   status: string,
   compileOutput: string,
   results: TestResult[]
@@ -367,7 +389,7 @@ async function reportResult(
         Authorization: `Bearer ${authToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ submissionId, status, compileOutput, results }),
+      body: JSON.stringify({ submissionId, claimToken, status, compileOutput, results }),
     });
 
     if (!response.ok) {
@@ -379,7 +401,7 @@ async function reportResult(
   }
 }
 
-async function reportSubmissionStatus(submissionId: string, status: string) {
+async function reportSubmissionStatus(submissionId: string, claimToken: string, status: string) {
   const pollUrl = getJudgePollUrl();
   const authToken = getJudgeAuthToken();
 
@@ -390,7 +412,7 @@ async function reportSubmissionStatus(submissionId: string, status: string) {
         Authorization: `Bearer ${authToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ submissionId, status }),
+      body: JSON.stringify({ submissionId, claimToken, status }),
     });
 
     if (!response.ok) {

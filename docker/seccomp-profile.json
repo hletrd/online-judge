@@ -21,7 +21,7 @@
         "pread64", "pwrite64",
         "getrandom", "rseq",
         "prlimit64", "sysinfo",
-        "execve", "wait4", "clone", "clone3", "fork", "vfork",
+        "execve", "wait4", "clone",
         "pipe2", "mmap2"
       ],
       "action": "SCMP_ACT_ALLOW"
