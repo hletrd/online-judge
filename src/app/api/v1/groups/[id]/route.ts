@@ -95,6 +95,10 @@ export async function PATCH(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
+    const rateLimitResponse = checkApiRateLimit(request, "groups:update");
+    if (rateLimitResponse) return rateLimitResponse;
+    recordApiRateHit(request, "groups:update");
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 
@@ -156,6 +160,10 @@ export async function DELETE(
   try {
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
+
+    const rateLimitResponse = checkApiRateLimit(request, "groups:delete");
+    if (rateLimitResponse) return rateLimitResponse;
+    recordApiRateHit(request, "groups:delete");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();

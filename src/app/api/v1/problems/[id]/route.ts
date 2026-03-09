@@ -52,6 +52,10 @@ export async function PATCH(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
+    const rateLimitResponse = checkApiRateLimit(request, "problems:update");
+    if (rateLimitResponse) return rateLimitResponse;
+    recordApiRateHit(request, "problems:update");
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 

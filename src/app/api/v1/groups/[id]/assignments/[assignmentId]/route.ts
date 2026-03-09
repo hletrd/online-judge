@@ -59,6 +59,10 @@ export async function PATCH(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
+    const rateLimitResponse = checkApiRateLimit(request, "assignments:update");
+    if (rateLimitResponse) return rateLimitResponse;
+    recordApiRateHit(request, "assignments:update");
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 
@@ -208,6 +212,10 @@ export async function DELETE(
   try {
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
+
+    const rateLimitResponse = checkApiRateLimit(request, "assignments:delete");
+    if (rateLimitResponse) return rateLimitResponse;
+    recordApiRateHit(request, "assignments:delete");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();

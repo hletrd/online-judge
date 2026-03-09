@@ -53,6 +53,10 @@ export async function POST(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
+    const rateLimitResponse = checkApiRateLimit(request, "members:add");
+    if (rateLimitResponse) return rateLimitResponse;
+    recordApiRateHit(request, "members:add");
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 

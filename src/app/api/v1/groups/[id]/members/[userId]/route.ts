@@ -16,6 +16,10 @@ export async function DELETE(
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
 
+    const rateLimitResponse = checkApiRateLimit(request, "members:remove");
+    if (rateLimitResponse) return rateLimitResponse;
+    recordApiRateHit(request, "members:remove");
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 
