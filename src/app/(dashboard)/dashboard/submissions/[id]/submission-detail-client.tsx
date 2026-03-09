@@ -42,6 +42,7 @@ type SubmissionDetailView = {
 };
 
 type SubmissionDetailClientProps = {
+  showDetailedResults: boolean;
   initialSubmission: SubmissionDetailView;
   headingLabel: string;
   backHref: string;
@@ -70,6 +71,7 @@ type SubmissionDetailClientProps = {
     time: string;
     memory: string;
   };
+  detailedResultsHiddenLabel: string;
 };
 
 function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailView {
@@ -189,7 +191,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
               {props.backLabel}
             </Link>
             <h2 className="mb-2 text-2xl font-bold">{props.headingLabel}</h2>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2" role="status" aria-live="polite">
               <Badge variant="outline">
                 {props.userLabel}: {submission.user?.name ?? "-"}
               </Badge>
@@ -241,63 +243,73 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
         </CardContent>
       </Card>
 
-      {submission.compileOutput && (
+      {props.showDetailedResults ? (
+        <>
+          {submission.compileOutput && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{props.compileOutputLabel}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CodeViewer
+                  ariaLabel={props.compileOutputLabel}
+                  language="plaintext"
+                  minHeight={140}
+                  tone="danger"
+                  value={submission.compileOutput}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{props.testCaseResultsLabel}</CardTitle>
+              <CardDescription>{props.testCaseResultsDescription}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{props.testCaseTableLabels.testCase}</TableHead>
+                    <TableHead>{props.testCaseTableLabels.status}</TableHead>
+                    <TableHead>{props.testCaseTableLabels.time}</TableHead>
+                    <TableHead>{props.testCaseTableLabels.memory}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedResults.map((result, index) => (
+                    <TableRow key={result.id}>
+                      <TableCell>#{index + 1}</TableCell>
+                      <TableCell>
+                        <Badge variant={getSubmissionStatusVariant(result.status)}>
+                          {props.statusLabels[result.status] ?? result.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{result.executionTimeMs !== null ? result.executionTimeMs : "-"}</TableCell>
+                      <TableCell>{result.memoryUsedKb !== null ? result.memoryUsedKb : "-"}</TableCell>
+                    </TableRow>
+                  ))}
+
+                  {sortedResults.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        {props.noResultsLabel}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
         <Card>
-          <CardHeader>
-            <CardTitle>{props.compileOutputLabel}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CodeViewer
-              ariaLabel={props.compileOutputLabel}
-              language="plaintext"
-              minHeight={140}
-              tone="danger"
-              value={submission.compileOutput}
-            />
+          <CardContent className="py-6">
+            <p className="text-center text-muted-foreground">{props.detailedResultsHiddenLabel}</p>
           </CardContent>
         </Card>
       )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{props.testCaseResultsLabel}</CardTitle>
-          <CardDescription>{props.testCaseResultsDescription}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{props.testCaseTableLabels.testCase}</TableHead>
-                <TableHead>{props.testCaseTableLabels.status}</TableHead>
-                <TableHead>{props.testCaseTableLabels.time}</TableHead>
-                <TableHead>{props.testCaseTableLabels.memory}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedResults.map((result, index) => (
-                <TableRow key={result.id}>
-                  <TableCell>#{index + 1}</TableCell>
-                  <TableCell>
-                    <Badge variant={getSubmissionStatusVariant(result.status)}>
-                      {props.statusLabels[result.status] ?? result.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{result.executionTimeMs !== null ? result.executionTimeMs : "-"}</TableCell>
-                  <TableCell>{result.memoryUsedKb !== null ? result.memoryUsedKb : "-"}</TableCell>
-                </TableRow>
-              ))}
-
-              {sortedResults.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    {props.noResultsLabel}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
     </div>
   );
 }
