@@ -27,8 +27,7 @@ export default async function GroupsPage() {
   
   let myGroups;
 
-  if (session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "instructor") {
-    // Admins and instructors see groups they created or all groups
+  if (session.user.role === "admin" || session.user.role === "super_admin") {
     myGroups = await db
       .select({
         id: groups.id,
@@ -41,6 +40,21 @@ export default async function GroupsPage() {
       })
       .from(groups)
       .leftJoin(users, eq(groups.instructorId, users.id));
+  } else if (session.user.role === "instructor") {
+    // Instructors should only see groups they own
+    myGroups = await db
+      .select({
+        id: groups.id,
+        name: groups.name,
+        description: groups.description,
+        isArchived: groups.isArchived,
+        instructor: {
+          name: users.name,
+        }
+      })
+      .from(groups)
+      .leftJoin(users, eq(groups.instructorId, users.id))
+      .where(eq(groups.instructorId, session.user.id));
   } else {
     // Students see groups they are enrolled in
     const userEnrollments = await db

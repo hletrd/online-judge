@@ -27,6 +27,7 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - Assignment status boards now surface basic score distribution stats directly in the UI, including mean, median, submitted count, and perfect-score count
 - Problem editing now supports an admin-only test-case unlock path after submissions exist, with the override explicitly toggled in the UI and carried through the PATCH route
 - Assignment editing now supports an admin-only unlock path for linked problems after submissions exist, with explicit UI/audit signaling for the override
+- The groups index now scopes instructors to their own groups in both the API and the server-rendered page, removing the earlier SSR mismatch that showed every group
 
 ## Still open
 
