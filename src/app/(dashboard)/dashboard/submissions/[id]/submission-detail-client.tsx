@@ -23,6 +23,7 @@ type SubmissionResultView = {
 
 type SubmissionDetailView = {
   id: string;
+  assignmentId: string | null;
   language: string;
   status: string;
   sourceCode: string;
@@ -108,6 +109,7 @@ function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailVie
 
   return {
     id: String(data.id),
+    assignmentId: typeof data.assignmentId === "string" ? data.assignmentId : null,
     language: String(data.language),
     status: String(data.status),
     sourceCode: String(data.sourceCode),
@@ -135,6 +137,12 @@ function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailVie
 export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
   const [submission, setSubmission] = useState(props.initialSubmission);
   const isLive = ACTIVE_SUBMISSION_STATUSES.has(submission.status);
+  const problemHref =
+    submission.problem === null
+      ? null
+      : submission.assignmentId
+        ? `/dashboard/problems/${submission.problem.id}?assignmentId=${submission.assignmentId}`
+        : `/dashboard/problems/${submission.problem.id}`;
   const sortedResults = useMemo(
     () =>
       [...submission.results].sort(
@@ -195,9 +203,17 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
               <Badge variant="outline">
                 {props.userLabel}: {submission.user?.name ?? "-"}
               </Badge>
-              <Badge variant="outline">
-                {props.tableProblemLabel}: {submission.problem?.title ?? "-"}
-              </Badge>
+              {problemHref ? (
+                <Link href={problemHref} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md">
+                  <Badge variant="outline" className="cursor-pointer transition-opacity hover:opacity-80">
+                    {props.tableProblemLabel}: {submission.problem?.title ?? "-"}
+                  </Badge>
+                </Link>
+              ) : (
+                <Badge variant="outline">
+                  {props.tableProblemLabel}: {submission.problem?.title ?? "-"}
+                </Badge>
+              )}
               <Badge variant="outline">
                 {props.tableLanguageLabel}: {submission.language}
               </Badge>

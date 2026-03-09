@@ -70,6 +70,7 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
     <SubmissionDetailClient
       initialSubmission={{
         id: submission.id,
+        assignmentId: submission.assignmentId ?? null,
         language: submission.language,
         status: submission.status ?? "pending",
         sourceCode: submission.sourceCode,
