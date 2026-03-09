@@ -59,10 +59,11 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
 
   const targetUser = await db.query.users.findFirst({
     where: eq(users.id, userId),
+    columns: { id: true, username: true, role: true },
   });
 
   if (!targetUser) return { success: false, error: "userNotFound" };
-  
+
   if (targetUser.role === "super_admin" && !isActive) {
     return { success: false, error: "cannotDeactivateSuperAdmin" };
   }
@@ -131,6 +132,7 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
 
     const existing = await db.query.users.findFirst({
       where: eq(users.username, data.username),
+      columns: { id: true },
     });
 
     if (existing && existing.id !== userId) {
@@ -140,6 +142,7 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
     if (normalizedEmail) {
       const existingEmail = await db.query.users.findFirst({
         where: eq(users.email, normalizedEmail),
+        columns: { id: true },
       });
 
       if (existingEmail && existingEmail.id !== userId) {
@@ -149,6 +152,7 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
 
     const targetUser = await db.query.users.findFirst({
       where: eq(users.id, userId),
+      columns: { id: true, username: true, role: true },
     });
 
     if (!targetUser) return { success: false, error: "userNotFound" };
@@ -244,6 +248,7 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
 
     const existing = await db.query.users.findFirst({
       where: eq(users.username, data.username),
+      columns: { id: true },
     });
 
     if (existing) {
@@ -253,6 +258,7 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
     if (normalizedEmail) {
       const existingEmail = await db.query.users.findFirst({
         where: eq(users.email, normalizedEmail),
+        columns: { id: true },
       });
 
       if (existingEmail) {

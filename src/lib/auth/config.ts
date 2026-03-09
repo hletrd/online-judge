@@ -274,6 +274,17 @@ export const authConfig: NextAuthConfig = {
 
       const freshUser = await db.query.users.findFirst({
         where: eq(users.id, userId),
+        columns: {
+          id: true,
+          username: true,
+          email: true,
+          name: true,
+          className: true,
+          role: true,
+          isActive: true,
+          mustChangePassword: true,
+          tokenInvalidatedAt: true,
+        },
       });
 
       if (

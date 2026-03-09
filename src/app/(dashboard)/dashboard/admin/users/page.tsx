@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { safeUserSelect } from "@/lib/db/selects";
 import { desc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -36,7 +37,7 @@ export default async function UserManagementPage() {
     admin: tCommon("roles.admin"),
     super_admin: tCommon("roles.super_admin"),
   };
-  const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
+  const allUsers = await db.select(safeUserSelect).from(users).orderBy(desc(users.createdAt));
 
   return (
     <div>

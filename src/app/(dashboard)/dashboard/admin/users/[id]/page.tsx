@@ -24,6 +24,16 @@ export default async function AdminUserDetailPage({
   const resolvedParams = await params;
   const user = await db.query.users.findFirst({
     where: eq(users.id, resolvedParams.id),
+    columns: {
+      id: true,
+      username: true,
+      name: true,
+      email: true,
+      className: true,
+      role: true,
+      isActive: true,
+      createdAt: true,
+    },
   });
 
   if (!user) {

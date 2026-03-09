@@ -14,6 +14,7 @@ import {
 } from "@/lib/security/constants";
 import { getPasswordValidationError } from "@/lib/security/password";
 import { userCreateSchema } from "@/lib/validators/profile";
+import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -57,6 +58,10 @@ export async function POST(request: NextRequest) {
   try {
     const csrfError = csrfForbidden(request);
     if (csrfError) return csrfError;
+
+    const rateLimitResponse = checkApiRateLimit(request, "users:create");
+    if (rateLimitResponse) return rateLimitResponse;
+    recordApiRateHit(request, "users:create");
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();

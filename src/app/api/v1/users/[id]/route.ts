@@ -12,6 +12,7 @@ import {
 import { safeUserSelect } from "@/lib/db/selects";
 import { getPasswordValidationError } from "@/lib/security/password";
 import { updateProfileSchema, adminUpdateUserSchema } from "@/lib/validators/profile";
+import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
 
 export async function GET(
   request: NextRequest,
@@ -104,6 +105,7 @@ export async function PATCH(
     if (username !== undefined && isAdminActor) {
       const existingUsername = await db.query.users.findFirst({
         where: eq(users.username, username),
+        columns: { id: true },
       });
 
       if (existingUsername && existingUsername.id !== id) {
@@ -114,6 +116,7 @@ export async function PATCH(
     if (isAdminActor && email !== undefined && normalizedEmail) {
       const existingEmail = await db.query.users.findFirst({
         where: eq(users.email, normalizedEmail),
+        columns: { id: true },
       });
 
       if (existingEmail && existingEmail.id !== id) {
