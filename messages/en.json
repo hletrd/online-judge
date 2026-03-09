@@ -153,6 +153,8 @@
     "tooManyTestCases": "You can add up to 100 test cases per problem",
     "testCasesLocked": "Test cases cannot be changed after submissions exist for this problem",
     "testCasesLockedNotice": "Test cases are locked because this problem already has submissions. You can still edit the statement and limits.",
+    "testCasesUnlockForAdmin": "Unlock test cases",
+    "testCasesUnlockWarning": "Admin override is enabled. Changing test cases can invalidate earlier submission results.",
     "createError": "Failed to create problem",
     "updateError": "Failed to update problem",
     "timeLimitValue": "{value} ms",

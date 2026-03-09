@@ -25,6 +25,7 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - Submission status badges now carry icons as well as colors across the main student/instructor views, improving accessibility for color-blind users
 - Assignment management now filters manageable problems at the SQL layer for non-admin users instead of materializing the full problems table before applying visibility/group-access checks
 - Assignment status boards now surface basic score distribution stats directly in the UI, including mean, median, submitted count, and perfect-score count
+- Problem editing now supports an admin-only test-case unlock path after submissions exist, with the override explicitly toggled in the UI and carried through the PATCH route
 
 ## Still open
 

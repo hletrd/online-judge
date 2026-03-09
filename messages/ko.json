@@ -153,6 +153,8 @@
     "tooManyTestCases": "문제당 테스트 케이스는 최대 100개까지 추가할 수 있습니다",
     "testCasesLocked": "이 문제에 제출 내역이 이미 있어 테스트 케이스를 변경할 수 없습니다",
     "testCasesLockedNotice": "이 문제에는 이미 제출 내역이 있어 테스트 케이스가 잠겨 있습니다. 문제 설명과 제한은 계속 수정할 수 있습니다.",
+    "testCasesUnlockForAdmin": "테스트 케이스 잠금 해제",
+    "testCasesUnlockWarning": "관리자 재정의가 활성화되었습니다. 테스트 케이스를 변경하면 기존 제출 결과가 더 이상 일치하지 않을 수 있습니다.",
     "createError": "문제 생성에 실패했습니다",
     "updateError": "문제 수정에 실패했습니다",
     "timeLimitValue": "{value} ms",

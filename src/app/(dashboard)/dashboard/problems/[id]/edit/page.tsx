@@ -28,6 +28,8 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
     problem.authorId === session.user.id ||
     session.user.role === "admin" ||
     session.user.role === "super_admin";
+  const canOverrideTestCases =
+    session.user.role === "admin" || session.user.role === "super_admin";
 
   if (!canEdit) {
     redirect(`/dashboard/problems/${problem.id}`);
@@ -75,6 +77,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
               })),
             }}
             testCasesLocked={hasSubmissions}
+            allowTestCaseOverride={hasSubmissions && canOverrideTestCases}
           />
         </CardContent>
       </Card>

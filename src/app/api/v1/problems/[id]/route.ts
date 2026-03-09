@@ -67,6 +67,7 @@ export async function PATCH(
     if (!isAuthor && !isAdmin(user.role)) return forbidden();
 
     const body = await request.json();
+    const allowLockedTestCases = Boolean(body.allowLockedTestCases);
     const existingTestCases = await db.query.testCases.findMany({
       where: eq(testCases.problemId, id),
     });
@@ -77,7 +78,7 @@ export async function PATCH(
       })
     );
 
-    if (body.testCases !== undefined && hasExistingSubmissions) {
+    if (body.testCases !== undefined && hasExistingSubmissions && !(allowLockedTestCases && isAdmin(user.role))) {
       return NextResponse.json({ error: "testCasesLocked" }, { status: 409 });
     }
 
@@ -128,6 +129,7 @@ export async function PATCH(
           timeLimitMs: updated.timeLimitMs,
           memoryLimitMb: updated.memoryLimitMb,
           testCasesChanged: body.testCases !== undefined,
+          testCaseOverrideUsed: allowLockedTestCases && isAdmin(user.role),
           testCaseCount: updated.testCases.length,
         },
         request,

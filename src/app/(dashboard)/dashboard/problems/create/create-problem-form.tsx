@@ -34,6 +34,7 @@ type CreateProblemFormProps = {
   mode?: "create" | "edit";
   initialProblem?: ProblemFormInitialData;
   testCasesLocked?: boolean;
+  allowTestCaseOverride?: boolean;
 };
 
 function createEmptyTestCase(): ProblemTestCaseDraft {
@@ -48,6 +49,7 @@ export default function CreateProblemForm({
   mode = "create",
   initialProblem,
   testCasesLocked = false,
+  allowTestCaseOverride = false,
 }: CreateProblemFormProps) {
   const t = useTranslations("problems");
   const tCommon = useTranslations("common");
@@ -64,9 +66,11 @@ export default function CreateProblemForm({
   const [timeLimitMs, setTimeLimitMs] = useState(initialProblem?.timeLimitMs ?? 2000);
   const [memoryLimitMb, setMemoryLimitMb] = useState(initialProblem?.memoryLimitMb ?? 256);
   const [visibility, setVisibility] = useState<ProblemVisibility>(initialProblem?.visibility ?? "private");
+  const [testCaseOverrideEnabled, setTestCaseOverrideEnabled] = useState(false);
   const [testCases, setTestCases] = useState<ProblemTestCaseDraft[]>(
     initialProblem?.testCases.length ? initialProblem.testCases : []
   );
+  const areTestCasesEditable = !testCasesLocked || testCaseOverrideEnabled;
 
   function getErrorMessage(error: unknown) {
     if (!(error instanceof Error)) {
@@ -132,7 +136,8 @@ export default function CreateProblemForm({
           timeLimitMs,
           memoryLimitMb,
           visibility,
-          ...(testCasesLocked ? {} : { testCases }),
+          ...(areTestCasesEditable ? { testCases } : {}),
+          ...(testCaseOverrideEnabled ? { allowLockedTestCases: true } : {}),
         }),
       });
 
@@ -223,18 +228,34 @@ export default function CreateProblemForm({
             <h3 className="text-base font-semibold">{t("testCasesTitle")}</h3>
             <p className="text-sm text-muted-foreground">{t("testCasesDescription")}</p>
             {testCasesLocked && (
-              <p className="text-sm text-amber-600">{t("testCasesLockedNotice")}</p>
+              <p className="text-sm text-amber-600">
+                {testCaseOverrideEnabled && allowTestCaseOverride
+                  ? t("testCasesUnlockWarning")
+                  : t("testCasesLockedNotice")}
+              </p>
             )}
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={addTestCase}
-            disabled={isLoading || testCasesLocked}
-          >
-            <Plus />
-            {t("addTestCase")}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {allowTestCaseOverride && testCasesLocked && (
+              <Button
+                type="button"
+                variant={testCaseOverrideEnabled ? "secondary" : "outline"}
+                onClick={() => setTestCaseOverrideEnabled((current) => !current)}
+                disabled={isLoading}
+              >
+                {t("testCasesUnlockForAdmin")}
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addTestCase}
+              disabled={isLoading || !areTestCasesEditable}
+            >
+              <Plus />
+              {t("addTestCase")}
+            </Button>
+          </div>
         </div>
 
         {testCases.length === 0 ? (
@@ -250,7 +271,7 @@ export default function CreateProblemForm({
                     variant="ghost"
                     size="sm"
                     onClick={() => removeTestCase(index)}
-                    disabled={isLoading || testCasesLocked}
+                    disabled={isLoading || !areTestCasesEditable}
                   >
                     <Trash2 />
                     {t("removeTestCase")}
@@ -265,7 +286,7 @@ export default function CreateProblemForm({
                       value={testCase.input}
                       onChange={(event) => updateTestCase(index, { input: event.target.value })}
                       className="min-h-[140px] font-mono text-sm"
-                      disabled={isLoading || testCasesLocked}
+                      disabled={isLoading || !areTestCasesEditable}
                     />
                   </div>
 
@@ -278,7 +299,7 @@ export default function CreateProblemForm({
                         updateTestCase(index, { expectedOutput: event.target.value })
                       }
                       className="min-h-[140px] font-mono text-sm"
-                      disabled={isLoading || testCasesLocked}
+                      disabled={isLoading || !areTestCasesEditable}
                     />
                   </div>
                 </div>
@@ -288,7 +309,7 @@ export default function CreateProblemForm({
                     type="checkbox"
                     checked={testCase.isVisible}
                     onChange={(event) => updateTestCase(index, { isVisible: event.target.checked })}
-                    disabled={isLoading || testCasesLocked}
+                    disabled={isLoading || !areTestCasesEditable}
                   />
                   <span>{t("testCaseVisibleLabel")}</span>
                 </label>
