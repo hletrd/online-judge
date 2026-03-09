@@ -121,6 +121,29 @@ export default function CreateProblemForm({
     setTestCases((current) => current.filter((_, currentIndex) => currentIndex !== index));
   }
 
+  async function handleTestCaseFileChange(
+    index: number,
+    field: "input" | "expectedOutput",
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const selectedFile = event.target.files?.[0];
+
+    if (!selectedFile) {
+      return;
+    }
+
+    try {
+      const fileContents = await selectedFile.text();
+      updateTestCase(index, { [field]: fileContents });
+      toast.success(t("testCaseFileLoaded", { name: selectedFile.name }));
+    } catch (error) {
+      console.error("Failed to read test case file:", error);
+      toast.error(t("testCaseFileLoadFailed"));
+    } finally {
+      event.target.value = "";
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
@@ -280,7 +303,30 @@ export default function CreateProblemForm({
 
                 <div className="grid gap-4 lg:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor={`test-case-input-${index}`}>{t("testCaseInputLabel")}</Label>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Label htmlFor={`test-case-input-${index}`}>{t("testCaseInputLabel")}</Label>
+                      <div>
+                        <input
+                          className="sr-only"
+                          id={`test-case-input-file-${index}`}
+                          onChange={(event) => {
+                            void handleTestCaseFileChange(index, "input", event);
+                          }}
+                          type="file"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isLoading || !areTestCasesEditable}
+                          onClick={() =>
+                            document.getElementById(`test-case-input-file-${index}`)?.click()
+                          }
+                        >
+                          {t("testCaseUploadInput")}
+                        </Button>
+                      </div>
+                    </div>
                     <Textarea
                       id={`test-case-input-${index}`}
                       value={testCase.input}
@@ -291,7 +337,30 @@ export default function CreateProblemForm({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor={`test-case-output-${index}`}>{t("testCaseOutputLabel")}</Label>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Label htmlFor={`test-case-output-${index}`}>{t("testCaseOutputLabel")}</Label>
+                      <div>
+                        <input
+                          className="sr-only"
+                          id={`test-case-output-file-${index}`}
+                          onChange={(event) => {
+                            void handleTestCaseFileChange(index, "expectedOutput", event);
+                          }}
+                          type="file"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isLoading || !areTestCasesEditable}
+                          onClick={() =>
+                            document.getElementById(`test-case-output-file-${index}`)?.click()
+                          }
+                        >
+                          {t("testCaseUploadOutput")}
+                        </Button>
+                      </div>
+                    </div>
                     <Textarea
                       id={`test-case-output-${index}`}
                       value={testCase.expectedOutput}
