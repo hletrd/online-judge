@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { db } from "@/lib/db";
 import { submissions, users, problems } from "@/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
@@ -18,7 +18,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
-import { getSubmissionStatusVariant } from "@/lib/submissions/status";
 import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
 
 const PAGE_SIZE = 50;
@@ -134,9 +133,10 @@ export default async function AdminSubmissionsPage({
                   </TableCell>
                   <TableCell>{sub.language}</TableCell>
                   <TableCell>
-                    <Badge variant={getSubmissionStatusVariant(sub.status)}>
-                      {statusLabels[sub.status as keyof typeof statusLabels] ?? sub.status}
-                    </Badge>
+                    <SubmissionStatusBadge
+                      label={statusLabels[sub.status as keyof typeof statusLabels] ?? sub.status}
+                      status={sub.status}
+                    />
                   </TableCell>
                   <TableCell>{sub.score !== null ? sub.score : "-"}</TableCell>
                   <TableCell>

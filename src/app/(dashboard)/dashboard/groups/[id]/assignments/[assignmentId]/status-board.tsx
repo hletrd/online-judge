@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { type AssignmentStudentStatusRow } from "@/lib/assignments/submissions";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
-import { getSubmissionStatusVariant } from "@/lib/submissions/status";
 import type { SubmissionStatus } from "@/types";
 
 type StatusFilterValue =
@@ -123,13 +123,14 @@ export function StatusBoard({
                     className="align-top"
                     data-testid={`assignment-row-status-${row.userId}`}
                   >
-                    <Badge
-                      variant={
-                        row.latestStatus ? getSubmissionStatusVariant(row.latestStatus) : "outline"
-                      }
-                    >
-                      {statusLabels[rowStatus]}
-                    </Badge>
+                    {row.latestStatus ? (
+                      <SubmissionStatusBadge
+                        label={statusLabels[rowStatus]}
+                        status={row.latestStatus}
+                      />
+                    ) : (
+                      <Badge variant="outline">{statusLabels[rowStatus]}</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="align-top whitespace-normal">
                     {row.latestSubmissionId ? (
@@ -168,17 +169,15 @@ export function StatusBoard({
                         </div>
                         {problem.latestSubmissionId ? (
                           <div className="flex flex-wrap items-center gap-2 text-xs">
-                            <Badge
-                              variant={
-                                problem.latestStatus
-                                  ? getSubmissionStatusVariant(problem.latestStatus)
-                                  : "outline"
-                              }
-                            >
-                              {problem.latestStatus
-                                ? statusLabels[problem.latestStatus as SubmissionStatus]
-                                : statusLabels.not_submitted}
-                            </Badge>
+                            {problem.latestStatus ? (
+                              <SubmissionStatusBadge
+                                className="text-xs"
+                                label={statusLabels[problem.latestStatus as SubmissionStatus]}
+                                status={problem.latestStatus}
+                              />
+                            ) : (
+                              <Badge variant="outline">{statusLabels.not_submitted}</Badge>
+                            )}
                             <Link
                               href={`/dashboard/submissions/${problem.latestSubmissionId}`}
                               className="text-primary hover:underline"

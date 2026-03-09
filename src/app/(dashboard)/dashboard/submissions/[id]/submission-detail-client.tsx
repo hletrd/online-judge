@@ -5,11 +5,12 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CodeViewer } from "@/components/code/code-viewer";
 import { Badge } from "@/components/ui/badge";
+import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiFetch } from "@/lib/api/client";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
-import { ACTIVE_SUBMISSION_STATUSES, getSubmissionStatusVariant } from "@/lib/submissions/status";
+import { ACTIVE_SUBMISSION_STATUSES } from "@/lib/submissions/status";
 
 type SubmissionResultView = {
   id: string;
@@ -275,12 +276,11 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
               <Badge variant="outline">
                 {props.tableLanguageLabel}: {submission.language}
               </Badge>
-              <Badge variant={getSubmissionStatusVariant(submission.status)}>
-                {ACTIVE_SUBMISSION_STATUSES.has(submission.status) && (
-                  <span className="mr-1 inline-flex size-2 rounded-full bg-current animate-pulse" />
-                )}
-                {props.statusLabels[submission.status] ?? submission.status}
-              </Badge>
+              <SubmissionStatusBadge
+                label={props.statusLabels[submission.status] ?? submission.status}
+                showLivePulse
+                status={submission.status}
+              />
             </div>
           </div>
 
@@ -365,9 +365,10 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
                     <TableRow key={result.id}>
                       <TableCell>#{index + 1}</TableCell>
                       <TableCell>
-                        <Badge variant={getSubmissionStatusVariant(result.status)}>
-                          {props.statusLabels[result.status] ?? result.status}
-                        </Badge>
+                        <SubmissionStatusBadge
+                          label={props.statusLabels[result.status] ?? result.status}
+                          status={result.status}
+                        />
                       </TableCell>
                       <TableCell>{result.executionTimeMs !== null ? result.executionTimeMs : "-"}</TableCell>
                       <TableCell>{result.memoryUsedKb !== null ? result.memoryUsedKb : "-"}</TableCell>
