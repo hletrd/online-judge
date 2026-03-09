@@ -69,15 +69,15 @@ export function csrfForbidden(request: NextRequest): NextResponse | null {
 }
 
 export function unauthorized() {
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 }
 
 export function forbidden() {
-  return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  return NextResponse.json({ error: "forbidden" }, { status: 403 });
 }
 
 export function notFound(resource: string) {
-  return NextResponse.json({ error: `${resource} not found` }, { status: 404 });
+  return NextResponse.json({ error: "notFound", resource }, { status: 404 });
 }
 
 export function isAdmin(role: string) {
