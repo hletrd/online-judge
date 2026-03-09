@@ -7,7 +7,6 @@ import { users } from "@/lib/db/schema";
 import { authUserSelect } from "@/lib/db/selects";
 import { getValidatedAuthSecret } from "@/lib/security/env";
 import { validateCsrf } from "@/lib/security/csrf";
-import type { UserRole } from "@/types";
 import { eq } from "drizzle-orm";
 
 export function getTokenUserId(token: { id?: unknown; sub?: unknown } | null | undefined) {
@@ -46,7 +45,7 @@ export async function getActiveAuthUserById(
 
   return {
     id: user.id,
-    role: user.role as UserRole,
+    role: user.role,
     username: user.username,
     email: user.email,
     name: user.name,

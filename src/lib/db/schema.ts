@@ -8,6 +8,7 @@ import {
 } from "drizzle-orm/sqlite-core";
 import { nanoid } from "nanoid";
 import { generateSubmissionId } from "@/lib/submissions/id";
+import type { UserRole } from "@/types";
 
 export const users = sqliteTable("users", {
   id: text("id")
@@ -18,7 +19,7 @@ export const users = sqliteTable("users", {
   name: text("name").notNull(),
   className: text("class_name"),
   passwordHash: text("password_hash"),
-  role: text("role").notNull().default("student"),
+  role: text("role").$type<UserRole>().notNull().default("student"),
   isActive: integer("is_active", { mode: "boolean" }).default(true),
   mustChangePassword: integer("must_change_password", { mode: "boolean" }).default(false),
   tokenInvalidatedAt: integer("token_invalidated_at", { mode: "timestamp" }),

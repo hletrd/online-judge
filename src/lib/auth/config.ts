@@ -182,7 +182,7 @@ export const authConfig: NextAuthConfig = {
             email: user.email,
             name: user.name,
             className: user.className,
-            role: user.role as UserRole,
+            role: user.role,
             mustChangePassword: user.mustChangePassword ?? false,
           },
           {
@@ -290,7 +290,7 @@ export const authConfig: NextAuthConfig = {
         email: freshUser.email,
         name: freshUser.name,
         className: freshUser.className,
-        role: freshUser.role as UserRole,
+        role: freshUser.role,
         mustChangePassword: freshUser.mustChangePassword ?? false,
       });
     },
