@@ -8,21 +8,18 @@ import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
 import { getSubmissionStatusVariant } from "@/lib/submissions/status";
 import type { SubmissionStatus } from "@/types";
 
-const STATUS_FILTER_VALUES = [
-  "all",
-  "not_submitted",
-  "pending",
-  "queued",
-  "judging",
-  "accepted",
-  "wrong_answer",
-  "time_limit",
-  "memory_limit",
-  "runtime_error",
-  "compile_error",
-] as const;
-
-type StatusFilterValue = (typeof STATUS_FILTER_VALUES)[number];
+type StatusFilterValue =
+  | "all"
+  | "not_submitted"
+  | "pending"
+  | "queued"
+  | "judging"
+  | "accepted"
+  | "wrong_answer"
+  | "time_limit"
+  | "memory_limit"
+  | "runtime_error"
+  | "compile_error";
 
 interface ProblemHeader {
   problemId: string;

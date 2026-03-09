@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { assignments, groups } from "@/lib/db/schema";
 import { getApiUser, unauthorized, forbidden, notFound, isAdmin, isInstructor } from "@/lib/api/auth";
 import { getAssignmentStatusRows } from "@/lib/assignments/submissions";
-import type { UserRole } from "@/types";
 
 function escapeCsvField(value: string | null | undefined): string {
   const str = value == null ? "" : String(value);

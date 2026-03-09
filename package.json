@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:unit": "vitest run --coverage",
+    "test:unit:watch": "vitest",
     "db:push": "drizzle-kit push",
     "backup:db": "bash scripts/backup-db.sh",
     "backup:verify": "bash scripts/verify-db-backup.sh",
@@ -68,11 +70,13 @@
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.0.18",
     "drizzle-kit": "^0.31.9",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.18"
   }
 }

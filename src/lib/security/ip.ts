@@ -22,7 +22,7 @@ export function extractClientIp(headers: HeaderCarrier) {
     // the last-but-one entry; the final entry is the proxy itself.
     // If there are fewer entries than expected, fall back to the first entry.
     if (parts.length > 0) {
-      const clientIndex = Math.max(0, parts.length - TRUSTED_PROXY_HOPS);
+      const clientIndex = Math.max(0, parts.length - (TRUSTED_PROXY_HOPS + 1));
       return parts[clientIndex];
     }
   }
