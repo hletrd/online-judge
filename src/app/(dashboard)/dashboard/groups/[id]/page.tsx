@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { assignments, groups, submissions, users } from "@/lib/db/schema";
@@ -114,17 +114,23 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
     },
   });
 
-  const assignmentsWithSubmissionState = await Promise.all(
-    groupAssignments.map(async (assignment) => ({
-      ...assignment,
-      hasSubmissions: Boolean(
-        await db.query.submissions.findFirst({
-          where: eq(submissions.assignmentId, assignment.id),
-          columns: { id: true },
+  // Batch check: which assignments have submissions? (single query instead of N)
+  const assignmentIds = groupAssignments.map((a) => a.id);
+  const submissionCounts = assignmentIds.length > 0
+    ? await db
+        .select({
+          assignmentId: submissions.assignmentId,
         })
-      ),
-    }))
-  );
+        .from(submissions)
+        .where(inArray(submissions.assignmentId, assignmentIds))
+        .groupBy(submissions.assignmentId)
+    : [];
+  const assignmentsWithSubmissions = new Set(submissionCounts.map((row) => row.assignmentId));
+
+  const assignmentsWithSubmissionState = groupAssignments.map((assignment) => ({
+    ...assignment,
+    hasSubmissions: assignmentsWithSubmissions.has(assignment.id),
+  }));
   assignmentsWithSubmissionState.sort(sortAssignmentsBySchedule);
 
   const memberRows = group.enrollments
