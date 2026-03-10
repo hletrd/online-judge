@@ -301,7 +301,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
                       ) : isPast ? (
                         <Badge variant="outline">{t("statusClosed")}</Badge>
                       ) : (
-                        <Badge className="bg-green-500">{t("statusOpen")}</Badge>
+                        <Badge variant="success">{t("statusOpen")}</Badge>
                       )}
                     </TableCell>
                     {canManageGroup && (

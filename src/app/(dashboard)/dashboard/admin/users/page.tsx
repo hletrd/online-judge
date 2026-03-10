@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
@@ -138,19 +139,22 @@ export default async function UserManagementPage({
               <label className="text-sm font-medium" htmlFor="users-role">
                 {t("filters.roleLabel")}
               </label>
-              <select
-                id="users-role"
-                name="role"
-                defaultValue={roleFilter && roleFilter in roleLabels ? roleFilter : ""}
-                className="flex h-8 min-w-48 rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <option value="">{t("allRoles")}</option>
-                {Object.entries(roleLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+              <input type="hidden" name="role" defaultValue={roleFilter && roleFilter in roleLabels ? roleFilter : ""} id="role-input" />
+              <Select onValueChange={(value) => {
+                (document.getElementById("role-input") as HTMLInputElement).value = value ?? "";
+              }} defaultValue={roleFilter && roleFilter in roleLabels ? roleFilter : ""}>
+                <SelectTrigger id="users-role" className="w-48">
+                  <SelectValue placeholder={t("allRoles")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">{t("allRoles")}</SelectItem>
+                  {Object.entries(roleLabels).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex gap-2">
               <Button type="submit">{t("applyFilters")}</Button>
@@ -200,7 +204,7 @@ export default async function UserManagementPage({
                   </TableCell>
                   <TableCell>
                     {user.isActive ? (
-                      <Badge className="bg-green-500">{tCommon("active")}</Badge>
+                      <Badge variant="success">{tCommon("active")}</Badge>
                     ) : (
                       <Badge variant="destructive">{tCommon("inactive")}</Badge>
                     )}
