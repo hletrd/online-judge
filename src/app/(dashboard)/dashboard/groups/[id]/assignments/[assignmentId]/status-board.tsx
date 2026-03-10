@@ -152,6 +152,7 @@ export function StatusBoard({
                   <TableHead key={problem.problemId}>
                     <div className="space-y-1">
                       <div>{problem.title}</div>
+                      {/* TODO: Add translation key for "pt" (points abbreviation) - currently hardcoded */}
                       <div className="text-xs text-muted-foreground">{problem.points} pt</div>
                     </div>
                   </TableHead>
