@@ -145,9 +145,9 @@ function getEditabilityExtension(readOnly: boolean) {
 
 function getMinHeightExtension(minHeight: number) {
   return EditorView.theme({
-    ".cm-content": {
-      minHeight: `${minHeight}px`,
-    },
+    "&": { minHeight: `${minHeight}px` },
+    ".cm-scroller": { minHeight: `${minHeight}px` },
+    ".cm-content": { minHeight: `${minHeight}px` },
   });
 }
 

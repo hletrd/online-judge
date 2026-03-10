@@ -196,6 +196,8 @@ export function useSourceDraft({ userId, problemId, languages, initialLanguage }
     () => createDraftStore(storageKey, availableLanguages, fallbackLanguage),
     [availableLanguages, fallbackLanguage, storageKey],
   );
+  const initialDrafts = useMemo(() => ({ ...draftStore.getSnapshot().drafts }), [draftStore]);
+
   const hasHydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
   const draftState = useSyncExternalStore(
     draftStore.subscribe,
@@ -340,7 +342,13 @@ export function useSourceDraft({ userId, problemId, languages, initialLanguage }
     window.localStorage.removeItem(storageKey);
   }, [availableLanguages, draftStore, fallbackLanguage, storageKey]);
 
-  const isDirty = Object.keys(draftState.drafts).length > 0;
+  const isDirty = (() => {
+    const currentDrafts = draftState.drafts;
+    const currentKeys = Object.keys(currentDrafts);
+    const initialKeys = Object.keys(initialDrafts);
+    if (currentKeys.length !== initialKeys.length) return true;
+    return currentKeys.some((key) => currentDrafts[key] !== initialDrafts[key]);
+  })();
 
   return {
     language: draftState.selectedLanguage,
