@@ -5,10 +5,13 @@ import { eq, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { isJudgeAuthorized } from "@/lib/judge/auth";
+import {
+  buildSubmissionResultRows,
+  computeFinalJudgeMetrics,
+  IN_PROGRESS_JUDGE_STATUSES,
+} from "@/lib/judge/verdict";
 import { isSubmissionStatus } from "@/lib/security/constants";
 import { judgeStatusReportSchema } from "@/lib/validators/api";
-
-const IN_PROGRESS_STATUSES = new Set(["queued", "judging"]);
 
 type ClaimedSubmissionRow = {
   id: string;
@@ -161,7 +164,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "invalidJudgeClaim" }, { status: 403 });
     }
 
-    if (IN_PROGRESS_STATUSES.has(status)) {
+    if (IN_PROGRESS_JUDGE_STATUSES.has(status)) {
       await db
         .update(submissions)
         .set({
@@ -192,24 +195,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ data: updatedInProgress });
     }
 
-    let score: number | null = null;
-    let maxExecutionTimeMs: number | null = null;
-    let maxMemoryUsedKb: number | null = null;
-
-    if (Array.isArray(results) && results.length > 0) {
-      const passed = results.filter((r: { status: string }) => r.status === "accepted").length;
-      score = (passed / results.length) * 100;
-
-      const times = results
-        .map((r: { executionTimeMs?: number }) => r.executionTimeMs)
-        .filter((t): t is number => typeof t === "number");
-      if (times.length > 0) maxExecutionTimeMs = Math.max(...times);
-
-      const mems = results
-        .map((r: { memoryUsedKb?: number }) => r.memoryUsedKb)
-        .filter((m): m is number => typeof m === "number");
-      if (mems.length > 0) maxMemoryUsedKb = Math.max(...mems);
-    }
+    const { score, maxExecutionTimeMs, maxMemoryUsedKb } = computeFinalJudgeMetrics(results);
 
     // Update submission
     await db
@@ -229,23 +215,8 @@ export async function POST(request: NextRequest) {
     await db.delete(submissionResults).where(eq(submissionResults.submissionId, submissionId));
 
     // Insert per-test-case results
-    if (Array.isArray(results) && results.length > 0) {
-      const rows = results.map((r: {
-        testCaseId: string;
-        status: string;
-        actualOutput?: string;
-        executionTimeMs?: number;
-        memoryUsedKb?: number;
-      }) => ({
-        id: nanoid(),
-        submissionId,
-        testCaseId: r.testCaseId,
-        status: r.status,
-        actualOutput: r.actualOutput ?? null,
-        executionTimeMs: r.executionTimeMs ?? null,
-        memoryUsedKb: r.memoryUsedKb ?? null,
-      }));
-
+    const rows = buildSubmissionResultRows(submissionId, results);
+    if (rows.length > 0) {
       await db.insert(submissionResults).values(rows);
     }
 
