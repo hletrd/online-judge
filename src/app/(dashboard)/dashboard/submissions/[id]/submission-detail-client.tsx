@@ -12,8 +12,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiFetch } from "@/lib/api/client";
 import { toast } from "sonner";
-import { formatDateTimeInTimeZone } from "@/lib/datetime";
+import { formatDateTimeInTimeZone, formatRelativeTimeFromNow } from "@/lib/datetime";
 import { ACTIVE_SUBMISSION_STATUSES } from "@/lib/submissions/status";
+import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
+import { useTranslations, useLocale } from "next-intl";
 
 type SubmissionResultView = {
   id: string;
@@ -59,49 +61,9 @@ type CommentView = {
 type SubmissionDetailClientProps = {
   showDetailedResults: boolean;
   initialSubmission: SubmissionDetailView;
-  headingLabel: string;
   backHref: string;
-  backLabel: string;
-  statusLabels: Record<string, string>;
-  submittedLabel: string;
-  scoreLabel: string;
-  timeLabel: string;
-  memoryLabel: string;
-  userLabel: string;
-  sourceCodeLabel: string;
-  compileOutputLabel: string;
-  testCaseResultsLabel: string;
-  testCaseResultsDescription: string;
-  noResultsLabel: string;
-  liveUpdatesLabel: string;
-  liveUpdatesDelayedLabel: string;
-  locale: string;
   timeZone: string;
-  timeValueLabel: string;
-  memoryValueLabel: string;
-  tableProblemLabel: string;
-  tableLanguageLabel: string;
-  testCaseTableLabels: {
-    testCase: string;
-    status: string;
-    time: string;
-    memory: string;
-  };
-  detailedResultsHiddenLabel: string;
   userRole: string;
-  commentsLabels: {
-    title: string;
-    placeholder: string;
-    submit: string;
-    noComments: string;
-    by: string;
-  };
-  roleLabels: Record<string, string>;
-  rejudgeLabels: {
-    rejudge: string;
-    rejudgeSuccess: string;
-    rejudgeFailed: string;
-  };
 };
 
 function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailView {
@@ -163,22 +125,13 @@ function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailVie
   };
 }
 
-function formatRelativeTime(timestamp: string | number | null): string {
-  if (timestamp == null) return "";
-  const ms = typeof timestamp === "string" ? Date.parse(timestamp) : timestamp;
-  if (Number.isNaN(ms)) return "";
-  const diff = Date.now() - ms;
-  const seconds = Math.floor(diff / 1000);
-  if (seconds < 60) return "<1m";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `${days}d`;
-}
 
 export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
+  const t = useTranslations("submissions");
+  const tCommon = useTranslations("common");
+  const tComments = useTranslations("comments");
+  const locale = useLocale();
+
   const [submission, setSubmission] = useState(props.initialSubmission);
   const [pollingError, setPollingError] = useState(false);
   const [comments, setComments] = useState<CommentView[]>([]);
@@ -306,7 +259,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
         }
       }
     } catch {
-      // silently ignore comment fetch errors
+      toast.error("Failed to load comments");
     }
   }, [submission.id]);
 
@@ -330,7 +283,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
         void fetchComments();
       }
     } catch {
-      // silently ignore comment submit errors
+      toast.error("Failed to submit comment");
     } finally {
       setCommentSubmitting(false);
     }
@@ -348,12 +301,12 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
         if (payload.data) {
           setSubmission(normalizeSubmission(payload.data));
         }
-        toast.success(props.rejudgeLabels.rejudgeSuccess);
+        toast.success(t("rejudgeSuccess"));
       } else {
-        toast.error(props.rejudgeLabels.rejudgeFailed);
+        toast.error(t("rejudgeFailed"));
       }
     } catch {
-      toast.error(props.rejudgeLabels.rejudgeFailed);
+      toast.error(t("rejudgeFailed"));
     } finally {
       setRejudging(false);
     }
@@ -366,29 +319,29 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
           <div>
             <Link href={props.backHref} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="size-4" />
-              {props.backLabel}
+              {tCommon("back")}
             </Link>
-            <h2 className="mb-2 text-2xl font-bold">{props.headingLabel}</h2>
+            <h2 className="mb-2 text-2xl font-bold">{t("submissionId", { id: formatSubmissionIdPrefix(submission.id) })}</h2>
             <div className="flex flex-wrap gap-2" role="status" aria-live="polite">
               <Badge variant="outline">
-                {props.userLabel}: {submission.user?.name ?? "-"}
+                {t("user")}: {submission.user?.name ?? "-"}
               </Badge>
               {problemHref ? (
                 <Link href={problemHref} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md">
                   <Badge variant="outline" className="cursor-pointer transition-opacity hover:opacity-80">
-                    {props.tableProblemLabel}: {submission.problem?.title ?? "-"}
+                    {t("table.problem")}: {submission.problem?.title ?? "-"}
                   </Badge>
                 </Link>
               ) : (
                 <Badge variant="outline">
-                  {props.tableProblemLabel}: {submission.problem?.title ?? "-"}
+                  {t("table.problem")}: {submission.problem?.title ?? "-"}
                 </Badge>
               )}
               <Badge variant="outline">
-                {props.tableLanguageLabel}: {submission.language}
+                {t("table.language")}: {submission.language}
               </Badge>
               <SubmissionStatusBadge
-                label={props.statusLabels[submission.status] ?? submission.status}
+                label={t(`status.${submission.status}` as Parameters<typeof t>[0]) ?? submission.status}
                 showLivePulse
                 status={submission.status}
               />
@@ -397,10 +350,10 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
 
           {isLive && (
             <div className="space-y-1 text-sm text-muted-foreground">
-              <p>{props.liveUpdatesLabel}</p>
+              <p>{t("liveUpdatesActive")}</p>
               {pollingError && (
                 <p aria-live="polite" className="text-amber-600 dark:text-amber-400">
-                  {props.liveUpdatesDelayedLabel}
+                  {t("liveUpdatesDelayed")}
                 </p>
               )}
             </div>
@@ -410,16 +363,16 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
         <div className="flex flex-col items-end gap-3">
           <div className="text-right text-sm text-muted-foreground">
             <p>
-              {props.submittedLabel}: {submission.submittedAt ? formatDateTimeInTimeZone(submission.submittedAt, props.locale, props.timeZone) : "-"}
+              {t("submitted")}: {submission.submittedAt ? formatDateTimeInTimeZone(submission.submittedAt, locale, props.timeZone) : "-"}
             </p>
             <p>
-              {props.scoreLabel}: {submission.score !== null ? submission.score : "-"}
+              {t("score")}: {submission.score !== null ? submission.score : "-"}
             </p>
             <p>
-              {props.timeLabel}: {submission.executionTimeMs !== null ? props.timeValueLabel.replace("{value}", String(submission.executionTimeMs)) : "-"}
+              {t("time")}: {submission.executionTimeMs !== null ? t("timeValue", { value: submission.executionTimeMs }) : "-"}
             </p>
             <p>
-              {props.memoryLabel}: {submission.memoryUsedKb !== null ? props.memoryValueLabel.replace("{value}", String(submission.memoryUsedKb)) : "-"}
+              {t("memory")}: {submission.memoryUsedKb !== null ? t("memoryValue", { value: submission.memoryUsedKb }) : "-"}
             </p>
           </div>
           {canRejudge && (
@@ -429,7 +382,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
               onClick={() => void handleRejudge()}
               disabled={rejudging}
             >
-              {props.rejudgeLabels.rejudge}
+              {t("rejudge")}
             </Button>
           )}
         </div>
@@ -437,11 +390,11 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>{props.sourceCodeLabel}</CardTitle>
+          <CardTitle>{t("sourceCode")}</CardTitle>
         </CardHeader>
         <CardContent>
           <CodeViewer
-            ariaLabel={props.sourceCodeLabel}
+            ariaLabel={t("sourceCode")}
             language={submission.language}
             minHeight={260}
             value={submission.sourceCode}
@@ -454,11 +407,11 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
           {submission.compileOutput && (
             <Card>
               <CardHeader>
-                <CardTitle>{props.compileOutputLabel}</CardTitle>
+                <CardTitle>{t("compileOutput")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <CodeViewer
-                  ariaLabel={props.compileOutputLabel}
+                  ariaLabel={t("compileOutput")}
                   language="plaintext"
                   minHeight={140}
                   tone="danger"
@@ -470,17 +423,17 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>{props.testCaseResultsLabel}</CardTitle>
-              <CardDescription>{props.testCaseResultsDescription}</CardDescription>
+              <CardTitle>{t("testCaseResults")}</CardTitle>
+              <CardDescription>{t("testCaseResultsDesc")}</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{props.testCaseTableLabels.testCase}</TableHead>
-                    <TableHead>{props.testCaseTableLabels.status}</TableHead>
-                    <TableHead>{props.testCaseTableLabels.time}</TableHead>
-                    <TableHead>{props.testCaseTableLabels.memory}</TableHead>
+                    <TableHead>{t("testCaseTable.testCase")}</TableHead>
+                    <TableHead>{t("testCaseTable.status")}</TableHead>
+                    <TableHead>{t("testCaseTable.time")}</TableHead>
+                    <TableHead>{t("testCaseTable.memory")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -489,7 +442,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
                       <TableCell>#{index + 1}</TableCell>
                       <TableCell>
                         <SubmissionStatusBadge
-                          label={props.statusLabels[result.status] ?? result.status}
+                          label={t(`status.${result.status}` as Parameters<typeof t>[0]) ?? result.status}
                           status={result.status}
                         />
                       </TableCell>
@@ -501,7 +454,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
                   {sortedResults.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center text-muted-foreground">
-                        {props.noResultsLabel}
+                        {t("noResults")}
                       </TableCell>
                     </TableRow>
                   )}
@@ -513,33 +466,33 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
       ) : (
         <Card>
           <CardContent className="py-6">
-            <p className="text-center text-muted-foreground">{props.detailedResultsHiddenLabel}</p>
+            <p className="text-center text-muted-foreground">{t("detailedResultsHidden")}</p>
           </CardContent>
         </Card>
       )}
 
       <Card>
         <CardHeader>
-          <CardTitle>{props.commentsLabels.title}</CardTitle>
+          <CardTitle>{tComments("title")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {comments.length === 0 && (
-            <p className="text-sm text-muted-foreground">{props.commentsLabels.noComments}</p>
+            <p className="text-sm text-muted-foreground">{tComments("noComments")}</p>
           )}
 
           {comments.map((comment) => (
             <div key={comment.id} className="rounded-md border p-3 space-y-1">
               <div className="flex items-center gap-2 text-sm">
                 <span className="font-medium">
-                  {props.commentsLabels.by.replace("{author}", comment.author?.name ?? "-")}
+                  {tComments("by", { author: comment.author?.name ?? "-" })}
                 </span>
                 {comment.author?.role && (
                   <Badge variant="secondary" className="text-xs">
-                    {props.roleLabels[comment.author.role] ?? comment.author.role}
+                    {tCommon(`roles.${comment.author.role}` as Parameters<typeof tCommon>[0]) ?? comment.author.role}
                   </Badge>
                 )}
                 <span className="text-muted-foreground text-xs">
-                  {formatRelativeTime(comment.createdAt)}
+                  {comment.createdAt != null ? formatRelativeTimeFromNow(comment.createdAt) : ""}
                 </span>
               </div>
               <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
@@ -549,7 +502,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
           {canComment && (
             <div className="space-y-2 pt-2">
               <Textarea
-                placeholder={props.commentsLabels.placeholder}
+                placeholder={tComments("placeholder")}
                 value={commentContent}
                 onChange={(e) => setCommentContent(e.target.value)}
                 maxLength={2000}
@@ -560,7 +513,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
                 disabled={commentSubmitting || !commentContent.trim()}
                 size="sm"
               >
-                {props.commentsLabels.submit}
+                {tComments("submit")}
               </Button>
             </div>
           )}
