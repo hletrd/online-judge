@@ -39,10 +39,10 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
 
     let workspace_dir = temp_dir.path();
 
-    // Set permissions to 0o777 so the judge user inside the container can write to the workspace
+    // Set permissions to 0o755 so the judge user inside the container can write to the workspace
     if let Err(e) = fs::set_permissions(
         workspace_dir,
-        std::os::unix::fs::PermissionsExt::from_mode(0o777),
+        std::os::unix::fs::PermissionsExt::from_mode(0o755),
     )
     .await
     {
@@ -71,14 +71,21 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
         return;
     }
 
-    let workspace_dir_str = workspace_dir.to_string_lossy().into_owned();
+    let workspace_dir_str = match workspace_dir.to_str() {
+        Some(s) => s.to_owned(),
+        None => {
+            tracing::error!("Temp directory path is not valid UTF-8");
+            report_error(client, &submission, "runtime_error", "Temp directory path is not valid UTF-8").await;
+            return;
+        }
+    };
     let mut compile_output = String::new();
 
     // Compile phase (if language requires compilation)
     if let Some(compile_command) = lang_config.compile_command {
         let compile_timeout_ms = COMPILATION_TIMEOUT_MS.max(submission.time_limit_ms * 5);
         let compile_memory_mb =
-            COMPILATION_MEMORY_LIMIT_MB.max(submission.memory_limit_mb as u32);
+            COMPILATION_MEMORY_LIMIT_MB.max(submission.memory_limit_mb);
 
         let compile_opts = DockerRunOptions {
             image: lang_config.docker_image.to_string(),
@@ -151,7 +158,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
             phase: Phase::Run,
             input: Some(test_case.input.clone()),
             timeout_ms: run_timeout_ms,
-            memory_limit_mb: submission.memory_limit_mb as u32,
+            memory_limit_mb: submission.memory_limit_mb,
             read_only_workspace: true,
         };
 
@@ -173,8 +180,13 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
             }
         };
 
-        // Convert stdout to string once (matches TS toString() behavior for
-        // invalid UTF-8 — replaces invalid bytes with U+FFFD)
+        // Compare raw bytes directly (avoids double conversion and UTF-8 lossy artifacts)
+        let is_correct = compare_output(
+            test_case.expected_output.as_bytes(),
+            &execution.stdout,
+        );
+
+        // Convert to string for reporting (separate from comparison)
         let actual_output = String::from_utf8_lossy(&execution.stdout).into_owned();
 
         // Determine test case status
@@ -184,10 +196,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
             "memory_limit"
         } else if execution.exit_code.unwrap_or(1) != 0 {
             "runtime_error"
-        } else if !compare_output(
-            test_case.expected_output.as_bytes(),
-            actual_output.as_bytes(),
-        ) {
+        } else if !is_correct {
             "wrong_answer"
         } else {
             "accepted"
@@ -204,7 +213,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
             status: status.to_string(),
             actual_output,
             execution_time_ms: execution.duration_ms,
-            memory_used_kb,
+            memory_used_kb: memory_used_kb.into(),
         });
 
         if status != "accepted" {
@@ -232,18 +241,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
 }
 
 async fn report_error(client: &ApiClient, submission: &Submission, status: &str, message: &str) {
-    if let Err(e) = client
-        .report_result(
-            &submission.id,
-            &submission.claim_token,
-            status,
-            message,
-            vec![],
-        )
-        .await
-    {
-        tracing::error!("Failed to report error result: {e}");
-    }
+    report_with_retry(client, &submission.id, &submission.claim_token, status, message, vec![]).await;
 }
 
 async fn report_result(
@@ -253,16 +251,38 @@ async fn report_result(
     compile_output: &str,
     results: Vec<TestResult>,
 ) {
-    if let Err(e) = client
-        .report_result(
-            &submission.id,
-            &submission.claim_token,
-            status,
-            compile_output,
-            results,
-        )
-        .await
-    {
-        tracing::error!("Failed to report result: {e}");
+    report_with_retry(client, &submission.id, &submission.claim_token, status, compile_output, results).await;
+}
+
+async fn report_with_retry(
+    client: &ApiClient,
+    submission_id: &str,
+    claim_token: &str,
+    status: &str,
+    compile_output: &str,
+    results: Vec<TestResult>,
+) {
+    for attempt in 0..3u32 {
+        match client
+            .report_result(submission_id, claim_token, status, compile_output, results.clone())
+            .await
+        {
+            Ok(()) => return,
+            Err(e) => {
+                tracing::warn!(
+                    "Report attempt {}/{} failed for submission {}: {e}",
+                    attempt + 1,
+                    3,
+                    submission_id
+                );
+                if attempt < 2 {
+                    tokio::time::sleep(std::time::Duration::from_secs(1 << attempt)).await;
+                }
+            }
+        }
     }
+    tracing::error!(
+        "All report attempts exhausted for submission {}; result may be lost",
+        submission_id
+    );
 }

@@ -56,9 +56,12 @@ impl Config {
             );
         }
 
-        let seccomp_profile_path = env::current_dir()
-            .map_err(|e| format!("Failed to determine current working directory: {e}"))?
-            .join("docker/seccomp-profile.json");
+        let seccomp_profile_path = match std::env::var("JUDGE_SECCOMP_PROFILE") {
+            Ok(path) => std::path::PathBuf::from(path),
+            Err(_) => std::env::current_dir()
+                .map_err(|e| format!("Failed to determine current working directory: {e}"))?
+                .join("docker/seccomp-profile.json"),
+        };
 
         Ok(Config {
             poll_url,

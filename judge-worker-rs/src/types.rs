@@ -42,7 +42,7 @@ pub struct Submission {
     #[serde(rename = "timeLimitMs")]
     pub time_limit_ms: u64,
     #[serde(rename = "memoryLimitMb")]
-    pub memory_limit_mb: u64,
+    pub memory_limit_mb: u32,
     #[serde(rename = "testCases")]
     pub test_cases: Vec<TestCase>,
 }
