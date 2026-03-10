@@ -12,7 +12,10 @@ import {
   syntaxHighlighting,
   type LanguageSupport,
 } from "@codemirror/language";
-import { java, kotlin } from "@codemirror/legacy-modes/mode/clike";
+import { java, kotlin, csharp } from "@codemirror/legacy-modes/mode/clike";
+import { r as rMode } from "@codemirror/legacy-modes/mode/r";
+import { perl as perlMode } from "@codemirror/legacy-modes/mode/perl";
+import { php } from "@codemirror/lang-php";
 import { go } from "@codemirror/legacy-modes/mode/go";
 import { rust } from "@codemirror/legacy-modes/mode/rust";
 import { swift } from "@codemirror/legacy-modes/mode/swift";
@@ -119,6 +122,14 @@ function getLanguageExtension(language: string | null | undefined): LanguageSupp
       return StreamLanguage.define(rust);
     case "swift":
       return StreamLanguage.define(swift);
+    case "csharp":
+      return StreamLanguage.define(csharp);
+    case "r":
+      return StreamLanguage.define(rMode);
+    case "perl":
+      return StreamLanguage.define(perlMode);
+    case "php":
+      return php();
     default:
       return [];
   }
