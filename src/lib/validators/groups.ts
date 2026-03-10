@@ -17,6 +17,11 @@ export const updateGroupSchema = createGroupSchema.partial().extend({
   isArchived: z.boolean().optional(),
 });
 
+export const bulkEnrollmentSchema = z.object({
+  userIds: z.array(z.string().min(1)).min(1).max(200),
+});
+
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;
 export type UpdateGroupInput = z.infer<typeof updateGroupSchema>;
 export type GroupMembershipInput = z.infer<typeof groupMembershipSchema>;
+export type BulkEnrollmentInput = z.infer<typeof bulkEnrollmentSchema>;

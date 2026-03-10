@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api/client";
 import { DestructiveActionDialog } from "@/components/destructive-action-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -55,7 +56,9 @@ export function GroupMembersManager({
   const t = useTranslations("groups");
   const tCommon = useTranslations("common");
   const [isAdding, setIsAdding] = useState(false);
+  const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState(availableStudents[0]?.id ?? "");
+  const [selectedBulkIds, setSelectedBulkIds] = useState<Set<string>>(new Set());
   const [currentMembers, setCurrentMembers] = useState(sortMembers(members));
   const [currentAvailableStudents, setCurrentAvailableStudents] = useState(
     sortStudents(availableStudents)
@@ -76,6 +79,7 @@ export function GroupMembersManager({
       case "groupMemberRemovalBlocked":
       case "memberAddFailed":
       case "memberRemoveFailed":
+      case "bulkAddFailed":
         return t(error.message);
       default:
         return error.message || tCommon("error");
@@ -120,6 +124,11 @@ export function GroupMembersManager({
         setCurrentAvailableStudents((current) => {
           const nextStudents = current.filter((student) => student.id !== selectedStudentId);
           setSelectedStudentId(nextStudents[0]?.id ?? "");
+          setSelectedBulkIds((prev) => {
+            const next = new Set(prev);
+            next.delete(selectedStudentId);
+            return next;
+          });
           return nextStudents;
         });
       }
@@ -129,6 +138,53 @@ export function GroupMembersManager({
       toast.error(getErrorMessage(error));
     } finally {
       setIsAdding(false);
+    }
+  }
+
+  async function handleBulkAddMembers() {
+    if (selectedBulkIds.size === 0) {
+      toast.error(t("bulkAddNoneSelected"));
+      return;
+    }
+
+    setIsBulkAdding(true);
+
+    try {
+      const response = await apiFetch(`/api/v1/groups/${groupId}/members/bulk`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userIds: Array.from(selectedBulkIds) }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "bulkAddFailed");
+      }
+
+      const { enrolled, skipped } = payload as { enrolled: number; skipped: number };
+
+      // Remove enrolled students from available list (we don't know which were skipped as duplicates
+      // vs invalid, so optimistically remove all selected)
+      const enrolledIds = new Set(selectedBulkIds);
+      setCurrentAvailableStudents((current) => {
+        const remaining = current.filter((s) => !enrolledIds.has(s.id));
+        setSelectedStudentId((prev) => {
+          if (enrolledIds.has(prev)) {
+            return remaining[0]?.id ?? "";
+          }
+          return prev;
+        });
+        return remaining;
+      });
+      setSelectedBulkIds(new Set());
+
+      toast.success(t("bulkAddSuccess", { count: enrolled, skipped }));
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsBulkAdding(false);
     }
   }
 
@@ -161,6 +217,26 @@ export function GroupMembersManager({
     } catch (error) {
       toast.error(getErrorMessage(error));
       return false;
+    }
+  }
+
+  function toggleBulkSelection(studentId: string) {
+    setSelectedBulkIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(studentId)) {
+        next.delete(studentId);
+      } else {
+        next.add(studentId);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedBulkIds.size === currentAvailableStudents.length) {
+      setSelectedBulkIds(new Set());
+    } else {
+      setSelectedBulkIds(new Set(currentAvailableStudents.map((s) => s.id)));
     }
   }
 
@@ -200,7 +276,58 @@ export function GroupMembersManager({
           </div>
         )}
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-6">
+        {canManage && currentAvailableStudents.length > 0 && (
+          <div className="flex flex-col gap-3 rounded-md border p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">{t("selectStudents")}</p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleSelectAll}
+                  disabled={isBulkAdding}
+                >
+                  {selectedBulkIds.size === currentAvailableStudents.length
+                    ? tCommon("cancel")
+                    : tCommon("done")}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleBulkAddMembers}
+                  disabled={isBulkAdding || selectedBulkIds.size === 0}
+                >
+                  {isBulkAdding
+                    ? tCommon("loading")
+                    : t("bulkAdd")}
+                  {selectedBulkIds.size > 0 && ` (${selectedBulkIds.size})`}
+                </Button>
+              </div>
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              <div className="flex flex-col gap-1">
+                {currentAvailableStudents.map((student) => (
+                  <label
+                    key={student.id}
+                    className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted"
+                  >
+                    <Checkbox
+                      checked={selectedBulkIds.has(student.id)}
+                      onCheckedChange={() => toggleBulkSelection(student.id)}
+                      disabled={isBulkAdding}
+                    />
+                    <span>
+                      {student.name} (@{student.username})
+                      {student.className && (
+                        <span className="ml-1 text-muted-foreground">· {student.className}</span>
+                      )}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
         <Table>
           <TableHeader>
             <TableRow>
