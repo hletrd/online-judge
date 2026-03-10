@@ -177,7 +177,7 @@ async function runDockerCommandOnce(
   const workspaceMount = options.readOnlyWorkspace
     ? `${options.workspaceDir}:/workspace:ro`
     : `${options.workspaceDir}:/workspace`;
-  const pidsLimit = options.readOnlyWorkspace ? "4" : "16";
+  const pidsLimit = "16";
   const dockerArgs = [
     "run",
     "--name",
@@ -305,12 +305,13 @@ export async function executeSubmission(submission: Submission): Promise<void> {
   let compileOutput = "";
 
   try {
-    await chmod(workspaceDir, 0o755);
+    await chmod(workspaceDir, 0o777);
     await writeFile(
       getWorkspaceSourcePath(workspaceDir, config.extension),
       submission.sourceCode,
       "utf8"
     );
+    await chmod(getWorkspaceSourcePath(workspaceDir, config.extension), 0o644);
 
     if (config.compileCommand) {
       const compilation = await runDockerCommand({

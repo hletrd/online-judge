@@ -39,10 +39,10 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
 
     let workspace_dir = temp_dir.path();
 
-    // Set permissions to 0o755
+    // Set permissions to 0o777 so the judge user inside the container can write to the workspace
     if let Err(e) = fs::set_permissions(
         workspace_dir,
-        std::os::unix::fs::PermissionsExt::from_mode(0o755),
+        std::os::unix::fs::PermissionsExt::from_mode(0o777),
     )
     .await
     {
@@ -55,6 +55,18 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
     let source_path = workspace_dir.join(format!("solution{}", lang_config.extension));
     if let Err(e) = fs::write(&source_path, &submission.source_code).await {
         tracing::error!("Failed to write source code: {e}");
+        report_error(client, &submission, "runtime_error", &e.to_string()).await;
+        return;
+    }
+
+    // Ensure source file is world-readable regardless of host umask
+    if let Err(e) = fs::set_permissions(
+        &source_path,
+        std::os::unix::fs::PermissionsExt::from_mode(0o644),
+    )
+    .await
+    {
+        tracing::error!("Failed to set source file permissions: {e}");
         report_error(client, &submission, "runtime_error", &e.to_string()).await;
         return;
     }
