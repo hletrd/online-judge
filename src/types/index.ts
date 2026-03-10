@@ -22,4 +22,8 @@ export type Language =
   | "typescript"
   | "rust"
   | "go"
-  | "swift";
+  | "swift"
+  | "csharp"
+  | "r"
+  | "perl"
+  | "php";

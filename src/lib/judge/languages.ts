@@ -9,6 +9,10 @@ export const JUDGE_TOOLCHAIN_VERSIONS = {
   rust: "1.94.0",
   swift: "6.2.4",
   typescript: "5.9.3",
+  mono: "6.12",
+  r: "4.5",
+  perl: "5.40",
+  php: "8.4",
 } as const;
 
 export interface JudgeLanguageDefinition {
@@ -176,6 +180,46 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
       "/workspace/solution.swift",
     ],
     runCommand: ["/workspace/solution"],
+  },
+  csharp: {
+    language: "csharp",
+    displayName: "C#",
+    standard: "Mono 6",
+    extension: ".cs",
+    dockerImage: "judge-csharp:latest",
+    compiler: `Mono ${JUDGE_TOOLCHAIN_VERSIONS.mono} (mcs)`,
+    compileCommand: ["mcs", "-optimize+", "-out:/workspace/solution.exe", "/workspace/solution.cs"],
+    runCommand: ["mono", "/workspace/solution.exe"],
+  },
+  r: {
+    language: "r",
+    displayName: "R",
+    standard: "4.5",
+    extension: ".r",
+    dockerImage: "judge-r:latest",
+    compiler: `R ${JUDGE_TOOLCHAIN_VERSIONS.r}`,
+    compileCommand: null,
+    runCommand: ["Rscript", "/workspace/solution.r"],
+  },
+  perl: {
+    language: "perl",
+    displayName: "Perl",
+    standard: "5.40",
+    extension: ".pl",
+    dockerImage: "judge-perl:latest",
+    compiler: `Perl ${JUDGE_TOOLCHAIN_VERSIONS.perl}`,
+    compileCommand: null,
+    runCommand: ["perl", "/workspace/solution.pl"],
+  },
+  php: {
+    language: "php",
+    displayName: "PHP",
+    standard: "8.4",
+    extension: ".php",
+    dockerImage: "judge-php:latest",
+    compiler: `PHP ${JUDGE_TOOLCHAIN_VERSIONS.php}`,
+    compileCommand: null,
+    runCommand: ["php", "/workspace/solution.php"],
   },
 };
 

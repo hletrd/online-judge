@@ -78,6 +78,17 @@ static SWIFT_COMPILE: &[&str] = &[
 ];
 static SWIFT_RUN: &[&str] = &["/workspace/solution"];
 
+static CSHARP_COMPILE: &[&str] = &[
+    "mcs", "-optimize+", "-out:/workspace/solution.exe", "/workspace/solution.cs",
+];
+static CSHARP_RUN: &[&str] = &["mono", "/workspace/solution.exe"];
+
+static R_RUN: &[&str] = &["Rscript", "/workspace/solution.r"];
+
+static PERL_RUN: &[&str] = &["perl", "/workspace/solution.pl"];
+
+static PHP_RUN: &[&str] = &["php", "/workspace/solution.php"];
+
 static C17_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".c",
     docker_image: "judge-cpp:latest",
@@ -162,6 +173,34 @@ static SWIFT_CONFIG: LanguageConfig = LanguageConfig {
     run_command: SWIFT_RUN,
 };
 
+static CSHARP_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".cs",
+    docker_image: "judge-csharp:latest",
+    compile_command: Some(CSHARP_COMPILE),
+    run_command: CSHARP_RUN,
+};
+
+static R_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".r",
+    docker_image: "judge-r:latest",
+    compile_command: None,
+    run_command: R_RUN,
+};
+
+static PERL_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".pl",
+    docker_image: "judge-perl:latest",
+    compile_command: None,
+    run_command: PERL_RUN,
+};
+
+static PHP_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".php",
+    docker_image: "judge-php:latest",
+    compile_command: None,
+    run_command: PHP_RUN,
+};
+
 pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
     match language {
         Language::C17 => Some(&C17_CONFIG),
@@ -176,6 +215,10 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::Rust => Some(&RUST_CONFIG),
         Language::Go => Some(&GO_CONFIG),
         Language::Swift => Some(&SWIFT_CONFIG),
+        Language::Csharp => Some(&CSHARP_CONFIG),
+        Language::R => Some(&R_CONFIG),
+        Language::Perl => Some(&PERL_CONFIG),
+        Language::Php => Some(&PHP_CONFIG),
         Language::Unknown => None,
     }
 }
@@ -200,6 +243,10 @@ mod tests {
             Language::Rust,
             Language::Go,
             Language::Swift,
+            Language::Csharp,
+            Language::R,
+            Language::Perl,
+            Language::Php,
         ];
 
         for lang in &languages {
@@ -212,6 +259,6 @@ mod tests {
         // Unknown language returns None
         assert!(get_config(&Language::Unknown).is_none());
 
-        assert_eq!(languages.len(), 12, "expected exactly 12 language variants");
+        assert_eq!(languages.len(), 16, "expected exactly 16 language variants");
     }
 }

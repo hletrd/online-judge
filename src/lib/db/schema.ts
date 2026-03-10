@@ -350,8 +350,7 @@ export const submissionComments = sqliteTable(
       .notNull()
       .references(() => submissions.id, { onDelete: "cascade" }),
     authorId: text("author_id")
-      .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: "set null" }),
     content: text("content").notNull(),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
       () => new Date(Date.now())
@@ -384,8 +383,7 @@ export const scoreOverrides = sqliteTable(
     overrideScore: integer("override_score").notNull(),
     reason: text("reason"),
     createdBy: text("created_by")
-      .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: "set null" }),
     createdAt: integer("created_at")
       .notNull()
       .$defaultFn(() => Date.now()),

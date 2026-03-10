@@ -11,6 +11,10 @@ export const CODE_SURFACE_LANGUAGE_MAP = {
   rust: "rust",
   go: "go",
   swift: "swift",
+  csharp: "csharp",
+  r: "r",
+  perl: "perl",
+  php: "php",
 } as const;
 
 export const CODE_SURFACE_PLAINTEXT_LANGUAGE = "plaintext" as const;

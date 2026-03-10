@@ -15,6 +15,10 @@ pub enum Language {
     Rust,
     Go,
     Swift,
+    Csharp,
+    R,
+    Perl,
+    Php,
     #[serde(other)]
     Unknown,
 }

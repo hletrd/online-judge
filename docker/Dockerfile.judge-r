@@ -1,0 +1,9 @@
+FROM r-base:4.5.0
+
+RUN useradd --create-home --shell /usr/sbin/nologin judge && \
+    mkdir -p /workspace && \
+    chown judge:judge /workspace
+
+WORKDIR /workspace
+
+USER judge

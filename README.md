@@ -14,7 +14,7 @@
 
 <p align="center">
   A secure online judge system for student programming assignments.<br/>
-  Automated code evaluation with Docker-sandboxed execution for C, C++, Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, and Swift.
+  Automated code evaluation with Docker-sandboxed execution for C, C++, Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, Swift, C#, R, Perl, and PHP.
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@
 - **Problem management** — Sanitized descriptions, configurable time/memory limits, public/private/hidden visibility, and test-case editing before submissions exist
 - **Admin login history** — Credential login outcomes with safe filtering and pagination for admin-only review
 - **Secure code execution** — Docker containers with no network, seccomp profiles, memory/CPU limits, and non-root users
-- **Multi-language support** — C, C++, Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, and Swift with admin-customizable compile options
+- **Multi-language support** — C, C++, Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, Swift, C#, R, Perl, and PHP with admin-customizable compile options
 - **Submission workflow** — JSON submission flow, live status polling, per-test-case results, paginated submission history, draft recovery, and mixed legacy/hex submission ID support
 
 ## Getting Started
@@ -175,6 +175,10 @@ docker build -t judge-rust -f docker/Dockerfile.judge-rust .
 docker build -t judge-go -f docker/Dockerfile.judge-go .
 docker build -t judge-swift -f docker/Dockerfile.judge-swift .
 docker build -t judge-jvm -f docker/Dockerfile.judge-jvm .
+docker build -t judge-csharp -f docker/Dockerfile.judge-csharp .
+docker build -t judge-r -f docker/Dockerfile.judge-r .
+docker build -t judge-perl -f docker/Dockerfile.judge-perl .
+docker build -t judge-php -f docker/Dockerfile.judge-php .
 npm run build
 ```
 
@@ -269,7 +273,7 @@ journalctl -u online-judge-worker-rs.service -n 50 --no-pager
 | UI | Tailwind CSS v4, shadcn/ui |
 | Code Editor | CodeMirror-based editor/viewer surfaces with theme-aware styling |
 | Judge Worker | Rust binary with zero-allocation output comparison |
-| Judge Runtimes | Dockerized toolchains for GCC, Python 3.14.3, Node.js 24.14.0 / TypeScript 5.9.3, Rust 1.94.0, Go 1.26.1, and Swift 6.2.4 |
+| Judge Runtimes | Dockerized toolchains for GCC, Python 3.14.3, Node.js 24.14.0 / TypeScript 5.9.3, Rust 1.94.0, Go 1.26.1, Swift 6.2.4, Mono 6.12, R 4.5, Perl 5.40, and PHP 8.4 |
 | Validation | Zod |
 
 ## Project Structure

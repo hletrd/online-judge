@@ -568,7 +568,14 @@
       "uploadCsv": "Upload CSV",
       "downloadCredentials": "Download Credentials",
       "bulkCreateSuccess": "{count} users created",
-      "csvPreview": "CSV Preview"
+      "csvPreview": "CSV Preview",
+      "deleteUser": "Delete user",
+      "deleteDialogTitle": "Permanently delete this user?",
+      "deleteDialogDescription": "@{username} and all their submissions, enrollments, and comments will be permanently removed. This action cannot be undone.",
+      "deleteSuccess": "User permanently deleted",
+      "deleteFailed": "Failed to delete user",
+      "cannotDeleteSuperAdmin": "The super admin account cannot be deleted",
+      "cannotDeleteSelf": "You cannot delete your own account"
     },
     "submissions": {
       "title": "All Submissions",
