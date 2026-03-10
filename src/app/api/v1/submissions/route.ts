@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { languageConfigs, problems, submissions } from "@/lib/db/schema";
 import { isJudgeLanguage } from "@/lib/judge/languages";
@@ -20,6 +20,7 @@ import {
 import { generateSubmissionId } from "@/lib/submissions/id";
 import { submissionCreateSchema } from "@/lib/validators/api";
 import { parsePagination } from "@/lib/api/pagination";
+import { apiError, apiPaginated, apiSuccess } from "@/lib/api/responses";
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
 
     if (status && !isSubmissionStatus(status)) {
-      return NextResponse.json({ error: "invalidSubmissionStatus" }, { status: 400 });
+      return apiError("invalidSubmissionStatus", 400);
     }
 
     const userFilter = isAdmin(user.role) ? undefined : eq(submissions.userId, user.id);
@@ -69,10 +70,10 @@ export async function GET(request: NextRequest) {
       offset,
     });
 
-    return NextResponse.json({ data: results, page, limit, total: Number(totalRow?.count ?? 0) });
+    return apiPaginated(results, page, limit, Number(totalRow?.count ?? 0));
   } catch (error) {
     console.error("GET /api/v1/submissions error:", error);
-    return NextResponse.json({ error: "submissionLoadFailed" }, { status: 500 });
+    return apiError("submissionLoadFailed", 500);
   }
 }
 
@@ -87,17 +88,14 @@ export async function POST(request: NextRequest) {
     const parsed = submissionCreateSchema.safeParse(await request.json());
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "submissionCreateFailed" },
-        { status: 400 }
-      );
+      return apiError(parsed.error.issues[0]?.message ?? "submissionCreateFailed", 400);
     }
 
     const { problemId, language, sourceCode } = parsed.data;
     const normalizedAssignmentId = parsed.data.assignmentId ?? null;
 
     if (!isJudgeLanguage(language)) {
-      return NextResponse.json({ error: "languageNotSupported" }, { status: 400 });
+      return apiError("languageNotSupported", 400);
     }
 
     // Submission rate limiting: per-user recent submissions
@@ -114,13 +112,9 @@ export async function POST(request: NextRequest) {
       .then((rows) => Number(rows[0]?.count ?? 0));
 
     if (recentSubmissions >= SUBMISSION_RATE_LIMIT_MAX_PER_MINUTE) {
-      return NextResponse.json(
-        { error: "submissionRateLimited" },
-        {
-          status: 429,
-          headers: { "Retry-After": "60" },
-        }
-      );
+      return apiError("submissionRateLimited", 429, undefined, {
+        headers: { "Retry-After": "60" },
+      });
     }
 
     // Per-user concurrency limit: max pending/judging submissions
@@ -136,13 +130,9 @@ export async function POST(request: NextRequest) {
       .then((rows) => Number(rows[0]?.count ?? 0));
 
     if (pendingCount >= SUBMISSION_MAX_PENDING) {
-      return NextResponse.json(
-        { error: "tooManyPendingSubmissions" },
-        {
-          status: 429,
-          headers: { "Retry-After": "10" },
-        }
-      );
+      return apiError("tooManyPendingSubmissions", 429, undefined, {
+        headers: { "Retry-After": "10" },
+      });
     }
 
     // Global queue depth limit
@@ -153,19 +143,13 @@ export async function POST(request: NextRequest) {
       .then((rows) => Number(rows[0]?.count ?? 0));
 
     if (globalPendingCount >= SUBMISSION_GLOBAL_QUEUE_LIMIT) {
-      return NextResponse.json(
-        { error: "judgeQueueFull" },
-        { status: 503, headers: { "Retry-After": "30" } }
-      );
+      return apiError("judgeQueueFull", 503, undefined, {
+        headers: { "Retry-After": "30" },
+      });
     }
 
     if (Buffer.byteLength(sourceCode, "utf8") > MAX_SOURCE_CODE_SIZE_BYTES) {
-      return NextResponse.json(
-        {
-          error: "sourceCodeTooLarge",
-        },
-        { status: 413 }
-      );
+      return apiError("sourceCodeTooLarge", 413);
     }
 
     const problem = await db.query.problems.findFirst({
@@ -174,14 +158,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (!problem) {
-      return NextResponse.json({ error: "problemNotFound" }, { status: 404 });
+      return apiError("problemNotFound", 404);
     }
 
     if (!normalizedAssignmentId && user.role === "student") {
       const assignmentContexts = await getStudentAssignmentContextsForProblem(problemId, user.id);
 
       if (assignmentContexts.length > 0) {
-        return NextResponse.json({ error: "assignmentContextRequired" }, { status: 409 });
+        return apiError("assignmentContextRequired", 409);
       }
     }
 
@@ -194,17 +178,14 @@ export async function POST(request: NextRequest) {
       );
 
       if (!assignmentValidation.ok) {
-        return NextResponse.json(
-          { error: assignmentValidation.error },
-          { status: assignmentValidation.status }
-        );
+        return apiError(assignmentValidation.error, assignmentValidation.status);
       }
     }
 
     const hasAccess = await canAccessProblem(problemId, user.id, user.role);
 
     if (!hasAccess) {
-      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      return apiError("forbidden", 403);
     }
 
     const languageConfig = await db.query.languageConfigs.findFirst({
@@ -218,7 +199,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!languageConfig) {
-      return NextResponse.json({ error: "languageNotSupported" }, { status: 400 });
+      return apiError("languageNotSupported", 400);
     }
 
     const id = generateSubmissionId();
@@ -256,9 +237,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ data: submission }, { status: 201 });
+    return apiSuccess(submission, { status: 201 });
   } catch (error) {
     console.error("POST /api/v1/submissions error:", error);
-    return NextResponse.json({ error: "submissionCreateFailed" }, { status: 500 });
+    return apiError("submissionCreateFailed", 500);
   }
 }

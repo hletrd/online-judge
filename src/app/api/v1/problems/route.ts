@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { problems, problemGroupAccess, enrollments } from "@/lib/db/schema";
 import { eq, desc, sql, and, or } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, isInstructor, isAdmin, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { parsePagination } from "@/lib/api/pagination";
+import { apiError, apiPaginated, apiSuccess } from "@/lib/api/responses";
 import { createProblemWithTestCases } from "@/lib/problem-management";
 import { problemMutationSchema, problemVisibilityValues } from "@/lib/validators/problem-management";
 import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     const visibility = searchParams.get("visibility");
 
     if (visibility && !problemVisibilityValues.includes(visibility as (typeof problemVisibilityValues)[number])) {
-      return NextResponse.json({ error: "invalidVisibility" }, { status: 400 });
+      return apiError("invalidVisibility", 400);
     }
 
     const visibilityFilter = visibility ? eq(problems.visibility, visibility) : undefined;
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
         .limit(limit)
         .offset(offset);
 
-      return NextResponse.json({ data: results, page, limit, total: Number(total?.count ?? 0) });
+      return apiPaginated(results, page, limit, Number(total?.count ?? 0));
     }
 
     const accessFilter = or(
@@ -70,10 +71,10 @@ export async function GET(request: NextRequest) {
 
     const total = Number(totalRow?.count ?? 0);
 
-    return NextResponse.json({ data: paginatedProblems, page, limit, total });
+    return apiPaginated(paginatedProblems, page, limit, total);
   } catch (error) {
     console.error("GET /api/v1/problems error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    return apiError("internalServerError", 500);
   }
 }
 
@@ -101,10 +102,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!parsedInput.success) {
-      return NextResponse.json(
-        { error: parsedInput.error.issues[0]?.message ?? "createError" },
-        { status: 400 }
-      );
+      return apiError(parsedInput.error.issues[0]?.message ?? "createError", 400);
     }
 
     const id = createProblemWithTestCases(parsedInput.data, user.id);
@@ -135,9 +133,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ data: problem }, { status: 201 });
+    return apiSuccess(problem, { status: 201 });
   } catch (error) {
     console.error("POST /api/v1/problems error:", error);
-    return NextResponse.json({ error: "createError" }, { status: 500 });
+    return apiError("createError", 500);
   }
 }

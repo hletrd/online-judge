@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { groups, enrollments } from "@/lib/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, isAdmin, isInstructor, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { parsePagination } from "@/lib/api/pagination";
+import { apiError, apiPaginated, apiSuccess } from "@/lib/api/responses";
 import { nanoid } from "nanoid";
 import { createGroupSchema } from "@/lib/validators/groups";
 import { checkApiRateLimit, recordApiRateHit } from "@/lib/security/api-rate-limit";
@@ -74,10 +75,10 @@ export async function GET(request: NextRequest) {
       results = userEnrollments.map((e) => e.group);
     }
 
-    return NextResponse.json({ data: results, page, limit, total });
+    return apiPaginated(results, page, limit, total);
   } catch (error) {
     console.error("GET /api/v1/groups error:", error);
-    return NextResponse.json({ error: "internalServerError" }, { status: 500 });
+    return apiError("internalServerError", 500);
   }
 }
 
@@ -98,10 +99,7 @@ export async function POST(request: NextRequest) {
     const parsedInput = createGroupSchema.safeParse(body);
 
     if (!parsedInput.success) {
-      return NextResponse.json(
-        { error: parsedInput.error.issues[0]?.message ?? "createError" },
-        { status: 400 }
-      );
+      return apiError(parsedInput.error.issues[0]?.message ?? "createError", 400);
     }
 
     const { name, description } = parsedInput.data;
@@ -134,9 +132,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ data: group }, { status: 201 });
+    return apiSuccess(group, { status: 201 });
   } catch (error) {
     console.error("POST /api/v1/groups error:", error);
-    return NextResponse.json({ error: "createError" }, { status: 500 });
+    return apiError("createError", 500);
   }
 }
