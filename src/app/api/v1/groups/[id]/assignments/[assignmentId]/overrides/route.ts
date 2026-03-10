@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { db, sqlite } from "@/lib/db";
 import { assignments, scoreOverrides } from "@/lib/db/schema";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { canManageGroupResources } from "@/lib/assignments/management";
@@ -89,28 +89,30 @@ export async function POST(
 
     const { problemId, userId, overrideScore, reason } = parsed.data;
 
-    // Upsert: delete existing then insert
-    db.delete(scoreOverrides)
-      .where(
-        and(
-          eq(scoreOverrides.assignmentId, assignment.id),
-          eq(scoreOverrides.problemId, problemId),
-          eq(scoreOverrides.userId, userId)
+    // Upsert: delete existing then insert (atomic transaction)
+    sqlite.transaction(() => {
+      db.delete(scoreOverrides)
+        .where(
+          and(
+            eq(scoreOverrides.assignmentId, assignment.id),
+            eq(scoreOverrides.problemId, problemId),
+            eq(scoreOverrides.userId, userId)
+          )
         )
-      )
-      .run();
+        .run();
 
-    db.insert(scoreOverrides)
-      .values({
-        assignmentId: assignment.id,
-        problemId,
-        userId,
-        overrideScore,
-        reason: reason ?? null,
-        createdBy: user.id,
-        createdAt: Date.now(),
-      })
-      .run();
+      db.insert(scoreOverrides)
+        .values({
+          assignmentId: assignment.id,
+          problemId,
+          userId,
+          overrideScore,
+          reason: reason ?? null,
+          createdBy: user.id,
+          createdAt: Date.now(),
+        })
+        .run();
+    })();
 
     recordAuditEvent({
       actorId: user.id,
