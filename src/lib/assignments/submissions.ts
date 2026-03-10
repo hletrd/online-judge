@@ -6,11 +6,13 @@ import {
   enrollments,
   groups,
   problems,
+  scoreOverrides,
   submissions,
   users,
 } from "@/lib/db/schema";
 import { and, asc, desc, eq } from "drizzle-orm";
 import type { SubmissionStatus, UserRole } from "@/types";
+import { isAdmin } from "@/lib/api/auth";
 
 type AssignmentValidationError =
   | "invalidAssignmentId"
@@ -58,6 +60,7 @@ export type AssignmentProblemStatusRow = {
   latestSubmissionId: string | null;
   latestStatus: SubmissionStatus | null;
   latestSubmittedAt: Date | null;
+  isOverridden: boolean;
 };
 
 export type AssignmentStudentStatusRow = {
@@ -98,10 +101,6 @@ export type StudentAssignmentProblemContext = {
   deadline: Date | null;
   lateDeadline: Date | null;
 };
-
-function isAdminRole(role: UserRole) {
-  return role === "super_admin" || role === "admin";
-}
 
 async function getAssignmentAccessRecord(
   assignmentId: string
@@ -170,7 +169,7 @@ export async function validateAssignmentSubmission(
     };
   }
 
-  if (!isAdminRole(role)) {
+  if (!isAdmin(role)) {
     const now = Date.now();
     const startsAt = assignment.startsAt?.valueOf() ?? null;
     const effectiveCloseAt = assignment.lateDeadline?.valueOf() ?? assignment.deadline?.valueOf() ?? null;
@@ -192,7 +191,7 @@ export async function validateAssignmentSubmission(
     }
   }
 
-  if (!isAdminRole(role)) {
+  if (!isAdmin(role)) {
     const enrollment = await db.query.enrollments.findFirst({
       where: and(eq(enrollments.groupId, assignment.groupId), eq(enrollments.userId, userId)),
       columns: { id: true },
@@ -242,7 +241,7 @@ export async function canViewAssignmentSubmissions(
     return false;
   }
 
-  if (!isAdminRole(role) && role !== "instructor") {
+  if (!isAdmin(role) && role !== "instructor") {
     return false;
   }
 
@@ -252,11 +251,62 @@ export async function canViewAssignmentSubmissions(
     return false;
   }
 
-  if (isAdminRole(role)) {
+  if (isAdmin(role)) {
     return true;
   }
 
   return assignment.instructorId === userId;
+}
+
+export type StudentProblemProgress = "solved" | "attempted" | "untried";
+
+export type StudentProblemStatus = {
+  problemId: string;
+  progress: StudentProblemProgress;
+};
+
+export async function getStudentProblemStatuses(
+  assignmentId: string,
+  userId: string
+): Promise<StudentProblemStatus[]> {
+  const assignmentProblemRows = await db
+    .select({ problemId: assignmentProblems.problemId })
+    .from(assignmentProblems)
+    .where(eq(assignmentProblems.assignmentId, assignmentId));
+
+  const studentSubmissions = await db
+    .select({
+      problemId: submissions.problemId,
+      status: submissions.status,
+    })
+    .from(submissions)
+    .where(
+      and(
+        eq(submissions.assignmentId, assignmentId),
+        eq(submissions.userId, userId)
+      )
+    );
+
+  const submissionsByProblem = new Map<string, Set<string>>();
+  for (const sub of studentSubmissions) {
+    if (!submissionsByProblem.has(sub.problemId)) {
+      submissionsByProblem.set(sub.problemId, new Set());
+    }
+    submissionsByProblem.get(sub.problemId)!.add(sub.status ?? "");
+  }
+
+  return assignmentProblemRows.map((row) => {
+    const statuses = submissionsByProblem.get(row.problemId);
+    let progress: StudentProblemProgress;
+    if (!statuses || statuses.size === 0) {
+      progress = "untried";
+    } else if (statuses.has("accepted")) {
+      progress = "solved";
+    } else {
+      progress = "attempted";
+    }
+    return { problemId: row.problemId, progress };
+  });
 }
 
 export async function getStudentAssignmentContextsForProblem(
@@ -371,6 +421,7 @@ export async function getAssignmentStatusRows(
       latestSubmissionId: null,
       latestStatus: null,
       latestSubmittedAt: null,
+      isOverridden: false,
     })),
   }));
 
@@ -426,6 +477,27 @@ export async function getAssignmentStatusRows(
           ? earnedPoints
           : Math.max(problem.bestScore, earnedPoints);
     }
+  }
+
+  // Apply score overrides
+  const overrideRows = await db
+    .select({
+      problemId: scoreOverrides.problemId,
+      userId: scoreOverrides.userId,
+      overrideScore: scoreOverrides.overrideScore,
+    })
+    .from(scoreOverrides)
+    .where(eq(scoreOverrides.assignmentId, assignmentId));
+
+  for (const override of overrideRows) {
+    const row = rowByUserId.get(override.userId);
+    if (!row) continue;
+
+    const problem = row.problems.find((p) => p.problemId === override.problemId);
+    if (!problem) continue;
+
+    problem.bestScore = override.overrideScore;
+    problem.isOverridden = true;
   }
 
   for (const row of rows) {
