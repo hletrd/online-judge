@@ -2,24 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
-import { cpp } from "@codemirror/lang-cpp";
-import { javascript } from "@codemirror/lang-javascript";
 import {
   bracketMatching,
   defaultHighlightStyle,
   indentOnInput,
   StreamLanguage,
   syntaxHighlighting,
-  type LanguageSupport,
 } from "@codemirror/language";
-import { java, kotlin, csharp } from "@codemirror/legacy-modes/mode/clike";
-import { r as rMode } from "@codemirror/legacy-modes/mode/r";
-import { perl as perlMode } from "@codemirror/legacy-modes/mode/perl";
-import { php } from "@codemirror/lang-php";
-import { go } from "@codemirror/legacy-modes/mode/go";
-import { rust } from "@codemirror/legacy-modes/mode/rust";
-import { swift } from "@codemirror/legacy-modes/mode/swift";
-import { python } from "@codemirror/lang-python";
 import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
 import { Compartment, EditorState, type Extension } from "@codemirror/state";
 import {
@@ -102,35 +91,51 @@ const baseExtensions: Extension[] = [
   keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
 ];
 
-function getLanguageExtension(language: string | null | undefined): LanguageSupport | Extension {
+async function getLanguageExtension(language: string | null | undefined): Promise<Extension[]> {
   switch (getCodeSurfaceLanguage(language)) {
     case "c":
     case "cpp":
-      return cpp();
+      return [(await import("@codemirror/lang-cpp")).cpp()];
     case "python":
-      return python();
+      return [(await import("@codemirror/lang-python")).python()];
     case "javascript":
-      return javascript();
+      return [(await import("@codemirror/lang-javascript")).javascript()];
     case "typescript":
-      return javascript({ typescript: true });
-    case "java":
-      return StreamLanguage.define(java);
-    case "kotlin":
-      return StreamLanguage.define(kotlin);
-    case "go":
-      return StreamLanguage.define(go);
-    case "rust":
-      return StreamLanguage.define(rust);
-    case "swift":
-      return StreamLanguage.define(swift);
-    case "csharp":
-      return StreamLanguage.define(csharp);
-    case "r":
-      return StreamLanguage.define(rMode);
-    case "perl":
-      return StreamLanguage.define(perlMode);
+      return [(await import("@codemirror/lang-javascript")).javascript({ typescript: true })];
+    case "java": {
+      const { java } = await import("@codemirror/legacy-modes/mode/clike");
+      return [StreamLanguage.define(java)];
+    }
+    case "kotlin": {
+      const { kotlin } = await import("@codemirror/legacy-modes/mode/clike");
+      return [StreamLanguage.define(kotlin)];
+    }
+    case "csharp": {
+      const { csharp } = await import("@codemirror/legacy-modes/mode/clike");
+      return [StreamLanguage.define(csharp)];
+    }
+    case "go": {
+      const { go } = await import("@codemirror/legacy-modes/mode/go");
+      return [StreamLanguage.define(go)];
+    }
+    case "rust": {
+      const { rust } = await import("@codemirror/legacy-modes/mode/rust");
+      return [StreamLanguage.define(rust)];
+    }
+    case "swift": {
+      const { swift } = await import("@codemirror/legacy-modes/mode/swift");
+      return [StreamLanguage.define(swift)];
+    }
+    case "r": {
+      const { r: rMode } = await import("@codemirror/legacy-modes/mode/r");
+      return [StreamLanguage.define(rMode)];
+    }
+    case "perl": {
+      const { perl: perlMode } = await import("@codemirror/legacy-modes/mode/perl");
+      return [StreamLanguage.define(perlMode)];
+    }
     case "php":
-      return php();
+      return [(await import("@codemirror/lang-php")).php()];
     default:
       return [];
   }
@@ -220,7 +225,7 @@ export function CodeSurface({
       doc: initialEditorConfig.value,
       extensions: [
         ...baseExtensions,
-        languageCompartmentRef.current.of(getLanguageExtension(initialEditorConfig.language)),
+        languageCompartmentRef.current.of([]),
         highlightCompartmentRef.current.of(
           getHighlightExtension(initialEditorConfig.resolvedTheme === "dark")
         ),
@@ -259,22 +264,32 @@ export function CodeSurface({
 
     editorViewRef.current = view;
 
+    let cancelled = false;
+    getLanguageExtension(initialEditorConfig.language).then((ext) => {
+      if (!cancelled && editorViewRef.current) {
+        editorViewRef.current.dispatch({
+          effects: languageCompartmentRef.current.reconfigure(ext),
+        });
+      }
+    });
+
     return () => {
+      cancelled = true;
       view.destroy();
       editorViewRef.current = null;
     };
   }, [initialEditorConfig]);
 
   useEffect(() => {
-    const view = editorViewRef.current;
-
-    if (!view) {
-      return;
-    }
-
-    view.dispatch({
-      effects: languageCompartmentRef.current.reconfigure(getLanguageExtension(language)),
+    let cancelled = false;
+    getLanguageExtension(language).then((ext) => {
+      if (!cancelled && editorViewRef.current) {
+        editorViewRef.current.dispatch({
+          effects: languageCompartmentRef.current.reconfigure(ext),
+        });
+      }
     });
+    return () => { cancelled = true; };
   }, [language]);
 
   useEffect(() => {
