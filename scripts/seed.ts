@@ -196,7 +196,9 @@ async function seed() {
 
     console.log("Seeded super admin user:");
     console.log("  Username: admin");
-    console.log(`  Password: ${generatedPassword}`);
+    const passwordFile = path.join(process.cwd(), "data", ".admin-password");
+    fs.writeFileSync(passwordFile, generatedPassword, { mode: 0o600 });
+    console.log(`  Password written to: ${passwordFile}`);
     console.log("  Role: super_admin");
     console.log("  (mustChangePassword: true — will be forced to change on first login)");
   }

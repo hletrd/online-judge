@@ -7,7 +7,7 @@ import fs from "fs";
 
 const dataDir = path.join(process.cwd(), "data");
 if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+  fs.mkdirSync(dataDir, { recursive: true, mode: 0o700 });
 }
 
 const dbPath = path.join(dataDir, "judge.db");
