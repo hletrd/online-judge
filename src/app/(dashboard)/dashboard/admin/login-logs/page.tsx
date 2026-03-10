@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { loginEvents, users } from "@/lib/db/schema";
@@ -215,19 +216,22 @@ export default async function AdminLoginLogsPage({
               <label className="text-sm font-medium" htmlFor="login-log-outcome">
                 {t("filters.outcomeLabel")}
               </label>
-              <select
-                id="login-log-outcome"
-                name="outcome"
-                defaultValue={outcomeFilter}
-                className="flex h-8 min-w-48 rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <option value="all">{t("filters.allOutcomes")}</option>
-                {OUTCOME_FILTER_VALUES.filter((value) => value !== "all").map((value) => (
-                  <option key={value} value={value}>
-                    {outcomeLabels[value]}
-                  </option>
-                ))}
-              </select>
+              <input type="hidden" name="outcome" defaultValue={outcomeFilter} id="outcome-input" />
+              <Select onValueChange={(value) => {
+                (document.getElementById("outcome-input") as HTMLInputElement).value = value ?? "";
+              }} defaultValue={outcomeFilter}>
+                <SelectTrigger id="login-log-outcome" className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("filters.allOutcomes")}</SelectItem>
+                  {OUTCOME_FILTER_VALUES.filter((value) => value !== "all").map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {outcomeLabels[value]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex gap-2">

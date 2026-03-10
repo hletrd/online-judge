@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { auditEvents, users } from "@/lib/db/schema";
@@ -304,18 +306,21 @@ export default async function AdminAuditLogsPage({
               <label className="text-sm font-medium" htmlFor="audit-log-resource-type">
                 {t("filters.resourceTypeLabel")}
               </label>
-              <select
-                id="audit-log-resource-type"
-                name="resource"
-                defaultValue={resourceTypeFilter}
-                className="flex h-8 min-w-48 rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                {RESOURCE_FILTER_VALUES.map((value) => (
-                  <option key={value} value={value}>
-                    {resourceLabels[value]}
-                  </option>
-                ))}
-              </select>
+              <input type="hidden" name="resource" defaultValue={resourceTypeFilter} id="resource-input" />
+              <Select onValueChange={(value) => {
+                (document.getElementById("resource-input") as HTMLInputElement).value = value ?? "";
+              }} defaultValue={resourceTypeFilter}>
+                <SelectTrigger id="audit-log-resource-type" className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RESOURCE_FILTER_VALUES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {resourceLabels[value]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex gap-2">
@@ -393,42 +398,42 @@ export default async function AdminAuditLogsPage({
                   <TableCell className="align-top whitespace-normal text-sm">{event.summary}</TableCell>
                   <TableCell className="align-top text-sm">
                     {event.details || event.requestMethod || event.requestPath || event.ipAddress || event.userAgent ? (
-                      <details className="max-w-xs whitespace-normal break-words">
-                        <summary className="cursor-pointer text-primary">{t("detailToggle")}</summary>
-                        {event.details ? (
-                          <div className="mt-2 space-y-2">
+                      <Collapsible className="max-w-xs whitespace-normal break-words">
+                        <CollapsibleTrigger className="cursor-pointer text-primary hover:underline">{t("detailToggle")}</CollapsibleTrigger>
+                        <CollapsibleContent className="mt-2 space-y-2">
+                          {event.details ? (
                             <div className="space-y-1">
                               <p className="text-xs font-medium text-foreground">{t("detailSections.payload")}</p>
                               <pre className="rounded-md bg-muted p-2 text-xs">{event.details}</pre>
                             </div>
-                          </div>
-                        ) : null}
-                        {event.requestMethod || event.requestPath || event.ipAddress || event.userAgent ? (
-                          <div className="mt-2 space-y-1 rounded-md border border-border/60 bg-background p-2 text-xs">
-                            <p className="font-medium text-foreground">{t("detailSections.request")}</p>
-                            {event.requestMethod ? (
-                              <p>
-                                <span className="font-medium">{t("request.method")}:</span> {event.requestMethod}
-                              </p>
-                            ) : null}
-                            {event.requestPath ? (
-                              <p>
-                                <span className="font-medium">{t("request.path")}:</span> {event.requestPath}
-                              </p>
-                            ) : null}
-                            {event.ipAddress ? (
-                              <p>
-                                <span className="font-medium">{t("request.ipAddress")}:</span> {event.ipAddress}
-                              </p>
-                            ) : null}
-                            {event.userAgent ? (
-                              <p>
-                                <span className="font-medium">{t("request.userAgent")}:</span> {event.userAgent}
-                              </p>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </details>
+                          ) : null}
+                          {event.requestMethod || event.requestPath || event.ipAddress || event.userAgent ? (
+                            <div className="space-y-1 rounded-md border border-border/60 bg-background p-2 text-xs">
+                              <p className="font-medium text-foreground">{t("detailSections.request")}</p>
+                              {event.requestMethod ? (
+                                <p>
+                                  <span className="font-medium">{t("request.method")}:</span> {event.requestMethod}
+                                </p>
+                              ) : null}
+                              {event.requestPath ? (
+                                <p>
+                                  <span className="font-medium">{t("request.path")}:</span> {event.requestPath}
+                                </p>
+                              ) : null}
+                              {event.ipAddress ? (
+                                <p>
+                                  <span className="font-medium">{t("request.ipAddress")}:</span> {event.ipAddress}
+                                </p>
+                              ) : null}
+                              {event.userAgent ? (
+                                <p>
+                                  <span className="font-medium">{t("request.userAgent")}:</span> {event.userAgent}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </CollapsibleContent>
+                      </Collapsible>
                     ) : (
                       <span className="text-muted-foreground">{tCommon("unknown")}</span>
                     )}

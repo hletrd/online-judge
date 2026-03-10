@@ -31,7 +31,7 @@ interface AppSidebarProps {
   siteTitle: string;
 }
 
-const navItems = [
+const navItems: Array<{ titleKey: string; href: string; icon: typeof LayoutDashboard; roles: UserRole[] }> = [
   { titleKey: "dashboard" as const, href: "/dashboard", icon: LayoutDashboard, roles: ["super_admin", "admin", "instructor", "student"] },
   { titleKey: "problems" as const, href: "/dashboard/problems", icon: BookOpen, roles: ["super_admin", "admin", "instructor", "student"] },
   { titleKey: "submissions" as const, href: "/dashboard/submissions", icon: Send, roles: ["super_admin", "admin", "instructor", "student"] },
@@ -39,7 +39,7 @@ const navItems = [
   { titleKey: "profile" as const, href: "/dashboard/profile", icon: User, roles: ["super_admin", "admin", "instructor", "student"] },
 ];
 
-const adminItems = [
+const adminItems: Array<{ titleKey: string; href: string; icon: typeof Shield; roles: UserRole[] }> = [
   { titleKey: "userManagement" as const, href: "/dashboard/admin/users", icon: Shield, roles: ["super_admin", "admin"] },
   { titleKey: "allSubmissions" as const, href: "/dashboard/admin/submissions", icon: FileCode, roles: ["super_admin", "admin"] },
   { titleKey: "auditLogs" as const, href: "/dashboard/admin/audit-logs", icon: History, roles: ["super_admin", "admin"] },
