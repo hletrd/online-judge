@@ -17,7 +17,7 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - Remaining security follow-ups from the 2026-03-08 review set are now closed locally: exact `next-auth` pinning with an 8-hour JWT max age, invalidation-aware auth lookups for password/role resets, self-service username/email restrictions, a Zod source-code size cap, timing-equalized invalid logins, and run-phase seccomp hardening that fails closed instead of silently retrying without the custom profile
 - A first unit-test infrastructure slice is now locally complete: Vitest + coverage are wired into package scripts and CI, initial regression tests cover password rules, assignment validation, late-penalty scoring, and trusted-proxy IP extraction, and the `TRUSTED_PROXY_HOPS` lookup now correctly returns the client IP instead of the final proxy hop
 - Direct unit coverage now also reaches the previously open auth/security/access gaps: permission helpers, assignment submission-access checks, the persisted rate-limit core, and the API mutation rate-limit wrapper are all covered by Vitest and locally verified with `npx tsc --noEmit`, `npm run lint`, `npm run test:unit`, and `npm run build`
-- Additional language/runtime expansion is now locally complete: the judge supports Java 25 and Kotlin 2.3 via a shared JVM toolchain image, the editor recognizes both languages, Java uses the standard `Main` entrypoint convention, and the runtime commands were verified with `npm run languages:sync`, `npx tsc --noEmit`, `npm run lint`, `npm run test:unit`, `npm run build`, and host-side smoke tests against downloaded official Temurin/Kotlin toolchains
+- Additional language/runtime expansion is now locally complete: the judge supports Java 25 and Kotlin 2.3 via a shared JVM toolchain image, the editor recognizes both languages, Java uses the standard `Main` entrypoint convention, and the runtime commands were verified with `npm run languages:sync`, `npx tsc --noEmit`, `npm run lint`, `npm run test:unit`, `npm run build`, host-side smoke tests against downloaded official Temurin/Kotlin toolchains, and the repository CI workflow's remote `judge-jvm` build/smoke step
 - Submission detail pages now link back to the underlying problem page, preserving assignment context for assignment-linked submissions so students can iterate without manually reconstructing the original problem URL
 - Submission detail polling now pauses for hidden tabs, backs off after refresh failures, and shows a delayed-refresh warning instead of silently swallowing transient fetch errors during live judging
 - Health checks now report degraded audit-write state in addition to DB readiness, and audit request context now shares the same trusted-proxy IP extraction logic as the login/rate-limit path
@@ -36,7 +36,7 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 
 ## Still open
 
-- No active local workstreams remain in the checked-in plan set; only Docker-daemon-backed `judge-jvm` image validation remains unavailable in this session.
+- No active local workstreams remain in the checked-in plan set.
 
 ## Safety note
 

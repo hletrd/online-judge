@@ -24,7 +24,7 @@ Last updated: 2026-03-10
 - The auth/sandbox follow-up batch was re-verified locally on 2026-03-09 with `npm run db:push`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npm run test:e2e -- --grep @smoke`.
 - The broader `P1.8` unit-test expansion batch was verified locally on 2026-03-10 with `npx tsc --noEmit`, `npm run lint`, `npm run test:unit`, and `npm run build`; direct Vitest coverage now includes permission helpers, assignment submission-access checks, the persisted rate-limit core, and the API mutation rate-limit wrapper.
 - Local main now also includes Java 25 and Kotlin 2.3 judge support via a shared JVM image, plus CodeMirror syntax support for both languages in the submission/editor surfaces. Java submissions currently follow the standard `Main` entrypoint convention inside the judge.
-- The runtime-expansion batch was verified locally on 2026-03-10 with `npm run languages:sync`, `npx tsc --noEmit`, `npm run lint`, `npm run test:unit`, `npm run build`, plus host-side Java/Kotlin compile-run smoke checks using downloaded official Temurin 25.0.2 and Kotlin 2.3.10 toolchains; Docker image build verification remains blocked in this session because no Docker daemon is reachable.
+- The runtime-expansion batch was verified on 2026-03-10 with `npm run languages:sync`, `npx tsc --noEmit`, `npm run lint`, `npm run test:unit`, `npm run build`, host-side Java/Kotlin compile-run smoke checks using downloaded official Temurin 25.0.2 and Kotlin 2.3.10 toolchains, and a passing GitHub Actions `CI` run that built and smoke-tested the `judge-jvm` image before completing the full Playwright suite.
 
 ## Operational notes
 
