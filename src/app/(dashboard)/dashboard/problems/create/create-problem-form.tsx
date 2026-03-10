@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiFetch } from "@/lib/api/client";
 import { toast } from "sonner";
+import { ProblemDescription } from "@/components/problem-description";
 
 type ProblemVisibility = "public" | "private" | "hidden";
 
@@ -63,6 +64,7 @@ export default function CreateProblemForm({
   const [isLoading, setIsLoading] = useState(false);
   const [title, setTitle] = useState(initialProblem?.title ?? "");
   const [description, setDescription] = useState(initialProblem?.description ?? "");
+  const [descriptionTab, setDescriptionTab] = useState<"write" | "preview">("write");
   const [timeLimitMs, setTimeLimitMs] = useState(initialProblem?.timeLimitMs ?? 2000);
   const [memoryLimitMb, setMemoryLimitMb] = useState(initialProblem?.memoryLimitMb ?? 256);
   const [visibility, setVisibility] = useState<ProblemVisibility>(initialProblem?.visibility ?? "private");
@@ -195,13 +197,49 @@ export default function CreateProblemForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="description">{t("descLabel")}</Label>
-        <Textarea 
-          id="description" 
-          value={description} 
-          onChange={(e) => setDescription(e.target.value)} 
-          className="min-h-[200px]"
-        />
+        <div className="flex items-center justify-between">
+          <Label htmlFor="description">{t("descLabel")}</Label>
+          <div className="flex rounded-md border overflow-hidden text-sm">
+            <button
+              type="button"
+              onClick={() => setDescriptionTab("write")}
+              className={`px-3 py-1 transition-colors ${
+                descriptionTab === "write"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t("writeTab")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDescriptionTab("preview")}
+              className={`px-3 py-1 transition-colors ${
+                descriptionTab === "preview"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t("previewTab")}
+            </button>
+          </div>
+        </div>
+        {descriptionTab === "write" ? (
+          <Textarea
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="min-h-[200px]"
+          />
+        ) : (
+          <div className="min-h-[200px] rounded-md border px-3 py-2 text-sm">
+            {description.trim() ? (
+              <ProblemDescription description={description} />
+            ) : (
+              <p className="text-muted-foreground">{t("noDescription")}</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
