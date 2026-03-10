@@ -109,7 +109,7 @@ export async function POST(
           overrideScore,
           reason: reason ?? null,
           createdBy: user.id,
-          createdAt: Date.now(),
+          createdAt: new Date(),
         })
         .run();
     })();

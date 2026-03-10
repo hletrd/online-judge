@@ -392,9 +392,9 @@ export const scoreOverrides = sqliteTable(
     reason: text("reason"),
     createdBy: text("created_by")
       .references(() => users.id, { onDelete: "set null" }),
-    createdAt: integer("created_at")
+    createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
-      .$defaultFn(() => Date.now()),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     uniqueIndex("score_overrides_assignment_problem_user_idx").on(
