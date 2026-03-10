@@ -1,11 +1,11 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Languages } from "lucide-react";
@@ -13,6 +13,7 @@ import { Languages } from "lucide-react";
 export function LocaleSwitcher() {
   const t = useTranslations("common");
   const router = useRouter();
+  const currentLocale = useLocale();
 
   function setLocale(locale: string) {
     document.cookie = `locale=${locale};path=/;max-age=${60 * 60 * 24 * 365}`;
@@ -26,12 +27,18 @@ export function LocaleSwitcher() {
         <span className="sr-only">{t("language")}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setLocale("en")}>
+        <DropdownMenuCheckboxItem
+          checked={currentLocale === "en"}
+          onCheckedChange={() => setLocale("en")}
+        >
           {t("english")}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setLocale("ko")}>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={currentLocale === "ko"}
+          onCheckedChange={() => setLocale("ko")}
+        >
           {t("korean")}
-        </DropdownMenuItem>
+        </DropdownMenuCheckboxItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
