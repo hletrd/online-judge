@@ -304,6 +304,9 @@
       "compile_error": "Compile Error"
     },
     "detailedResultsHidden": "Detailed test case results are not available for this submission.",
+    "rejudge": "Rejudge",
+    "rejudgeSuccess": "Submission queued for rejudging.",
+    "rejudgeFailed": "Failed to rejudge submission.",
     "pagination": {
       "showingRange": "Showing {start}-{end}"
     }

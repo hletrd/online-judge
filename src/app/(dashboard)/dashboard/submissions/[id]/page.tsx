@@ -147,6 +147,11 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
         admin: tCommon("roles.admin"),
         super_admin: tCommon("roles.super_admin"),
       }}
+      rejudgeLabels={{
+        rejudge: t("rejudge"),
+        rejudgeSuccess: t("rejudgeSuccess"),
+        rejudgeFailed: t("rejudgeFailed"),
+      }}
     />
   );
 }

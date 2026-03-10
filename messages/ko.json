@@ -304,6 +304,9 @@
       "compile_error": "컴파일 오류"
     },
     "detailedResultsHidden": "이 제출에 대한 테스트 케이스 상세 결과는 제공되지 않습니다.",
+    "rejudge": "재채점",
+    "rejudgeSuccess": "재채점 대기열에 추가되었습니다.",
+    "rejudgeFailed": "재채점 요청에 실패했습니다.",
     "pagination": {
       "showingRange": "{start}-{end}개 표시 중"
     }

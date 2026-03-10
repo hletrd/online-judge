@@ -11,6 +11,7 @@ import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiFetch } from "@/lib/api/client";
+import { toast } from "sonner";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { ACTIVE_SUBMISSION_STATUSES } from "@/lib/submissions/status";
 
@@ -96,6 +97,11 @@ type SubmissionDetailClientProps = {
     by: string;
   };
   roleLabels: Record<string, string>;
+  rejudgeLabels: {
+    rejudge: string;
+    rejudgeSuccess: string;
+    rejudgeFailed: string;
+  };
 };
 
 function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailView {
@@ -178,7 +184,9 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
   const [comments, setComments] = useState<CommentView[]>([]);
   const [commentContent, setCommentContent] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [rejudging, setRejudging] = useState(false);
   const canComment = props.userRole === "instructor" || props.userRole === "admin" || props.userRole === "super_admin";
+  const canRejudge = props.userRole === "instructor" || props.userRole === "admin" || props.userRole === "super_admin";
   const isLive = ACTIVE_SUBMISSION_STATUSES.has(submission.status);
   const problemHref =
     submission.problem === null
@@ -328,6 +336,29 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
     }
   }
 
+  async function handleRejudge() {
+    if (rejudging) return;
+    setRejudging(true);
+    try {
+      const response = await apiFetch(`/api/v1/submissions/${submission.id}/rejudge`, {
+        method: "POST",
+      });
+      if (response.ok) {
+        const payload = (await response.json()) as { data?: Record<string, unknown> };
+        if (payload.data) {
+          setSubmission(normalizeSubmission(payload.data));
+        }
+        toast.success(props.rejudgeLabels.rejudgeSuccess);
+      } else {
+        toast.error(props.rejudgeLabels.rejudgeFailed);
+      }
+    } catch {
+      toast.error(props.rejudgeLabels.rejudgeFailed);
+    } finally {
+      setRejudging(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-start gap-4">
@@ -376,19 +407,31 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
           )}
         </div>
 
-        <div className="text-right text-sm text-muted-foreground">
-          <p>
-            {props.submittedLabel}: {submission.submittedAt ? formatDateTimeInTimeZone(submission.submittedAt, props.locale, props.timeZone) : "-"}
-          </p>
-          <p>
-            {props.scoreLabel}: {submission.score !== null ? submission.score : "-"}
-          </p>
-          <p>
-            {props.timeLabel}: {submission.executionTimeMs !== null ? props.timeValueLabel.replace("{value}", String(submission.executionTimeMs)) : "-"}
-          </p>
-          <p>
-            {props.memoryLabel}: {submission.memoryUsedKb !== null ? props.memoryValueLabel.replace("{value}", String(submission.memoryUsedKb)) : "-"}
-          </p>
+        <div className="flex flex-col items-end gap-3">
+          <div className="text-right text-sm text-muted-foreground">
+            <p>
+              {props.submittedLabel}: {submission.submittedAt ? formatDateTimeInTimeZone(submission.submittedAt, props.locale, props.timeZone) : "-"}
+            </p>
+            <p>
+              {props.scoreLabel}: {submission.score !== null ? submission.score : "-"}
+            </p>
+            <p>
+              {props.timeLabel}: {submission.executionTimeMs !== null ? props.timeValueLabel.replace("{value}", String(submission.executionTimeMs)) : "-"}
+            </p>
+            <p>
+              {props.memoryLabel}: {submission.memoryUsedKb !== null ? props.memoryValueLabel.replace("{value}", String(submission.memoryUsedKb)) : "-"}
+            </p>
+          </div>
+          {canRejudge && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void handleRejudge()}
+              disabled={rejudging}
+            >
+              {props.rejudgeLabels.rejudge}
+            </Button>
+          )}
         </div>
       </div>
 
