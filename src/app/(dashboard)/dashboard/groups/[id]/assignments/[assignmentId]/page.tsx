@@ -8,8 +8,10 @@ import { auth } from "@/lib/auth";
 import {
   canViewAssignmentSubmissions,
   getAssignmentStatusRows,
+  getStudentProblemStatuses,
 } from "@/lib/assignments/submissions";
 import { canAccessGroup } from "@/lib/auth/permissions";
+import { canManageGroupResources } from "@/lib/assignments/management";
 import { db } from "@/lib/db";
 import { assignments } from "@/lib/db/schema";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
@@ -152,6 +154,7 @@ export default async function GroupAssignmentDetailPage({
   };
 
   if (!canViewBoard) {
+    const studentProblemStatuses = await getStudentProblemStatuses(assignmentId, session.user.id);
     return (
       <div className="space-y-6">
         <Link
@@ -170,7 +173,13 @@ export default async function GroupAssignmentDetailPage({
           groupId={groupId}
           locale={locale}
           timeZone={timeZone}
-          labels={overviewLabels}
+          labels={{
+            ...overviewLabels,
+            solved: tAssignment("solved"),
+            attempted: tAssignment("attempted"),
+            untried: tAssignment("untried"),
+          }}
+          problemStatuses={studentProblemStatuses}
         />
       </div>
     );
@@ -271,6 +280,13 @@ export default async function GroupAssignmentDetailPage({
         statusLabels={statusLabels}
         locale={locale}
         timeZone={timeZone}
+        groupId={groupId}
+        assignmentId={assignmentId}
+        canManageOverrides={canManageGroupResources(
+          assignment.group?.instructorId ?? null,
+          session.user.id,
+          role
+        )}
         labels={{
           boardTitle,
           student: tAssignment("student"),
@@ -288,6 +304,19 @@ export default async function GroupAssignmentDetailPage({
           statsMedian: tAssignment("statsMedian"),
           statsSubmitted: tAssignment("statsSubmitted"),
           statsPerfect: tAssignment("statsPerfect"),
+          overrideLabels: {
+            scoreOverride: tAssignment("scoreOverride"),
+            overrideScore: tAssignment("overrideScore"),
+            overrideReason: tAssignment("overrideReason"),
+            automatedScore: tAssignment("automatedScore"),
+            saveOverride: tAssignment("saveOverride"),
+            removeOverride: tAssignment("removeOverride"),
+            overrideIndicator: tAssignment("overrideIndicator"),
+            overrideSaveSuccess: tAssignment("overrideSaveSuccess"),
+            overrideSaveFailed: tAssignment("overrideSaveFailed"),
+            overrideRemoveSuccess: tAssignment("overrideRemoveSuccess"),
+            overrideRemoveFailed: tAssignment("overrideRemoveFailed"),
+          },
         }}
       />
     </div>

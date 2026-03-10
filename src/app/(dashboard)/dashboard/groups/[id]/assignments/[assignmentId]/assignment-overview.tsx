@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { CheckCircle2, Circle, MinusCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTimeInTimeZone, formatRelativeTimeFromNow } from "@/lib/datetime";
+import type { StudentProblemProgress, StudentProblemStatus } from "@/lib/assignments/submissions";
 
 interface AssignmentProblemEntry {
   id: string;
@@ -34,6 +36,9 @@ export interface AssignmentOverviewLabels {
   titleColumn: string;
   deadlineCountdown: string;
   lateDeadlineCountdown: string;
+  solved?: string;
+  attempted?: string;
+  untried?: string;
 }
 
 export interface AssignmentOverviewProps {
@@ -55,6 +60,32 @@ export interface AssignmentOverviewProps {
   locale: string;
   timeZone: string;
   labels: AssignmentOverviewLabels;
+  problemStatuses?: StudentProblemStatus[];
+}
+
+function ProgressIcon({ progress, labels }: { progress: StudentProblemProgress; labels: AssignmentOverviewLabels }) {
+  if (progress === "solved") {
+    return (
+      <CheckCircle2
+        className="size-4 shrink-0 text-green-500"
+        aria-label={labels.solved ?? "Solved"}
+      />
+    );
+  }
+  if (progress === "attempted") {
+    return (
+      <Circle
+        className="size-4 shrink-0 text-amber-500"
+        aria-label={labels.attempted ?? "Attempted"}
+      />
+    );
+  }
+  return (
+    <MinusCircle
+      className="size-4 shrink-0 text-muted-foreground"
+      aria-label={labels.untried ?? "Untried"}
+    />
+  );
 }
 
 export function AssignmentOverview({
@@ -67,7 +98,11 @@ export function AssignmentOverview({
   locale,
   timeZone,
   labels,
+  problemStatuses,
 }: AssignmentOverviewProps) {
+  const statusMap = new Map<string, StudentProblemProgress>(
+    (problemStatuses ?? []).map((s) => [s.problemId, s.progress])
+  );
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -164,9 +199,18 @@ export function AssignmentOverview({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedProblems.map((problem) => (
+              {sortedProblems.map((problem) => {
+                const progress = problem.problem ? statusMap.get(problem.problem.id) : undefined;
+                return (
                 <TableRow key={problem.id}>
-                  <TableCell className="font-medium">{problem.problem?.title ?? "-"}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {problemStatuses && problem.problem && (
+                        <ProgressIcon progress={progress ?? "untried"} labels={labels} />
+                      )}
+                      {problem.problem?.title ?? "-"}
+                    </div>
+                  </TableCell>
                   <TableCell>{problem.points ?? 100}</TableCell>
                   <TableCell>
                     {problem.problem ? (
@@ -180,7 +224,8 @@ export function AssignmentOverview({
                     )}
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
               {sortedProblems.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center text-muted-foreground">
