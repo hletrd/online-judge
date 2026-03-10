@@ -208,6 +208,7 @@ export const problemGroupAccess = sqliteTable(
   (table) => [
     index("pga_problem_idx").on(table.problemId),
     index("pga_group_idx").on(table.groupId),
+    uniqueIndex("pga_problem_group_idx").on(table.problemId, table.groupId),
   ]
 );
 

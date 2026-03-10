@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `pga_problem_group_idx` ON `problem_group_access` (`problem_id`,`group_id`);
