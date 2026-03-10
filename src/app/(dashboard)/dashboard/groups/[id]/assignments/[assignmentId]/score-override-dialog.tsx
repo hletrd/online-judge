@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api/client";
 
 export interface ScoreOverrideLabels {
   scoreOverride: string;
@@ -78,7 +79,7 @@ export function ScoreOverrideDialog({
 
     startTransition(async () => {
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           `/api/v1/groups/${groupId}/assignments/${assignmentId}/overrides`,
           {
             method: "POST",
@@ -109,7 +110,7 @@ export function ScoreOverrideDialog({
   const handleRemove = useCallback(() => {
     startTransition(async () => {
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           `/api/v1/groups/${groupId}/assignments/${assignmentId}/overrides?problemId=${encodeURIComponent(problemId)}&userId=${encodeURIComponent(userId)}`,
           { method: "DELETE" }
         );
