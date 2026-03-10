@@ -38,16 +38,6 @@
 - **Multi-language support** — C, C++, Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, and Swift with admin-customizable compile options
 - **Submission workflow** — JSON submission flow, live status polling, per-test-case results, paginated submission history, draft recovery, and mixed legacy/hex submission ID support
 
-## Current Status
-
-- Phase 0 remediation is complete: submission flow works, the judge worker executes submissions, instructors can manage test cases during problem authoring, the problem edit page exists, and the group creation flow is wired
-- High-priority Phase 1 work is also in place: dashboard `loading.tsx` / `error.tsx` / `not-found.tsx`, submission polling, paginated submissions, solved/attempted problem indicators, translated status badges, callback-aware login, sanitized problem descriptions, theme switching, richer code surfaces, and admin-managed site identity/timezone settings
-- Local main also includes the dashboard-rendering-audit-and-editor-upgrades batch plus the classroom-management, broader audit-logging, and operational-hardening follow-up: instructor assignment status boards with scoped submission drill-down, admin login logs, theme-aware CodeMirror surfaces, draft recovery, guarded delete flows, 32-character hex submission IDs, group membership management, assignment create/edit/delete flows, student assignment detail/submission paths, assignment-context enforcement for enrolled students, group deletion guards that preserve assignment-linked history, admin audit logs for privileged and system-driven mutations, a public `/api/health` readiness endpoint, verified SQLite backup/restore scripts, repository-native GitHub Actions CI for lint/build/Playwright checks, and Java/Kotlin judge support with a remote `judge-jvm` smoke step in CI.
-- As of 2026-03-09, `oj.auraedu.me` is live over Let's Encrypt HTTPS on `140.238.0.181`, and both `online-judge.service` and `online-judge-worker.service` are healthy on-host.
-- Security hardening now includes login rate limiting, explicit auth/judge env validation, stronger API access checks, problem/test-case exposure fixes, and shared security headers
-- The legacy hostname `oj-demo.atik.kr` is retired at nginx and no longer serves the application.
-- Remaining roadmap items are still open: special judging, contest features, ranking, and community tools
-
 ## Getting Started
 
 ```bash
