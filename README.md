@@ -180,14 +180,25 @@ npm run build
 
 ### 4. Install systemd services
 
-Both the web app service and the judge-worker unit are versioned in the repo.
+The web app, judge worker, and optional legacy TS worker are versioned in the repo.
 
 ```bash
 sudo ./scripts/install-online-judge-service.sh
-sudo ./scripts/install-online-judge-worker-service.sh
+sudo ./scripts/install-online-judge-worker-rs-service.sh
 ```
 
-The web app unit lives at `scripts/online-judge.service`, and the worker unit lives at `scripts/online-judge-worker.service`. Both expect the repo at `/home/ubuntu/online-judge` with `.env` in the same directory.
+The web app unit lives at `scripts/online-judge.service`, and the Rust judge worker unit lives at `scripts/online-judge-worker-rs.service`. Both expect the repo at `/home/ubuntu/online-judge` with `.env` in the same directory.
+
+#### Building the Rust judge worker
+
+The Rust worker must be compiled on the target host:
+
+```bash
+cd judge-worker-rs
+cargo build --release
+```
+
+The resulting binary is at `judge-worker-rs/target/release/judge-worker`.
 
 ### 4a. Install nginx and TLS config
 
@@ -215,10 +226,10 @@ npm run db:push
 npm run languages:sync
 npm run build
 sudo systemctl restart online-judge.service
-sudo systemctl restart online-judge-worker.service
+sudo systemctl restart online-judge-worker-rs.service
 ```
 
-If you changed the judge Dockerfiles or compiler/runtime assumptions, run `npm run languages:sync`, rebuild the affected images, and then restart the worker.
+If you changed the judge Dockerfiles or compiler/runtime assumptions, run `npm run languages:sync`, rebuild the affected images, and then restart the worker. If you changed the Rust worker source, rebuild with `cd judge-worker-rs && cargo build --release` before restarting.
 If you changed versioned systemd unit files or drop-ins, run `sudo systemctl daemon-reload` before restarting services.
 
 ### 5a. Optional CI and backup tooling
@@ -231,12 +242,12 @@ If you changed versioned systemd unit files or drop-ins, run `sudo systemctl dae
 
 ```bash
 systemctl is-active online-judge.service
-systemctl is-active online-judge-worker.service
+systemctl is-active online-judge-worker-rs.service
 curl -I http://127.0.0.1:3000/login
 curl http://127.0.0.1:3000/api/health
 journalctl -u nginx -n 50 --no-pager
 journalctl -u certbot.timer -n 20 --no-pager
-journalctl -u online-judge-worker.service -n 50 --no-pager
+journalctl -u online-judge-worker-rs.service -n 50 --no-pager
 ```
 
 - Confirm submissions progress out of `pending`
@@ -244,7 +255,7 @@ journalctl -u online-judge-worker.service -n 50 --no-pager
 - Confirm `https://oj.auraedu.me/login` completes TLS validation and serves the app
 - If you see `401 Unauthorized` in worker logs, verify `JUDGE_AUTH_TOKEN`
 - If `oj.auraedu.me` shows a certificate mismatch, reissue the certificate for `oj.auraedu.me` and reload nginx before treating the cutover as complete
-- If you see the `fsmount:fscontext:proc` container-init error, either restore/fix the repository seccomp profile or explicitly set `JUDGE_DISABLE_CUSTOM_SECCOMP=1` before restarting `online-judge-worker.service`; the worker no longer retries under Docker's default seccomp when the custom run-phase profile is expected
+- If you see the `fsmount:fscontext:proc` container-init error, either restore/fix the repository seccomp profile or explicitly set `JUDGE_DISABLE_CUSTOM_SECCOMP=1` before restarting `online-judge-worker-rs.service`; the worker no longer retries under Docker's default seccomp when the custom run-phase profile is expected
 - For system settings schema or timezone changes, verify `/dashboard/admin/settings` and at least one timestamped page such as `/dashboard/submissions` or `/dashboard/admin/users/[id]` after deploy
 
 ## Tech Stack
@@ -257,7 +268,8 @@ journalctl -u online-judge-worker.service -n 50 --no-pager
 | Auth | Auth.js v5 (Credentials) |
 | UI | Tailwind CSS v4, shadcn/ui |
 | Code Editor | CodeMirror-based editor/viewer surfaces with theme-aware styling |
-| Judge | Dockerized toolchains for GCC, Python 3.14.3, Node.js 24.14.0 / TypeScript 5.9.3, Rust 1.94.0, Go 1.26.1, and Swift 6.2.4 |
+| Judge Worker | Rust binary with zero-allocation output comparison |
+| Judge Runtimes | Dockerized toolchains for GCC, Python 3.14.3, Node.js 24.14.0 / TypeScript 5.9.3, Rust 1.94.0, Go 1.26.1, and Swift 6.2.4 |
 | Validation | Zod |
 
 ## Project Structure
@@ -265,8 +277,9 @@ journalctl -u online-judge-worker.service -n 50 --no-pager
 ```
 online-judge/
 ├── docker/              # Judge Docker images & seccomp profile
-├── judge-worker/        # Separate judge process (polls & executes)
-├── scripts/             # Seed scripts
+├── judge-worker/        # Legacy TS judge worker (reference)
+├── judge-worker-rs/     # Rust judge worker (production)
+├── scripts/             # Systemd services & deploy scripts
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/      # Login page
