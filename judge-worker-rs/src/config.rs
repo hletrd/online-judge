@@ -15,6 +15,18 @@ impl Config {
         let poll_url = env::var("JUDGE_POLL_URL")
             .unwrap_or_else(|_| "http://localhost:3000/api/v1/judge/poll".to_string());
 
+        if poll_url.starts_with("http://")
+            && !poll_url.starts_with("http://localhost")
+            && !poll_url.starts_with("http://127.0.0.1")
+            && !poll_url.starts_with("http://[::1]")
+        {
+            tracing::warn!(
+                "JUDGE_POLL_URL uses unencrypted HTTP for a non-localhost address. \
+                 This exposes the auth token and submission data in transit. \
+                 Use HTTPS in production."
+            );
+        }
+
         let poll_interval_ms: u64 = match env::var("POLL_INTERVAL") {
             Ok(val) => {
                 let ms = val
