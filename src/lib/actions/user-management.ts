@@ -32,6 +32,7 @@ type UserManagementErrorKey =
   | "cannotChangeSuperAdminRole"
   | "passwordTooShort"
   | "passwordTooWeak"
+  | "passwordTooCommon"
   | "updateUserFailed"
   | "createUserFailed";
 

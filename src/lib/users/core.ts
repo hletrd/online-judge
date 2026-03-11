@@ -3,7 +3,7 @@ import { hash } from "bcryptjs";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { canManageRole, isUserRole } from "@/lib/security/constants";
-import { getPasswordValidationError } from "@/lib/security/password";
+import { getPasswordValidationError, type PasswordValidationError } from "@/lib/security/password";
 import type { UserRole } from "@/types";
 
 // ─── Uniqueness checks ────────────────────────────────────────────────────────
@@ -39,8 +39,6 @@ export async function isEmailTaken(
 }
 
 // ─── Password ─────────────────────────────────────────────────────────────────
-
-export type PasswordValidationError = "passwordTooShort" | "passwordTooWeak";
 
 /**
  * Validates `password` against the password policy and hashes it.

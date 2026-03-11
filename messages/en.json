@@ -552,6 +552,7 @@
       "cannotChangeSuperAdminRole": "The super admin role cannot be changed",
       "passwordTooShort": "Password must be at least 8 characters",
       "passwordTooWeak": "Password must include uppercase and lowercase letters plus at least one number",
+      "passwordTooCommon": "This password is too common. Please choose a more unique password.",
       "updateUserFailed": "Failed to update user",
       "createUserFailed": "Failed to create user",
       "filters": {
@@ -745,6 +746,7 @@
     "passwordMismatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 8 characters",
     "passwordTooWeak": "Password must include uppercase and lowercase letters plus at least one number",
+    "passwordTooCommon": "This password is too common. Please choose a more unique password.",
     "currentPasswordIncorrect": "Current password is incorrect",
     "changePasswordRateLimited": "Too many password change attempts. Please wait a few minutes and try again.",
     "error": "An error occurred",
