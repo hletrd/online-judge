@@ -8,6 +8,7 @@ import { users } from "@/lib/db/schema";
 import { authUserSelect } from "@/lib/db/selects";
 import { getValidatedAuthSecret } from "@/lib/security/env";
 import { validateCsrf } from "@/lib/security/csrf";
+import { ROLE_LEVEL } from "@/lib/security/constants";
 import { eq } from "drizzle-orm";
 
 export function getTokenUserId(token: { id?: unknown; sub?: unknown } | null | undefined) {
@@ -82,9 +83,9 @@ export function notFound(resource: string) {
 }
 
 export function isAdmin(role: string) {
-  return role === "super_admin" || role === "admin";
+  return (ROLE_LEVEL[role as UserRole] ?? -1) >= ROLE_LEVEL.admin;
 }
 
 export function isInstructor(role: string) {
-  return isAdmin(role) || role === "instructor";
+  return (ROLE_LEVEL[role as UserRole] ?? -1) >= ROLE_LEVEL.instructor;
 }
