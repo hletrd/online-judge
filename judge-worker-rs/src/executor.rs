@@ -34,14 +34,14 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
         .report_status(&submission.id, &submission.claim_token, "judging")
         .await
     {
-        tracing::error!("Failed to report judging status: {e}");
+        tracing::error!(error = %e, "Failed to report judging status");
     }
 
     // Create temp workspace directory
     let temp_dir = match tempfile::TempDir::new() {
         Ok(d) => d,
         Err(e) => {
-            tracing::error!("Failed to create temp dir: {e}");
+            tracing::error!(error = %e, "Failed to create temp dir");
             report_error(client, config, &submission, "runtime_error", &e.to_string()).await;
             return;
         }
@@ -56,7 +56,7 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
     )
     .await
     {
-        tracing::error!("Failed to set temp dir permissions: {e}");
+        tracing::error!(error = %e, "Failed to set temp dir permissions");
         report_error(client, config, &submission, "runtime_error", &e.to_string()).await;
         return;
     }
@@ -70,7 +70,7 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
     // Write source code
     let source_path = workspace_dir.join(format!("solution{}", lang_config.extension));
     if let Err(e) = fs::write(&source_path, &submission.source_code).await {
-        tracing::error!("Failed to write source code: {e}");
+        tracing::error!(error = %e, "Failed to write source code");
         report_error(client, config, &submission, "runtime_error", &e.to_string()).await;
         return;
     }
@@ -82,7 +82,7 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
     )
     .await
     {
-        tracing::error!("Failed to set source file permissions: {e}");
+        tracing::error!(error = %e, "Failed to set source file permissions");
         report_error(client, config, &submission, "runtime_error", &e.to_string()).await;
         return;
     }
@@ -124,7 +124,7 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
         {
             Ok(result) => result,
             Err(docker::JudgeEnvironmentError(msg)) => {
-                tracing::error!("Judge environment error during compilation: {msg}");
+                tracing::error!(error = %msg, "Judge environment error during compilation");
                 report_error(client, config, &submission, "runtime_error", &msg).await;
                 return;
             }
@@ -196,8 +196,9 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
             Ok(result) => result,
             Err(docker::JudgeEnvironmentError(msg)) => {
                 tracing::error!(
-                    "Judge environment error during test case {}: {msg}",
-                    test_case.id
+                    error = %msg,
+                    test_case_id = %test_case.id,
+                    "Judge environment error during test case execution"
                 );
                 report_error(client, config, &submission, "runtime_error", &msg).await;
                 return;
@@ -308,10 +309,11 @@ async fn report_with_retry(
             Ok(()) => return,
             Err(e) => {
                 tracing::warn!(
-                    "Report attempt {}/{} failed for submission {}: {e}",
-                    attempt + 1,
-                    3,
-                    submission_id
+                    error = %e,
+                    attempt = attempt + 1,
+                    max_attempts = 3,
+                    submission_id = %submission_id,
+                    "Report attempt failed"
                 );
                 if attempt < 2 {
                     tokio::time::sleep(std::time::Duration::from_secs(1 << attempt)).await;
@@ -381,35 +383,34 @@ async fn report_with_retry(
     match fs::create_dir_all(&config.dead_letter_dir).await {
         Err(e) => {
             tracing::error!(
-                "All report attempts exhausted for submission {}; \
-                 also failed to create dead-letter dir {:?}: {e}. Result is lost.",
-                submission_id,
-                config.dead_letter_dir
+                error = %e,
+                submission_id = %submission_id,
+                dead_letter_dir = ?config.dead_letter_dir,
+                "All report attempts exhausted; failed to create dead-letter dir. Result is lost."
             );
         }
         Ok(()) => match serde_json::to_vec_pretty(&entry) {
             Err(e) => {
                 tracing::error!(
-                    "All report attempts exhausted for submission {}; \
-                     failed to serialize dead-letter entry: {e}. Result is lost.",
-                    submission_id
+                    error = %e,
+                    submission_id = %submission_id,
+                    "All report attempts exhausted; failed to serialize dead-letter entry. Result is lost."
                 );
             }
             Ok(bytes) => match fs::write(&file_path, &bytes).await {
                 Err(e) => {
                     tracing::error!(
-                        "All report attempts exhausted for submission {}; \
-                         failed to write dead-letter file {:?}: {e}. Result is lost.",
-                        submission_id,
-                        file_path
+                        error = %e,
+                        submission_id = %submission_id,
+                        dead_letter_path = ?file_path,
+                        "All report attempts exhausted; failed to write dead-letter file. Result is lost."
                     );
                 }
                 Ok(()) => {
                     tracing::error!(
-                        "All report attempts exhausted for submission {}; \
-                         result written to dead-letter file: {:?}",
-                        submission_id,
-                        file_path
+                        submission_id = %submission_id,
+                        dead_letter_path = ?file_path,
+                        "All report attempts exhausted; result written to dead-letter file"
                     );
                 }
             },
