@@ -1,3 +1,5 @@
+import { isIP } from "net";
+
 type HeaderCarrier = {
   get(name: string): string | null;
 };
@@ -23,11 +25,15 @@ export function extractClientIp(headers: HeaderCarrier) {
     // If there are fewer entries than expected, fall back to the first entry.
     if (parts.length > 0) {
       const clientIndex = Math.max(0, parts.length - (TRUSTED_PROXY_HOPS + 1));
-      return parts[clientIndex];
+      const candidate = parts[clientIndex];
+      if (isIP(candidate) !== 0) {
+        return candidate;
+      }
+      // Extracted value is not a valid IP — fall through to fallbacks
     }
   }
 
-  if (realIp) {
+  if (realIp && isIP(realIp) !== 0) {
     return realIp;
   }
 
@@ -37,5 +43,5 @@ export function extractClientIp(headers: HeaderCarrier) {
     );
   }
 
-  return "unknown";
+  return "0.0.0.0";
 }
