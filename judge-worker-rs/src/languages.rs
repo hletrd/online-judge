@@ -32,7 +32,7 @@ static CPP23_COMPILE: &[&str] = &[
 static CPP23_RUN: &[&str] = &["/workspace/solution"];
 
 static JAVA_COMPILE: &[&str] = &[
-    "sh", "-lc",
+    "sh", "-c",
     "export JAVA_TOOL_OPTIONS='-Djava.io.tmpdir=/workspace' && mkdir -p /workspace/out && cp /workspace/solution.java /workspace/Main.java && javac --release 25 -encoding UTF-8 -d /workspace/out /workspace/Main.java",
 ];
 static JAVA_RUN: &[&str] = &["java", "-Djava.io.tmpdir=/workspace", "-cp", "/workspace/out", "Main"];
