@@ -5,6 +5,8 @@ import { shouldUseSecureAuthCookie } from "@/lib/auth/secure-cookie";
 import { getTokenAuthenticatedAtSeconds } from "@/lib/auth/session-security";
 import { getActiveAuthUserById, getTokenUserId } from "@/lib/api/auth";
 import { getValidatedAuthSecret } from "@/lib/security/env";
+import { recordAuditEvent, buildAuditRequestContext } from "@/lib/audit/events";
+import crypto from "crypto";
 
 // In-process LRU cache for proxy auth lookups.
 // Security tradeoff: revoked or deactivated users may retain access for up to
@@ -100,6 +102,29 @@ export async function proxy(request: NextRequest) {
     if (!activeUser) {
       activeUser = await getActiveAuthUserById(userId, authenticatedAtSeconds);
       if (activeUser) setCachedAuthUser(cacheKey, activeUser);
+    }
+  }
+
+  // SEC2-L1: Log suspicious User-Agent mismatch as a session binding signal.
+  // Hard-rejection is intentionally omitted — UA changes legitimately on browser
+  // updates, corporate proxies, and mobile networks.
+  if (token?.uaHash && activeUser) {
+    const currentUaHash = crypto
+      .createHash("sha256")
+      .update(request.headers.get("user-agent") ?? "")
+      .digest("hex")
+      .slice(0, 16);
+
+    if (token.uaHash !== currentUaHash) {
+      recordAuditEvent({
+        actorId: getTokenUserId(token),
+        actorRole: token.role,
+        action: "suspicious_ua_mismatch",
+        resourceType: "session",
+        summary: "Request User-Agent does not match the UA recorded at sign-in",
+        details: { storedUaHash: token.uaHash, currentUaHash },
+        context: buildAuditRequestContext(request),
+      });
     }
   }
 
