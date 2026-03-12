@@ -260,6 +260,11 @@ pub async fn run_docker(
         .map_err(|e| JudgeEnvironmentError(e.to_string()))?;
 
     if use_custom_seccomp && should_retry_without_seccomp(&result.stderr) {
+        tracing::warn!(
+            stderr = %result.stderr,
+            image = %options.image,
+            "seccomp_init_failure: custom seccomp profile rejected by Docker runtime"
+        );
         return Err(JudgeEnvironmentError(
             "refusing to retry without custom seccomp".into(),
         ));
