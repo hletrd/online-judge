@@ -54,7 +54,7 @@ export default function UserActions({
     return new Promise<boolean>((resolve) => {
       startDeleteTransition(async () => {
         try {
-          const result = await deleteUserPermanently(userId);
+          const result = await deleteUserPermanently(userId, username);
 
           if (result.success) {
             toast.success(t("deleteSuccess"));

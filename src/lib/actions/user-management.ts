@@ -116,7 +116,7 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
   }
 }
 
-export async function deleteUserPermanently(userId: string): Promise<UserManagementResult> {
+export async function deleteUserPermanently(userId: string, confirmUsername: string): Promise<UserManagementResult> {
   if (!(await isTrustedServerActionOrigin())) {
     return { success: false, error: "unauthorized" };
   }
@@ -136,6 +136,10 @@ export async function deleteUserPermanently(userId: string): Promise<UserManagem
   });
 
   if (!targetUser) return { success: false, error: "userNotFound" };
+
+  if (targetUser.username !== confirmUsername) {
+    return { success: false, error: "userNotFound" };
+  }
 
   if (targetUser.role === "super_admin") {
     return { success: false, error: "cannotDeleteSuperAdmin" };
