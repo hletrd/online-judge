@@ -177,7 +177,8 @@ async function runDockerCommandOnce(
   const workspaceMount = options.readOnlyWorkspace
     ? `${options.workspaceDir}:/workspace:ro`
     : `${options.workspaceDir}:/workspace`;
-  const pidsLimit = "16";
+  // Compilation (especially Go) spawns many threads; allow more PIDs.
+  const pidsLimit = options.phase === "compile" ? "64" : "16";
   const dockerArgs = [
     "run",
     "--name",
@@ -198,7 +199,7 @@ async function runDockerCommandOnce(
     "--ulimit",
     "fsize=52428800:52428800",
     "--ulimit",
-    "nofile=64:64",
+    "nofile=256:256",
     "-v",
     workspaceMount,
     "-w",

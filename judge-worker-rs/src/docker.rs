@@ -98,7 +98,9 @@ async fn run_docker_once(
 ) -> Result<DockerRunResult, DockerError> {
     let container_name = format!("oj-{}", Uuid::new_v4());
     let mem_limit = get_memory_limit_mb(options.memory_limit_mb);
-    let pids_limit = "16";
+    // Compilation (especially Go) spawns many threads; allow more PIDs.
+    // Run phase keeps strict limit to contain user code.
+    let pids_limit = if options.phase == Phase::Compile { "64" } else { "16" };
 
     let workspace_volume = if options.read_only_workspace {
         format!("{}:/workspace:ro", options.workspace_dir)
@@ -128,7 +130,7 @@ async fn run_docker_once(
         "--ulimit".into(),
         "fsize=52428800:52428800".into(),
         "--ulimit".into(),
-        "nofile=64:64".into(),
+        "nofile=256:256".into(),
         "-v".into(),
         workspace_volume,
         "-w".into(),
