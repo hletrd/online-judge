@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { auditEvents } from "@/lib/db/schema";
+import { lt } from "drizzle-orm";
 import { normalizeText, getClientIp, getRequestPath, MAX_TEXT_LENGTH, MAX_PATH_LENGTH } from "@/lib/security/request-context";
 import { logger } from "@/lib/logger";
 
@@ -39,7 +40,9 @@ type RecordAuditEventInput = {
 };
 
 const MAX_JSON_LENGTH = 4000;
+const MAX_SILENT_FAILURES = 3;
 let auditEventWriteFailures = 0;
+let consecutiveAuditFailures = 0;
 let lastAuditEventWriteFailureAt: string | null = null;
 
 function serializeDetails(details: JsonValue | null | undefined) {
@@ -108,10 +111,16 @@ export function recordAuditEvent({
         requestPath: normalizeText(resolvedContext?.requestPath, MAX_PATH_LENGTH),
       })
       .run();
+    consecutiveAuditFailures = 0;
   } catch (error) {
     auditEventWriteFailures += 1;
+    consecutiveAuditFailures += 1;
     lastAuditEventWriteFailureAt = new Date().toISOString();
-    logger.warn({ action, actorId: normalizeText(actorId, 64), resourceType, err: error }, "Failed to persist audit event");
+    if (consecutiveAuditFailures >= MAX_SILENT_FAILURES) {
+      logger.error({ action, actorId: normalizeText(actorId, 64), resourceType, err: error, consecutiveFailures: consecutiveAuditFailures }, `CRITICAL: ${consecutiveAuditFailures} consecutive audit write failures`);
+    } else {
+      logger.warn({ action, actorId: normalizeText(actorId, 64), resourceType, err: error }, "Failed to persist audit event");
+    }
   }
 }
 
@@ -122,3 +131,16 @@ export function getAuditEventHealthSnapshot() {
     status: auditEventWriteFailures === 0 ? "ok" : "degraded",
   } as const;
 }
+
+async function pruneOldAuditEvents() {
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  try {
+    await db.delete(auditEvents).where(lt(auditEvents.createdAt, cutoff));
+    logger.debug({ cutoff: cutoff.toISOString() }, "Pruned old audit events");
+  } catch (error) {
+    logger.warn({ err: error }, "Failed to prune old audit events");
+  }
+}
+
+// Run retention cleanup once per day
+setInterval(pruneOldAuditEvents, 24 * 60 * 60 * 1000);
