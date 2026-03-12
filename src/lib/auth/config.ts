@@ -26,6 +26,7 @@ import {
   shouldUseSecureSessionCookie,
   validateAuthUrl,
 } from "@/lib/security/env";
+import { getTokenUserId } from "@/lib/api/auth";
 import {
   getLoginEventContextFromUser,
   recordLoginEvent,
@@ -66,10 +67,6 @@ function createSuccessfulLoginResponse(
     mustChangePassword: user.mustChangePassword ?? false,
     loginEventContext,
   };
-}
-
-function getTokenUserId(token: JWT) {
-  return token.id ?? token.sub;
 }
 
 function syncTokenWithUser(
