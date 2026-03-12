@@ -1,5 +1,4 @@
-import { db } from "@/lib/db";
-import { mapSubmissionPercentageToAssignmentPoints } from "@/lib/assignments/scoring";
+import { db, sqlite } from "@/lib/db";
 import {
   assignmentProblems,
   assignments,
@@ -10,7 +9,7 @@ import {
   submissions,
   users,
 } from "@/lib/db/schema";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { SubmissionStatus, UserRole } from "@/types";
 import { isAdmin } from "@/lib/api/auth";
 
@@ -334,6 +333,33 @@ export async function getStudentAssignmentContextsForProblem(
     .orderBy(asc(assignments.deadline), asc(assignments.title));
 }
 
+/**
+ * Per-problem aggregation row returned from the SQL query.
+ * All aggregation (attempt count, best adjusted score, latest submission)
+ * is pushed to SQLite via GROUP BY + window functions so we fetch
+ * O(students * problems) rows instead of O(total submissions).
+ */
+type ProblemAggRow = {
+  userId: string;
+  problemId: string;
+  attemptCount: number;
+  bestAdjustedScore: number | null;
+  latestSubId: string | null;
+  latestStatus: string | null;
+  latestSubmittedAt: number | null; // unix seconds from SQLite integer (Drizzle mode:"timestamp")
+};
+
+/**
+ * Per-user "overall latest submission" row returned from a separate aggregate.
+ */
+type UserLatestRow = {
+  userId: string;
+  totalAttempts: number;
+  latestSubId: string | null;
+  latestStatus: string | null;
+  latestSubmittedAt: number | null;
+};
+
 export async function getAssignmentStatusRows(
   assignmentId: string
 ): Promise<AssignmentStatusRows | null> {
@@ -384,19 +410,6 @@ export async function getAssignmentStatusRows(
     .where(eq(enrollments.groupId, assignment.groupId))
     .orderBy(asc(users.name), asc(users.username));
 
-  const assignmentSubmissions = await db
-    .select({
-      id: submissions.id,
-      userId: submissions.userId,
-      problemId: submissions.problemId,
-      status: submissions.status,
-      score: submissions.score,
-      submittedAt: submissions.submittedAt,
-    })
-    .from(submissions)
-    .where(eq(submissions.assignmentId, assignmentId))
-    .orderBy(desc(submissions.submittedAt), desc(submissions.id));
-
   const problemDefinitions = assignmentProblemRows.map((row) => ({
     problemId: row.problemId,
     title: row.title,
@@ -404,82 +417,126 @@ export async function getAssignmentStatusRows(
     sortOrder: row.sortOrder ?? 0,
   }));
 
-  const rows = enrolledStudents.map<AssignmentStudentStatusRow>((student) => ({
-    userId: student.userId,
-    username: student.username,
-    name: student.name,
-    className: student.className,
-    bestTotalScore: 0,
-    attemptCount: 0,
-    latestSubmissionId: null,
-    latestStatus: null,
-    latestSubmittedAt: null,
-    problems: problemDefinitions.map((problem) => ({
-      ...problem,
-      bestScore: null,
-      attemptCount: 0,
-      latestSubmissionId: null,
-      latestStatus: null,
-      latestSubmittedAt: null,
-      isOverridden: false,
-    })),
-  }));
+  // ---- SQL-aggregated per-(userId, problemId) stats ----
+  //
+  // The adjusted score mirrors mapSubmissionPercentageToAssignmentPoints():
+  //   base  = ROUND(MIN(MAX(score,0),100) / 100.0 * points, 2)
+  //   if submittedAt > deadline AND latePenalty > 0:
+  //     adjusted = ROUND(base * (1 - latePenalty/100), 2)
+  //   else:
+  //     adjusted = base
+  //
+  // For the "latest submission" within each (userId, problemId) group we need
+  // the row with MAX(submitted_at), tiebreak MAX(id). SQLite doesn't have
+  // FIRST_VALUE in aggregate mode, so we use a correlated subquery approach
+  // via a self-join on a ROW_NUMBER CTE — but actually the simplest approach
+  // for better-sqlite3 is a single raw SQL statement.
+  //
+  // We compute this in one CTE-based query.
 
-  const rowByUserId = new Map(rows.map((row) => [row.userId, row]));
+  // Drizzle mode:"timestamp" stores seconds in SQLite (not ms).
+  // Convert the JS Date back to seconds for the raw SQL comparison.
+  const deadlineSec = assignment.deadline
+    ? Math.floor(assignment.deadline.valueOf() / 1000)
+    : null;
+  const latePenalty = assignment.latePenalty ?? 0;
 
-  for (const submission of assignmentSubmissions) {
-    const row = rowByUserId.get(submission.userId);
+  // Build the per-problem adjusted-score expression.
+  // The CASE handles late penalty; we also need to join with assignment_problems
+  // to get the points for each problem.
+  //
+  // We use better-sqlite3 directly for this complex query for clarity and performance.
 
-    if (!row) {
-      continue;
-    }
+  const problemAggStmt = sqlite.prepare<[string, number | null, number], ProblemAggRow>(`
+    WITH scored AS (
+      SELECT
+        s.user_id,
+        s.problem_id,
+        s.id AS sub_id,
+        s.status,
+        s.submitted_at,
+        s.score,
+        ap.points AS problem_points,
+        CASE
+          WHEN s.score IS NOT NULL THEN
+            CASE
+              WHEN ?2 IS NOT NULL AND ?3 > 0 AND s.submitted_at IS NOT NULL AND s.submitted_at > ?2
+              THEN ROUND(
+                ROUND(MIN(MAX(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
+                * (1.0 - ?3 / 100.0),
+                2
+              )
+              ELSE ROUND(MIN(MAX(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
+            END
+          ELSE NULL
+        END AS adjusted_score,
+        ROW_NUMBER() OVER (
+          PARTITION BY s.user_id, s.problem_id
+          ORDER BY s.submitted_at DESC, s.id DESC
+        ) AS rn
+      FROM submissions s
+      INNER JOIN assignment_problems ap
+        ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
+      WHERE s.assignment_id = ?1
+    )
+    SELECT
+      user_id   AS userId,
+      problem_id AS problemId,
+      COUNT(*)  AS attemptCount,
+      MAX(adjusted_score) AS bestAdjustedScore,
+      MAX(CASE WHEN rn = 1 THEN sub_id END)       AS latestSubId,
+      MAX(CASE WHEN rn = 1 THEN status END)        AS latestStatus,
+      MAX(CASE WHEN rn = 1 THEN submitted_at END)  AS latestSubmittedAt
+    FROM scored
+    GROUP BY user_id, problem_id
+  `);
 
-    const problem = row.problems.find((entry) => entry.problemId === submission.problemId);
+  const problemAggRows: ProblemAggRow[] = problemAggStmt.all(
+    assignmentId,
+    deadlineSec,
+    latePenalty
+  );
 
-    if (!problem) {
-      continue;
-    }
+  // ---- SQL-aggregated per-user "latest submission" across all problems ----
+  const userLatestStmt = sqlite.prepare<[string], UserLatestRow>(`
+    WITH ranked AS (
+      SELECT
+        s.user_id,
+        s.id AS sub_id,
+        s.status,
+        s.submitted_at,
+        ROW_NUMBER() OVER (
+          PARTITION BY s.user_id
+          ORDER BY s.submitted_at DESC, s.id DESC
+        ) AS rn
+      FROM submissions s
+      WHERE s.assignment_id = ?1
+    )
+    SELECT
+      user_id AS userId,
+      COUNT(*) AS totalAttempts,
+      MAX(CASE WHEN rn = 1 THEN sub_id END)       AS latestSubId,
+      MAX(CASE WHEN rn = 1 THEN status END)        AS latestStatus,
+      MAX(CASE WHEN rn = 1 THEN submitted_at END)  AS latestSubmittedAt
+    FROM ranked
+    GROUP BY user_id
+  `);
 
-    row.attemptCount += 1;
-    problem.attemptCount += 1;
+  const userLatestRows: UserLatestRow[] = userLatestStmt.all(assignmentId);
 
-    if (
-      submission.submittedAt &&
-      (!row.latestSubmittedAt || row.latestSubmittedAt < submission.submittedAt)
-    ) {
-      row.latestSubmittedAt = submission.submittedAt;
-      row.latestSubmissionId = submission.id;
-      row.latestStatus = submission.status as SubmissionStatus;
-    }
-
-    if (
-      submission.submittedAt &&
-      (!problem.latestSubmittedAt || problem.latestSubmittedAt < submission.submittedAt)
-    ) {
-      problem.latestSubmittedAt = submission.submittedAt;
-      problem.latestSubmissionId = submission.id;
-      problem.latestStatus = submission.status as SubmissionStatus;
-    }
-
-    if (typeof submission.score === "number") {
-      const earnedPoints = mapSubmissionPercentageToAssignmentPoints(
-        submission.score,
-        problem.points,
-        {
-          submittedAt: submission.submittedAt,
-          deadline: assignment.deadline ?? null,
-          latePenalty: assignment.latePenalty ?? 0,
-        }
-      );
-
-      problem.bestScore =
-        problem.bestScore === null
-          ? earnedPoints
-          : Math.max(problem.bestScore, earnedPoints);
-    }
+  // ---- Build lookup maps from aggregated rows ----
+  // Key: "userId:problemId" -> ProblemAggRow
+  const problemAggMap = new Map<string, ProblemAggRow>();
+  for (const row of problemAggRows) {
+    problemAggMap.set(`${row.userId}:${row.problemId}`, row);
   }
 
-  // Apply score overrides
+  const userLatestMap = new Map<string, UserLatestRow>();
+  for (const row of userLatestRows) {
+    userLatestMap.set(row.userId, row);
+  }
+
+  // ---- Score overrides (small result set — one per user/problem at most) ----
   const overrideRows = await db
     .select({
       problemId: scoreOverrides.problemId,
@@ -489,23 +546,62 @@ export async function getAssignmentStatusRows(
     .from(scoreOverrides)
     .where(eq(scoreOverrides.assignmentId, assignmentId));
 
-  for (const override of overrideRows) {
-    const row = rowByUserId.get(override.userId);
-    if (!row) continue;
-
-    const problem = row.problems.find((p) => p.problemId === override.problemId);
-    if (!problem) continue;
-
-    problem.bestScore = override.overrideScore;
-    problem.isOverridden = true;
+  const overrideMap = new Map<string, number>();
+  for (const o of overrideRows) {
+    overrideMap.set(`${o.userId}:${o.problemId}`, o.overrideScore);
   }
 
-  for (const row of rows) {
-    row.bestTotalScore = row.problems.reduce(
-      (total, problem) => total + (problem.bestScore ?? 0),
+  // ---- Assemble result rows in memory (only enrolled students * problems) ----
+  const rows = enrolledStudents.map<AssignmentStudentStatusRow>((student) => {
+    const userLatest = userLatestMap.get(student.userId);
+
+    const problemStatuses: AssignmentProblemStatusRow[] = problemDefinitions.map((problem) => {
+      const key = `${student.userId}:${problem.problemId}`;
+      const agg = problemAggMap.get(key);
+      const overrideScore = overrideMap.get(key);
+      const isOverridden = overrideScore !== undefined;
+
+      let bestScore: number | null = agg?.bestAdjustedScore ?? null;
+      if (isOverridden) {
+        bestScore = overrideScore;
+      }
+
+      return {
+        problemId: problem.problemId,
+        title: problem.title,
+        points: problem.points,
+        sortOrder: problem.sortOrder,
+        bestScore,
+        attemptCount: agg?.attemptCount ?? 0,
+        latestSubmissionId: agg?.latestSubId ?? null,
+        latestStatus: (agg?.latestStatus as SubmissionStatus) ?? null,
+        latestSubmittedAt: agg?.latestSubmittedAt
+          ? new Date(agg.latestSubmittedAt * 1000)
+          : null,
+        isOverridden,
+      };
+    });
+
+    const bestTotalScore = problemStatuses.reduce(
+      (total, p) => total + (p.bestScore ?? 0),
       0
     );
-  }
+
+    return {
+      userId: student.userId,
+      username: student.username,
+      name: student.name,
+      className: student.className,
+      bestTotalScore,
+      attemptCount: userLatest?.totalAttempts ?? 0,
+      latestSubmissionId: userLatest?.latestSubId ?? null,
+      latestStatus: (userLatest?.latestStatus as SubmissionStatus) ?? null,
+      latestSubmittedAt: userLatest?.latestSubmittedAt
+        ? new Date(userLatest.latestSubmittedAt * 1000)
+        : null,
+      problems: problemStatuses,
+    };
+  });
 
   return {
     assignment: {
