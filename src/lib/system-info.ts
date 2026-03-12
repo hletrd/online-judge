@@ -18,6 +18,14 @@ type LscpuInfo = {
   modelName: string | null;
 };
 
+const ARCHITECTURE_PATTERNS: RegExp[] = [
+  /\b(Neoverse[-\s]?[A-Z0-9]+)\b/i,
+  /\b(Cortex[-\s]?[A-Z0-9]+)\b/i,
+  /\b(Haswell|Broadwell|Skylake|Kaby Lake|Coffee Lake|Tiger Lake|Ice Lake|Sapphire Rapids)\b/i,
+  /\b(Zen(?:\s?[1-5])?|Zen\s?\d?)\b/i,
+  /\b(Apple\sM\d(?:\s(?:Pro|Max|Ultra))?)\b/i,
+];
+
 const ARCHITECTURE_LABELS: Record<string, string> = {
   aarch64: "ARM64",
   arm64: "ARM64",
@@ -84,15 +92,8 @@ function detectArchitectureName(cpuModel: string | null) {
   }
 
   const normalizedModel = normalizeWhitespace(cpuModel);
-  const architecturePatterns = [
-    /\b(Neoverse[-\s]?[A-Z0-9]+)\b/i,
-    /\b(Cortex[-\s]?[A-Z0-9]+)\b/i,
-    /\b(Haswell|Broadwell|Skylake|Kaby Lake|Coffee Lake|Tiger Lake|Ice Lake|Sapphire Rapids)\b/i,
-    /\b(Zen(?:\s?[1-5])?|Zen\s?\d?)\b/i,
-    /\b(Apple\sM\d(?:\s(?:Pro|Max|Ultra))?)\b/i,
-  ];
 
-  for (const pattern of architecturePatterns) {
+  for (const pattern of ARCHITECTURE_PATTERNS) {
     const match = normalizedModel.match(pattern);
 
     if (match?.[1]) {
@@ -102,6 +103,28 @@ function detectArchitectureName(cpuModel: string | null) {
   }
 
   return null;
+}
+
+function parseKeyValueOutput(text: string, separator: string, stripQuotes = false): Map<string, string> {
+  const entries = new Map<string, string>();
+
+  for (const line of text.split(/\n+/)) {
+    const separatorIndex = line.indexOf(separator);
+
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    const key = normalizeWhitespace(line.slice(0, separatorIndex));
+    const rawValue = line.slice(separatorIndex + 1).trim();
+    const value = stripQuotes ? rawValue.replace(/^"|"$/g, "") : normalizeWhitespace(rawValue);
+
+    if (key && value) {
+      entries.set(key, value);
+    }
+  }
+
+  return entries;
 }
 
 async function tryReadCommandOutput(command: string, args: string[]) {
@@ -121,21 +144,7 @@ async function tryReadCommandOutput(command: string, args: string[]) {
 async function getLinuxOsName() {
   try {
     const contents = await readFile(OS_RELEASE_PATH, "utf8");
-    const entries = new Map<string, string>();
-
-    for (const line of contents.split("\n")) {
-      const separatorIndex = line.indexOf("=");
-
-      if (separatorIndex <= 0) {
-        continue;
-      }
-
-      const key = line.slice(0, separatorIndex);
-      const rawValue = line.slice(separatorIndex + 1).trim();
-      const value = rawValue.replace(/^"|"$/g, "");
-      entries.set(key, value);
-    }
-
+    const entries = parseKeyValueOutput(contents, "=", true);
     const prettyName = entries.get("PRETTY_NAME") ?? entries.get("NAME");
     const version = entries.get("VERSION_ID") ?? entries.get("VERSION");
 
@@ -184,22 +193,7 @@ async function getLscpuInfo(): Promise<LscpuInfo> {
     };
   }
 
-  const info = new Map<string, string>();
-
-  for (const line of output.split(/\n+/)) {
-    const separatorIndex = line.indexOf(":");
-
-    if (separatorIndex <= 0) {
-      continue;
-    }
-
-    const key = normalizeWhitespace(line.slice(0, separatorIndex));
-    const value = normalizeWhitespace(line.slice(separatorIndex + 1));
-
-    if (key && value) {
-      info.set(key, value);
-    }
-  }
+  const info = parseKeyValueOutput(output, ":");
 
   return {
     architecture: info.get("Architecture") ?? null,
