@@ -67,7 +67,7 @@ export function ProblemSubmissionForm({
       const fileContents = await selectedFile.text();
       setSourceCode(fileContents);
       toast.success(t("sourceFileLoaded", { name: selectedFile.name }));
-    } catch (error) {
+    } catch {
       toast.error(t("sourceFileLoadFailed"));
     } finally {
       event.target.value = "";
@@ -138,7 +138,7 @@ export function ProblemSubmissionForm({
       allowNextNavigation();
       router.push(`/dashboard/submissions/${submissionId}`);
       clearAllDrafts();
-    } catch (error) {
+    } catch {
       toast.error(tCommon("error"));
     } finally {
       setIsSubmitting(false);

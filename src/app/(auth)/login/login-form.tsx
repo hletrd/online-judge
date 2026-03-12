@@ -54,7 +54,7 @@ export function LoginForm() {
         router.push(redirectTo);
       }
       router.refresh();
-    } catch (error) {
+    } catch {
       setError(t("invalidCredentials"));
       setLoading(false);
     }
