@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -7,21 +7,13 @@ import { db } from "@/lib/db";
 import { enrollments, users } from "@/lib/db/schema";
 import { canManageGroupResources } from "@/lib/assignments/management";
 import { groupMembershipSchema } from "@/lib/validators/groups";
-import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
 import { canAccessGroup } from "@/lib/auth/permissions";
 import { assertUserRole } from "@/lib/security/constants";
-import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
-import { logger } from "@/lib/logger";
+import { createApiHandler, forbidden, notFound } from "@/lib/api/handler";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const { id } = await params;
+export const GET = createApiHandler({
+  handler: async (_req: NextRequest, { user, params }) => {
+    const { id } = params;
     const hasAccess = await canAccessGroup(id, user.id, assertUserRole(user.role as string));
     if (!hasAccess) return forbidden();
 
@@ -41,27 +33,14 @@ export async function GET(
     });
 
     return apiSuccess(members);
-  } catch (error) {
-    logger.error({ err: error }, "GET /api/v1/groups/[id]/members error");
-    return apiError("memberLoadFailed", 500);
-  }
-}
+  },
+});
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitResponse = consumeApiRateLimit(request, "members:add");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const { id } = await params;
+export const POST = createApiHandler({
+  rateLimit: "members:add",
+  schema: groupMembershipSchema,
+  handler: async (req: NextRequest, { user, body, params }) => {
+    const { id } = params;
     const group = await db.query.groups.findFirst({
       where: (groups, { eq: equals }) => equals(groups.id, id),
       columns: { id: true, instructorId: true },
@@ -77,15 +56,8 @@ export async function POST(
 
     if (!canManage) return forbidden();
 
-    const body = await request.json();
-    const parsedInput = groupMembershipSchema.safeParse(body);
-
-    if (!parsedInput.success) {
-      return apiError(parsedInput.error.issues[0]?.message ?? "memberAddFailed", 400);
-    }
-
     const student = await db.query.users.findFirst({
-      where: eq(users.id, parsedInput.data.userId),
+      where: eq(users.id, body.userId),
       columns: {
         id: true,
         username: true,
@@ -112,7 +84,7 @@ export async function POST(
       where: (enrollmentsTable, { and, eq: equals }) =>
         and(
           equals(enrollmentsTable.groupId, id),
-          equals(enrollmentsTable.userId, parsedInput.data.userId)
+          equals(enrollmentsTable.userId, body.userId)
         ),
       columns: { id: true },
     });
@@ -125,7 +97,7 @@ export async function POST(
     await db.insert(enrollments).values({
       id: enrollmentId,
       groupId: id,
-      userId: parsedInput.data.userId,
+      userId: body.userId,
       enrolledAt: new Date(),
     });
 
@@ -157,13 +129,10 @@ export async function POST(
           groupId: id,
           username: createdEnrollment.user.username,
         },
-        request,
+        request: req,
       });
     }
 
     return apiSuccess(createdEnrollment, { status: 201 });
-  } catch (error) {
-    logger.error({ err: error }, "POST /api/v1/groups/[id]/members error");
-    return apiError("memberAddFailed", 500);
-  }
-}
+  },
+});

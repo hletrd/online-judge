@@ -11,22 +11,13 @@ import {
   updateAssignmentWithProblems,
 } from "@/lib/assignments/management";
 import { assignmentMutationSchema } from "@/lib/validators/assignments";
-import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden, isAdmin } from "@/lib/api/auth";
 import { canAccessGroup } from "@/lib/auth/permissions";
-import type { UserRole } from "@/types";
-import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { assertUserRole, isUserRole } from "@/lib/security/constants";
-import { logger } from "@/lib/logger";
+import { createApiHandler, isAdmin, forbidden, notFound } from "@/lib/api/handler";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; assignmentId: string }> }
-) {
-  try {
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const { id, assignmentId } = await params;
+export const GET = createApiHandler({
+  handler: async (_req: NextRequest, { user, params }) => {
+    const { id, assignmentId } = params;
     if (!isUserRole(user.role)) return forbidden();
     const hasAccess = await canAccessGroup(id, user.id, user.role);
     if (!hasAccess) return forbidden();
@@ -49,27 +40,13 @@ export async function GET(
     }
 
     return apiSuccess(assignment);
-  } catch (error) {
-    logger.error({ err: error }, "GET /api/v1/groups/[id]/assignments/[assignmentId] error");
-    return apiError("assignmentLoadFailed", 500);
-  }
-}
+  },
+});
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; assignmentId: string }> }
-) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitResponse = consumeApiRateLimit(request, "assignments:update");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const { id, assignmentId } = await params;
+export const PATCH = createApiHandler({
+  rateLimit: "assignments:update",
+  handler: async (req: NextRequest, { user, params }) => {
+    const { id, assignmentId } = params;
     const group = await db.query.groups.findFirst({
       where: (groups, { eq: equals }) => equals(groups.id, id),
       columns: { id: true, instructorId: true },
@@ -102,7 +79,7 @@ export async function PATCH(
       return notFound("Assignment");
     }
 
-    const body = await request.json();
+    const body = await req.json();
     const allowLockedProblems = Boolean(body.allowLockedProblems);
     const hasExistingSubmissions = Boolean(
       await db.query.submissions.findFirst({
@@ -200,32 +177,18 @@ export async function PATCH(
           problemLinkOverrideUsed: allowLockedProblems && isAdmin(user.role),
           latePenalty: updatedAssignment.latePenalty ?? 0,
         },
-        request,
+        request: req,
       });
     }
 
     return apiSuccess(updatedAssignment);
-  } catch (error) {
-    logger.error({ err: error }, "PATCH /api/v1/groups/[id]/assignments/[assignmentId] error");
-    return apiError("assignmentUpdateFailed", 500);
-  }
-}
+  },
+});
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; assignmentId: string }> }
-) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitResponse = consumeApiRateLimit(request, "assignments:delete");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const { id, assignmentId } = await params;
+export const DELETE = createApiHandler({
+  rateLimit: "assignments:delete",
+  handler: async (req: NextRequest, { user, params }) => {
+    const { id, assignmentId } = params;
     const group = await db.query.groups.findFirst({
       where: (groups, { eq: equals }) => equals(groups.id, id),
       columns: { id: true, instructorId: true },
@@ -275,12 +238,9 @@ export async function DELETE(
       details: {
         groupId: id,
       },
-      request,
+      request: req,
     });
 
     return apiSuccess({ id: assignmentId });
-  } catch (error) {
-    logger.error({ err: error }, "DELETE /api/v1/groups/[id]/assignments/[assignmentId] error");
-    return apiError("assignmentDeleteFailed", 500);
-  }
-}
+  },
+});
