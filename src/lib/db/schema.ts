@@ -28,7 +28,7 @@ export const users = sqliteTable("users", {
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
     () => new Date(Date.now())
   ),
-  // NOTE: $defaultFn only fires on INSERT. Every UPDATE must set updatedAt: new Date() manually.
+  // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
     () => new Date(Date.now())
   ),
@@ -128,7 +128,7 @@ export const groups = sqliteTable("groups", {
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
     () => new Date(Date.now())
   ),
-  // NOTE: $defaultFn only fires on INSERT. Every UPDATE must set updatedAt: new Date() manually.
+  // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
     () => new Date(Date.now())
   ),
@@ -172,7 +172,7 @@ export const problems = sqliteTable("problems", {
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
     () => new Date(Date.now())
   ),
-  // NOTE: $defaultFn only fires on INSERT. Every UPDATE must set updatedAt: new Date() manually.
+  // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
     () => new Date(Date.now())
   ),

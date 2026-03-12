@@ -3,6 +3,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { withUpdatedAt } from "@/lib/db/helpers";
 import { auth, unstable_update } from "@/lib/auth";
 import { buildServerActionAuditContext, recordAuditEvent } from "@/lib/audit/events";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
@@ -57,11 +58,7 @@ export async function updateProfile(
   ].flatMap((value) => (value ? [value] : []));
 
   db.update(users)
-    .set({
-      name,
-      className: normalizedClassName,
-      updatedAt: new Date(),
-    })
+    .set(withUpdatedAt({ name, className: normalizedClassName }))
     .where(eq(users.id, session.user.id))
     .run();
 

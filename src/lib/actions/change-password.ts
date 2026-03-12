@@ -7,6 +7,7 @@ import { findSessionUserWithPassword, hasSessionIdentity } from "@/lib/auth/find
 import { buildServerActionAuditContext, recordAuditEvent } from "@/lib/audit/events";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { withUpdatedAt } from "@/lib/db/helpers";
 import { clearRateLimit, isRateLimited, recordRateLimitFailure } from "@/lib/security/rate-limit";
 import { getPasswordValidationError } from "@/lib/security/password";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
@@ -61,12 +62,11 @@ export async function changePassword(
 
   try {
     db.update(users)
-      .set({
+      .set(withUpdatedAt({
         passwordHash: newHash,
         mustChangePassword: false,
         tokenInvalidatedAt: new Date(),
-        updatedAt: new Date(),
-      })
+      }))
       .where(eq(users.id, user.id))
       .run();
   } catch (error) {

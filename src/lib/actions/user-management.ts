@@ -3,6 +3,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { withUpdatedAt } from "@/lib/db/helpers";
 import { auth } from "@/lib/auth";
 import { hash } from "bcryptjs";
 import { nanoid } from "nanoid";
@@ -89,17 +90,14 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
   }
 
   try {
-    const updates: UserUpdates = {
-      isActive,
-      updatedAt: new Date(),
-    };
+    const updates: UserUpdates = { isActive };
 
     if (!isActive) {
       updates.tokenInvalidatedAt = new Date();
     }
 
     await db.update(users)
-      .set(updates)
+      .set(withUpdatedAt(updates))
       .where(eq(users.id, userId));
 
     const auditContext = await buildServerActionAuditContext("/dashboard/admin/users");
@@ -259,7 +257,6 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
       name: data.name,
       className: normalizedClassName,
       role: validatedRole,
-      updatedAt: new Date(),
     };
 
     const shouldInvalidateExistingSessions =
@@ -274,7 +271,7 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
       updates.tokenInvalidatedAt = new Date();
     }
 
-    await db.update(users).set(updates).where(eq(users.id, userId));
+    await db.update(users).set(withUpdatedAt(updates)).where(eq(users.id, userId));
 
     const auditContext = await buildServerActionAuditContext("/dashboard/admin/users");
     recordAuditEvent({
