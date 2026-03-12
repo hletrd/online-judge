@@ -6,15 +6,20 @@ use crate::languages;
 use crate::types::{Submission, TestResult};
 use serde::Serialize;
 use tokio::fs;
+use tracing::Instrument;
 
 const COMPILATION_MEMORY_LIMIT_MB: u32 = 1024;
 const COMPILATION_TIMEOUT_MS: u64 = 20_000;
 const MIN_TIMEOUT_MS: u64 = 100;
+const MAX_TIME_LIMIT_MS: u64 = 30_000;
+const MAX_MEMORY_LIMIT_MB: u32 = 1024;
 
 pub async fn execute(client: &ApiClient, config: &Config, submission: Submission) {
     let span = tracing::info_span!("judge_submission", submission_id = %submission.id);
-    let _guard = span.enter();
+    execute_inner(client, config, submission).instrument(span).await;
+}
 
+async fn execute_inner(client: &ApiClient, config: &Config, submission: Submission) {
     let lang_config = match languages::get_config(&submission.language) {
         Some(lc) => lc,
         None => {
@@ -87,9 +92,10 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
 
     // Compile phase (if language requires compilation)
     if let Some(compile_command) = lang_config.compile_command {
-        let compile_timeout_ms = COMPILATION_TIMEOUT_MS.max(submission.time_limit_ms * 5);
+        let clamped_time = submission.time_limit_ms.min(MAX_TIME_LIMIT_MS);
+        let compile_timeout_ms = COMPILATION_TIMEOUT_MS.max(clamped_time.saturating_mul(5));
         let compile_memory_mb =
-            COMPILATION_MEMORY_LIMIT_MB.max(submission.memory_limit_mb);
+            COMPILATION_MEMORY_LIMIT_MB.max(submission.memory_limit_mb.min(MAX_MEMORY_LIMIT_MB));
 
         let compile_opts = DockerRunOptions {
             image: lang_config.docker_image.to_string(),
@@ -154,7 +160,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
     let mut results: Vec<TestResult> = Vec::new();
 
     for test_case in &submission.test_cases {
-        let run_timeout_ms = MIN_TIMEOUT_MS.max(submission.time_limit_ms);
+        let run_timeout_ms = MIN_TIMEOUT_MS.max(submission.time_limit_ms.min(MAX_TIME_LIMIT_MS));
 
         let run_opts = DockerRunOptions {
             image: lang_config.docker_image.to_string(),
@@ -163,7 +169,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
             phase: Phase::Run,
             input: Some(test_case.input.clone()),
             timeout_ms: run_timeout_ms,
-            memory_limit_mb: submission.memory_limit_mb,
+            memory_limit_mb: submission.memory_limit_mb.min(MAX_MEMORY_LIMIT_MB),
             read_only_workspace: true,
         };
 
@@ -314,7 +320,12 @@ async fn report_with_retry(
         failed_at: failed_at.clone(),
     };
 
-    let file_name = format!("{}-{}.json", submission_id, failed_at);
+    let safe_id: String = submission_id
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+        .take(128)
+        .collect();
+    let file_name = format!("{}-{}.json", safe_id, failed_at);
     let file_path = config.dead_letter_dir.join(&file_name);
 
     match fs::create_dir_all(&config.dead_letter_dir).await {
