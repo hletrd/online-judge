@@ -18,6 +18,19 @@ export default defineConfig({
         branches: 50,
         functions: 50,
         lines: 60,
+        // Per-module thresholds for security-critical code
+        "src/lib/security/**": {
+          statements: 90,
+          branches: 85,
+          functions: 90,
+          lines: 90,
+        },
+        "src/lib/auth/**": {
+          statements: 90,
+          branches: 85,
+          functions: 90,
+          lines: 90,
+        },
       },
     },
   },
