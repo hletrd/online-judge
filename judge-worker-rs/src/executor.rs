@@ -4,6 +4,7 @@ use crate::config::Config;
 use crate::docker::{self, DockerRunOptions, Phase};
 use crate::languages;
 use crate::types::{Submission, TestResult};
+use serde::Serialize;
 use tokio::fs;
 
 const COMPILATION_MEMORY_LIMIT_MB: u32 = 1024;
@@ -15,9 +16,9 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
     let _guard = span.enter();
 
     let lang_config = match languages::get_config(&submission.language) {
-        Some(config) => config,
+        Some(lc) => lc,
         None => {
-            report_error(client, &submission, "compile_error", "Unsupported language").await;
+            report_error(client, config, &submission, "compile_error", "Unsupported language").await;
             return;
         }
     };
@@ -35,7 +36,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
         Ok(d) => d,
         Err(e) => {
             tracing::error!("Failed to create temp dir: {e}");
-            report_error(client, &submission, "runtime_error", &e.to_string()).await;
+            report_error(client, config, &submission, "runtime_error", &e.to_string()).await;
             return;
         }
     };
@@ -50,7 +51,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
     .await
     {
         tracing::error!("Failed to set temp dir permissions: {e}");
-        report_error(client, &submission, "runtime_error", &e.to_string()).await;
+        report_error(client, config, &submission, "runtime_error", &e.to_string()).await;
         return;
     }
 
@@ -58,7 +59,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
     let source_path = workspace_dir.join(format!("solution{}", lang_config.extension));
     if let Err(e) = fs::write(&source_path, &submission.source_code).await {
         tracing::error!("Failed to write source code: {e}");
-        report_error(client, &submission, "runtime_error", &e.to_string()).await;
+        report_error(client, config, &submission, "runtime_error", &e.to_string()).await;
         return;
     }
 
@@ -70,7 +71,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
     .await
     {
         tracing::error!("Failed to set source file permissions: {e}");
-        report_error(client, &submission, "runtime_error", &e.to_string()).await;
+        report_error(client, config, &submission, "runtime_error", &e.to_string()).await;
         return;
     }
 
@@ -78,7 +79,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
         Some(s) => s.to_owned(),
         None => {
             tracing::error!("Temp directory path is not valid UTF-8");
-            report_error(client, &submission, "runtime_error", "Temp directory path is not valid UTF-8").await;
+            report_error(client, config, &submission, "runtime_error", "Temp directory path is not valid UTF-8").await;
             return;
         }
     };
@@ -111,7 +112,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
             Ok(result) => result,
             Err(docker::JudgeEnvironmentError(msg)) => {
                 tracing::error!("Judge environment error during compilation: {msg}");
-                report_error(client, &submission, "runtime_error", &msg).await;
+                report_error(client, config, &submission, "runtime_error", &msg).await;
                 return;
             }
         };
@@ -128,6 +129,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
         if compilation.timed_out {
             report_result(
                 client,
+                config,
                 &submission,
                 "compile_error",
                 "Compilation timed out",
@@ -143,7 +145,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
             } else {
                 &compile_output
             };
-            report_result(client, &submission, "compile_error", output, vec![]).await;
+            report_result(client, config, &submission, "compile_error", output, vec![]).await;
             return;
         }
     }
@@ -178,7 +180,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
                     "Judge environment error during test case {}: {msg}",
                     test_case.id
                 );
-                report_error(client, &submission, "runtime_error", &msg).await;
+                report_error(client, config, &submission, "runtime_error", &msg).await;
                 return;
             }
         };
@@ -233,6 +235,7 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
 
     report_result(
         client,
+        config,
         &submission,
         &final_status,
         &compile_output,
@@ -243,22 +246,35 @@ pub async fn execute(client: &ApiClient, config: &Config, submission: Submission
     // temp_dir is dropped here, cleaning up automatically
 }
 
-async fn report_error(client: &ApiClient, submission: &Submission, status: &str, message: &str) {
-    report_with_retry(client, &submission.id, &submission.claim_token, status, message, vec![]).await;
+async fn report_error(client: &ApiClient, config: &Config, submission: &Submission, status: &str, message: &str) {
+    report_with_retry(client, config, &submission.id, &submission.claim_token, status, message, vec![]).await;
 }
 
 async fn report_result(
     client: &ApiClient,
+    config: &Config,
     submission: &Submission,
     status: &str,
     compile_output: &str,
     results: Vec<TestResult>,
 ) {
-    report_with_retry(client, &submission.id, &submission.claim_token, status, compile_output, results).await;
+    report_with_retry(client, config, &submission.id, &submission.claim_token, status, compile_output, results).await;
+}
+
+/// Payload written to the dead-letter directory when all report retries are exhausted.
+#[derive(Serialize)]
+struct DeadLetterEntry<'a> {
+    submission_id: &'a str,
+    claim_token: &'a str,
+    status: &'a str,
+    compile_output: &'a str,
+    results: &'a [TestResult],
+    failed_at: String,
 }
 
 async fn report_with_retry(
     client: &ApiClient,
+    config: &Config,
     submission_id: &str,
     claim_token: &str,
     status: &str,
@@ -284,8 +300,58 @@ async fn report_with_retry(
             }
         }
     }
-    tracing::error!(
-        "All report attempts exhausted for submission {}; result may be lost",
-        submission_id
-    );
+
+    // All retries exhausted — persist to dead-letter directory so the result
+    // can be replayed manually and the submission does not remain stuck in
+    // `judging` status indefinitely.
+    let failed_at = chrono::Utc::now().format("%Y%m%dT%H%M%SZ").to_string();
+    let entry = DeadLetterEntry {
+        submission_id,
+        claim_token,
+        status,
+        compile_output,
+        results: &results,
+        failed_at: failed_at.clone(),
+    };
+
+    let file_name = format!("{}-{}.json", submission_id, failed_at);
+    let file_path = config.dead_letter_dir.join(&file_name);
+
+    match fs::create_dir_all(&config.dead_letter_dir).await {
+        Err(e) => {
+            tracing::error!(
+                "All report attempts exhausted for submission {}; \
+                 also failed to create dead-letter dir {:?}: {e}. Result is lost.",
+                submission_id,
+                config.dead_letter_dir
+            );
+        }
+        Ok(()) => match serde_json::to_vec_pretty(&entry) {
+            Err(e) => {
+                tracing::error!(
+                    "All report attempts exhausted for submission {}; \
+                     failed to serialize dead-letter entry: {e}. Result is lost.",
+                    submission_id
+                );
+            }
+            Ok(bytes) => match fs::write(&file_path, &bytes).await {
+                Err(e) => {
+                    tracing::error!(
+                        "All report attempts exhausted for submission {}; \
+                         failed to write dead-letter file {:?}: {e}. Result is lost.",
+                        submission_id,
+                        file_path
+                    );
+                }
+                Ok(()) => {
+                    tracing::error!(
+                        "All report attempts exhausted for submission {}; \
+                         result written to dead-letter file: {:?}",
+                        submission_id,
+                        file_path
+                    );
+                }
+            },
+        },
+    }
 }
