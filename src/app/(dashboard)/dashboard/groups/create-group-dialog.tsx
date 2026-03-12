@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/api/client";
@@ -16,7 +16,7 @@ export default function CreateGroupDialog() {
   const tCommon = useTranslations("common");
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
@@ -52,31 +52,29 @@ export default function CreateGroupDialog() {
     }
   }
 
-  async function handleSubmit(event: React.FormEvent) {
+  function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setIsLoading(true);
+    startTransition(async () => {
+      try {
+        const response = await apiFetch("/api/v1/groups", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, description }),
+        });
+        const data = await response.json();
 
-    try {
-      const response = await apiFetch("/api/v1/groups", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description }),
-      });
-      const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "createError");
+        }
 
-      if (!response.ok) {
-        throw new Error(data.error || "createError");
+        toast.success(t("createSuccess"));
+        await handleOpenChange(false);
+        router.push(`/dashboard/groups/${data.data.id}`);
+        router.refresh();
+      } catch (error) {
+        toast.error(getErrorMessage(error));
       }
-
-      toast.success(t("createSuccess"));
-      await handleOpenChange(false);
-      router.push(`/dashboard/groups/${data.data.id}`);
-      router.refresh();
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    } finally {
-      setIsLoading(false);
-    }
+    });
   }
 
   return (
@@ -95,7 +93,7 @@ export default function CreateGroupDialog() {
               id="group-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              disabled={isLoading}
+              disabled={isPending}
               required
             />
           </div>
@@ -107,16 +105,16 @@ export default function CreateGroupDialog() {
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               className="min-h-[140px]"
-              disabled={isLoading}
+              disabled={isPending}
             />
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isLoading}>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>
               {tCommon("cancel")}
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? tCommon("loading") : tCommon("create")}
+            <Button type="submit" disabled={isPending}>
+              {isPending ? tCommon("loading") : tCommon("create")}
             </Button>
           </DialogFooter>
         </form>

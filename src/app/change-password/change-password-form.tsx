@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { signIn, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -13,11 +13,10 @@ export function ChangePasswordForm({ username }: { username: string }) {
   const router = useRouter();
   const t = useTranslations("changePassword");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
     const formData = new FormData(e.currentTarget);
@@ -27,40 +26,40 @@ export function ChangePasswordForm({ username }: { username: string }) {
 
     if (newPassword !== confirmPassword) {
       setError(t("passwordMismatch"));
-      setLoading(false);
       return;
     }
 
-    const result = await changePassword(currentPassword, newPassword);
+    startTransition(async () => {
+      const result = await changePassword(currentPassword, newPassword);
 
-    if (!result.success) {
-      if (result.error === "sessionExpired" || result.error === "userNotFound") {
-        await signOut({ redirect: false });
-        router.replace("/login");
+      if (!result.success) {
+        if (result.error === "sessionExpired" || result.error === "userNotFound") {
+          await signOut({ redirect: false });
+          router.replace("/login");
+          router.refresh();
+          return;
+        }
+
+        setError(t(result.error ?? "error"));
+      } else {
+        const refreshedSession = await signIn("credentials", {
+          username,
+          password: newPassword,
+          redirect: false,
+          redirectTo: "/dashboard",
+        });
+
+        if (refreshedSession?.error || !refreshedSession?.ok) {
+          await signOut({ redirect: false });
+          router.replace("/login");
+          router.refresh();
+          return;
+        }
+
+        router.replace("/dashboard");
         router.refresh();
-        return;
       }
-
-      setError(t(result.error ?? "error"));
-      setLoading(false);
-    } else {
-      const refreshedSession = await signIn("credentials", {
-        username,
-        password: newPassword,
-        redirect: false,
-        redirectTo: "/dashboard",
-      });
-
-      if (refreshedSession?.error || !refreshedSession?.ok) {
-        await signOut({ redirect: false });
-        router.replace("/login");
-        router.refresh();
-        return;
-      }
-
-      router.replace("/dashboard");
-      router.refresh();
-    }
+    });
   }
 
   return (
@@ -97,8 +96,8 @@ export function ChangePasswordForm({ username }: { username: string }) {
       {error && (
         <p className="text-sm text-destructive" role="alert">{error}</p>
       )}
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? t("changing") : t("changeButton")}
+      <Button type="submit" className="w-full" disabled={isPending}>
+        {isPending ? t("changing") : t("changeButton")}
       </Button>
     </form>
   );
