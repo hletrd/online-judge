@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { assignmentProblems, problems, submissions, testCases } from "@/lib/db/schema";
@@ -10,6 +11,21 @@ import { updateProblemWithTestCases } from "@/lib/problem-management";
 import { problemMutationSchema } from "@/lib/validators/problem-management";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { logger } from "@/lib/logger";
+
+const problemPatchSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().optional(),
+  timeLimitMs: z.number().int().min(100).max(30000).optional(),
+  memoryLimitMb: z.number().int().min(16).max(1024).optional(),
+  visibility: z.enum(["public", "private", "hidden"]).optional(),
+  testCases: z.array(z.object({
+    id: z.string().optional(),
+    input: z.string(),
+    expectedOutput: z.string(),
+    sortOrder: z.number().int().optional(),
+  })).optional(),
+  allowLockedTestCases: z.boolean().optional(),
+}).strict();
 
 export async function GET(
   request: NextRequest,
@@ -65,7 +81,12 @@ export async function PATCH(
     const isAuthor = problem.authorId === user.id;
     if (!isAuthor && !isAdmin(user.role)) return forbidden();
 
-    const body = await request.json();
+    const rawBody = await request.json();
+    const parsedBody = problemPatchSchema.safeParse(rawBody);
+    if (!parsedBody.success) {
+      return apiError(parsedBody.error.issues[0]?.message ?? "invalidInput", 400);
+    }
+    const body = parsedBody.data;
     const allowLockedTestCases = Boolean(body.allowLockedTestCases);
     const existingTestCases = await db.query.testCases.findMany({
       where: eq(testCases.problemId, id),

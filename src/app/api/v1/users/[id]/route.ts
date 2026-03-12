@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
@@ -19,6 +20,16 @@ import {
   validateAndHashPassword,
 } from "@/lib/users/core";
 import { logger } from "@/lib/logger";
+
+const adminPatchUserSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  username: z.string().min(1).max(50).optional(),
+  email: z.string().email().optional().nullable(),
+  className: z.string().max(100).optional().nullable(),
+  role: z.enum(["student", "instructor", "admin", "super_admin"]).optional(),
+  isActive: z.boolean().optional(),
+  password: z.string().min(1).optional(),
+}).strict();
 
 type ApiUser = NonNullable<Awaited<ReturnType<typeof getApiUser>>>;
 type UserUpdates = Record<string, unknown>;
@@ -258,7 +269,12 @@ export async function PATCH(
 
     if (!found) return notFound("User");
 
-    const body = (await request.json()) as Record<string, unknown>;
+    const rawBody = await request.json();
+    const parsed = adminPatchUserSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return apiError(parsed.error.issues[0]?.message ?? "invalidInput", 400);
+    }
+    const body = parsed.data;
     const profileValidationError = validateProfileFields(body, isAdminActor);
     if (profileValidationError) return profileValidationError;
 
