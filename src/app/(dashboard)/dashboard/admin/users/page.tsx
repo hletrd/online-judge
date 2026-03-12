@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RoleFilterSelect } from "./role-filter-select";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
@@ -139,22 +139,11 @@ export default async function UserManagementPage({
               <label className="text-sm font-medium" htmlFor="users-role">
                 {t("filters.roleLabel")}
               </label>
-              <input type="hidden" name="role" defaultValue={roleFilter && roleFilter in roleLabels ? roleFilter : ""} id="role-input" />
-              <Select onValueChange={(value) => {
-                (document.getElementById("role-input") as HTMLInputElement).value = value ?? "";
-              }} defaultValue={roleFilter && roleFilter in roleLabels ? roleFilter : ""}>
-                <SelectTrigger id="users-role" className="w-48">
-                  <SelectValue placeholder={t("allRoles")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">{t("allRoles")}</SelectItem>
-                  {Object.entries(roleLabels).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <RoleFilterSelect
+                defaultValue={roleFilter && roleFilter in roleLabels ? roleFilter : ""}
+                placeholder={t("allRoles")}
+                options={Object.entries(roleLabels).map(([value, label]) => ({ value, label }))}
+              />
             </div>
             <div className="flex gap-2">
               <Button type="submit">{t("applyFilters")}</Button>
