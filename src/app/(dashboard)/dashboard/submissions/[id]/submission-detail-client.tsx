@@ -161,6 +161,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
       return undefined;
     }
 
+    const controller = new AbortController();
     let isCancelled = false;
     let timeoutId: number | null = null;
     let delayMs = 3000;
@@ -193,6 +194,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
       try {
         const response = await apiFetch(`/api/v1/submissions/${submission.id}`, {
           cache: "no-store",
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -217,8 +219,8 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
         if (ACTIVE_SUBMISSION_STATUSES.has(nextSubmission.status)) {
           scheduleRefresh();
         }
-      } catch {
-        if (isCancelled) {
+      } catch (error) {
+        if (isCancelled || (error instanceof DOMException && error.name === "AbortError")) {
           return;
         }
 
@@ -244,6 +246,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
 
     return () => {
       isCancelled = true;
+      controller.abort();
       clearScheduledRefresh();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
