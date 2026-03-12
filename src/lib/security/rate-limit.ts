@@ -28,6 +28,13 @@ function evictStaleEntries() {
   }
 }
 
+// Run eviction periodically instead of on every rate limit check
+// to reduce SQLite write contention under load
+const EVICTION_INTERVAL_MS = 60_000; // 1 minute
+setInterval(() => {
+  evictStaleEntries();
+}, EVICTION_INTERVAL_MS);
+
 function getEntry(key: string) {
   const now = Date.now();
   const existing = db.select().from(rateLimits).where(eq(rateLimits.key, key)).get();
@@ -119,8 +126,6 @@ export function recordRateLimitFailure(key: string) {
         .run();
     }
   })();
-
-  evictStaleEntries();
 }
 
 export function recordRateLimitFailureMulti(...keys: string[]) {
