@@ -25,7 +25,7 @@ async fn main() {
     let config = match Config::from_env() {
         Ok(c) => c,
         Err(e) => {
-            tracing::error!("Configuration error: {e}");
+            tracing::error!(error = %e, "Configuration error");
             std::process::exit(1);
         }
     };
@@ -33,8 +33,8 @@ async fn main() {
     // Verify seccomp profile exists if not disabled
     if !config.disable_custom_seccomp && !config.seccomp_profile_path.exists() {
         tracing::error!(
-            "Run-phase seccomp profile is missing at {}. Execution will fail closed.",
-            config.seccomp_profile_path.display()
+            path = %config.seccomp_profile_path.display(),
+            "Run-phase seccomp profile is missing. Execution will fail closed."
         );
     }
 
@@ -46,19 +46,19 @@ async fn main() {
     ) {
         Ok(c) => c,
         Err(e) => {
-            tracing::error!("Failed to create API client: {e}");
+            tracing::error!(error = %e, "Failed to create API client");
             std::process::exit(1);
         }
     });
     let config = Arc::new(config);
     let semaphore = Arc::new(Semaphore::new(concurrency));
 
-    tracing::info!("Judge worker started (concurrency={})", concurrency);
+    tracing::info!(concurrency = concurrency, "Judge worker started");
     tracing::info!(
-        "Claim URL: {}, Report URL: {}, interval: {}ms",
-        config.claim_url,
-        config.report_url,
-        config.poll_interval.as_millis()
+        claim_url = %config.claim_url,
+        report_url = %config.report_url,
+        poll_interval_ms = config.poll_interval.as_millis() as u64,
+        "Worker configuration"
     );
 
     // Graceful shutdown via SIGTERM/SIGINT
@@ -114,7 +114,7 @@ async fn main() {
                     Ok(Some(submission)) => Some(submission),
                     Ok(None) => None,
                     Err(e) => {
-                        tracing::error!("Poll failed: {e}");
+                        tracing::error!(error = %e, "Poll failed");
                         None
                     }
                 }
@@ -123,7 +123,7 @@ async fn main() {
 
         match submission {
             Some(submission) => {
-                tracing::info!("Processing submission {}", submission.id);
+                tracing::info!(submission_id = %submission.id, "Processing submission");
                 let client = Arc::clone(&client);
                 let config = Arc::clone(&config);
 
@@ -161,13 +161,10 @@ async fn main() {
     // Graceful shutdown: await all in-flight tasks
     let in_flight = task_handles.len();
     if in_flight > 0 {
-        tracing::info!(
-            "Waiting for {} in-flight submission(s) to complete...",
-            in_flight
-        );
+        tracing::info!(in_flight = in_flight, "Waiting for in-flight submissions to complete");
         for handle in task_handles {
             if let Err(e) = handle.await {
-                tracing::error!("Task panicked during shutdown: {e}");
+                tracing::error!(error = %e, "Task panicked during shutdown");
             }
         }
         tracing::info!("All in-flight submissions completed");
