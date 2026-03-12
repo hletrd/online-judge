@@ -25,13 +25,13 @@ export const users = sqliteTable("users", {
   tokenInvalidatedAt: integer("token_invalidated_at", { mode: "timestamp" }),
   emailVerified: integer("email_verified", { mode: "timestamp" }),
   image: text("image"),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date(Date.now())
-  ),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
   // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date(Date.now())
-  ),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
 });
 
 export const sessions = sqliteTable("sessions", {
@@ -74,9 +74,9 @@ export const loginEvents = sqliteTable(
     userAgent: text("user_agent"),
     requestMethod: text("request_method"),
     requestPath: text("request_path"),
-    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-      () => new Date(Date.now())
-    ),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
   },
   (table) => [
     index("login_events_outcome_idx").on(table.outcome),
@@ -103,9 +103,9 @@ export const auditEvents = sqliteTable(
     userAgent: text("user_agent"),
     requestMethod: text("request_method"),
     requestPath: text("request_path"),
-    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-      () => new Date(Date.now())
-    ),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
   },
   (table) => [
     index("audit_events_actor_idx").on(table.actorId),
@@ -125,13 +125,13 @@ export const groups = sqliteTable("groups", {
     onDelete: "set null",
   }),
   isArchived: integer("is_archived", { mode: "boolean" }).default(false),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date(Date.now())
-  ),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
   // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date(Date.now())
-  ),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
 });
 
 export const enrollments = sqliteTable(
@@ -146,9 +146,9 @@ export const enrollments = sqliteTable(
     groupId: text("group_id")
       .notNull()
       .references(() => groups.id, { onDelete: "cascade" }),
-    enrolledAt: integer("enrolled_at", { mode: "timestamp" }).$defaultFn(
-      () => new Date(Date.now())
-    ),
+    enrolledAt: integer("enrolled_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
   },
   (table) => [
     uniqueIndex("enrollments_user_group_idx").on(table.userId, table.groupId),
@@ -169,13 +169,13 @@ export const problems = sqliteTable("problems", {
   authorId: text("author_id").references(() => users.id, {
     onDelete: "set null",
   }),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date(Date.now())
-  ),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
   // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date(Date.now())
-  ),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
 });
 
 export const testCases = sqliteTable(
@@ -230,12 +230,12 @@ export const assignments = sqliteTable(
     deadline: integer("deadline", { mode: "timestamp" }),
     lateDeadline: integer("late_deadline", { mode: "timestamp" }),
     latePenalty: real("late_penalty").default(0),
-    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-      () => new Date(Date.now())
-    ),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
-      () => new Date(Date.now())
-    ),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
   },
   (table) => [
     index("assignments_group_idx").on(table.groupId),
@@ -289,9 +289,9 @@ export const submissions = sqliteTable(
     memoryUsedKb: integer("memory_used_kb"),
     score: real("score"),
     judgedAt: integer("judged_at", { mode: "timestamp" }),
-    submittedAt: integer("submitted_at", { mode: "timestamp" }).$defaultFn(
-      () => new Date(Date.now())
-    ),
+    submittedAt: integer("submitted_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
   },
   (table) => [
     index("submissions_user_problem_idx").on(table.userId, table.problemId),
@@ -315,9 +315,9 @@ export const languageConfigs = sqliteTable("language_configs", {
   compileCommand: text("compile_command"),
   runCommand: text("run_command").notNull(),
   isEnabled: integer("is_enabled", { mode: "boolean" }).default(true),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date(Date.now())
-  ),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
 });
 
 export const systemSettings = sqliteTable("system_settings", {
@@ -327,9 +327,9 @@ export const systemSettings = sqliteTable("system_settings", {
   siteTitle: text("site_title"),
   siteDescription: text("site_description"),
   timeZone: text("time_zone"),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
-    () => new Date(Date.now())
-  ),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
 });
 
 export const rateLimits = sqliteTable(
@@ -363,12 +363,12 @@ export const submissionComments = sqliteTable(
     authorId: text("author_id")
       .references(() => users.id, { onDelete: "set null" }),
     content: text("content").notNull(),
-    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-      () => new Date(Date.now())
-    ),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
-      () => new Date(Date.now())
-    ),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
   },
   (table) => [
     index("sc_submission_idx").on(table.submissionId),
