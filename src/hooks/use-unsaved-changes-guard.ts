@@ -63,6 +63,17 @@ function isPathNavigation(currentLocation: string, nextLocation: string | null) 
   return !!nextLocation && currentLocation !== nextLocation;
 }
 
+/**
+ * WARNING: This hook monkey-patches window.history.pushState and
+ * window.history.replaceState to intercept client-side navigation.
+ * This is a known fragile pattern — it may conflict with Next.js App Router
+ * internals or other libraries that patch the same methods.
+ *
+ * Preferred alternative: use the App Router's navigation events API when
+ * it becomes stable, or listen to the `beforeunload` event for tab-close only.
+ *
+ * Do not add new consumers of this hook without careful testing.
+ */
 export function useUnsavedChangesGuard({
   isDirty,
   warningMessage = DEFAULT_WARNING_MESSAGE,
