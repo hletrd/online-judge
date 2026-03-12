@@ -1,4 +1,10 @@
-import { CodeSurface } from "./code-surface";
+import dynamic from "next/dynamic";
+import { CodeEditorSkeleton } from "./code-editor-skeleton";
+
+const CodeSurface = dynamic(
+  () => import("./code-surface").then((m) => ({ default: m.CodeSurface })),
+  { ssr: false, loading: () => <CodeEditorSkeleton minHeight={180} /> }
+);
 
 type CodeViewerProps = {
   ariaLabel?: string;
