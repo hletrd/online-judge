@@ -34,5 +34,6 @@ declare module "next-auth/jwt" {
     className?: string | null;
     mustChangePassword?: boolean;
     authenticatedAt?: number;
+    uaHash?: string;
   }
 }

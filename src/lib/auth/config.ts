@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
+import crypto from "crypto";
 import { compare } from "bcryptjs";
 import {
   AUTH_SESSION_MAX_AGE_SECONDS,
@@ -252,7 +253,7 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         const authenticatedAtSeconds = Math.trunc(Date.now() / 1000);
 
-        return syncTokenWithUser(token, {
+        const updatedToken = syncTokenWithUser(token, {
           id: user.id ?? token.sub ?? "",
           username: user.username,
           email: user.email ?? null,
@@ -261,6 +262,16 @@ export const authConfig: NextAuthConfig = {
           role: user.role,
           mustChangePassword: user.mustChangePassword ?? false,
         }, authenticatedAtSeconds);
+
+        const loginContext = getLoginEventContextFromUser(user);
+        const ua = loginContext?.userAgent ?? "";
+        updatedToken.uaHash = crypto
+          .createHash("sha256")
+          .update(ua)
+          .digest("hex")
+          .slice(0, 16);
+
+        return updatedToken;
       }
 
       const userId = getTokenUserId(token);
