@@ -15,7 +15,7 @@ import {
   validateAndHashPassword,
   validateRoleChange,
 } from "@/lib/users/core";
-import { isUserRole } from "@/lib/security/constants";
+import { isUserRole, ROLE_LEVEL } from "@/lib/security/constants";
 import { adminUpdateUserSchema, userCreateSchema } from "@/lib/validators/profile";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
@@ -234,12 +234,6 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
 
     // Prevent password reset for users of equal or higher privilege
     if (data.password && targetUser.role) {
-      const ROLE_LEVEL: Record<string, number> = {
-        student: 0,
-        instructor: 1,
-        admin: 2,
-        super_admin: 3,
-      };
       const actorLevel = ROLE_LEVEL[actorRole] ?? 0;
       const targetLevel = ROLE_LEVEL[targetUser.role] ?? 0;
       if (targetLevel >= actorLevel) {

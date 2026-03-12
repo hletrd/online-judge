@@ -1,3 +1,4 @@
+import type { UserRole } from "@/types";
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 import { shouldUseSecureAuthCookie } from "@/lib/auth/secure-cookie";
@@ -45,7 +46,7 @@ export async function getActiveAuthUserById(
 
   return {
     id: user.id,
-    role: user.role,
+    role: user.role as UserRole,
     username: user.username,
     email: user.email,
     name: user.name,

@@ -23,6 +23,14 @@ export const USER_ROLES: readonly UserRole[] = [
   "super_admin",
 ];
 
+/** Canonical role hierarchy — higher number = more privilege. */
+export const ROLE_LEVEL: Record<UserRole, number> = {
+  student: 0,
+  instructor: 1,
+  admin: 2,
+  super_admin: 3,
+};
+
 export const SUBMISSION_STATUSES: readonly SubmissionStatus[] = [
   "pending",
   "queued",
