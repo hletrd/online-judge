@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,11 @@ import BulkCreateDialog from "./bulk-create-dialog";
 import EditUserDialog from "./edit-user-dialog";
 import { formatDateInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("admin.users");
+  return { title: t("title") };
+}
 
 const PAGE_SIZE = 25;
 
