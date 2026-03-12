@@ -90,7 +90,7 @@ export function AppSidebar({ user, siteTitle }: AppSidebarProps) {
                       aria-current={isActive ? "page" : undefined}
                       render={<Link href={item.href} />}
                     >
-                      <item.icon className="h-4 w-4" aria-hidden="true" />
+                      <item.icon className="size-4" aria-hidden="true" />
                       <span>{t(item.titleKey)}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -113,7 +113,7 @@ export function AppSidebar({ user, siteTitle }: AppSidebarProps) {
                         aria-current={isActive ? "page" : undefined}
                         render={<Link href={item.href} />}
                       >
-                        <item.icon className="h-4 w-4" aria-hidden="true" />
+                        <item.icon className="size-4" aria-hidden="true" />
                         <span>{t(item.titleKey)}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -127,7 +127,7 @@ export function AppSidebar({ user, siteTitle }: AppSidebarProps) {
       <SidebarFooter className="border-t p-4">
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <User className="h-4 w-4" aria-hidden="true" />
+            <User className="size-4" aria-hidden="true" />
             <div className="flex flex-col text-sm">
               <span className="font-medium">{user.name} ({user.username})</span>
               <span className="text-xs text-muted-foreground">{roleLabels[user.role]}</span>
@@ -137,7 +137,7 @@ export function AppSidebar({ user, siteTitle }: AppSidebarProps) {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton onClick={() => void handleSignOut()} disabled={isSigningOut}>
-                <LogOut className="h-4 w-4" aria-hidden="true" />
+                <LogOut className="size-4" aria-hidden="true" />
                 <span>{isSigningOut ? tCommon("loading") : tAuth("signOut")}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>

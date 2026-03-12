@@ -30,7 +30,7 @@ export function PaginationControls({
             aria-label="Previous page"
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
-            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            <ChevronLeft className="size-4" aria-hidden="true" />
           </Link>
         )}
         {hasNextPage && (
@@ -39,7 +39,7 @@ export function PaginationControls({
             aria-label="Next page"
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
-            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            <ChevronRight className="size-4" aria-hidden="true" />
           </Link>
         )}
       </div>

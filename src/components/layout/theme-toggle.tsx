@@ -64,7 +64,7 @@ export function ThemeToggle({ className }: { className?: string }) {
         )}
         disabled={!mounted}
       >
-        <ThemeTriggerIcon className="h-4 w-4" theme={mounted ? selectedTheme : undefined} />
+        <ThemeTriggerIcon className="size-4" theme={mounted ? selectedTheme : undefined} />
         <span className="sr-only">{t("theme")}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
@@ -80,7 +80,7 @@ export function ThemeToggle({ className }: { className?: string }) {
           >
             {themeOptions.map(({ value, icon: Icon, labelKey }) => (
               <DropdownMenuRadioItem key={value} value={value} className="gap-2">
-                <Icon className="h-4 w-4 text-muted-foreground" />
+                <Icon className="size-4 text-muted-foreground" />
                 {t(labelKey)}
               </DropdownMenuRadioItem>
             ))}

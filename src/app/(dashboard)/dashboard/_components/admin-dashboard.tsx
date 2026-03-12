@@ -37,28 +37,28 @@ export async function AdminDashboard() {
         <CardContent>
           <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="flex items-center gap-3 rounded-lg border p-3">
-              <Cpu className="h-5 w-5 text-muted-foreground" />
+              <Cpu className="size-5 text-muted-foreground" />
               <div>
                 <p className="text-xs text-muted-foreground">{tJudge("cpuLabel")}</p>
                 <p className="text-sm font-medium">{runtimeSystemInfo.cpu}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-3">
-              <HardDrive className="h-5 w-5 text-muted-foreground" />
+              <HardDrive className="size-5 text-muted-foreground" />
               <div>
                 <p className="text-xs text-muted-foreground">{tJudge("osLabel")}</p>
                 <p className="text-sm font-medium">{runtimeSystemInfo.os}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-3">
-              <Clock className="h-5 w-5 text-muted-foreground" />
+              <Clock className="size-5 text-muted-foreground" />
               <div>
                 <p className="text-xs text-muted-foreground">{tJudge("timeLimitLabel")}</p>
                 <p className="text-sm font-medium">{tJudge("defaultTimeLimit")}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-3">
-              <MemoryStick className="h-5 w-5 text-muted-foreground" />
+              <MemoryStick className="size-5 text-muted-foreground" />
               <div>
                 <p className="text-xs text-muted-foreground">{tJudge("memoryLimitLabel")}</p>
                 <p className="text-sm font-medium">{tJudge("defaultMemoryLimit")}</p>
