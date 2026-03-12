@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -20,6 +21,11 @@ import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("submissions");
+  return { title: t("title") };
+}
 
 const PAGE_SIZE = 25;
 
