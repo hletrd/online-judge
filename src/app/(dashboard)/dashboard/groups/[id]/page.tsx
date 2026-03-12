@@ -238,6 +238,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
           )}
         </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -339,6 +340,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

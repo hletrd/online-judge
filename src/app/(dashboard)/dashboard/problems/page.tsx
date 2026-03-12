@@ -463,6 +463,7 @@ export default async function ProblemsPage({
             </p>
           )}
 
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -517,6 +518,7 @@ export default async function ProblemsPage({
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

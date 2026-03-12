@@ -140,6 +140,7 @@ export default async function SubmissionsPage({
             </p>
           )}
 
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -210,6 +211,7 @@ export default async function SubmissionsPage({
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

@@ -174,6 +174,7 @@ export default async function UserManagementPage({
               {t("pagination.results", { start: rangeStart, end: rangeEnd, total })}
             </p>
           )}
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -241,6 +242,7 @@ export default async function UserManagementPage({
               )}
             </TableBody>
           </Table>
+          </div>
           <div className="mt-4 flex items-center justify-end gap-2">
             {currentPage > 1 ? (
               <Link href={buildHref(currentPage - 1)}>
