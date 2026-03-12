@@ -17,11 +17,13 @@ import {
 } from "@/lib/users/core";
 import { isUserRole } from "@/lib/security/constants";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
+import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
 
 type UserUpdates = Partial<typeof users.$inferInsert>;
 
 type UserManagementErrorKey =
   | "unauthorized"
+  | "rateLimited"
   | "cannotDeactivateSelf"
   | "userNotFound"
   | "cannotDeactivateSuperAdmin"
@@ -64,6 +66,9 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
   if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
     return { success: false, error: "unauthorized" };
   }
+
+  const rateLimit = checkServerActionRateLimit(session.user.id, "toggleUserActive", 20, 60);
+  if (rateLimit) return { success: false, error: "rateLimited" };
 
   // Prevent deactivating yourself
   if (userId === session.user.id) {
@@ -129,6 +134,9 @@ export async function deleteUserPermanently(userId: string, confirmUsername: str
     return { success: false, error: "unauthorized" };
   }
 
+  const rateLimit = checkServerActionRateLimit(session.user.id, "deleteUserPermanently", 5, 60);
+  if (rateLimit) return { success: false, error: "rateLimited" };
+
   if (userId === session.user.id) {
     return { success: false, error: "cannotDeleteSelf" };
   }
@@ -183,6 +191,9 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
   if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
     return { success: false, error: "unauthorized" };
   }
+
+  const rateLimit = checkServerActionRateLimit(session.user.id, "editUser", 20, 60);
+  if (rateLimit) return { success: false, error: "rateLimited" };
 
   if (!data.username || !data.name) {
     return { success: false, error: "usernameAndNameRequired" };
@@ -287,6 +298,9 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
   if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
     return { success: false, error: "unauthorized" };
   }
+
+  const rateLimit = checkServerActionRateLimit(session.user.id, "createUser", 20, 60);
+  if (rateLimit) return { success: false, error: "rateLimited" };
 
   if (!data.username || !data.name) {
     return { success: false, error: "usernameAndNameRequired" };

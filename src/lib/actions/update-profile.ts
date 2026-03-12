@@ -6,6 +6,7 @@ import { users } from "@/lib/db/schema";
 import { auth, unstable_update } from "@/lib/auth";
 import { buildServerActionAuditContext, recordAuditEvent } from "@/lib/audit/events";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
+import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
 import {
   type UpdateProfileInput,
   updateProfileSchema,
@@ -22,6 +23,9 @@ export async function updateProfile(
   if (!session?.user?.id) {
     return { success: false, error: "notAuthenticated" };
   }
+
+  const rateLimit = checkServerActionRateLimit(session.user.id, "updateProfile", 20, 60);
+  if (rateLimit) return { success: false, error: "rateLimited" };
 
   const parsedInput = updateProfileSchema.safeParse(input);
   if (!parsedInput.success) {

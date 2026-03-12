@@ -555,6 +555,7 @@
       "passwordTooWeak": "Password must include uppercase and lowercase letters plus at least one number",
       "passwordTooCommon": "This password is too common. Please choose a more unique password.",
       "passwordTooContextual": "Password must not contain your username or email address.",
+      "rateLimited": "Too many requests. Please wait a moment and try again.",
       "updateUserFailed": "Failed to update user",
       "createUserFailed": "Failed to create user",
       "filters": {
@@ -704,6 +705,7 @@
       "timeZoneHint": "Leave blank to use the default application timezone. Current effective timezone: {current}",
       "updateSuccess": "System settings updated successfully",
       "updateError": "Failed to update system settings",
+      "rateLimited": "Too many requests. Please wait a moment and try again.",
       "siteTitleTooLong": "Site title must be 100 characters or less",
       "siteDescriptionTooLong": "Site description must be 255 characters or less",
       "invalidTimeZone": "Enter a valid IANA timezone such as Asia/Seoul",
@@ -730,6 +732,7 @@
     "changePasswordBtn": "Change Password",
     "updateSuccess": "Profile updated successfully",
     "updateError": "Failed to update profile",
+    "rateLimited": "Too many requests. Please wait a moment and try again.",
     "notAuthenticated": "Not authenticated",
     "nameRequired": "Name is required",
     "nameTooLong": "Name must be 100 characters or less",

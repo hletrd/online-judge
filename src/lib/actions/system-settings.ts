@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { systemSettings } from "@/lib/db/schema";
 import { GLOBAL_SETTINGS_ID } from "@/lib/system-settings";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
+import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
 import {
   type SystemSettingsInput,
   systemSettingsSchema,
@@ -29,6 +30,9 @@ export async function updateSystemSettings(
   if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
     return { success: false, error: "unauthorized" };
   }
+
+  const rateLimit = checkServerActionRateLimit(session.user.id, "updateSystemSettings", 20, 60);
+  if (rateLimit) return { success: false, error: "rateLimited" };
 
   const parsedInput = systemSettingsSchema.safeParse(input);
   if (!parsedInput.success) {
