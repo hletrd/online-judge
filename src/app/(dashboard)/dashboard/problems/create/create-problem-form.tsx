@@ -238,26 +238,26 @@ export default function CreateProblemForm({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="timeLimit">{t("timeLimitLabel")}</Label>
-          <Input 
-            id="timeLimit" 
-            type="number" 
-            min={100} 
-            max={10000} 
-            value={timeLimitMs} 
-            onChange={(e) => setTimeLimitMs(parseInt(e.target.value, 10))}
-            required 
+          <Input
+            id="timeLimit"
+            type="number"
+            min={100}
+            max={10000}
+            value={timeLimitMs}
+            onChange={(e) => { const v = parseInt(e.target.value, 10); if (!Number.isNaN(v)) setTimeLimitMs(v); }}
+            required
           />
         </div>
         <div className="space-y-2">
           <Label htmlFor="memoryLimit">{t("memoryLimitLabel")}</Label>
-          <Input 
-            id="memoryLimit" 
-            type="number" 
-            min={16} 
-            max={1024} 
-            value={memoryLimitMb} 
-            onChange={(e) => setMemoryLimitMb(parseInt(e.target.value, 10))}
-            required 
+          <Input
+            id="memoryLimit"
+            type="number"
+            min={16}
+            max={1024}
+            value={memoryLimitMb}
+            onChange={(e) => { const v = parseInt(e.target.value, 10); if (!Number.isNaN(v)) setMemoryLimitMb(v); }}
+            required
           />
         </div>
       </div>
