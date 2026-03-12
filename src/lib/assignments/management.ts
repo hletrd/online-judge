@@ -1,4 +1,4 @@
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, sqlite } from "@/lib/db";
 import {
@@ -97,14 +97,16 @@ function syncGroupAccessRows(groupId: string) {
       problemId,
     }));
 
-  if (rowsToInsert.length > 0) {
-    db.insert(problemGroupAccess).values(rowsToInsert).run();
+  const idsToDelete = existingRows
+    .filter((row) => !requiredProblemIds.has(row.problemId))
+    .map((row) => row.id);
+
+  if (idsToDelete.length > 0) {
+    db.delete(problemGroupAccess).where(inArray(problemGroupAccess.id, idsToDelete)).run();
   }
 
-  for (const row of existingRows) {
-    if (!requiredProblemIds.has(row.problemId)) {
-      db.delete(problemGroupAccess).where(eq(problemGroupAccess.id, row.id)).run();
-    }
+  if (rowsToInsert.length > 0) {
+    db.insert(problemGroupAccess).values(rowsToInsert).run();
   }
 }
 
