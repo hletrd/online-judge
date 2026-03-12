@@ -7,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { auth } from "@/lib/auth";
+import { AuditFilterSelect } from "./audit-filter-select";
 import { db } from "@/lib/db";
 import { auditEvents, users } from "@/lib/db/schema";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
@@ -306,21 +306,15 @@ export default async function AdminAuditLogsPage({
               <label className="text-sm font-medium" htmlFor="audit-log-resource-type">
                 {t("filters.resourceTypeLabel")}
               </label>
-              <input type="hidden" name="resource" defaultValue={resourceTypeFilter} id="resource-input" />
-              <Select onValueChange={(value) => {
-                (document.getElementById("resource-input") as HTMLInputElement).value = value ?? "";
-              }} defaultValue={resourceTypeFilter}>
-                <SelectTrigger id="audit-log-resource-type" className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {RESOURCE_FILTER_VALUES.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {resourceLabels[value]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <AuditFilterSelect
+                name="resource"
+                defaultValue={resourceTypeFilter}
+                placeholder={resourceLabels.all}
+                options={RESOURCE_FILTER_VALUES.map((value) => ({
+                  value,
+                  label: resourceLabels[value],
+                }))}
+              />
             </div>
 
             <div className="flex gap-2">

@@ -14,8 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { auth } from "@/lib/auth";
+import { LogFilterSelect } from "./log-filter-select";
 import { db } from "@/lib/db";
 import { loginEvents, users } from "@/lib/db/schema";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
@@ -216,22 +216,18 @@ export default async function AdminLoginLogsPage({
               <label className="text-sm font-medium" htmlFor="login-log-outcome">
                 {t("filters.outcomeLabel")}
               </label>
-              <input type="hidden" name="outcome" defaultValue={outcomeFilter} id="outcome-input" />
-              <Select onValueChange={(value) => {
-                (document.getElementById("outcome-input") as HTMLInputElement).value = value ?? "";
-              }} defaultValue={outcomeFilter}>
-                <SelectTrigger id="login-log-outcome" className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("filters.allOutcomes")}</SelectItem>
-                  {OUTCOME_FILTER_VALUES.filter((value) => value !== "all").map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {outcomeLabels[value]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <LogFilterSelect
+                name="outcome"
+                defaultValue={outcomeFilter}
+                placeholder={t("filters.allOutcomes")}
+                options={[
+                  { value: "all", label: t("filters.allOutcomes") },
+                  ...OUTCOME_FILTER_VALUES.filter((value) => value !== "all").map((value) => ({
+                    value,
+                    label: outcomeLabels[value],
+                  })),
+                ]}
+              />
             </div>
 
             <div className="flex gap-2">
