@@ -19,3 +19,14 @@ sqlite.pragma("foreign_keys = ON");
 export const db = drizzle(sqlite, { schema: { ...schema, ...relations } });
 export { sqlite };
 export type DbType = typeof db;
+
+try {
+  for (const ext of ["", "-wal", "-shm"]) {
+    const p = dbPath + ext;
+    if (fs.existsSync(p)) {
+      fs.chmodSync(p, 0o600);
+    }
+  }
+} catch {
+  // non-fatal
+}

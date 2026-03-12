@@ -1,18 +1,20 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { sqlite } from "@/lib/db";
 import { getAuditEventHealthSnapshot } from "@/lib/audit/events";
-import { createApiHandler } from "@/lib/api/handler";
+import { getApiUser, isAdmin } from "@/lib/api/auth";
 
 export const dynamic = "force-dynamic";
 
-export const GET = createApiHandler({
-  auth: false,
-  handler: async () => {
-    try {
-      sqlite.prepare("select 1").get();
-      const auditEvents = getAuditEventHealthSnapshot();
-      const overallStatus = auditEvents.status === "ok" ? "ok" : "degraded";
+export async function GET(request: NextRequest) {
+  try {
+    sqlite.prepare("select 1").get();
+    const auditEvents = getAuditEventHealthSnapshot();
+    const overallStatus = auditEvents.status === "ok" ? "ok" : "degraded";
 
+    const user = await getApiUser(request);
+    const isAdminUser = user && isAdmin(user.role);
+
+    if (isAdminUser) {
       return NextResponse.json(
         {
           checks: {
@@ -38,10 +40,24 @@ export const GET = createApiHandler({
           },
         }
       );
-    } catch (error) {
-      console.error("GET /api/health error:", error);
-      const auditEvents = getAuditEventHealthSnapshot();
+    }
 
+    return NextResponse.json(
+      { status: overallStatus === "ok" ? "ok" : "error" },
+      {
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
+    );
+  } catch (error) {
+    console.error("GET /api/health error:", error);
+
+    const user = await getApiUser(request).catch(() => null);
+    const isAdminUser = user && isAdmin(user.role);
+
+    if (isAdminUser) {
+      const auditEvents = getAuditEventHealthSnapshot();
       return NextResponse.json(
         {
           checks: {
@@ -60,5 +76,15 @@ export const GET = createApiHandler({
         }
       );
     }
-  },
-});
+
+    return NextResponse.json(
+      { status: "error" },
+      {
+        headers: {
+          "Cache-Control": "no-store",
+        },
+        status: 503,
+      }
+    );
+  }
+}
