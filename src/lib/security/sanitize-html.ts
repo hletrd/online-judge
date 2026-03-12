@@ -1,5 +1,12 @@
 import DOMPurify from "isomorphic-dompurify";
 
+DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+  if (node.tagName === "A") {
+    node.setAttribute("rel", "noopener noreferrer");
+    node.setAttribute("target", "_blank");
+  }
+});
+
 const ALLOWED_TAGS = [
   "a",
   "b",
@@ -54,5 +61,7 @@ export function sanitizeHtml(html: string) {
     ALLOWED_ATTR,
     ALLOWED_TAGS,
     ALLOW_DATA_ATTR: false,
+    ALLOWED_URI_REGEXP: /^(?:https?|mailto):/i,
+    ADD_ATTR: ["rel"],
   });
 }

@@ -8,6 +8,7 @@ import { getApiUser, unauthorized, forbidden, notFound, csrfForbidden, isInstruc
 import { canAccessSubmission } from "@/lib/auth/permissions";
 import { commentCreateSchema } from "@/lib/validators/comments";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
 import { logger } from "@/lib/logger";
 
 export async function GET(
@@ -92,7 +93,7 @@ export async function POST(
       .values({
         submissionId: id,
         authorId: user.id,
-        content: parsed.data.content,
+        content: sanitizeHtml(parsed.data.content),
       })
       .returning();
 
