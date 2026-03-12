@@ -6,6 +6,32 @@ import { getTokenAuthenticatedAtSeconds } from "@/lib/auth/session-security";
 import { getActiveAuthUserById, getTokenUserId } from "@/lib/api/auth";
 import { getValidatedAuthSecret } from "@/lib/security/env";
 
+// In-process LRU cache for proxy auth lookups.
+// Security tradeoff: revoked or deactivated users may retain access for up to
+// AUTH_CACHE_TTL_MS (5 seconds) after the change is applied to the database.
+// Negative results (user not found / inactive / token invalidated) are NOT cached.
+const authUserCache = new Map<string, { user: Awaited<ReturnType<typeof getActiveAuthUserById>>; expiresAt: number }>();
+const AUTH_CACHE_TTL_MS = 5_000; // 5 seconds
+const AUTH_CACHE_MAX_SIZE = 500;
+
+function getCachedAuthUser(cacheKey: string) {
+  const cached = authUserCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.user;
+  }
+  authUserCache.delete(cacheKey);
+  return null;
+}
+
+function setCachedAuthUser(cacheKey: string, user: Awaited<ReturnType<typeof getActiveAuthUserById>>) {
+  // Simple FIFO eviction when the cache is full
+  if (authUserCache.size >= AUTH_CACHE_MAX_SIZE) {
+    const firstKey = authUserCache.keys().next().value;
+    if (firstKey !== undefined) authUserCache.delete(firstKey);
+  }
+  authUserCache.set(cacheKey, { user, expiresAt: Date.now() + AUTH_CACHE_TTL_MS });
+}
+
 function clearAuthSessionCookies(response: NextResponse) {
   response.cookies.delete("authjs.session-token");
   response.cookies.delete("__Secure-authjs.session-token");
@@ -63,12 +89,19 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/dashboard") ||
     (isApiRoute && !isJudgeWorkerRoute && !isPublicLanguagesRoute);
   const shouldRefreshAuthState = Boolean(token) && (isProtectedRoute || isChangePasswordPage || isAuthPage);
-  const activeUser = shouldRefreshAuthState
-    ? await getActiveAuthUserById(
-        getTokenUserId(token),
-        getTokenAuthenticatedAtSeconds(token)
-      )
-    : null;
+  let activeUser: Awaited<ReturnType<typeof getActiveAuthUserById>> = null;
+  if (shouldRefreshAuthState) {
+    const userId = getTokenUserId(token);
+    const authenticatedAtSeconds = getTokenAuthenticatedAtSeconds(token);
+    // Build a cache key that incorporates authenticatedAt so that token
+    // invalidation (password change / forced logout) is reflected promptly.
+    const cacheKey = `${userId}:${authenticatedAtSeconds ?? ""}`;
+    activeUser = getCachedAuthUser(cacheKey);
+    if (!activeUser) {
+      activeUser = await getActiveAuthUserById(userId, authenticatedAtSeconds);
+      if (activeUser) setCachedAuthUser(cacheKey, activeUser);
+    }
+  }
 
   if (isAuthPage && token && !activeUser) {
     return clearAuthSessionCookies(createSecuredNextResponse(request));
