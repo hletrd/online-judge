@@ -17,7 +17,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History } from "lucide-react";
+import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen } from "lucide-react";
 import type { UserRole } from "@/types";
 
 interface AppSidebarProps {
@@ -35,6 +35,7 @@ const navItems: Array<{ titleKey: string; href: string; icon: typeof LayoutDashb
   { titleKey: "dashboard" as const, href: "/dashboard", icon: LayoutDashboard, roles: ["super_admin", "admin", "instructor", "student"] },
   { titleKey: "problems" as const, href: "/dashboard/problems", icon: BookOpen, roles: ["super_admin", "admin", "instructor", "student"] },
   { titleKey: "submissions" as const, href: "/dashboard/submissions", icon: Send, roles: ["super_admin", "admin", "instructor", "student"] },
+  { titleKey: "problemSets" as const, href: "/dashboard/problem-sets", icon: FolderOpen, roles: ["super_admin", "admin", "instructor"] },
   { titleKey: "groups" as const, href: "/dashboard/groups", icon: Users, roles: ["super_admin", "admin", "instructor", "student"] },
   { titleKey: "profile" as const, href: "/dashboard/profile", icon: User, roles: ["super_admin", "admin", "instructor", "student"] },
 ];

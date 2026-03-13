@@ -16,6 +16,9 @@ import {
   submissionComments,
   submissionResults,
   scoreOverrides,
+  problemSets,
+  problemSetProblems,
+  problemSetGroupAccess,
 } from "./schema";
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -28,6 +31,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   authoredProblems: many(problems),
   submissions: many(submissions),
   submissionComments: many(submissionComments),
+  createdProblemSets: many(problemSets),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -66,6 +70,7 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
   enrollments: many(enrollments),
   assignments: many(assignments),
   problemAccess: many(problemGroupAccess),
+  problemSetAccess: many(problemSetGroupAccess),
 }));
 
 export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
@@ -88,6 +93,7 @@ export const problemsRelations = relations(problems, ({ one, many }) => ({
   groupAccess: many(problemGroupAccess),
   assignmentProblems: many(assignmentProblems),
   submissions: many(submissions),
+  problemSetProblems: many(problemSetProblems),
 }));
 
 export const testCasesRelations = relations(testCases, ({ one, many }) => ({
@@ -199,6 +205,43 @@ export const scoreOverridesRelations = relations(
     creator: one(users, {
       fields: [scoreOverrides.createdBy],
       references: [users.id],
+    }),
+  })
+);
+
+export const problemSetsRelations = relations(problemSets, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [problemSets.createdBy],
+    references: [users.id],
+  }),
+  problems: many(problemSetProblems),
+  groupAccess: many(problemSetGroupAccess),
+}));
+
+export const problemSetProblemsRelations = relations(
+  problemSetProblems,
+  ({ one }) => ({
+    problemSet: one(problemSets, {
+      fields: [problemSetProblems.problemSetId],
+      references: [problemSets.id],
+    }),
+    problem: one(problems, {
+      fields: [problemSetProblems.problemId],
+      references: [problems.id],
+    }),
+  })
+);
+
+export const problemSetGroupAccessRelations = relations(
+  problemSetGroupAccess,
+  ({ one }) => ({
+    problemSet: one(problemSets, {
+      fields: [problemSetGroupAccess.problemSetId],
+      references: [problemSets.id],
+    }),
+    group: one(groups, {
+      fields: [problemSetGroupAccess.groupId],
+      references: [groups.id],
     }),
   })
 );

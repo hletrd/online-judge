@@ -409,6 +409,67 @@ export const scoreOverrides = sqliteTable(
   ]
 );
 
+export const problemSets = sqliteTable("problem_sets", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdBy: text("created_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+});
+
+export const problemSetProblems = sqliteTable(
+  "problem_set_problems",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    problemSetId: text("problem_set_id")
+      .notNull()
+      .references(() => problemSets.id, { onDelete: "cascade" }),
+    problemId: text("problem_id")
+      .notNull()
+      .references(() => problems.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order").default(0),
+  },
+  (table) => [
+    index("psp_problem_set_idx").on(table.problemSetId),
+    index("psp_problem_idx").on(table.problemId),
+    uniqueIndex("psp_problem_set_problem_idx").on(table.problemSetId, table.problemId),
+  ]
+);
+
+export const problemSetGroupAccess = sqliteTable(
+  "problem_set_group_access",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    problemSetId: text("problem_set_id")
+      .notNull()
+      .references(() => problemSets.id, { onDelete: "cascade" }),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    assignedAt: integer("assigned_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("psga_problem_set_idx").on(table.problemSetId),
+    index("psga_group_idx").on(table.groupId),
+    uniqueIndex("psga_problem_set_group_idx").on(table.problemSetId, table.groupId),
+  ]
+);
+
 export const submissionResults = sqliteTable(
   "submission_results",
   {

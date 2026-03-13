@@ -1,4 +1,4 @@
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, sqlite } from "@/lib/db";
 import {
@@ -7,6 +7,7 @@ import {
   problemGroupAccess,
   problems,
 } from "@/lib/db/schema";
+import { syncGroupAccessRows } from "@/lib/problem-sets/management";
 import type { AssignmentMutationInput } from "@/lib/validators/assignments";
 import type { UserRole } from "@/types";
 
@@ -73,41 +74,6 @@ function mapAssignmentProblems(
     points: problem.points,
     sortOrder: index,
   }));
-}
-
-function syncGroupAccessRows(groupId: string) {
-  const requiredRows = db
-    .select({ problemId: assignmentProblems.problemId })
-    .from(assignmentProblems)
-    .innerJoin(assignments, eq(assignments.id, assignmentProblems.assignmentId))
-    .where(eq(assignments.groupId, groupId))
-    .all();
-  const requiredProblemIds = new Set(requiredRows.map((row) => row.problemId));
-  const existingRows = db
-    .select({ id: problemGroupAccess.id, problemId: problemGroupAccess.problemId })
-    .from(problemGroupAccess)
-    .where(eq(problemGroupAccess.groupId, groupId))
-    .all();
-  const existingProblemIds = new Set(existingRows.map((row) => row.problemId));
-  const rowsToInsert = [...requiredProblemIds]
-    .filter((problemId) => !existingProblemIds.has(problemId))
-    .map((problemId) => ({
-      id: nanoid(),
-      groupId,
-      problemId,
-    }));
-
-  const idsToDelete = existingRows
-    .filter((row) => !requiredProblemIds.has(row.problemId))
-    .map((row) => row.id);
-
-  if (idsToDelete.length > 0) {
-    db.delete(problemGroupAccess).where(inArray(problemGroupAccess.id, idsToDelete)).run();
-  }
-
-  if (rowsToInsert.length > 0) {
-    db.insert(problemGroupAccess).values(rowsToInsert).run();
-  }
 }
 
 export function createAssignmentWithProblems(
