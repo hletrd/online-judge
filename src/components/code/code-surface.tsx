@@ -5,13 +5,14 @@ import { useEditorCompartments } from "@/hooks/use-editor-compartments";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import {
   bracketMatching,
-  defaultHighlightStyle,
+  HighlightStyle,
   indentUnit,
   StreamLanguage,
   syntaxHighlighting,
 } from "@codemirror/language";
+import { tags } from "@lezer/highlight";
 import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
-import { EditorState, type Extension } from "@codemirror/state";
+import { EditorSelection, EditorState, type Extension } from "@codemirror/state";
 import {
   drawSelection,
   EditorView,
@@ -77,6 +78,64 @@ const baseTheme = EditorView.theme({
   },
 });
 
+// Material Lighter highlight style (based on JetBrains Material Theme - Lighter)
+const materialLightHighlightStyle = HighlightStyle.define([
+  { tag: tags.keyword, color: "#7C4DFF" },
+  { tag: tags.controlKeyword, color: "#7C4DFF" },
+  { tag: tags.operatorKeyword, color: "#7C4DFF" },
+  { tag: tags.definitionKeyword, color: "#7C4DFF" },
+  { tag: tags.moduleKeyword, color: "#7C4DFF" },
+  { tag: tags.operator, color: "#39ADB5" },
+  { tag: tags.punctuation, color: "#39ADB5" },
+  { tag: tags.string, color: "#91B859" },
+  { tag: tags.special(tags.string), color: "#F76D47" },
+  { tag: tags.number, color: "#F76D47" },
+  { tag: tags.bool, color: "#7C4DFF" },
+  { tag: tags.null, color: "#7C4DFF" },
+  { tag: tags.comment, color: "#90A4AE", fontStyle: "italic" },
+  { tag: tags.blockComment, color: "#90A4AE", fontStyle: "italic" },
+  { tag: tags.lineComment, color: "#90A4AE", fontStyle: "italic" },
+  { tag: tags.docComment, color: "#90A4AE", fontStyle: "italic" },
+  { tag: tags.function(tags.variableName), color: "#6182B8" },
+  { tag: tags.function(tags.definition(tags.variableName)), color: "#6182B8" },
+  { tag: tags.definition(tags.variableName), color: "#546E7A" },
+  { tag: tags.variableName, color: "#546E7A" },
+  { tag: tags.typeName, color: "#E2931D" },
+  { tag: tags.className, color: "#E2931D" },
+  { tag: tags.definition(tags.typeName), color: "#E2931D" },
+  { tag: tags.tagName, color: "#E53935" },
+  { tag: tags.attributeName, color: "#F6A434" },
+  { tag: tags.propertyName, color: "#6182B8" },
+  { tag: tags.meta, color: "#39ADB5" },
+  { tag: tags.processingInstruction, color: "#39ADB5" },
+  { tag: tags.regexp, color: "#91B859" },
+  { tag: tags.self, color: "#7C4DFF" },
+  { tag: tags.atom, color: "#F76D47" },
+  { tag: tags.escape, color: "#F76D47" },
+  { tag: tags.heading, color: "#E53935", fontWeight: "bold" },
+  { tag: tags.emphasis, fontStyle: "italic" },
+  { tag: tags.strong, fontWeight: "bold" },
+  { tag: tags.link, color: "#6182B8", textDecoration: "underline" },
+  { tag: tags.invalid, color: "#FF5370" },
+]);
+
+// Insert newline and copy current line's indent without language-based auto-indent.
+// This avoids unwanted indentation after if/for/while in Allman/GNU brace style.
+function insertNewlineKeepIndent(view: EditorView): boolean {
+  const { state } = view;
+  const changes = state.changeByRange((range) => {
+    const line = state.doc.lineAt(range.head);
+    const indent = /^[\t ]*/.exec(line.text)?.[0] ?? "";
+    const insert = state.lineBreak + indent;
+    return {
+      changes: { from: range.from, to: range.to, insert },
+      range: EditorSelection.cursor(range.from + insert.length),
+    };
+  });
+  view.dispatch(changes, { scrollIntoView: true, userEvent: "input" });
+  return true;
+}
+
 // drawSelection() replaces native selection rendering with CodeMirror's own layer,
 // which conflicts with iOS Safari's UIKit selection handles and touch input.
 const isIOS =
@@ -91,7 +150,12 @@ const baseExtensions: Extension[] = [
   ...(isIOS ? [] : [drawSelection()]),
   highlightSpecialChars(),
   bracketMatching(),
-  keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
+  keymap.of([
+    { key: "Enter", run: insertNewlineKeepIndent },
+    indentWithTab,
+    ...defaultKeymap,
+    ...historyKeymap,
+  ]),
 ];
 
 async function getLanguageExtension(language: string | null | undefined): Promise<Extension[]> {
@@ -145,7 +209,7 @@ async function getLanguageExtension(language: string | null | undefined): Promis
 }
 
 function getHighlightExtension(isDark: boolean) {
-  return syntaxHighlighting(isDark ? oneDarkHighlightStyle : defaultHighlightStyle);
+  return syntaxHighlighting(isDark ? oneDarkHighlightStyle : materialLightHighlightStyle);
 }
 
 function getEditabilityExtension(readOnly: boolean) {
