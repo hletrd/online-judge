@@ -13,6 +13,7 @@ export default function UserActions({
   isActive,
   isSelf,
   userRole,
+  actorRole,
   triggerVariant,
 }: {
   userId: string;
@@ -20,6 +21,7 @@ export default function UserActions({
   isActive: boolean;
   isSelf: boolean;
   userRole: string;
+  actorRole?: string;
   triggerVariant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
 }) {
   const [isPending, startTransition] = useTransition();
@@ -91,18 +93,20 @@ export default function UserActions({
         triggerTestId={`user-access-toggle-${userId}`}
         confirmTestId={`user-access-toggle-confirm-${userId}`}
       />
-      <DestructiveActionDialog
-        triggerLabel={t("deleteUser")}
-        title={t("deleteDialogTitle")}
-        description={t("deleteDialogDescription", { username })}
-        confirmLabel={t("deleteUser")}
-        cancelLabel={t("cancelAction")}
-        onConfirmAction={handlePermanentDelete}
-        disabled={isDeletePending}
-        triggerVariant="destructive"
-        triggerTestId={`user-delete-${userId}`}
-        confirmTestId={`user-delete-confirm-${userId}`}
-      />
+      {(!actorRole || actorRole === "admin" || actorRole === "super_admin") && (
+        <DestructiveActionDialog
+          triggerLabel={t("deleteUser")}
+          title={t("deleteDialogTitle")}
+          description={t("deleteDialogDescription", { username })}
+          confirmLabel={t("deleteUser")}
+          cancelLabel={t("cancelAction")}
+          onConfirmAction={handlePermanentDelete}
+          disabled={isDeletePending}
+          triggerVariant="destructive"
+          triggerTestId={`user-delete-${userId}`}
+          confirmTestId={`user-delete-confirm-${userId}`}
+        />
+      )}
     </div>
   );
 }

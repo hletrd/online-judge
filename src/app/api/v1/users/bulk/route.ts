@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { getApiUser, unauthorized, forbidden, isAdmin, csrfForbidden } from "@/lib/api/auth";
+import { getApiUser, unauthorized, forbidden, isAdmin, isInstructor, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { nanoid } from "nanoid";
 import { hash } from "bcryptjs";
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();
-    if (!isAdmin(user.role)) return forbidden();
+    if (!isAdmin(user.role) && !isInstructor(user.role)) return forbidden();
 
     const body = await request.json();
     const parsed = bulkUserCreateSchema.safeParse(body);
@@ -39,6 +39,15 @@ export async function POST(request: NextRequest) {
         const roleError = validateRoleChange(user.role, entry.role);
         if (roleError) {
           return apiError(roleError, 403);
+        }
+      }
+    }
+
+    // Instructors can only bulk-create students
+    if (isInstructor(user.role) && !isAdmin(user.role)) {
+      for (const entry of userList) {
+        if (entry.role && entry.role !== "student") {
+          return apiError("unauthorized", 403);
         }
       }
     }

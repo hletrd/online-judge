@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createUser } from "@/lib/actions/user-management";
 
-export default function AddUserDialog() {
+export default function AddUserDialog({ actorRole }: { actorRole?: string }) {
   const t = useTranslations("admin.users");
   const tCommon = useTranslations("common");
   const router = useRouter();
@@ -141,8 +141,12 @@ export default function AddUserDialog() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="student">{roleLabels.student}</SelectItem>
-                  <SelectItem value="instructor">{roleLabels.instructor}</SelectItem>
-                  <SelectItem value="admin">{roleLabels.admin}</SelectItem>
+                  {(!actorRole || actorRole === "admin" || actorRole === "super_admin") && (
+                    <>
+                      <SelectItem value="instructor">{roleLabels.instructor}</SelectItem>
+                      <SelectItem value="admin">{roleLabels.admin}</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>

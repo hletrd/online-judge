@@ -50,7 +50,9 @@ export function isUserRole(value: string): value is UserRole {
 export function canManageRole(actorRole: UserRole, requestedRole: UserRole) {
   if (requestedRole === "super_admin") return actorRole === "super_admin";
   if (requestedRole === "admin") return actorRole === "super_admin";
-  return actorRole === "admin" || actorRole === "super_admin";
+  if (requestedRole === "instructor") return actorRole === "admin" || actorRole === "super_admin";
+  // student role can be assigned by instructor, admin, or super_admin
+  return actorRole === "instructor" || actorRole === "admin" || actorRole === "super_admin";
 }
 
 export function assertUserRole(role: string): UserRole {

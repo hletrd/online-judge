@@ -22,7 +22,7 @@ interface EditUserDialogProps {
   };
 }
 
-export default function EditUserDialog({ user }: EditUserDialogProps) {
+export default function EditUserDialog({ user, actorRole }: EditUserDialogProps & { actorRole?: string }) {
   const t = useTranslations("admin.users");
   const tCommon = useTranslations("common");
   const router = useRouter();
@@ -100,14 +100,18 @@ export default function EditUserDialog({ user }: EditUserDialogProps) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="edit-role">{t("table.role")}</Label>
-            <Select value={role} onValueChange={v => { if (v) setRole(v); }} disabled={user.role === "super_admin"}>
+            <Select value={role} onValueChange={v => { if (v) setRole(v); }} disabled={user.role === "super_admin" || actorRole === "instructor"}>
               <SelectTrigger id="edit-role">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="student">{roleLabels.student}</SelectItem>
-                <SelectItem value="instructor">{roleLabels.instructor}</SelectItem>
-                <SelectItem value="admin">{roleLabels.admin}</SelectItem>
+                {(!actorRole || actorRole === "admin" || actorRole === "super_admin") && (
+                  <>
+                    <SelectItem value="instructor">{roleLabels.instructor}</SelectItem>
+                    <SelectItem value="admin">{roleLabels.admin}</SelectItem>
+                  </>
+                )}
                 {user.role === "super_admin" && <SelectItem value="super_admin">{roleLabels.super_admin}</SelectItem>}
               </SelectContent>
             </Select>

@@ -50,7 +50,9 @@ export default async function UserManagementPage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin" && session.user.role !== "super_admin") redirect("/dashboard");
+  if (session.user.role !== "admin" && session.user.role !== "super_admin" && session.user.role !== "instructor") redirect("/dashboard");
+
+  const isAdmin = session.user.role === "admin" || session.user.role === "super_admin";
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const t = await getTranslations("admin.users");
@@ -68,6 +70,11 @@ export default async function UserManagementPage({
     super_admin: tCommon("roles.super_admin"),
   };
   const filters = [];
+
+  // Instructors can only manage students
+  if (!isAdmin) {
+    filters.push(eq(users.role, "student"));
+  }
 
   if (searchQuery) {
     const likePattern = `%${searchQuery.toLowerCase()}%`;
@@ -120,7 +127,7 @@ export default async function UserManagementPage({
         <h2 className="text-2xl font-bold">{t("title")}</h2>
         <div className="flex gap-2">
           <BulkCreateDialog />
-          <AddUserDialog />
+          <AddUserDialog actorRole={session.user.role} />
         </div>
       </div>
       <Card>
@@ -214,7 +221,7 @@ export default async function UserManagementPage({
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2 items-center">
-                      <EditUserDialog user={{
+                      <EditUserDialog actorRole={session.user.role} user={{
                         id: user.id,
                         username: user.username,
                         email: user.email,
@@ -222,12 +229,13 @@ export default async function UserManagementPage({
                         className: user.className,
                         role: user.role
                       }} />
-                      <UserActions 
-                        userId={user.id} 
+                      <UserActions
+                        userId={user.id}
                         username={user.username}
-                        isActive={!!user.isActive} 
-                        isSelf={user.id === session.user.id} 
+                        isActive={!!user.isActive}
+                        isSelf={user.id === session.user.id}
                         userRole={user.role}
+                        actorRole={session.user.role}
                       />
                     </div>
                   </TableCell>

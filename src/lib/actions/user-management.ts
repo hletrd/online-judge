@@ -17,6 +17,7 @@ import {
   validateRoleChange,
 } from "@/lib/users/core";
 import { isUserRole, ROLE_LEVEL } from "@/lib/security/constants";
+import { isInstructorOrAbove } from "@/lib/auth/role-helpers";
 import { adminUpdateUserSchema, userCreateSchema } from "@/lib/validators/profile";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
@@ -64,7 +65,7 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
   }
 
   const session = await auth();
-  if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
+  if (!session?.user || !isInstructorOrAbove(session.user.role)) {
     return { success: false, error: "unauthorized" };
   }
 
@@ -82,6 +83,11 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
   });
 
   if (!targetUser) return { success: false, error: "userNotFound" };
+
+  // Instructors can only toggle students
+  if (session.user.role === "instructor" && targetUser.role !== "student") {
+    return { success: false, error: "unauthorized" };
+  }
 
   if (targetUser.role === "super_admin" && !isActive) {
     return { success: false, error: "cannotDeactivateSuperAdmin" };
@@ -186,7 +192,7 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
   }
 
   const session = await auth();
-  if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
+  if (!session?.user || !isInstructorOrAbove(session.user.role)) {
     return { success: false, error: "unauthorized" };
   }
 
@@ -217,6 +223,11 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
     });
 
     if (!targetUser) return { success: false, error: "userNotFound" };
+
+    // Instructors can only edit students
+    if (session.user.role === "instructor" && targetUser.role !== "student") {
+      return { success: false, error: "unauthorized" };
+    }
 
     const roleError = validateRoleChange(actorRole, requestedRole, targetUser.role);
     if (roleError === "invalidRole") return { success: false, error: "updateUserFailed" };
@@ -306,7 +317,7 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
   }
 
   const session = await auth();
-  if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
+  if (!session?.user || !isInstructorOrAbove(session.user.role)) {
     return { success: false, error: "unauthorized" };
   }
 
@@ -326,6 +337,11 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
     const normalizedEmail = data.email?.trim() || null;
     const normalizedClassName = data.className?.trim() || null;
     const requestedRole = data.role.trim();
+
+    // Instructors can only create students
+    if (session.user.role === "instructor" && requestedRole !== "student") {
+      return { success: false, error: "unauthorized" };
+    }
 
     const roleError = validateRoleChange(actorRole, requestedRole);
     if (roleError === "invalidRole") return { success: false, error: "createUserFailed" };
