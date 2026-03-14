@@ -202,7 +202,7 @@ export default function ChatWidget(_props: PluginWidgetProps) {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex h-[500px] w-[380px] flex-col overflow-hidden rounded-xl border border-border/60 bg-background shadow-2xl sm:h-[560px]">
+    <div className="fixed bottom-0 right-0 z-50 flex h-[100dvh] w-full flex-col overflow-hidden border-border/60 bg-background shadow-2xl sm:bottom-6 sm:right-6 sm:h-[560px] sm:w-[380px] sm:rounded-xl sm:border">
       {/* Header */}
       <div className="flex items-center justify-between border-b bg-primary px-4 py-3 text-primary-foreground">
         <span className="text-sm font-semibold">{t("name")}</span>
