@@ -202,7 +202,7 @@ export default function ChatWidget(_props: PluginWidgetProps) {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex h-[500px] w-[380px] flex-col overflow-hidden rounded-xl border bg-background shadow-2xl sm:h-[560px]">
+    <div className="fixed bottom-6 right-6 z-50 flex h-[500px] w-[380px] flex-col overflow-hidden rounded-xl border border-border/60 bg-background shadow-2xl sm:h-[560px]">
       {/* Header */}
       <div className="flex items-center justify-between border-b bg-primary px-4 py-3 text-primary-foreground">
         <span className="text-sm font-semibold">{t("name")}</span>
@@ -293,9 +293,10 @@ export default function ChatWidget(_props: PluginWidgetProps) {
             onClick={() => void handleSend()}
             disabled={!input.trim() || isStreaming}
             aria-label={t("send")}
-            className="h-9 w-9 shrink-0"
+            className="shrink-0 self-end [&_svg]:size-4"
+            style={{ height: "36px", width: "36px" }}
           >
-            <Send className="h-4 w-4" />
+            <Send />
           </Button>
         </div>
       </div>

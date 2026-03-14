@@ -26,7 +26,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
   const [openaiApiKey, setOpenaiApiKey] = useState((config.openaiApiKey as string) ?? "");
   const [openaiModel, setOpenaiModel] = useState((config.openaiModel as string) ?? "gpt-5-mini");
   const [claudeApiKey, setClaudeApiKey] = useState((config.claudeApiKey as string) ?? "");
-  const [claudeModel, setClaudeModel] = useState((config.claudeModel as string) ?? "claude-haiku-4-5-20251001");
+  const [claudeModel, setClaudeModel] = useState((config.claudeModel as string) ?? "claude-sonnet-4-6");
   const [geminiApiKey, setGeminiApiKey] = useState((config.geminiApiKey as string) ?? "");
   const [geminiModel, setGeminiModel] = useState((config.geminiModel as string) ?? "gemini-3.1-flash-lite-preview");
   const [systemPrompt, setSystemPrompt] = useState((config.systemPrompt as string) ?? "");
@@ -161,7 +161,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
                 )}
                 {provider === "claude" && (
                   <>
-                    <SelectItem value="claude-haiku-4-5-20251001" label="Claude Haiku 4.5">Claude Haiku 4.5</SelectItem>
+                    <SelectItem value="claude-sonnet-4-6" label="Claude Haiku 4.5">Claude Haiku 4.5</SelectItem>
                     <SelectItem value="claude-sonnet-4-6" label="Claude Sonnet 4.6">Claude Sonnet 4.6</SelectItem>
                     <SelectItem value="claude-opus-4-6" label="Claude Opus 4.6">Claude Opus 4.6</SelectItem>
                     <SelectItem value="claude-sonnet-4-20250514" label="Claude Sonnet 4">Claude Sonnet 4</SelectItem>

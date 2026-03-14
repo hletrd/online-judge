@@ -919,7 +919,7 @@
     "disableSuccess": "Plugin disabled successfully",
     "toggleFailed": "Failed to toggle plugin",
     "chatWidget": {
-      "name": "AI Chat Assistant",
+      "name": "AI Assistant",
       "description": "Floating chat widget that provides AI-powered help to students.",
       "placeholder": "Ask a question...",
       "send": "Send",

@@ -919,7 +919,7 @@
     "disableSuccess": "플러그인이 비활성화되었습니다",
     "toggleFailed": "플러그인 상태 변경에 실패했습니다",
     "chatWidget": {
-      "name": "AI 채팅 도우미",
+      "name": "AI 도우미",
       "description": "AI 기반 도움말을 제공하는 채팅 위젯입니다.",
       "placeholder": "질문을 입력하세요...",
       "send": "보내기",

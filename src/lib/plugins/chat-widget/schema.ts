@@ -5,7 +5,7 @@ export const chatWidgetConfigSchema = z.object({
   openaiApiKey: z.string().max(200).default(""),
   openaiModel: z.string().max(100).default("gpt-5-mini"),
   claudeApiKey: z.string().max(200).default(""),
-  claudeModel: z.string().max(100).default("claude-haiku-4-5-20251001"),
+  claudeModel: z.string().max(100).default("claude-sonnet-4-6"),
   geminiApiKey: z.string().max(200).default(""),
   geminiModel: z.string().max(100).default("gemini-3.1-flash-lite-preview"),
   systemPrompt: z.string().max(10000).default(""),

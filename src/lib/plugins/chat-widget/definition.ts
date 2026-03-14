@@ -11,7 +11,7 @@ export const chatWidgetPlugin: PluginDefinition = {
     openaiApiKey: "",
     openaiModel: "gpt-5-mini",
     claudeApiKey: "",
-    claudeModel: "claude-haiku-4-5-20251001",
+    claudeModel: "claude-sonnet-4-6",
     geminiApiKey: "",
     geminiModel: "gemini-3.1-flash-lite-preview",
     systemPrompt: "",
