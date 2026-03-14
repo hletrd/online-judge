@@ -227,10 +227,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "notConfigured" }, { status: 500 });
     }
 
-    // Detect locale from Accept-Language header (getLocale() doesn't work in API routes)
-    const acceptLang = request.headers.get("accept-language") ?? "";
-    const locale = acceptLang.startsWith("ko") ? "ko" : "en";
-    const siteName = "JudgeKit"; // TODO: read from system settings if needed
+    // Detect locale from NEXT_LOCALE cookie (set by next-intl), fallback to Accept-Language
+    const cookieHeader = request.headers.get("cookie") ?? "";
+    const localeMatch = cookieHeader.match(/NEXT_LOCALE=(\w+)/);
+    const locale = localeMatch?.[1] ?? (request.headers.get("accept-language")?.startsWith("ko") ? "ko" : "en");
+    const siteName = "JudgeKit";
 
     // Build system prompt
     const systemContent = buildSystemPrompt({

@@ -50,6 +50,24 @@ export default function ChatWidget(_props: PluginWidgetProps) {
   // Use URL context first, fall back to event context
   const problemContext = urlProblemContext ?? eventContext;
 
+  // Reset chat when navigating to a different page
+  const prevPathRef = useRef(pathname);
+  useEffect(() => {
+    if (prevPathRef.current !== pathname) {
+      prevPathRef.current = pathname;
+      // Abort any in-progress request
+      abortControllerRef.current?.abort();
+      // Reset chat state
+      setMessages([]);
+      setError(null);
+      setIsStreaming(false);
+      setSessionId(null);
+      setEventContext(null);
+      setPendingAutoAnalysis(null);
+      autoAnalysisTriggered.current = false;
+    }
+  }, [pathname]);
+
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -117,6 +135,9 @@ export default function ChatWidget(_props: PluginWidgetProps) {
     setIsStreaming(true);
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
+    // Only send the last 20 messages to the API to limit token usage
+    const recentMessages = newMessages.slice(-20);
+
     try {
       const controller = new AbortController();
       abortControllerRef.current = controller;
@@ -126,7 +147,7 @@ export default function ChatWidget(_props: PluginWidgetProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          messages: recentMessages.map((m) => ({ role: m.role, content: m.content })),
           context: problemContext ? {
             problemId: problemContext.problemId,
             assignmentId: problemContext.assignmentId,
