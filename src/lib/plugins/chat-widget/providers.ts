@@ -41,7 +41,7 @@ interface ToolChatParams {
 interface ChatProvider {
   stream(params: StreamParams): Promise<ReadableStream<Uint8Array>>;
   chatWithTools(params: ToolChatParams): Promise<ToolChatResponse>;
-  formatToolResult(toolCallId: string, result: string): ChatMessage | Record<string, unknown>;
+  formatToolResult(toolCallId: string, toolName: string, result: string): ChatMessage | Record<string, unknown>;
 }
 
 // ── OpenAI ──────────────────────────────────────────────────────────────────
@@ -123,7 +123,7 @@ const openaiProvider: ChatProvider = {
     };
   },
 
-  formatToolResult(toolCallId: string, result: string) {
+  formatToolResult(toolCallId: string, _toolName: string, result: string) {
     return { role: "tool" as const, tool_call_id: toolCallId, content: result };
   },
 };
@@ -236,7 +236,7 @@ const claudeProvider: ChatProvider = {
     };
   },
 
-  formatToolResult(toolCallId: string, result: string) {
+  formatToolResult(toolCallId: string, _toolName: string, result: string) {
     return {
       role: "user" as const,
       content: [{ type: "tool_result", tool_use_id: toolCallId, content: result }],
@@ -361,12 +361,11 @@ const geminiProvider: ChatProvider = {
     };
   },
 
-  formatToolResult(toolCallId: string, result: string) {
-    // Gemini uses functionResponse parts
-    const name = toolCallId.replace("gemini-", "tool_");
+  formatToolResult(toolCallId: string, toolName: string, result: string) {
+    // Gemini requires the function name to match the declared functionDeclaration name
     return {
       role: "user" as const,
-      content: [{ functionResponse: { name, response: { result } } }],
+      content: [{ functionResponse: { name: toolName, response: { result } } }],
     };
   },
 };

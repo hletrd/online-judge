@@ -260,7 +260,7 @@ export async function POST(request: Request) {
 
       for (const call of response.toolCalls ?? []) {
         const toolResult = await executeTool(call.name, call.arguments, agentContext);
-        const resultMessage = provider.formatToolResult(call.id, toolResult);
+        const resultMessage = provider.formatToolResult(call.id, call.name, toolResult);
         fullMessages.push(resultMessage);
       }
     }
