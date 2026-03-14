@@ -30,7 +30,7 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
         columns: { name: true },
       },
       problem: {
-        columns: { id: true, title: true, showCompileOutput: true, showDetailedResults: true },
+        columns: { id: true, title: true, showCompileOutput: true, showDetailedResults: true, showRuntimeErrors: true },
       },
       results: {
         with: {
@@ -86,6 +86,7 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
           status: result.status,
           executionTimeMs: result.executionTimeMs ?? null,
           memoryUsedKb: result.memoryUsedKb ?? null,
+          actualOutput: result.actualOutput ?? null,
           testCase: result.testCase
             ? {
                 sortOrder: result.testCase.sortOrder ?? null,
@@ -104,6 +105,11 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
         session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "instructor"
           ? true
           : submission.problem?.showDetailedResults ?? true
+      }
+      showRuntimeErrors={
+        session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "instructor"
+          ? true
+          : submission.problem?.showRuntimeErrors ?? true
       }
       userRole={session.user.role}
       userId={session.user.id}

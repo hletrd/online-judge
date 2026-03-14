@@ -34,6 +34,7 @@ export type ProblemFormInitialData = {
   visibility: ProblemVisibility;
   showCompileOutput: boolean;
   showDetailedResults: boolean;
+  showRuntimeErrors: boolean;
   testCases: ProblemTestCaseDraft[];
 };
 
@@ -77,6 +78,7 @@ export default function CreateProblemForm({
   const [visibility, setVisibility] = useState<ProblemVisibility>(initialProblem?.visibility ?? "private");
   const [showCompileOutput, setShowCompileOutput] = useState(initialProblem?.showCompileOutput ?? true);
   const [showDetailedResults, setShowDetailedResults] = useState(initialProblem?.showDetailedResults ?? true);
+  const [showRuntimeErrors, setShowRuntimeErrors] = useState(initialProblem?.showRuntimeErrors ?? true);
   const [testCaseOverrideEnabled, setTestCaseOverrideEnabled] = useState(false);
   const [testCases, setTestCases] = useState<ProblemTestCaseDraft[]>(
     initialProblem?.testCases.length
@@ -176,6 +178,7 @@ export default function CreateProblemForm({
           visibility,
           showCompileOutput,
           showDetailedResults,
+          showRuntimeErrors,
           ...(areTestCasesEditable
             ? { testCases: testCases.map(({ _key: _, ...rest }) => rest) }
             : {}),
@@ -271,7 +274,7 @@ export default function CreateProblemForm({
         <Label htmlFor="visibility">{t("visibilityLabel")}</Label>
         <Select value={visibility} onValueChange={(v) => { if (v) setVisibility(v); }}>
           <SelectTrigger id="visibility">
-            <SelectValue />
+            <SelectValue>{visibilityLabels[visibility]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="public">{visibilityLabels.public}</SelectItem>
@@ -282,7 +285,7 @@ export default function CreateProblemForm({
       </div>
 
       <div className="space-y-3 rounded-lg border p-4">
-        <h3 className="text-base font-semibold">{t("visibilityLabel")}</h3>
+        <h3 className="text-base font-semibold">{t("studentVisibilityLabel")}</h3>
         <label className="flex items-center gap-2 text-sm">
           <Checkbox
             checked={showCompileOutput}
@@ -298,6 +301,14 @@ export default function CreateProblemForm({
             disabled={isLoading}
           />
           <span>{t("showDetailedResults")}</span>
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={showRuntimeErrors}
+            onCheckedChange={(checked) => setShowRuntimeErrors(checked === true)}
+            disabled={isLoading}
+          />
+          <span>{t("showRuntimeErrors")}</span>
         </label>
       </div>
 

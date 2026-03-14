@@ -72,6 +72,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
               visibility: (problem.visibility ?? "private") as "public" | "private" | "hidden",
               showCompileOutput: problem.showCompileOutput ?? true,
               showDetailedResults: problem.showDetailedResults ?? true,
+              showRuntimeErrors: problem.showRuntimeErrors ?? true,
               testCases: sortedTestCases.map((testCase) => ({
                 input: testCase.input,
                 expectedOutput: testCase.expectedOutput,

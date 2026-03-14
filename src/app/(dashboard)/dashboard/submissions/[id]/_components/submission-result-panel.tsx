@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { CodeViewer } from "@/components/code/code-viewer";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,11 +11,12 @@ import type { SubmissionResultView } from "@/hooks/use-submission-polling";
 type SubmissionResultPanelProps = {
   showCompileOutput: boolean;
   showDetailedResults: boolean;
+  showRuntimeErrors: boolean;
   compileOutput: string | null;
   results: SubmissionResultView[];
 };
 
-export function SubmissionResultPanel({ showCompileOutput, showDetailedResults, compileOutput, results }: SubmissionResultPanelProps) {
+export function SubmissionResultPanel({ showCompileOutput, showDetailedResults, showRuntimeErrors, compileOutput, results }: SubmissionResultPanelProps) {
   const t = useTranslations("submissions");
 
   const sortedResults = useMemo(
@@ -71,17 +72,32 @@ export function SubmissionResultPanel({ showCompileOutput, showDetailedResults, 
               </TableHeader>
               <TableBody>
                 {sortedResults.map((result, index) => (
-                  <TableRow key={result.id}>
-                    <TableCell>#{index + 1}</TableCell>
-                    <TableCell>
-                      <SubmissionStatusBadge
-                        label={t(`status.${result.status}` as Parameters<typeof t>[0]) ?? result.status}
-                        status={result.status}
-                      />
-                    </TableCell>
-                    <TableCell>{result.executionTimeMs !== null ? result.executionTimeMs : "-"}</TableCell>
-                    <TableCell>{result.memoryUsedKb !== null ? result.memoryUsedKb : "-"}</TableCell>
-                  </TableRow>
+                  <React.Fragment key={result.id}>
+                    <TableRow>
+                      <TableCell>#{index + 1}</TableCell>
+                      <TableCell>
+                        <SubmissionStatusBadge
+                          label={t(`status.${result.status}` as Parameters<typeof t>[0]) ?? result.status}
+                          status={result.status}
+                        />
+                      </TableCell>
+                      <TableCell>{result.executionTimeMs !== null ? result.executionTimeMs : "-"}</TableCell>
+                      <TableCell>{result.memoryUsedKb !== null ? result.memoryUsedKb : "-"}</TableCell>
+                    </TableRow>
+                    {showRuntimeErrors && result.status === "runtime_error" && result.actualOutput && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="p-0">
+                          <CodeViewer
+                            ariaLabel={t("runtimeErrorOutput")}
+                            language="plaintext"
+                            minHeight={80}
+                            tone="danger"
+                            value={result.actualOutput}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                 ))}
 
                 {sortedResults.length === 0 && (

@@ -23,6 +23,7 @@ import { CommentSection } from "./_components/comment-section";
 type SubmissionDetailClientProps = {
   showCompileOutput: boolean;
   showDetailedResults: boolean;
+  showRuntimeErrors: boolean;
   initialSubmission: SubmissionDetailView;
   backHref: string;
   timeZone: string;
@@ -189,6 +190,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
       <SubmissionResultPanel
         showCompileOutput={props.showCompileOutput}
         showDetailedResults={props.showDetailedResults}
+        showRuntimeErrors={props.showRuntimeErrors}
         compileOutput={submission.compileOutput}
         results={submission.results}
       />

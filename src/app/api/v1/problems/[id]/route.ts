@@ -20,6 +20,7 @@ const problemPatchSchema = z.object({
   visibility: z.enum(["public", "private", "hidden"]).optional(),
   showCompileOutput: z.boolean().optional(),
   showDetailedResults: z.boolean().optional(),
+  showRuntimeErrors: z.boolean().optional(),
   testCases: z.array(z.object({
     id: z.string().optional(),
     input: z.string(),
@@ -112,6 +113,7 @@ export async function PATCH(
       visibility: body.visibility ?? problem.visibility ?? "private",
       showCompileOutput: body.showCompileOutput ?? problem.showCompileOutput,
       showDetailedResults: body.showDetailedResults ?? problem.showDetailedResults,
+      showRuntimeErrors: body.showRuntimeErrors ?? problem.showRuntimeErrors,
       testCases:
         body.testCases ??
         existingTestCases

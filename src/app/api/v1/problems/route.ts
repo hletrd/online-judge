@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
       visibility: body.visibility ?? "private",
       showCompileOutput: body.showCompileOutput,
       showDetailedResults: body.showDetailedResults,
+      showRuntimeErrors: body.showRuntimeErrors,
       testCases: body.testCases ?? [],
     });
 

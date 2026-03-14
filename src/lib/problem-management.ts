@@ -31,6 +31,7 @@ export function createProblemWithTestCases(input: ProblemMutationInput, authorId
         visibility: input.visibility,
         showCompileOutput: input.showCompileOutput,
         showDetailedResults: input.showDetailedResults,
+        showRuntimeErrors: input.showRuntimeErrors,
         authorId,
         createdAt: now,
         updatedAt: now,
@@ -61,6 +62,7 @@ export function updateProblemWithTestCases(problemId: string, input: ProblemMuta
         visibility: input.visibility,
         showCompileOutput: input.showCompileOutput,
         showDetailedResults: input.showDetailedResults,
+        showRuntimeErrors: input.showRuntimeErrors,
         updatedAt: now,
       })
       .where(eq(problems.id, problemId))

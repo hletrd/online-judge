@@ -84,6 +84,7 @@ function makeInput(overrides: Partial<ProblemMutationInput> = {}): ProblemMutati
     visibility: "public",
     showCompileOutput: true,
     showDetailedResults: true,
+    showRuntimeErrors: true,
     testCases: [],
     ...overrides,
   };

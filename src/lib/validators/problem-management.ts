@@ -17,6 +17,7 @@ export const problemMutationSchema = z.object({
   visibility: z.enum(problemVisibilityValues),
   showCompileOutput: z.boolean().optional().default(true),
   showDetailedResults: z.boolean().optional().default(true),
+  showRuntimeErrors: z.boolean().optional().default(true),
   testCases: z.array(problemTestCaseSchema).max(100, "tooManyTestCases").default([]),
 });
 

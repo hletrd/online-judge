@@ -9,6 +9,7 @@ type SubmissionResultView = {
   status: string;
   executionTimeMs: number | null;
   memoryUsedKb: number | null;
+  actualOutput: string | null;
   testCase: {
     sortOrder: number | null;
   } | null;
@@ -49,6 +50,7 @@ function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailVie
           executionTimeMs:
             typeof record.executionTimeMs === "number" ? record.executionTimeMs : null,
           memoryUsedKb: typeof record.memoryUsedKb === "number" ? record.memoryUsedKb : null,
+          actualOutput: typeof record.actualOutput === "string" ? record.actualOutput : null,
           testCase: testCase
             ? {
                 sortOrder:

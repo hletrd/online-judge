@@ -168,6 +168,7 @@ export const problems = sqliteTable("problems", {
   visibility: text("visibility").default("private"),
   showCompileOutput: integer("show_compile_output", { mode: "boolean" }).notNull().default(true),
   showDetailedResults: integer("show_detailed_results", { mode: "boolean" }).notNull().default(true),
+  showRuntimeErrors: integer("show_runtime_errors", { mode: "boolean" }).notNull().default(true),
   authorId: text("author_id").references(() => users.id, {
     onDelete: "set null",
   }),
@@ -494,3 +495,12 @@ export const submissionResults = sqliteTable(
     index("sr_test_case_idx").on(table.testCaseId),
   ]
 );
+
+export const plugins = sqliteTable("plugins", {
+  id: text("id").primaryKey(),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+  config: text("config", { mode: "json" }),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date(Date.now())),
+});
