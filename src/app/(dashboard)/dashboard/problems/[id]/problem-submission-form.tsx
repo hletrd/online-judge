@@ -6,14 +6,6 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { CodeEditor } from "@/components/code/code-editor";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiFetch } from "@/lib/api/client";
@@ -44,7 +36,6 @@ export function ProblemSubmissionForm({
   const t = useTranslations("problems");
   const tCommon = useTranslations("common");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const availableLanguages = useMemo(() => languages.map((entry) => entry.language), [languages]);
   const { language, setLanguage, sourceCode, setSourceCode, isDirty, clearAllDrafts } = useSourceDraft({
@@ -98,7 +89,9 @@ export function ProblemSubmissionForm({
     }
   }
 
-  async function submitSolution() {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
     if (!sourceCode) {
       toast.error(translateSubmissionError("sourceCode is required"));
       return;
@@ -134,7 +127,6 @@ export function ProblemSubmissionForm({
         return;
       }
 
-      setConfirmOpen(false);
       allowNextNavigation();
       router.push(`/dashboard/submissions/${submissionId}`);
       clearAllDrafts();
@@ -145,83 +137,56 @@ export function ProblemSubmissionForm({
     }
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!sourceCode) {
-      toast.error(translateSubmissionError("sourceCode is required"));
-      return;
-    }
-
-    setConfirmOpen(true);
-  }
-
   return (
-    <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <div className="space-y-2">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <Label htmlFor="language">{t("selectLanguage")}</Label>
-            <input
-              ref={fileInputRef}
-              className="sr-only"
-              onChange={(event) => {
-                void handleSourceFileChange(event);
-              }}
-              type="file"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {t("uploadSourceFile")}
-            </Button>
-          </div>
-          <Select value={language} onValueChange={(value) => value && setLanguage(value)}>
-            <SelectTrigger id="language">
-              <SelectValue placeholder={t("selectLanguage")} />
-            </SelectTrigger>
-            <SelectContent>
-              {languages.map((entry) => (
-                <SelectItem key={entry.id} value={entry.language}>
-                  {entry.displayName} {entry.standard ? `(${entry.standard})` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label id="sourceCode-label" htmlFor="sourceCode">
-            {t("sourceCodeLabel")}
-          </Label>
-          <CodeEditor
-            id="sourceCode"
-            ariaLabelledby="sourceCode-label"
-            placeholder={t("writeCodePlaceholder")}
-            value={sourceCode}
-            language={language}
-            onValueChange={setSourceCode}
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <div className="space-y-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <Label htmlFor="language">{t("selectLanguage")}</Label>
+          <input
+            ref={fileInputRef}
+            className="sr-only"
+            onChange={(event) => {
+              void handleSourceFileChange(event);
+            }}
+            type="file"
           />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {t("uploadSourceFile")}
+          </Button>
         </div>
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? tCommon("loading") : tCommon("submit")}
-        </Button>
-      </form>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t("submitConfirmTitle")}</DialogTitle>
-          <DialogDescription>{t("submitConfirmDescription")}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setConfirmOpen(false)} disabled={isSubmitting}>
-            {tCommon("cancel")}
-          </Button>
-          <Button type="button" onClick={() => void submitSolution()} disabled={isSubmitting}>
-            {isSubmitting ? tCommon("loading") : t("submitConfirmAction")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <Select value={language} onValueChange={(value) => value && setLanguage(value)}>
+          <SelectTrigger id="language">
+            <SelectValue placeholder={t("selectLanguage")} />
+          </SelectTrigger>
+          <SelectContent>
+            {languages.map((entry) => (
+              <SelectItem key={entry.id} value={entry.language}>
+                {entry.displayName} {entry.standard ? `(${entry.standard})` : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label id="sourceCode-label" htmlFor="sourceCode">
+          {t("sourceCodeLabel")}
+        </Label>
+        <CodeEditor
+          id="sourceCode"
+          ariaLabelledby="sourceCode-label"
+          placeholder={t("writeCodePlaceholder")}
+          value={sourceCode}
+          language={language}
+          onValueChange={setSourceCode}
+        />
+      </div>
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting ? tCommon("loading") : tCommon("submit")}
+      </Button>
+    </form>
   );
 }
