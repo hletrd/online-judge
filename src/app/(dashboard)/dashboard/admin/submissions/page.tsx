@@ -36,7 +36,7 @@ export default async function AdminSubmissionsPage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "admin" && session.user.role !== "super_admin") redirect("/dashboard");
+  if (session.user.role !== "admin" && session.user.role !== "super_admin" && session.user.role !== "instructor") redirect("/dashboard");
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const currentPage = Math.max(1, Number(resolvedSearchParams?.page ?? "1") || 1);

@@ -42,7 +42,7 @@ const navItems: Array<{ titleKey: string; href: string; icon: typeof LayoutDashb
 
 const adminItems: Array<{ titleKey: string; href: string; icon: typeof Shield; roles: UserRole[] }> = [
   { titleKey: "userManagement" as const, href: "/dashboard/admin/users", icon: Shield, roles: ["super_admin", "admin"] },
-  { titleKey: "allSubmissions" as const, href: "/dashboard/admin/submissions", icon: FileCode, roles: ["super_admin", "admin"] },
+  { titleKey: "allSubmissions" as const, href: "/dashboard/admin/submissions", icon: FileCode, roles: ["super_admin", "admin", "instructor"] },
   { titleKey: "auditLogs" as const, href: "/dashboard/admin/audit-logs", icon: History, roles: ["super_admin", "admin"] },
   { titleKey: "loginLogs" as const, href: "/dashboard/admin/login-logs", icon: LogIn, roles: ["super_admin", "admin"] },
   { titleKey: "systemSettings" as const, href: "/dashboard/admin/settings", icon: GraduationCap, roles: ["super_admin", "admin"] },
