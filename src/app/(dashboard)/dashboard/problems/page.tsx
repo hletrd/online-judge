@@ -445,7 +445,7 @@ export default async function ProblemsPage({
                   id="problem-visibility"
                   name="visibility"
                   defaultValue={currentVisibility}
-                  className="flex h-8 min-w-40 rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="flex h-8 min-w-40 rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   {VISIBILITY_FILTER_VALUES.map((v) => (
                     <option key={v} value={v}>
