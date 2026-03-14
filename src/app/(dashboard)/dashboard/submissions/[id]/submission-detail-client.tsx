@@ -93,7 +93,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
         if (payload.data) {
           const updated = normalizeSubmission(payload.data);
           // Preserve sourceCode since rejudge response excludes it
-          setSubmission((prev) => ({ ...updated, sourceCode: updated.sourceCode ?? prev.sourceCode }));
+          setSubmission((prev) => ({ ...updated, sourceCode: updated.sourceCode || prev.sourceCode }));
         }
         toast.success(t("rejudgeSuccess"));
       } else {
