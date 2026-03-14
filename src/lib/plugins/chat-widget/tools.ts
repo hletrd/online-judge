@@ -1,8 +1,13 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { problems, submissions, submissionResults, assignments } from "@/lib/db/schema";
 import { canAccessProblem } from "@/lib/auth/permissions";
+import { ROLE_LEVEL } from "@/lib/security/constants";
 import type { UserRole } from "@/types";
+
+function canViewAllSubmissions(role: UserRole): boolean {
+  return (ROLE_LEVEL[role] ?? 0) >= ROLE_LEVEL.instructor;
+}
 
 export interface ToolDefinition {
   name: string;
@@ -122,9 +127,12 @@ async function handleGetSubmissionHistory(
 
   const limit = Math.min(Math.max(Number(args.limit) || 5, 1), 10);
 
+  const isPrivileged = canViewAllSubmissions(context.userRole);
   const recentSubmissions = await db.query.submissions.findMany({
-    where: (s, { and, eq: eqOp }) =>
-      and(eqOp(s.userId, context.userId), eqOp(s.problemId, context.problemId!)),
+    where: (s, { and: andOp, eq: eqOp }) =>
+      isPrivileged
+        ? eqOp(s.problemId, context.problemId!)
+        : andOp(eqOp(s.userId, context.userId), eqOp(s.problemId, context.problemId!)),
     orderBy: [desc(submissions.submittedAt)],
     limit,
     columns: {
@@ -158,10 +166,13 @@ async function handleGetSubmissionDetail(
     return JSON.stringify({ error: "submissionId is required" });
   }
 
-  // Only allow viewing own submissions
+  // Allow instructors/admins to view any submission
+  const isPrivileged = canViewAllSubmissions(context.userRole);
   const submission = await db.query.submissions.findFirst({
-    where: (s, { and, eq: eqOp }) =>
-      and(eqOp(s.id, submissionId), eqOp(s.userId, context.userId)),
+    where: (s, { and: andOp, eq: eqOp }) =>
+      isPrivileged
+        ? eqOp(s.id, submissionId)
+        : andOp(eqOp(s.id, submissionId), eqOp(s.userId, context.userId)),
     columns: {
       id: true,
       status: true,
