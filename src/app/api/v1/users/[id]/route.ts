@@ -388,7 +388,7 @@ export async function DELETE(
         return jsonError("confirmUsernameRequired", 400);
       }
 
-      if (!body.confirmUsername || body.confirmUsername !== found.username) {
+      if (!body.confirmUsername || body.confirmUsername.toLowerCase() !== found.username.toLowerCase()) {
         return jsonError("confirmUsernameRequired", 400);
       }
 

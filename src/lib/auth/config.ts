@@ -11,7 +11,7 @@ import {
 } from "@/lib/auth/session-security";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { UserRole } from "@/types";
 import {
   clearRateLimitMulti,
@@ -138,7 +138,7 @@ export const authConfig: NextAuthConfig = {
         const password = credentials.password;
 
         let user = await db.query.users.findFirst({
-          where: eq(users.username, identifier),
+          where: sql`lower(${users.username}) = lower(${identifier})`,
         });
 
         if (!user) {

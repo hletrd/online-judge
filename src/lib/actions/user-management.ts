@@ -149,7 +149,7 @@ export async function deleteUserPermanently(userId: string, confirmUsername: str
 
   if (!targetUser) return { success: false, error: "userNotFound" };
 
-  if (targetUser.username !== confirmUsername) {
+  if (targetUser.username.toLowerCase() !== confirmUsername.toLowerCase()) {
     return { success: false, error: "confirmUsernameMismatch" };
   }
 

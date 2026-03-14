@@ -44,17 +44,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for duplicate usernames within the request itself
-    const requestUsernames = userList.map((u) => u.username);
+    const requestUsernames = userList.map((u) => u.username.toLowerCase());
     const uniqueRequestUsernames = new Set(requestUsernames);
     if (uniqueRequestUsernames.size !== requestUsernames.length) {
       return apiError("duplicateUsernamesInRequest", 400);
     }
 
-    // Check existing usernames in DB
+    // Check existing usernames in DB (case-insensitive)
     const existingUsers = await db.query.users.findMany({
       columns: { username: true },
     });
-    const existingUsernameSet = new Set(existingUsers.map((u) => u.username));
+    const existingUsernameSet = new Set(existingUsers.map((u) => u.username.toLowerCase()));
 
     type CreatedEntry = { username: string; name: string; generatedPassword: string };
     type FailedEntry = { username: string; reason: string };
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     // Prepare all inserts in parallel, collecting failures for duplicates
     const filteredItems = userList.filter((item) => {
-      if (existingUsernameSet.has(item.username)) {
+      if (existingUsernameSet.has(item.username.toLowerCase())) {
         failed.push({ username: item.username, reason: "usernameInUse" });
         return false;
       }
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
         return {
           id,
-          username: item.username,
+          username: item.username.toLowerCase(),
           name: item.name,
           email: normalizedEmail,
           className: normalizedClassName,

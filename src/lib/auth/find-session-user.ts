@@ -1,5 +1,5 @@
 import type { Session } from "next-auth";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { authUserSelect } from "@/lib/db/selects";
@@ -24,7 +24,7 @@ export async function findSessionUser(session: Session | null) {
   }
 
   if (sessionUser?.username) {
-    return db.select(authUserSelect).from(users).where(eq(users.username, sessionUser.username)).get();
+    return db.select(authUserSelect).from(users).where(sql`lower(${users.username}) = lower(${sessionUser.username})`).get();
   }
 
   return null;
@@ -48,7 +48,7 @@ export async function findSessionUserWithPassword(session: Session | null) {
 
   if (sessionUser?.username) {
     return db.query.users.findFirst({
-      where: eq(users.username, sessionUser.username),
+      where: sql`lower(${users.username}) = lower(${sessionUser.username})`,
     });
   }
 

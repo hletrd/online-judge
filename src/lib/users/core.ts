@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { hash } from "bcryptjs";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
@@ -17,7 +17,7 @@ export async function isUsernameTaken(
   excludeId?: string
 ): Promise<boolean> {
   const existing = await db.query.users.findFirst({
-    where: eq(users.username, username),
+    where: sql`lower(${users.username}) = lower(${username})`,
     columns: { id: true },
   });
   return existing !== undefined && existing.id !== excludeId;
