@@ -26,11 +26,11 @@ const requestSchema = z.object({
     })
   ).min(1).max(50),
   context: z.object({
-    problemId: z.string().max(100).optional(),
-    assignmentId: z.string().max(100).optional(),
-    editorCode: z.string().max(100000).optional(),
-    editorLanguage: z.string().max(50).optional(),
-    sessionId: z.string().max(50).optional(),
+    problemId: z.string().max(100).nullish(),
+    assignmentId: z.string().max(100).nullish(),
+    editorCode: z.string().max(100000).nullish(),
+    editorLanguage: z.string().max(50).nullish(),
+    sessionId: z.string().max(50).nullish(),
   }).optional(),
 });
 
@@ -93,8 +93,10 @@ export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.user) {
+      logger.warn("Chat API: no session/user");
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
+    logger.info({ userId: session.user.id, role: session.user.role }, "Chat API request");
 
     const enabled = await isPluginEnabled("chat-widget");
     if (!enabled) {
@@ -245,10 +247,10 @@ export async function POST(request: Request) {
     const agentContext: AgentContext = {
       userId: session.user.id,
       userRole: session.user.role,
-      problemId: context?.problemId,
-      assignmentId: context?.assignmentId,
-      editorCode: context?.editorCode,
-      editorLanguage: context?.editorLanguage,
+      problemId: context?.problemId ?? undefined,
+      assignmentId: context?.assignmentId ?? undefined,
+      editorCode: context?.editorCode ?? undefined,
+      editorLanguage: context?.editorLanguage ?? undefined,
     };
 
     // If no problem context, use simple streaming (no tools)
