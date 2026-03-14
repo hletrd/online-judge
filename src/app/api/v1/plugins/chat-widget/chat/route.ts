@@ -227,10 +227,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "notConfigured" }, { status: 500 });
     }
 
-    // Detect locale from NEXT_LOCALE cookie (set by next-intl), fallback to Accept-Language
+    // Detect locale from cookie (set by next-intl), fallback to Accept-Language
     const cookieHeader = request.headers.get("cookie") ?? "";
-    const localeMatch = cookieHeader.match(/NEXT_LOCALE=(\w+)/);
-    const locale = localeMatch?.[1] ?? (request.headers.get("accept-language")?.startsWith("ko") ? "ko" : "en");
+    const localeMatch = cookieHeader.match(/(?:^|;\s*)locale=(\w+)/);
+    const acceptLang = request.headers.get("accept-language")?.split(",")[0]?.split("-")[0]?.trim();
+    const locale = localeMatch?.[1] ?? (acceptLang === "ko" ? "ko" : "en");
     const siteName = "JudgeKit";
 
     // Build system prompt
