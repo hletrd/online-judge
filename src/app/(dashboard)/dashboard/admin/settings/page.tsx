@@ -8,6 +8,7 @@ import {
   getSystemSettings,
 } from "@/lib/system-settings";
 import { SystemSettingsForm } from "./system-settings-form";
+import { DatabaseBackupRestore } from "./database-backup-restore";
 
 export default async function AdminSettingsPage() {
   const session = await auth();
@@ -47,6 +48,16 @@ export default async function AdminSettingsPage() {
             currentTimeZone={resolvedSettings.timeZone}
             initialAiAssistantEnabled={'aiAssistantEnabled' in (storedSettings ?? {}) ? (storedSettings as any).aiAssistantEnabled ?? true : true}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("backupTitle")}</CardTitle>
+          <CardDescription>{t("backupDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DatabaseBackupRestore isSuperAdmin={session.user.role === "super_admin"} />
         </CardContent>
       </Card>
     </div>
