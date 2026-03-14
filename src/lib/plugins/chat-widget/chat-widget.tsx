@@ -113,8 +113,8 @@ export default function ChatWidget(_props: PluginWidgetProps) {
       autoAnalysisTriggered.current = true;
       const isError = pendingAutoAnalysis.status !== "accepted";
       const apiPrompt = isError
-        ? `My submission (${pendingAutoAnalysis.submissionId}) got "${pendingAutoAnalysis.status}". Please analyze my code and the submission results to help me find and fix the issue.`
-        : `My submission (${pendingAutoAnalysis.submissionId}) was accepted! Please review my code for any improvements, edge cases, or better practices.`;
+        ? `My submission ID is "${pendingAutoAnalysis.submissionId}" and it got "${pendingAutoAnalysis.status}". Use get_submission_detail with this submission ID to fetch my source code and error details, then analyze the issue and help me fix it.`
+        : `My submission ID is "${pendingAutoAnalysis.submissionId}" and it was accepted. Use get_submission_detail with this submission ID to fetch my source code, then review it for improvements, edge cases, or better practices.`;
       const displayText = isError
         ? t("autoAnalysisError")
         : t("autoAnalysisReview");
