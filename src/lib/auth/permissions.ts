@@ -167,7 +167,7 @@ export async function canAccessSubmission(
   userId: string,
   role: UserRole
 ): Promise<boolean> {
-  if (role === "super_admin" || role === "admin") {
+  if (role === "super_admin" || role === "admin" || role === "instructor") {
     return true;
   }
 
