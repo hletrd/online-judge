@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { updateSystemSettings } from "@/lib/actions/system-settings";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +21,7 @@ type SystemSettingsFormProps = {
   currentSiteTitle: string;
   currentSiteDescription: string;
   currentTimeZone: string;
+  initialAiAssistantEnabled: boolean;
 };
 
 export function SystemSettingsForm({
@@ -32,6 +34,7 @@ export function SystemSettingsForm({
   currentSiteTitle,
   currentSiteDescription,
   currentTimeZone,
+  initialAiAssistantEnabled,
 }: SystemSettingsFormProps) {
   const router = useRouter();
   const t = useTranslations("admin.settings");
@@ -39,6 +42,7 @@ export function SystemSettingsForm({
   const [siteTitle, setSiteTitle] = useState(initialSiteTitle);
   const [siteDescription, setSiteDescription] = useState(initialSiteDescription);
   const [timeZone, setTimeZone] = useState(initialTimeZone);
+  const [aiAssistantEnabled, setAiAssistantEnabled] = useState(initialAiAssistantEnabled);
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -46,7 +50,7 @@ export function SystemSettingsForm({
     setIsLoading(true);
 
     try {
-      const result = await updateSystemSettings({ siteTitle, siteDescription, timeZone });
+      const result = await updateSystemSettings({ siteTitle, siteDescription, timeZone, aiAssistantEnabled });
 
       if (!result.success) {
         toast.error(t(result.error ?? "updateError"));
@@ -102,6 +106,18 @@ export function SystemSettingsForm({
         <p className="text-xs text-muted-foreground">
           {t("timeZoneHint", { current: currentTimeZone })}
         </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label>{t("aiAssistantTitle")}</Label>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={aiAssistantEnabled}
+            onCheckedChange={(checked) => setAiAssistantEnabled(checked === true)}
+          />
+          <span>{t("aiAssistantEnabled")}</span>
+        </label>
+        <p className="text-xs text-muted-foreground">{t("aiAssistantEnabledHint")}</p>
       </div>
 
       <Button type="submit" disabled={isLoading}>

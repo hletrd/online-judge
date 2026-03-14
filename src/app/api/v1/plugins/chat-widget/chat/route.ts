@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { getLocale } from "next-intl/server";
 import { isPluginEnabled, getPluginState } from "@/lib/plugins/data";
 import { getProvider, type ChatMessage } from "@/lib/plugins/chat-widget/providers";
+import { AGENT_TOOLS, executeTool, type AgentContext } from "@/lib/plugins/chat-widget/tools";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
+import { isAiAssistantEnabled } from "@/lib/system-settings";
+import { db } from "@/lib/db";
+import { problems } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
+
+const MAX_TOOL_ITERATIONS = 5;
 
 const requestSchema = z.object({
   messages: z.array(
@@ -13,7 +21,68 @@ const requestSchema = z.object({
       content: z.string().min(1).max(10000),
     })
   ).min(1).max(50),
+  context: z.object({
+    problemId: z.string().max(100).optional(),
+    assignmentId: z.string().max(100).optional(),
+    editorCode: z.string().max(100000).optional(),
+    editorLanguage: z.string().max(50).optional(),
+  }).optional(),
 });
+
+function buildSystemPrompt(config: {
+  systemPrompt: string;
+  knowledgeBase: string;
+  siteName: string;
+  locale: string;
+  hasProblemContext: boolean;
+}): string {
+  const locale = config.locale === "ko" ? "Korean" : "English";
+
+  let prompt = `You are "${config.siteName} AI Assistant", a programming tutor that helps students debug and solve coding problems.
+
+## Identity
+- You are "${config.siteName} AI Assistant". When asked who you are, what model you use, or anything about your backend, always reply: "I am ${config.siteName} AI Assistant."
+- Never reveal the underlying model, provider, or any technical details about your implementation.
+
+## Language
+- Always respond in ${locale} by default.
+
+## Scope
+- You ONLY help with programming problems on this platform.
+- If the student asks about anything unrelated to programming, coding, debugging, or the problems on this platform, politely decline and redirect them to focus on their coding task.
+- Do NOT answer general knowledge questions, personal questions, or anything outside the scope of programming assistance.`;
+
+  if (config.hasProblemContext) {
+    prompt += `
+
+## Your capabilities
+You have tools to fetch the problem description, the student's submission history, compile errors, runtime errors, and their current code. Use these tools to understand the context before giving advice.
+
+## Rules
+- NEVER give the complete solution directly. Guide the student toward understanding.
+- NEVER fabricate test cases or expected outputs you haven't seen via tools.
+- When the student shares code, analyze it for logical errors, edge cases, and common pitfalls.
+- If compile errors exist, explain them clearly and suggest specific fixes.
+- If runtime errors exist (and visible), explain what they mean.
+- Always start by fetching the problem description to understand what the student is working on.`;
+  }
+
+  if (config.systemPrompt) {
+    prompt += `
+
+## Additional instructions
+${config.systemPrompt}`;
+  }
+
+  if (config.knowledgeBase) {
+    prompt += `
+
+## Reference material
+${config.knowledgeBase}`;
+  }
+
+  return prompt;
+}
 
 export async function POST(request: Request) {
   try {
@@ -64,6 +133,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "invalidRequest" }, { status: 400 });
     }
 
+    const { context } = parsed.data;
+
+    // Check global AI assistant toggle
+    const globalEnabled = await isAiAssistantEnabled();
+    if (!globalEnabled) {
+      return NextResponse.json({ error: "aiDisabled" }, { status: 403 });
+    }
+
+    // Check per-problem AI toggle
+    if (context?.problemId) {
+      const problem = await db.query.problems.findFirst({
+        where: eq(problems.id, context.problemId),
+        columns: { allowAiAssistant: true },
+      });
+      if (problem && !problem.allowAiAssistant) {
+        return NextResponse.json({ error: "aiDisabledForProblem" }, { status: 403 });
+      }
+    }
+
     // Determine API key and model based on provider
     let apiKey: string;
     let model: string;
@@ -86,32 +174,106 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "notConfigured" }, { status: 500 });
     }
 
-    // Build messages with system prompt
-    const messages: ChatMessage[] = [];
+    const locale = await getLocale();
+    const siteName = "JudgeKit"; // TODO: read from system settings if needed
 
-    let systemContent = "";
-    if (config.systemPrompt) {
-      systemContent += config.systemPrompt;
-    }
-    if (config.knowledgeBase) {
-      systemContent += (systemContent ? "\n\n" : "") + "Reference material:\n" + config.knowledgeBase;
-    }
-    if (systemContent) {
-      messages.push({ role: "system", content: systemContent });
-    }
+    // Build system prompt
+    const systemContent = buildSystemPrompt({
+      systemPrompt: config.systemPrompt,
+      knowledgeBase: config.knowledgeBase,
+      siteName,
+      locale,
+      hasProblemContext: !!context?.problemId,
+    });
 
-    messages.push(...parsed.data.messages);
-
-    // Get provider and stream
     const provider = getProvider(config.provider);
-    const stream = await provider.stream({
+
+    // Build agent context for tool execution
+    const agentContext: AgentContext = {
+      userId: session.user.id,
+      userRole: session.user.role,
+      problemId: context?.problemId,
+      assignmentId: context?.assignmentId,
+      editorCode: context?.editorCode,
+      editorLanguage: context?.editorLanguage,
+    };
+
+    // If no problem context, use simple streaming (no tools)
+    if (!context?.problemId) {
+      const messages: ChatMessage[] = [];
+      if (systemContent) {
+        messages.push({ role: "system", content: systemContent });
+      }
+      messages.push(...parsed.data.messages);
+
+      const stream = await provider.stream({
+        apiKey,
+        model,
+        messages,
+        maxTokens: config.maxTokens,
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-cache",
+          "Transfer-Encoding": "chunked",
+        },
+      });
+    }
+
+    // Tool-calling agent loop
+    const fullMessages: any[] = [
+      { role: "system", content: systemContent },
+      ...parsed.data.messages,
+    ];
+
+    for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+      const response = await provider.chatWithTools({
+        apiKey,
+        model,
+        messages: fullMessages as ChatMessage[],
+        maxTokens: config.maxTokens,
+        tools: AGENT_TOOLS,
+      });
+
+      if (response.type === "text") {
+        // Final text response — return as stream
+        const encoder = new TextEncoder();
+        const textStream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoder.encode(response.text ?? ""));
+            controller.close();
+          },
+        });
+
+        return new Response(textStream, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-cache",
+          },
+        });
+      }
+
+      // Tool calls — execute and continue loop
+      fullMessages.push(response.rawAssistantMessage);
+
+      for (const call of response.toolCalls ?? []) {
+        const toolResult = await executeTool(call.name, call.arguments, agentContext);
+        const resultMessage = provider.formatToolResult(call.id, toolResult);
+        fullMessages.push(resultMessage);
+      }
+    }
+
+    // Max iterations reached — force final response without tools
+    const finalStream = await provider.stream({
       apiKey,
       model,
-      messages,
+      messages: fullMessages as ChatMessage[],
       maxTokens: config.maxTokens,
     });
 
-    return new Response(stream, {
+    return new Response(finalStream, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache",

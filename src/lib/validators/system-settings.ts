@@ -27,6 +27,7 @@ export const systemSettingsSchema = z.object({
       .refine(isValidTimeZone, "invalidTimeZone")
       .optional()
   ),
+  aiAssistantEnabled: z.boolean().optional(),
 });
 
 export type SystemSettingsInput = z.infer<typeof systemSettingsSchema>;

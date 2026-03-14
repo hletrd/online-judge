@@ -18,6 +18,7 @@ export const problemMutationSchema = z.object({
   showCompileOutput: z.boolean().optional().default(true),
   showDetailedResults: z.boolean().optional().default(true),
   showRuntimeErrors: z.boolean().optional().default(true),
+  allowAiAssistant: z.boolean().optional().default(true),
   testCases: z.array(problemTestCaseSchema).max(100, "tooManyTestCases").default([]),
 });
 

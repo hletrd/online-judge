@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -46,6 +46,18 @@ export function ProblemSubmissionForm({
   });
 
   const { allowNextNavigation } = useUnsavedChangesGuard({ isDirty });
+
+  // Publish editor content for AI chat widget (read-only bridge)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__ojEditorContent = { code: sourceCode, language };
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        delete (window as any).__ojEditorContent;
+      }
+    };
+  }, [sourceCode, language]);
 
   async function handleSourceFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.target.files?.[0];

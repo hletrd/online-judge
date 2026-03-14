@@ -24,8 +24,14 @@ export const getResolvedSystemSettings = cache(async (defaults: {
     siteTitle: settings?.siteTitle ?? defaults.siteTitle,
     siteDescription: settings?.siteDescription ?? defaults.siteDescription,
     timeZone: settings?.timeZone ?? defaults.timeZone ?? DEFAULT_SYSTEM_TIME_ZONE,
+    aiAssistantEnabled: settings?.aiAssistantEnabled ?? true,
   };
 });
+
+export async function isAiAssistantEnabled(): Promise<boolean> {
+  const settings = await getSystemSettings();
+  return settings?.aiAssistantEnabled ?? true;
+}
 
 export async function getResolvedSystemTimeZone() {
   const settings = await getSystemSettings();

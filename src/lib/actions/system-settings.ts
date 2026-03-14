@@ -42,7 +42,7 @@ export async function updateSystemSettings(
     };
   }
 
-  const { siteTitle, siteDescription, timeZone } = parsedInput.data;
+  const { siteTitle, siteDescription, timeZone, aiAssistantEnabled } = parsedInput.data;
 
   await db
     .insert(systemSettings)
@@ -51,6 +51,7 @@ export async function updateSystemSettings(
       siteTitle: siteTitle ?? null,
       siteDescription: siteDescription ?? null,
       timeZone: timeZone ?? null,
+      aiAssistantEnabled: aiAssistantEnabled ?? true,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -59,6 +60,7 @@ export async function updateSystemSettings(
         siteTitle: siteTitle ?? null,
         siteDescription: siteDescription ?? null,
         timeZone: timeZone ?? null,
+        aiAssistantEnabled: aiAssistantEnabled ?? true,
         updatedAt: new Date(),
       },
     });
@@ -76,6 +78,7 @@ export async function updateSystemSettings(
       siteTitle: siteTitle ?? null,
       siteDescription: siteDescription ?? null,
       timeZone: timeZone ?? null,
+      aiAssistantEnabled: aiAssistantEnabled ?? true,
     },
     context: auditContext,
   });

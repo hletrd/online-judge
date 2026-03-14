@@ -32,6 +32,7 @@ export function createProblemWithTestCases(input: ProblemMutationInput, authorId
         showCompileOutput: input.showCompileOutput,
         showDetailedResults: input.showDetailedResults,
         showRuntimeErrors: input.showRuntimeErrors,
+        allowAiAssistant: input.allowAiAssistant,
         authorId,
         createdAt: now,
         updatedAt: now,
@@ -63,6 +64,7 @@ export function updateProblemWithTestCases(problemId: string, input: ProblemMuta
         showCompileOutput: input.showCompileOutput,
         showDetailedResults: input.showDetailedResults,
         showRuntimeErrors: input.showRuntimeErrors,
+        allowAiAssistant: input.allowAiAssistant,
         updatedAt: now,
       })
       .where(eq(problems.id, problemId))

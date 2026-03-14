@@ -10,8 +10,38 @@ interface StreamParams {
   maxTokens: number;
 }
 
+export interface ToolDefinitionInput {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
+export interface ToolChatResponse {
+  type: "text" | "tool_calls";
+  text?: string;
+  toolCalls?: ToolCall[];
+  // Provider-specific raw message to append to conversation for next iteration
+  rawAssistantMessage: unknown;
+}
+
+interface ToolChatParams {
+  apiKey: string;
+  model: string;
+  messages: ChatMessage[];
+  maxTokens: number;
+  tools: ToolDefinitionInput[];
+}
+
 interface ChatProvider {
   stream(params: StreamParams): Promise<ReadableStream<Uint8Array>>;
+  chatWithTools(params: ToolChatParams): Promise<ToolChatResponse>;
+  formatToolResult(toolCallId: string, result: string): ChatMessage | Record<string, unknown>;
 }
 
 // ── OpenAI ──────────────────────────────────────────────────────────────────
@@ -48,6 +78,53 @@ const openaiProvider: ChatProvider = {
         return null;
       }
     });
+  },
+
+  async chatWithTools({ apiKey, model, messages, maxTokens, tools }) {
+    const openaiTools = tools.map((t) => ({
+      type: "function" as const,
+      function: { name: t.name, description: t.description, parameters: t.parameters },
+    }));
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ model, messages, max_tokens: maxTokens, tools: openaiTools }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`OpenAI API error ${response.status}: ${text}`);
+    }
+
+    const data = await response.json();
+    const choice = data.choices?.[0];
+    const msg = choice?.message;
+
+    if (msg?.tool_calls && msg.tool_calls.length > 0) {
+      return {
+        type: "tool_calls" as const,
+        toolCalls: msg.tool_calls.map((tc: any) => ({
+          id: tc.id,
+          name: tc.function.name,
+          arguments: JSON.parse(tc.function.arguments || "{}"),
+        })),
+        rawAssistantMessage: msg,
+      };
+    }
+
+    return {
+      type: "text" as const,
+      text: msg?.content ?? "",
+      rawAssistantMessage: msg,
+    };
+  },
+
+  formatToolResult(toolCallId: string, result: string) {
+    return { role: "tool" as const, tool_call_id: toolCallId, content: result };
   },
 };
 
@@ -99,6 +176,72 @@ const claudeProvider: ChatProvider = {
       }
     });
   },
+
+  async chatWithTools({ apiKey, model, messages, maxTokens, tools }) {
+    const systemMessage = messages.find((m) => m.role === "system");
+    const chatMessages = messages.filter((m) => m.role !== "system");
+
+    const claudeTools = tools.map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.parameters,
+    }));
+
+    const body: Record<string, unknown> = {
+      model,
+      messages: chatMessages,
+      max_tokens: maxTokens,
+      tools: claudeTools,
+    };
+
+    if (systemMessage) {
+      body.system = systemMessage.content;
+    }
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Claude API error ${response.status}: ${text}`);
+    }
+
+    const data = await response.json();
+    const toolUseBlocks = (data.content ?? []).filter((b: any) => b.type === "tool_use");
+    const textBlocks = (data.content ?? []).filter((b: any) => b.type === "text");
+
+    if (toolUseBlocks.length > 0) {
+      return {
+        type: "tool_calls" as const,
+        toolCalls: toolUseBlocks.map((b: any) => ({
+          id: b.id,
+          name: b.name,
+          arguments: b.input ?? {},
+        })),
+        rawAssistantMessage: { role: "assistant", content: data.content },
+      };
+    }
+
+    return {
+      type: "text" as const,
+      text: textBlocks.map((b: any) => b.text).join("") || "",
+      rawAssistantMessage: { role: "assistant", content: data.content },
+    };
+  },
+
+  formatToolResult(toolCallId: string, result: string) {
+    return {
+      role: "user" as const,
+      content: [{ type: "tool_result", tool_use_id: toolCallId, content: result }],
+    };
+  },
 };
 
 // ── Gemini ───────────────────────────────────────────────────────────────────
@@ -145,6 +288,86 @@ const geminiProvider: ChatProvider = {
         return null;
       }
     });
+  },
+
+  async chatWithTools({ apiKey, model, messages, maxTokens, tools }) {
+    const systemMessage = messages.find((m) => m.role === "system");
+    const chatMessages = messages.filter((m) => m.role !== "system");
+
+    const contents = chatMessages.map((m) => {
+      // Handle regular messages
+      if (typeof m.content === "string") {
+        return {
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        };
+      }
+      return {
+        role: m.role === "assistant" ? "model" : "user",
+        parts: Array.isArray(m.content) ? m.content : [{ text: String(m.content) }],
+      };
+    });
+
+    const body: Record<string, unknown> = {
+      contents,
+      generationConfig: { maxOutputTokens: maxTokens },
+      tools: [{
+        functionDeclarations: tools.map((t) => ({
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+        })),
+      }],
+    };
+
+    if (systemMessage) {
+      body.systemInstruction = { parts: [{ text: systemMessage.content }] };
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Gemini API error ${response.status}: ${text}`);
+    }
+
+    const data = await response.json();
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    const functionCalls = parts.filter((p: any) => p.functionCall);
+    const textParts = parts.filter((p: any) => p.text);
+
+    if (functionCalls.length > 0) {
+      return {
+        type: "tool_calls" as const,
+        toolCalls: functionCalls.map((p: any, i: number) => ({
+          id: `gemini-${i}`,
+          name: p.functionCall.name,
+          arguments: p.functionCall.args ?? {},
+        })),
+        rawAssistantMessage: { role: "model", parts },
+      };
+    }
+
+    return {
+      type: "text" as const,
+      text: textParts.map((p: any) => p.text).join("") || "",
+      rawAssistantMessage: { role: "model", parts },
+    };
+  },
+
+  formatToolResult(toolCallId: string, result: string) {
+    // Gemini uses functionResponse parts
+    const name = toolCallId.replace("gemini-", "tool_");
+    return {
+      role: "user" as const,
+      content: [{ functionResponse: { name, response: { result } } }],
+    };
   },
 };
 
@@ -219,3 +442,5 @@ export function getProvider(name: string): ChatProvider {
   if (!provider) throw new Error(`Unknown chat provider: ${name}`);
   return provider;
 }
+
+export type { ToolChatParams };

@@ -169,6 +169,7 @@ export const problems = sqliteTable("problems", {
   showCompileOutput: integer("show_compile_output", { mode: "boolean" }).notNull().default(true),
   showDetailedResults: integer("show_detailed_results", { mode: "boolean" }).notNull().default(true),
   showRuntimeErrors: integer("show_runtime_errors", { mode: "boolean" }).notNull().default(true),
+  allowAiAssistant: integer("allow_ai_assistant", { mode: "boolean" }).notNull().default(true),
   authorId: text("author_id").references(() => users.id, {
     onDelete: "set null",
   }),
@@ -330,6 +331,7 @@ export const systemSettings = sqliteTable("system_settings", {
   siteTitle: text("site_title"),
   siteDescription: text("site_description"),
   timeZone: text("time_zone"),
+  aiAssistantEnabled: integer("ai_assistant_enabled", { mode: "boolean" }).notNull().default(true),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date(Date.now())),

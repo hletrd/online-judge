@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { usePathname, useSearchParams } from "next/navigation";
 import { MessageCircle, X, Minus, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PluginWidgetProps } from "@/lib/plugins/types";
@@ -22,6 +23,19 @@ export default function ChatWidget(_props: PluginWidgetProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [aiDisabled, setAiDisabled] = useState<string | null>(null);
+
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Detect problem context from URL
+  const problemContext = (() => {
+    const match = pathname.match(/\/dashboard\/problems\/([^/]+)$/);
+    if (!match) return null;
+    const problemId = match[1];
+    const assignmentId = searchParams?.get("assignmentId") ?? undefined;
+    return { problemId, assignmentId };
+  })();
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -55,11 +69,20 @@ export default function ChatWidget(_props: PluginWidgetProps) {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
+      // Read editor code from global bridge (set by problem submission form)
+      const editorState = typeof window !== "undefined" ? (window as any).__ojEditorContent : null;
+
       const response = await fetch("/api/v1/plugins/chat-widget/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          context: problemContext ? {
+            problemId: problemContext.problemId,
+            assignmentId: problemContext.assignmentId,
+            editorCode: editorState?.code,
+            editorLanguage: editorState?.language,
+          } : undefined,
         }),
         signal: controller.signal,
       });
@@ -70,6 +93,9 @@ export default function ChatWidget(_props: PluginWidgetProps) {
           setError(t("errorRateLimit"));
         } else if (data.error === "notConfigured") {
           setError(t("errorNotConfigured"));
+        } else if (data.error === "aiDisabled" || data.error === "aiDisabledForProblem") {
+          setAiDisabled(data.error);
+          setError(t(data.error === "aiDisabledForProblem" ? "aiDisabledForProblem" : "aiDisabledGlobally"));
         } else {
           setError(t("errorGeneric"));
         }

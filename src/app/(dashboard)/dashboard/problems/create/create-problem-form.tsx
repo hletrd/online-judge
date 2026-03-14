@@ -35,6 +35,7 @@ export type ProblemFormInitialData = {
   showCompileOutput: boolean;
   showDetailedResults: boolean;
   showRuntimeErrors: boolean;
+  allowAiAssistant: boolean;
   testCases: ProblemTestCaseDraft[];
 };
 
@@ -79,6 +80,7 @@ export default function CreateProblemForm({
   const [showCompileOutput, setShowCompileOutput] = useState(initialProblem?.showCompileOutput ?? true);
   const [showDetailedResults, setShowDetailedResults] = useState(initialProblem?.showDetailedResults ?? true);
   const [showRuntimeErrors, setShowRuntimeErrors] = useState(initialProblem?.showRuntimeErrors ?? true);
+  const [allowAiAssistant, setAllowAiAssistant] = useState(initialProblem?.allowAiAssistant ?? true);
   const [testCaseOverrideEnabled, setTestCaseOverrideEnabled] = useState(false);
   const [testCases, setTestCases] = useState<ProblemTestCaseDraft[]>(
     initialProblem?.testCases.length
@@ -179,6 +181,7 @@ export default function CreateProblemForm({
           showCompileOutput,
           showDetailedResults,
           showRuntimeErrors,
+          allowAiAssistant,
           ...(areTestCasesEditable
             ? { testCases: testCases.map(({ _key: _, ...rest }) => rest) }
             : {}),
@@ -309,6 +312,14 @@ export default function CreateProblemForm({
             disabled={isLoading}
           />
           <span>{t("showRuntimeErrors")}</span>
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={allowAiAssistant}
+            onCheckedChange={(checked) => setAllowAiAssistant(checked === true)}
+            disabled={isLoading}
+          />
+          <span>{t("allowAiAssistant")}</span>
         </label>
       </div>
 
