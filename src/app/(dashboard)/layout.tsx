@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
+import { ChatWidgetLoader } from "@/components/plugins/chat-widget-loader";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -43,6 +44,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </main>
       </SidebarInset>
       <Toaster />
+      <ChatWidgetLoader />
     </SidebarProvider>
   );
 }

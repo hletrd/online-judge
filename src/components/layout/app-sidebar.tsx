@@ -17,7 +17,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen } from "lucide-react";
+import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy } from "lucide-react";
 import type { UserRole } from "@/types";
 
 interface AppSidebarProps {
@@ -37,6 +37,7 @@ const navItems: Array<{ titleKey: string; href: string; icon: typeof LayoutDashb
   { titleKey: "submissions" as const, href: "/dashboard/submissions", icon: Send, roles: ["super_admin", "admin", "instructor", "student"] },
   { titleKey: "problemSets" as const, href: "/dashboard/problem-sets", icon: FolderOpen, roles: ["super_admin", "admin", "instructor"] },
   { titleKey: "groups" as const, href: "/dashboard/groups", icon: Users, roles: ["super_admin", "admin", "instructor", "student"] },
+  { titleKey: "rankings" as const, href: "/dashboard/rankings", icon: Trophy, roles: ["super_admin", "admin", "instructor", "student"] },
   { titleKey: "profile" as const, href: "/dashboard/profile", icon: User, roles: ["super_admin", "admin", "instructor", "student"] },
 ];
 
@@ -46,6 +47,7 @@ const adminItems: Array<{ titleKey: string; href: string; icon: typeof Shield; r
   { titleKey: "auditLogs" as const, href: "/dashboard/admin/audit-logs", icon: History, roles: ["super_admin", "admin"] },
   { titleKey: "loginLogs" as const, href: "/dashboard/admin/login-logs", icon: LogIn, roles: ["super_admin", "admin"] },
   { titleKey: "systemSettings" as const, href: "/dashboard/admin/settings", icon: GraduationCap, roles: ["super_admin", "admin"] },
+  { titleKey: "plugins" as const, href: "/dashboard/admin/plugins", icon: Blocks, roles: ["super_admin", "admin"] },
 ];
 
 export function AppSidebar({ user, siteTitle }: AppSidebarProps) {
