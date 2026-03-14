@@ -352,11 +352,11 @@ export default async function AdminAuditLogsPage({
             <TableBody>
               {visibleEvents.map((event) => (
                 <TableRow key={event.id}>
-                  <TableCell className="align-top">
+                  <TableCell>
                     {event.createdAt ? formatDateTimeInTimeZone(event.createdAt, locale, timeZone) : "-"}
                   </TableCell>
-                  <TableCell className="align-top font-mono text-xs">{event.action}</TableCell>
-                  <TableCell className="align-top whitespace-normal">
+                  <TableCell className="font-mono text-xs">{event.action}</TableCell>
+                  <TableCell className="whitespace-normal">
                     <div className="font-medium">
                       {resourceLabels[event.resourceType as keyof typeof resourceLabels] ?? event.resourceType}
                     </div>
@@ -365,7 +365,7 @@ export default async function AdminAuditLogsPage({
                       <div className="text-xs text-muted-foreground/80">ID: {event.resourceId}</div>
                     ) : null}
                   </TableCell>
-                  <TableCell className="align-top whitespace-normal">
+                  <TableCell className="whitespace-normal">
                     {event.actor?.id ? (
                       isAdminViewer ? (
                         <Link href={`/dashboard/admin/users/${event.actor.id}`} className="block text-primary hover:underline">
@@ -389,8 +389,8 @@ export default async function AdminAuditLogsPage({
                       <span className="text-muted-foreground">{t("unknownActor")}</span>
                     )}
                   </TableCell>
-                  <TableCell className="align-top whitespace-normal text-sm">{event.summary}</TableCell>
-                  <TableCell className="align-top text-sm">
+                  <TableCell className="whitespace-normal text-sm">{event.summary}</TableCell>
+                  <TableCell className="text-sm">
                     {event.details || event.requestMethod || event.requestPath || event.ipAddress || event.userAgent ? (
                       <Collapsible className="max-w-xs whitespace-normal break-words">
                         <CollapsibleTrigger className="cursor-pointer text-primary hover:underline">{t("detailToggle")}</CollapsibleTrigger>

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
@@ -32,6 +33,11 @@ const OUTCOME_FILTER_VALUES = [
 ] as const;
 const MAX_SEARCH_LENGTH = 100;
 const MAX_USER_AGENT_SUMMARY_LENGTH = 120;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("admin.loginLogs");
+  return { title: t("title") };
+}
 
 type OutcomeFilter = (typeof OUTCOME_FILTER_VALUES)[number];
 
@@ -271,22 +277,22 @@ export default async function AdminLoginLogsPage({
 
                 return (
                   <TableRow key={event.id}>
-                    <TableCell className="align-top">
+                    <TableCell>
                       {event.createdAt ? formatDateTimeInTimeZone(event.createdAt, locale, timeZone) : "-"}
                     </TableCell>
-                    <TableCell className="align-top">
+                    <TableCell>
                       <Badge variant={outcomeVariants[event.outcome as keyof typeof outcomeVariants] ?? "outline"}>
                         {outcomeLabels[event.outcome as keyof typeof outcomeLabels] ?? event.outcome}
                       </Badge>
                     </TableCell>
-                    <TableCell className="align-top !whitespace-normal">
+                    <TableCell className="!whitespace-normal">
                       {event.attemptedIdentifier ? (
                         <span className="font-mono text-xs break-all">{event.attemptedIdentifier}</span>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="align-top !whitespace-normal">
+                    <TableCell className="!whitespace-normal">
                       {resolvedUser ? (
                         <Link href={`/dashboard/admin/users/${resolvedUser.id}`} className="block text-primary hover:underline">
                           <div className="font-medium text-foreground">{resolvedUser.name}</div>
@@ -296,14 +302,14 @@ export default async function AdminLoginLogsPage({
                         <span className="text-muted-foreground">{t("unresolvedUser")}</span>
                       )}
                     </TableCell>
-                    <TableCell className="align-top">
+                    <TableCell>
                       {event.ipAddress ? (
                         <span className="font-mono text-xs">{event.ipAddress}</span>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="max-w-sm align-top !whitespace-normal text-sm break-words text-muted-foreground">
+                    <TableCell className="max-w-sm !whitespace-normal text-sm break-words text-muted-foreground">
                       {summarizeUserAgent(event.userAgent) ?? tCommon("unknown")}
                     </TableCell>
                   </TableRow>

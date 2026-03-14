@@ -199,7 +199,7 @@ export default async function UserManagementPage({
                   <TableCell>{user.className || tCommon("notSet")}</TableCell>
                   <TableCell>{user.email || "-"}</TableCell>
                   <TableCell>{user.name}</TableCell>
-                  <TableCell>
+                  <TableCell className="align-middle">
                     <Badge variant="outline">{roleLabels[user.role as keyof typeof roleLabels] ?? user.role}</Badge>
                   </TableCell>
                   <TableCell>
