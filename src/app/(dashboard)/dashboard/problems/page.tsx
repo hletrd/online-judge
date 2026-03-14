@@ -139,10 +139,13 @@ export default async function ProblemsPage({
     session.user.role === "super_admin" ||
     session.user.role === "instructor";
 
-  // Build title search filter
+  // Build search filter (title or author name)
   const searchFilter =
     searchQuery
-      ? like(problems.title, `%${escapeLike(searchQuery)}%`)
+      ? or(
+          like(problems.title, `%${escapeLike(searchQuery)}%`),
+          like(users.name, `%${escapeLike(searchQuery)}%`)
+        )
       : undefined;
 
   // Build visibility filter (only for managers; students always see accessible problems regardless)
@@ -183,6 +186,7 @@ export default async function ProblemsPage({
     const [countRow] = await db
       .select({ count: sql<number>`count(*)` })
       .from(problems)
+      .leftJoin(users, eq(problems.authorId, users.id))
       .where(baseWhereClause);
     totalCount = Number(countRow?.count ?? 0);
 
@@ -254,6 +258,7 @@ export default async function ProblemsPage({
     const idRows = await db
       .select({ id: problems.id })
       .from(problems)
+      .leftJoin(users, eq(problems.authorId, users.id))
       .where(baseWhereClause)
       .orderBy(desc(problems.createdAt));
     const allIds = idRows.map((r) => r.id);
