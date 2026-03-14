@@ -97,20 +97,6 @@ type LegacySeededProblemCandidate = {
   authorEmail?: string | null;
 };
 
-export function isTrustedLegacySeededProblem({
-  title,
-  description,
-  authorUsername,
-  authorEmail,
-}: LegacySeededProblemCandidate) {
-  return getTrustedLegacySeededDescription({
-    title,
-    description,
-    authorUsername,
-    authorEmail,
-  }) !== null;
-}
-
 export function getTrustedLegacySeededDescription({
   title,
   description,
