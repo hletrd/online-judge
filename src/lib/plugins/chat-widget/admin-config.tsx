@@ -29,6 +29,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
   const [claudeModel, setClaudeModel] = useState((config.claudeModel as string) ?? "claude-sonnet-4-6");
   const [geminiApiKey, setGeminiApiKey] = useState((config.geminiApiKey as string) ?? "");
   const [geminiModel, setGeminiModel] = useState((config.geminiModel as string) ?? "gemini-3.1-flash-lite-preview");
+  const [assistantName, setAssistantName] = useState((config.assistantName as string) ?? "");
   const [systemPrompt, setSystemPrompt] = useState((config.systemPrompt as string) ?? "");
   const [knowledgeBase, setKnowledgeBase] = useState((config.knowledgeBase as string) ?? "");
   const [maxTokens, setMaxTokens] = useState((config.maxTokens as number) ?? 2048);
@@ -79,6 +80,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
         claudeModel,
         geminiApiKey,
         geminiModel,
+        assistantName,
         systemPrompt,
         knowledgeBase,
         maxTokens,
@@ -202,6 +204,15 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
           <CardTitle>{t("systemPrompt")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>{t("assistantName")}</Label>
+            <Input
+              value={assistantName}
+              onChange={(e) => setAssistantName(e.target.value)}
+              placeholder={t("assistantNamePlaceholder")}
+            />
+            <p className="text-xs text-muted-foreground">{t("assistantNameHint")}</p>
+          </div>
           <div className="space-y-2">
             <Textarea
               value={systemPrompt}

@@ -8,6 +8,7 @@ export const chatWidgetConfigSchema = z.object({
   claudeModel: z.string().max(100).default("claude-sonnet-4-6"),
   geminiApiKey: z.string().max(200).default(""),
   geminiModel: z.string().max(100).default("gemini-3.1-flash-lite-preview"),
+  assistantName: z.string().max(100).default(""),
   systemPrompt: z.string().max(10000).default(""),
   knowledgeBase: z.string().max(50000).default(""),
   maxTokens: z.number().int().min(100).max(8192).default(2048),

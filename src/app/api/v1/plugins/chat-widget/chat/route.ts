@@ -124,6 +124,7 @@ export async function POST(request: Request) {
       claudeModel: string;
       geminiApiKey: string;
       geminiModel: string;
+      assistantName: string;
       systemPrompt: string;
       knowledgeBase: string;
       maxTokens: number;
@@ -241,7 +242,7 @@ export async function POST(request: Request) {
     const localeMatch = cookieHeader.match(/(?:^|;\s*)locale=(\w+)/);
     const acceptLang = request.headers.get("accept-language")?.split(",")[0]?.split("-")[0]?.trim();
     const locale = localeMatch?.[1] ?? (acceptLang === "ko" ? "ko" : "en");
-    const siteName = "JudgeKit";
+    const siteName = config.assistantName || "AI Assistant";
 
     // Build system prompt
     const systemContent = buildSystemPrompt({
