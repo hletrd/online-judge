@@ -3,8 +3,8 @@ import { chatWidgetConfigSchema } from "./schema";
 
 export const chatWidgetPlugin: PluginDefinition = {
   id: "chat-widget",
-  nameKey: "plugins.chatWidget.name",
-  descriptionKey: "plugins.chatWidget.description",
+  nameKey: "chatWidget.name",
+  descriptionKey: "chatWidget.description",
   configSchema: chatWidgetConfigSchema,
   defaultConfig: {
     provider: "openai",

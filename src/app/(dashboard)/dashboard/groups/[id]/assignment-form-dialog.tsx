@@ -404,7 +404,7 @@ export default function AssignmentFormDialog({
                           </SelectTrigger>
                           <SelectContent>
                             {availableProblems.map((problem) => (
-                              <SelectItem key={problem.id} value={problem.id}>
+                              <SelectItem key={problem.id} value={problem.id} label={problem.title}>
                                 {problem.title}
                               </SelectItem>
                             ))}

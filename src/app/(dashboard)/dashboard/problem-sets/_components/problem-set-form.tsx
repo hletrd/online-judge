@@ -290,7 +290,7 @@ export default function ProblemSetForm({
                   {availableProblems
                     .filter((p) => !selectedProblemIds.includes(p.id))
                     .map((problem) => (
-                      <SelectItem key={problem.id} value={problem.id}>
+                      <SelectItem key={problem.id} value={problem.id} label={problem.title}>
                         {problem.title}
                       </SelectItem>
                     ))}
@@ -363,7 +363,7 @@ export default function ProblemSetForm({
                 </SelectTrigger>
                 <SelectContent>
                   {unassignedGroups.map((group) => (
-                    <SelectItem key={group.id} value={group.id}>
+                    <SelectItem key={group.id} value={group.id} label={group.name}>
                       {group.name}
                     </SelectItem>
                   ))}

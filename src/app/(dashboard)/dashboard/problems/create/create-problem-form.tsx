@@ -280,9 +280,9 @@ export default function CreateProblemForm({
             <SelectValue>{visibilityLabels[visibility]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="public">{visibilityLabels.public}</SelectItem>
-            <SelectItem value="private">{visibilityLabels.private}</SelectItem>
-            <SelectItem value="hidden">{visibilityLabels.hidden}</SelectItem>
+            <SelectItem value="public" label={visibilityLabels.public}>{visibilityLabels.public}</SelectItem>
+            <SelectItem value="private" label={visibilityLabels.private}>{visibilityLabels.private}</SelectItem>
+            <SelectItem value="hidden" label={visibilityLabels.hidden}>{visibilityLabels.hidden}</SelectItem>
           </SelectContent>
         </Select>
       </div>

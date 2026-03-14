@@ -264,7 +264,7 @@ export function GroupMembersManager({
                 </SelectTrigger>
                 <SelectContent>
                   {currentAvailableStudents.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
+                    <SelectItem key={student.id} value={student.id} label={`${student.name} (@${student.username})`}>
                       {student.name} (@{student.username})
                     </SelectItem>
                   ))}

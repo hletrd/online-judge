@@ -86,9 +86,9 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="openai">{t("providerOptions.openai")}</SelectItem>
-                <SelectItem value="claude">{t("providerOptions.claude")}</SelectItem>
-                <SelectItem value="gemini">{t("providerOptions.gemini")}</SelectItem>
+                <SelectItem value="openai" label={t("providerOptions.openai")}>{t("providerOptions.openai")}</SelectItem>
+                <SelectItem value="claude" label={t("providerOptions.claude")}>{t("providerOptions.claude")}</SelectItem>
+                <SelectItem value="gemini" label={t("providerOptions.gemini")}>{t("providerOptions.gemini")}</SelectItem>
               </SelectContent>
             </Select>
           </div>

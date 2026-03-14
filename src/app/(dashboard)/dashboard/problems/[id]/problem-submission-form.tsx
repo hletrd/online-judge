@@ -176,7 +176,7 @@ export function ProblemSubmissionForm({
           </SelectTrigger>
           <SelectContent>
             {languages.map((entry) => (
-              <SelectItem key={entry.id} value={entry.language}>
+              <SelectItem key={entry.id} value={entry.language} label={`${entry.displayName}${entry.standard ? ` (${entry.standard})` : ""}`}>
                 {entry.displayName} {entry.standard ? `(${entry.standard})` : ""}
               </SelectItem>
             ))}

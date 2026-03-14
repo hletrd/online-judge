@@ -105,14 +105,14 @@ export default function EditUserDialog({ user, actorRole }: EditUserDialogProps 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="student">{roleLabels.student}</SelectItem>
+                <SelectItem value="student" label={roleLabels.student}>{roleLabels.student}</SelectItem>
                 {(!actorRole || actorRole === "admin" || actorRole === "super_admin") && (
                   <>
-                    <SelectItem value="instructor">{roleLabels.instructor}</SelectItem>
-                    <SelectItem value="admin">{roleLabels.admin}</SelectItem>
+                    <SelectItem value="instructor" label={roleLabels.instructor}>{roleLabels.instructor}</SelectItem>
+                    <SelectItem value="admin" label={roleLabels.admin}>{roleLabels.admin}</SelectItem>
                   </>
                 )}
-                {user.role === "super_admin" && <SelectItem value="super_admin">{roleLabels.super_admin}</SelectItem>}
+                {user.role === "super_admin" && <SelectItem value="super_admin" label={roleLabels.super_admin}>{roleLabels.super_admin}</SelectItem>}
               </SelectContent>
             </Select>
           </div>
