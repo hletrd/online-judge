@@ -14,7 +14,7 @@
 
 <p align="center">
   A secure code evaluation platform for programming assignments.<br/>
-  Automated judging with Docker-sandboxed execution for C, C++, Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, Swift, C#, R, Perl, and PHP.
+  Automated judging with Docker-sandboxed execution for 43 languages including C, C++, Java, Kotlin, Python, Rust, Go, Swift, and esoteric languages like Befunge and 아희.
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@
 - **Problem management** — Sanitized descriptions, configurable time/memory limits, public/private/hidden visibility, and test-case editing before submissions exist
 - **Admin login history** — Credential login outcomes with safe filtering and pagination for admin-only review
 - **Secure code execution** — Docker containers with no network, seccomp profiles, memory/CPU limits, and non-root users
-- **Multi-language support** — 40 languages including C (C89/C99/C17/C23, GCC & Clang), C++ (C++20/C++23, GCC & Clang), Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, Swift, C#, Ruby, Lua, Haskell, Dart, Zig, Nim, OCaml, Elixir, Julia, D, Racket, V, Fortran, Pascal, COBOL, Brainfuck, Scala, Erlang, Common Lisp, Bash, R, Perl, PHP with admin-customizable compile options
+- **Multi-language support** — 43 languages including C (C89/C99/C17/C23, GCC & Clang), C++ (C++20/C++23, GCC & Clang), Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, Swift, C#, Ruby, Lua, Haskell, Dart, Zig, Nim, OCaml, Elixir, Julia, D, Racket, V, Fortran, Pascal, COBOL, Brainfuck, Scala, Erlang, Common Lisp, Bash, R, Perl, PHP, plus esoteric languages Befunge-93, 아희 (Aheui), and 혀엉 (Hyeong), all with admin-customizable compile options
 - **Submission workflow** — JSON submission flow, live status polling, per-test-case results, paginated submission history, draft recovery, and mixed legacy/hex submission ID support
 
 ## Getting Started
@@ -179,6 +179,8 @@ docker build -t judge-csharp -f docker/Dockerfile.judge-csharp .
 docker build -t judge-r -f docker/Dockerfile.judge-r .
 docker build -t judge-perl -f docker/Dockerfile.judge-perl .
 docker build -t judge-php -f docker/Dockerfile.judge-php .
+docker build -t judge-clang -f docker/Dockerfile.judge-clang .
+docker build -t judge-esoteric -f docker/Dockerfile.judge-esoteric .
 npm run build
 ```
 
@@ -274,7 +276,7 @@ journalctl -u online-judge-worker-rs.service -n 50 --no-pager
 | UI | Tailwind CSS v4, shadcn/ui |
 | Code Editor | CodeMirror 6 with CSP-nonce-aware syntax highlighting and theme-aware styling |
 | Judge Worker | Rust binary with zero-allocation output comparison |
-| Judge Runtimes | Dockerized toolchains for GCC, Python 3.14.3, Node.js 24.14.0 / TypeScript 5.9.3, Rust 1.94.0, Go 1.26.1, Swift 6.2.4, Mono 6.12, R 4.5, Perl 5.40, and PHP 8.4 |
+| Judge Runtimes | Dockerized toolchains for GCC, Clang, Python 3.14.3, Node.js 24.14.0 / TypeScript 5.9.3, Rust 1.94.0, Go 1.26.1, Swift 6.2.4, Mono 6.12, R 4.5, Perl 5.40, PHP 8.4, and esoteric interpreters (Befunge-93, Aheui, Hyeong) |
 | Validation | Zod |
 
 ## Project Structure

@@ -909,6 +909,21 @@
       "name": "Python 3",
       "compiler": "CPython 3.13",
       "flags": "-"
+    },
+    "befunge": {
+      "name": "Befunge-93",
+      "compiler": "bef (Cat's Eye Technologies)",
+      "flags": "-q"
+    },
+    "aheui": {
+      "name": "아희 (Aheui)",
+      "compiler": "aheui (PyPI)",
+      "flags": "-"
+    },
+    "hyeong": {
+      "name": "혀엉 (Hyeong)",
+      "compiler": "hyeong (crates.io)",
+      "flags": "-"
     }
   },
   "plugins": {
