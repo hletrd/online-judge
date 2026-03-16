@@ -51,9 +51,6 @@ export type Language =
   | "erlang"
   | "commonlisp"
   | "bash"
-  | "whitespace"
   | "befunge"
-  | "rockstar"
-  | "shakespeare"
   | "aheui"
   | "hyeong";

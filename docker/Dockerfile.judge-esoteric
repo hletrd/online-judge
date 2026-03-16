@@ -31,29 +31,8 @@ RUN git clone --depth 1 https://github.com/catseye/Befunge-93.git /tmp/befunge &
 # =============================================================================
 FROM python:3.12-slim-bookworm
 
-# Install Node.js for Rockstar interpreter
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates git && \
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y --no-install-recommends nodejs && \
-    rm -rf /var/lib/apt/lists/*
-
-# Python-based interpreters:
-#   shakespearelang - Shakespeare Programming Language
-#   aheui           - Aheui compiler/interpreter (https://pypi.org/project/aheui/)
-#   whitespace      - Whitespace interpreter (https://pypi.org/project/whitespace/)
-RUN pip install --no-cache-dir shakespearelang aheui whitespace
-
-# Rockstar (Satriani - JS interpreter by Dylan Beattie)
-# https://github.com/dylanbeattie/satriani
-RUN git clone --depth 1 https://github.com/dylanbeattie/satriani.git /opt/satriani && \
-    cd /opt/satriani && npm install --production && \
-    printf '#!/bin/sh\nnode /opt/satriani/rockstar.js "$@"\n' > /usr/local/bin/rockstar && \
-    chmod +x /usr/local/bin/rockstar
-
-# Create wspace wrapper (whitespace pip package may not install CLI as 'wspace')
-RUN printf '#!/bin/sh\npython3 -m whitespace "$@"\n' > /usr/local/bin/wspace && \
-    chmod +x /usr/local/bin/wspace
+# Aheui interpreter (https://pypi.org/project/aheui/)
+RUN pip install --no-cache-dir aheui
 
 # Copy Rust-built binaries (Hyeong)
 COPY --from=rust-builder /usr/local/cargo/bin/hyeong /usr/local/bin/hyeong
