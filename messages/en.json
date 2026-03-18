@@ -78,7 +78,8 @@
     "chatLogs": "Chat Logs",
     "rankings": "Rankings",
     "contests": "Contests",
-    "roleManagement": "Role Management"
+    "roleManagement": "Role Management",
+    "languages": "Languages"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -526,8 +527,8 @@
     "examWindowRequired": "Windowed mode requires both a start time and deadline.",
     "examScheduleRequired": "Scheduled mode requires both a start time and deadline.",
     "scoringModelLabel": "Scoring Model",
-    "scoringModelIoi": "IOI (Partial Scoring)",
-    "scoringModelIcpc": "ICPC (Binary AC/Reject)",
+    "scoringModelIoi": "Partial Scoring",
+    "scoringModelIcpc": "Pass/Fail",
     "scoringModelDescription_ioi": "Partial credit by test cases passed. Best score kept.",
     "scoringModelDescription_icpc": "Problems are either fully accepted or rejected. Ranking by problems solved, then penalty time.",
     "freezeLeaderboardLabel": "Freeze Leaderboard At",
@@ -1130,8 +1131,8 @@
     "filterPast": "Past",
     "joinWithCode": "Join with Code",
     "scoringModel": "Scoring Model",
-    "scoringModelIoi": "IOI (Partial Scoring)",
-    "scoringModelIcpc": "ICPC (Binary AC/Reject)",
+    "scoringModelIoi": "Partial Scoring",
+    "scoringModelIcpc": "Pass/Fail",
     "leaderboard": {
       "title": "Leaderboard",
       "rank": "Rank",
@@ -1308,6 +1309,58 @@
       "system.chat_logs": "View chat logs",
       "content.submit_solutions": "Submit solutions",
       "content.view_own_submissions": "View own submissions"
+    },
+    "languages": {
+      "title": "Language Management",
+      "description": "Configure supported programming languages, compile options, and Docker images.",
+      "table": {
+        "language": "Language",
+        "displayName": "Display Name",
+        "standard": "Standard",
+        "dockerImage": "Docker Image",
+        "compileCommand": "Compile Command",
+        "runCommand": "Run Command",
+        "enabled": "Enabled",
+        "compiler": "Compiler",
+        "extension": "Extension",
+        "actions": "Actions"
+      },
+      "edit": {
+        "title": "Edit Language Configuration",
+        "description": "Modify compile options, Docker image, and runtime settings.",
+        "dockerImage": "Docker Image",
+        "dockerImagePlaceholder": "e.g. judge-cpp:latest or custom-image:tag",
+        "compileCommand": "Compile Command",
+        "compileCommandHelp": "Space-separated command arguments. Leave empty for interpreted languages.",
+        "runCommand": "Run Command",
+        "runCommandHelp": "Space-separated command arguments for execution.",
+        "save": "Save Changes",
+        "cancel": "Cancel",
+        "resetToDefaults": "Reset to Defaults",
+        "resetConfirm": "Reset this language to its default configuration?"
+      },
+      "actions": {
+        "resetAll": "Reset All to Defaults",
+        "resetAllConfirm": "Reset all languages to default configurations? This preserves enabled/disabled state.",
+        "syncFromSource": "Sync from Source",
+        "enableAll": "Enable All",
+        "disableAll": "Disable All"
+      },
+      "toast": {
+        "toggleSuccess": "Language {language} {state}.",
+        "toggleError": "Failed to toggle language.",
+        "updateSuccess": "Language configuration updated.",
+        "updateError": "Failed to update configuration.",
+        "resetSuccess": "Language reset to defaults.",
+        "resetError": "Failed to reset language.",
+        "resetAllSuccess": "All languages reset to defaults.",
+        "resetAllError": "Failed to reset languages."
+      },
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "noCompileCommand": "None (interpreted)",
+      "runtimeInfo": "Runtime Info",
+      "languageCount": "{enabled} of {total} languages enabled"
     }
   }
 }
