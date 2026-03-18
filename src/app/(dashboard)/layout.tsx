@@ -7,15 +7,27 @@ import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
-import { getResolvedSystemSettings } from "@/lib/system-settings";
+import { getResolvedSystemSettings, isAiAssistantEnabled } from "@/lib/system-settings";
 import { ChatWidgetLoader } from "@/components/plugins/chat-widget-loader";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { isPluginEnabled } from "@/lib/plugins/data";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const t = await getTranslations("common");
+  const [t, capabilities] = await Promise.all([
+    getTranslations("common"),
+    (async () => {
+      const [caps, chatPluginOn, aiOn] = await Promise.all([
+        resolveCapabilities(session.user.role),
+        isPluginEnabled("chat-widget"),
+        isAiAssistantEnabled(),
+      ]);
+      const arr = [...caps];
+      return (!chatPluginOn || !aiOn) ? arr.filter(c => c !== "system.chat_logs") : arr;
+    })(),
+  ]);
   const settings = await getResolvedSystemSettings({
     siteTitle: t("appName"),
     siteDescription: t("appDescription"),
@@ -29,7 +41,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       >
         {t("skipToContent")}
       </a>
-      <AppSidebar user={session.user} siteTitle={settings.siteTitle} capabilities={[...(await resolveCapabilities(session.user.role))]} />
+      <AppSidebar user={session.user} siteTitle={settings.siteTitle} capabilities={capabilities} />
       <SidebarInset>
         <header className="flex h-14 items-center gap-2 border-b px-4">
           <SidebarTrigger />
