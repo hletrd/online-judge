@@ -89,10 +89,10 @@ export function computeContestRanking(assignmentId: string, cutoffSec?: number):
   const deadlineSec = meta.deadline;
   const latePenalty = meta.latePenalty ?? 0;
 
-  // Get all submissions aggregated per (user, problem) with problem points
-  // Optional cutoff filter for leaderboard freeze — use separate prepared statements
-  // to avoid SQL string interpolation (parameterized queries only).
-  const BASE_QUERY_NO_CUTOFF = `
+  // Get all submissions aggregated per (user, problem) with problem points.
+  // Uses positional ? parameters to avoid SQL injection.
+  // deadlineSec and latePenalty are bound for late-penalty scoring logic.
+  const BASE_QUERY = `
       WITH user_problem AS (
         SELECT
           s.user_id AS userId,
@@ -106,10 +106,10 @@ export function computeContestRanking(assignmentId: string, cutoffSec?: number):
             CASE
               WHEN s.score IS NOT NULL THEN
                 CASE
-                  WHEN ?2 IS NOT NULL AND ?3 > 0 AND ?4 != 'windowed'
-                       AND s.submitted_at IS NOT NULL AND s.submitted_at > ?2
+                  WHEN ? IS NOT NULL AND ? > 0 AND ? != 'windowed'
+                       AND s.submitted_at IS NOT NULL AND s.submitted_at > ?
                   THEN ROUND(MIN(MAX(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
-                       * (1.0 - ?3 / 100.0)
+                       * (1.0 - ? / 100.0)
                   ELSE ROUND(MIN(MAX(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
                 END
               ELSE NULL
@@ -134,7 +134,7 @@ export function computeContestRanking(assignmentId: string, cutoffSec?: number):
         FROM submissions s
         INNER JOIN assignment_problems ap ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
         INNER JOIN users u ON u.id = s.user_id
-        WHERE s.assignment_id = ?1
+        WHERE s.assignment_id = ?
         GROUP BY s.user_id, s.problem_id
       )
       SELECT * FROM user_problem
@@ -154,10 +154,10 @@ export function computeContestRanking(assignmentId: string, cutoffSec?: number):
             CASE
               WHEN s.score IS NOT NULL THEN
                 CASE
-                  WHEN ?2 IS NOT NULL AND ?3 > 0 AND ?4 != 'windowed'
-                       AND s.submitted_at IS NOT NULL AND s.submitted_at > ?2
+                  WHEN ? IS NOT NULL AND ? > 0 AND ? != 'windowed'
+                       AND s.submitted_at IS NOT NULL AND s.submitted_at > ?
                   THEN ROUND(MIN(MAX(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
-                       * (1.0 - ?3 / 100.0)
+                       * (1.0 - ? / 100.0)
                   ELSE ROUND(MIN(MAX(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
                 END
               ELSE NULL
@@ -170,34 +170,36 @@ export function computeContestRanking(assignmentId: string, cutoffSec?: number):
              AND s2.user_id = s.user_id
              AND s2.problem_id = s.problem_id
              AND (s2.score IS NULL OR s2.score < 100)
-             AND s2.submitted_at <= ?5
+             AND s2.submitted_at <= ?
              AND s2.submitted_at < COALESCE(
                (SELECT MIN(s3.submitted_at) FROM submissions s3
                 WHERE s3.assignment_id = s.assignment_id
                   AND s3.user_id = s.user_id
                   AND s3.problem_id = s.problem_id
                   AND s3.score = 100
-                  AND s3.submitted_at <= ?5),
+                  AND s3.submitted_at <= ?),
                9999999999
              )
           ) AS wrongBeforeAc
         FROM submissions s
         INNER JOIN assignment_problems ap ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
         INNER JOIN users u ON u.id = s.user_id
-        WHERE s.assignment_id = ?1 AND s.submitted_at <= ?5
+        WHERE s.assignment_id = ? AND s.submitted_at <= ?
         GROUP BY s.user_id, s.problem_id
       )
       SELECT * FROM user_problem
     `;
 
+  // Positional params: deadlineSec, latePenalty, examMode, deadlineSec, latePenalty, assignmentId
+  // (some values repeated because each ? is independent)
   const rows =
     cutoffSec != null
       ? sqlite
-          .prepare<[string, number | null, number, string, number], RawLeaderboardRow>(BASE_QUERY_WITH_CUTOFF)
-          .all(assignmentId, deadlineSec, latePenalty, meta.examMode ?? "none", cutoffSec)
+          .prepare<[number | null, number, string, number | null, number, number, number, string, number], RawLeaderboardRow>(BASE_QUERY_WITH_CUTOFF)
+          .all(deadlineSec, latePenalty, meta.examMode ?? "none", deadlineSec, latePenalty, cutoffSec, cutoffSec, assignmentId, cutoffSec)
       : sqlite
-          .prepare<[string, number | null, number, string], RawLeaderboardRow>(BASE_QUERY_NO_CUTOFF)
-          .all(assignmentId, deadlineSec, latePenalty, meta.examMode ?? "none");
+          .prepare<[number | null, number, string, number | null, number, string], RawLeaderboardRow>(BASE_QUERY)
+          .all(deadlineSec, latePenalty, meta.examMode ?? "none", deadlineSec, latePenalty, assignmentId);
 
   // Group by user
   const userMap = new Map<
