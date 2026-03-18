@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getApiUser, unauthorized, csrfForbidden, isAdmin, isInstructor } from "@/lib/api/auth";
 import { apiSuccess, apiError } from "@/lib/api/responses";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { runAndStoreSimilarityCheck } from "@/lib/assignments/code-similarity";
 import { sqlite } from "@/lib/db";
 import { logger } from "@/lib/logger";
@@ -21,6 +22,9 @@ export async function POST(
 
     const user = await getApiUser(request);
     if (!user) return unauthorized();
+
+    const rl = consumeApiRateLimit(request, "similarity-check");
+    if (rl) return rl;
 
     const { assignmentId } = await params;
 

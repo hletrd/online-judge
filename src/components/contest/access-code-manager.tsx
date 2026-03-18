@@ -80,7 +80,17 @@ export function AccessCodeManager({ assignmentId }: AccessCodeManagerProps) {
 
   function handleCopy() {
     if (!code) return;
-    navigator.clipboard.writeText(code);
+    try {
+      navigator.clipboard.writeText(code);
+    } catch {
+      // Fallback for insecure contexts
+      const textarea = document.createElement("textarea");
+      textarea.value = code;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

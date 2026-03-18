@@ -142,6 +142,16 @@ export function runAndStoreSimilarityCheck(
 ): number {
   const pairs = runSimilarityCheck(assignmentId, threshold);
 
+  // Delete previous code_similarity events for this assignment to avoid duplicates
+  db.delete(antiCheatEvents)
+    .where(
+      and(
+        eq(antiCheatEvents.assignmentId, assignmentId),
+        eq(antiCheatEvents.eventType, "code_similarity")
+      )
+    )
+    .run();
+
   for (const pair of pairs) {
     const now = new Date();
     // Store event for both users

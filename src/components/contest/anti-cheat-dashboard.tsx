@@ -112,7 +112,7 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
     } finally {
       setLoadingMore(false);
     }
-  }, [assignmentId, offset]);
+  }, [assignmentId, offset, tCommon]);
 
   useEffect(() => {
     fetchEvents();

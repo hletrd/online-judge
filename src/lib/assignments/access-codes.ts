@@ -10,10 +10,14 @@ import { and, eq } from "drizzle-orm";
  */
 export function generateAccessCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I/O/0/1 for readability
-  const bytes = randomBytes(8);
+  const len = chars.length; // 32
+  const maxUnbiased = 256 - (256 % len); // rejection threshold
   let code = "";
-  for (let i = 0; i < 8; i++) {
-    code += chars[bytes[i] % chars.length];
+  while (code.length < 8) {
+    const byte = randomBytes(1)[0];
+    if (byte < maxUnbiased) {
+      code += chars[byte % len];
+    }
   }
   return code;
 }

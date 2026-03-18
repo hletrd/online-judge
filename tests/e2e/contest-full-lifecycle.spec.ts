@@ -487,7 +487,7 @@ test.describe.serial("Contest Full Lifecycle", () => {
 
   // ─── Verify contest UI components ──────────────────────────────────────
   test("Step 31: Admin analytics page renders charts", async () => {
-    await adminPage.goto(`/dashboard/contests/${ioiAssignmentId}/analytics`);
+    await adminPage.goto(`/dashboard/contests/${ioiAssignmentId}`);
     await adminPage.waitForLoadState("networkidle");
 
     // Wait for analytics to load
