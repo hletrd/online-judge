@@ -14,7 +14,7 @@
 
 <p align="center">
   A secure code evaluation platform for programming assignments.<br/>
-  Automated judging with Docker-sandboxed execution for 43 languages including C, C++, Java, Kotlin, Python, Rust, Go, Swift, and esoteric languages like Befunge and 아희.
+  Automated judging with Docker-sandboxed execution for 55 languages including C, C++, Java, Kotlin, Python, Rust, Go, Swift, and esoteric languages like Befunge and 아희.
 </p>
 
 <p align="center">
@@ -35,32 +35,66 @@
 - **Problem management** — Sanitized descriptions, configurable time/memory limits, public/private/hidden visibility, and test-case editing before submissions exist
 - **Admin login history** — Credential login outcomes with safe filtering and pagination for admin-only review
 - **Secure code execution** — Docker containers with no network, seccomp profiles, memory/CPU limits, and non-root users
-- **Multi-language support** — 43 languages including C (C89/C99/C17/C23, GCC & Clang), C++ (C++20/C++23, GCC & Clang), Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, Swift, C#, Ruby, Lua, Haskell, Dart, Zig, Nim, OCaml, Elixir, Julia, D, Racket, V, Fortran, Pascal, COBOL, Brainfuck, Scala, Erlang, Common Lisp, Bash, R, Perl, PHP, plus esoteric languages Befunge-93, 아희 (Aheui), and 혀엉 (Hyeong), all with admin-customizable compile options
+- **Multi-language support** — 55 languages including C (C89/C99/C17/C23, GCC & Clang), C++ (C++20/C++23, GCC & Clang), Java, Kotlin, Python, JavaScript, TypeScript, Rust, Go, Swift, C#, Ruby, Lua, Haskell, Dart, Zig, Nim, OCaml, Elixir, Julia, D, Racket, V, Fortran, Pascal, COBOL, Brainfuck, Scala, Erlang, Common Lisp, Bash, R, Perl, PHP, Ada, Clojure, Prolog, Tcl, AWK, Scheme, Groovy, Octave, Crystal, PowerShell, PostScript, plus esoteric languages Befunge-93, 아희 (Aheui), 혀엉 (Hyeong), and Whitespace, all with admin-customizable compile options
 - **Submission workflow** — JSON submission flow, live status polling, per-test-case results, paginated submission history, draft recovery, and mixed legacy/hex submission ID support
 
 ## Getting Started
 
-```bash
-# Install dependencies
-npm install
+### Quickstart for Agents
 
-# Set up environment
-cp .env.example .env
-# Edit .env and set AUTH_SECRET (generate with: openssl rand -base64 32)
+Paste the following prompt into [Claude Code](https://claude.com/claude-code), [Codex](https://openai.com/index/codex/), [OpenCode](https://opencode.ai/), [Gemini CLI](https://github.com/google-gemini/gemini-cli), or any AI coding agent:
 
-# Push database schema
-npm run db:push
+```text
+Set up JudgeKit (online judge platform) for local development.
 
-# Seed default admin user
-npm run seed
+Steps:
+1. Run `npm install` to install dependencies.
+2. Copy `.env.example` to `.env`. Generate a random AUTH_SECRET with `openssl rand -base64 32` and write it into `.env`.
+3. Run `npm run db:push` to create the SQLite database schema.
+4. Run `npm run seed` to create the default admin user (admin / admin123).
+5. Run `npm run dev` to start the dev server on http://localhost:3000.
 
-# Start development server
-npm run dev
+Do NOT build Docker judge images — they are only needed for submission judging, not for running the web app.
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to access the application.
+<details>
+<summary><b>Slowstart for Humans</b> — manual setup, step by step</summary>
 
-### Default Admin Account
+<br/>
+
+**1. Install dependencies**
+
+```bash
+npm install
+```
+
+**2. Configure environment**
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and set `AUTH_SECRET`:
+
+```bash
+# Generate a secure secret
+openssl rand -base64 32
+# Paste the output as the AUTH_SECRET value in .env
+```
+
+**3. Create the database**
+
+```bash
+npm run db:push
+```
+
+**4. Seed the admin account**
+
+```bash
+npm run seed
+```
+
+This creates the default admin:
 
 | Field | Value |
 |-------|-------|
@@ -71,7 +105,15 @@ Open [http://localhost:3000](http://localhost:3000) to access the application.
 
 > **Note:** The seeded admin is forced through `/change-password` on first login. Change the default password immediately in production.
 
-### Local Production Run
+**5. Start the dev server**
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) to access the application.
+
+**6. (Optional) Production build**
 
 ```bash
 npm run build
@@ -79,6 +121,8 @@ PORT=3000 npm run start
 ```
 
 If port `3000` is already occupied, stop the stale process before restarting the production server on the same port.
+
+</details>
 
 ## Authentication Notes
 
@@ -181,6 +225,17 @@ docker build -t judge-perl -f docker/Dockerfile.judge-perl .
 docker build -t judge-php -f docker/Dockerfile.judge-php .
 docker build -t judge-clang -f docker/Dockerfile.judge-clang .
 docker build -t judge-esoteric -f docker/Dockerfile.judge-esoteric .
+docker build -t judge-ada -f docker/Dockerfile.judge-ada .
+docker build -t judge-clojure -f docker/Dockerfile.judge-clojure .
+docker build -t judge-prolog -f docker/Dockerfile.judge-prolog .
+docker build -t judge-tcl -f docker/Dockerfile.judge-tcl .
+docker build -t judge-awk -f docker/Dockerfile.judge-awk .
+docker build -t judge-scheme -f docker/Dockerfile.judge-scheme .
+docker build -t judge-groovy -f docker/Dockerfile.judge-groovy .
+docker build -t judge-octave -f docker/Dockerfile.judge-octave .
+docker build -t judge-crystal -f docker/Dockerfile.judge-crystal .
+docker build -t judge-powershell -f docker/Dockerfile.judge-powershell .
+docker build -t judge-postscript -f docker/Dockerfile.judge-postscript .
 npm run build
 ```
 
@@ -276,7 +331,7 @@ journalctl -u online-judge-worker-rs.service -n 50 --no-pager
 | UI | Tailwind CSS v4, shadcn/ui |
 | Code Editor | CodeMirror 6 with CSP-nonce-aware syntax highlighting and theme-aware styling |
 | Judge Worker | Rust binary with zero-allocation output comparison |
-| Judge Runtimes | Dockerized toolchains for GCC, Clang, Python 3.14.3, Node.js 24.14.0 / TypeScript 5.9.3, Rust 1.94.0, Go 1.26.1, Swift 6.2.4, Mono 6.12, R 4.5, Perl 5.40, PHP 8.4, and esoteric interpreters (Befunge-93, Aheui, Hyeong) |
+| Judge Runtimes | Dockerized toolchains for GCC, Clang, Python 3.14.3, Node.js 24.14.0 / TypeScript 5.9.3, Rust 1.94.0, Go 1.26.1, Swift 6.2.4, Mono 6.12, R 4.5, Perl 5.40, PHP 8.4, GNAT (Ada), Clojure 1.12, SWI-Prolog, Chicken Scheme, Groovy 4.0, GNU Octave, Crystal, PowerShell, Ghostscript, and esoteric interpreters (Befunge-93, Aheui, Hyeong, Whitespace) |
 | Validation | Zod |
 
 ## Project Structure
