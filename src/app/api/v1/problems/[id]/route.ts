@@ -21,6 +21,10 @@ const problemPatchSchema = z.object({
   showCompileOutput: z.boolean().optional(),
   showDetailedResults: z.boolean().optional(),
   showRuntimeErrors: z.boolean().optional(),
+  allowAiAssistant: z.boolean().optional(),
+  comparisonMode: z.enum(["exact", "float"]).optional(),
+  floatAbsoluteError: z.number().min(0).max(1).nullable().optional(),
+  floatRelativeError: z.number().min(0).max(1).nullable().optional(),
   testCases: z.array(z.object({
     id: z.string().optional(),
     input: z.string(),
@@ -114,6 +118,10 @@ export async function PATCH(
       showCompileOutput: body.showCompileOutput ?? problem.showCompileOutput,
       showDetailedResults: body.showDetailedResults ?? problem.showDetailedResults,
       showRuntimeErrors: body.showRuntimeErrors ?? problem.showRuntimeErrors,
+      allowAiAssistant: body.allowAiAssistant ?? problem.allowAiAssistant,
+      comparisonMode: body.comparisonMode ?? problem.comparisonMode ?? "exact",
+      floatAbsoluteError: body.floatAbsoluteError !== undefined ? body.floatAbsoluteError : problem.floatAbsoluteError ?? null,
+      floatRelativeError: body.floatRelativeError !== undefined ? body.floatRelativeError : problem.floatRelativeError ?? null,
       testCases:
         body.testCases ??
         existingTestCases

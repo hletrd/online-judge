@@ -118,6 +118,8 @@ export const PATCH = createApiHandler({
             ? assignment.lateDeadline.valueOf()
             : null,
       latePenalty: body.latePenalty ?? assignment.latePenalty ?? 0,
+      examMode: body.examMode ?? assignment.examMode ?? "none",
+      examDurationMinutes: body.examDurationMinutes !== undefined ? body.examDurationMinutes : assignment.examDurationMinutes ?? null,
       problems:
         body.problems ??
         assignment.assignmentProblems
@@ -146,7 +148,14 @@ export const PATCH = createApiHandler({
       }
     }
 
-    updateAssignmentWithProblems(assignmentId, parsedInput.data);
+    try {
+      updateAssignmentWithProblems(assignmentId, parsedInput.data);
+    } catch (error) {
+      if (error instanceof Error && (error.message === "examModeChangeBlocked" || error.message === "examTimingChangeBlocked")) {
+        return apiError(error.message, 409);
+      }
+      throw error;
+    }
 
     const updatedAssignment = await db.query.assignments.findFirst({
       where: eq(assignments.id, assignmentId),

@@ -101,6 +101,10 @@ export async function POST(request: NextRequest) {
       showCompileOutput: body.showCompileOutput,
       showDetailedResults: body.showDetailedResults,
       showRuntimeErrors: body.showRuntimeErrors,
+      allowAiAssistant: body.allowAiAssistant,
+      comparisonMode: body.comparisonMode,
+      floatAbsoluteError: body.floatAbsoluteError,
+      floatRelativeError: body.floatRelativeError,
       testCases: body.testCases ?? [],
     });
 

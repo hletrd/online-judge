@@ -268,6 +268,7 @@ export async function POST(request: NextRequest) {
     }
 
     const id = generateSubmissionId();
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
     const [submission] = await db.insert(submissions).values({
       id,
       userId: user.id,
@@ -276,6 +277,7 @@ export async function POST(request: NextRequest) {
       sourceCode,
       assignmentId: normalizedAssignmentId,
       status: "pending",
+      ipAddress: ip,
       submittedAt: new Date(),
     }).returning({
       id: submissions.id,

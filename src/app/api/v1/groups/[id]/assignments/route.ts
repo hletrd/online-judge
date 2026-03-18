@@ -94,6 +94,8 @@ export async function POST(
       deadline: body.deadline ?? null,
       lateDeadline: body.lateDeadline ?? null,
       latePenalty: body.latePenalty ?? 0,
+      examMode: body.examMode ?? "none",
+      examDurationMinutes: body.examDurationMinutes ?? null,
       problems: body.problems ?? [],
     });
 

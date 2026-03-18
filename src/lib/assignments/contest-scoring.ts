@@ -1,0 +1,345 @@
+import { sqlite } from "@/lib/db";
+import type { ScoringModel } from "@/types";
+
+/**
+ * ICPC penalty: minutes from contest start to first AC + 20 min per wrong attempt before AC.
+ */
+export function computeIcpcPenalty(
+  contestStartMs: number,
+  firstAcMs: number,
+  wrongAttempts: number
+): number {
+  const minutesToAc = Math.floor((firstAcMs - contestStartMs) / 60_000);
+  return minutesToAc + wrongAttempts * 20;
+}
+
+export type LeaderboardProblemResult = {
+  problemId: string;
+  /** IOI: best adjusted score. ICPC: full points or 0. */
+  score: number;
+  /** Number of attempts */
+  attempts: number;
+  /** Whether this problem is accepted (score === full points for ICPC, score > 0 for IOI) */
+  solved: boolean;
+  /** Timestamp of first AC (ms), null if not solved */
+  firstAcAt: number | null;
+  /** ICPC penalty contribution for this problem (0 if not solved) */
+  penalty: number;
+};
+
+export type LeaderboardEntry = {
+  userId: string;
+  username: string;
+  name: string;
+  className: string | null;
+  rank: number;
+  /** IOI: total adjusted score. ICPC: number of problems solved. */
+  totalScore: number;
+  /** ICPC only: total penalty */
+  totalPenalty: number;
+  /** Per-problem breakdown */
+  problems: LeaderboardProblemResult[];
+};
+
+type RawLeaderboardRow = {
+  userId: string;
+  username: string;
+  name: string;
+  className: string | null;
+  problemId: string;
+  points: number;
+  attemptCount: number;
+  bestScore: number | null;
+  hasAc: number;
+  firstAcAt: number | null;
+  wrongBeforeAc: number;
+};
+
+type AssignmentMetaRow = {
+  scoringModel: string;
+  startsAt: number | null;
+  deadline: number | null;
+  latePenalty: number | null;
+  examMode: string;
+};
+
+/**
+ * Compute contest ranking for both IOI and ICPC models.
+ * Returns a sorted leaderboard with per-problem breakdowns.
+ * @param cutoffSec Optional Unix timestamp (seconds) to filter submissions before this time (for freeze).
+ */
+export function computeContestRanking(assignmentId: string, cutoffSec?: number): {
+  scoringModel: ScoringModel;
+  entries: LeaderboardEntry[];
+} {
+  // Get assignment metadata
+  const meta = sqlite
+    .prepare<[string], AssignmentMetaRow>(
+      `SELECT scoring_model AS scoringModel, starts_at AS startsAt, deadline, late_penalty AS latePenalty, exam_mode AS examMode
+       FROM assignments WHERE id = ?`
+    )
+    .get(assignmentId);
+
+  if (!meta) {
+    return { scoringModel: "ioi", entries: [] };
+  }
+
+  const scoringModel = (meta.scoringModel ?? "ioi") as ScoringModel;
+  const contestStartMs = meta.startsAt ? meta.startsAt * 1000 : 0;
+  const deadlineSec = meta.deadline;
+  const latePenalty = meta.latePenalty ?? 0;
+
+  // Get all submissions aggregated per (user, problem) with problem points
+  // Optional cutoff filter for leaderboard freeze — use separate prepared statements
+  // to avoid SQL string interpolation (parameterized queries only).
+  const BASE_QUERY_NO_CUTOFF = `
+      WITH user_problem AS (
+        SELECT
+          s.user_id AS userId,
+          u.username,
+          u.name,
+          u.class_name AS className,
+          s.problem_id AS problemId,
+          COALESCE(ap.points, 100) AS points,
+          COUNT(*) AS attemptCount,
+          MAX(
+            CASE
+              WHEN s.score IS NOT NULL THEN
+                CASE
+                  WHEN ?2 IS NOT NULL AND ?3 > 0 AND ?4 != 'windowed'
+                       AND s.submitted_at IS NOT NULL AND s.submitted_at > ?2
+                  THEN ROUND(MIN(MAX(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
+                       * (1.0 - ?3 / 100.0)
+                  ELSE ROUND(MIN(MAX(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
+                END
+              ELSE NULL
+            END
+          ) AS bestScore,
+          MAX(CASE WHEN s.score = 100 THEN 1 ELSE 0 END) AS hasAc,
+          MIN(CASE WHEN s.score = 100 THEN s.submitted_at ELSE NULL END) AS firstAcAt,
+          (SELECT COUNT(*) FROM submissions s2
+           WHERE s2.assignment_id = s.assignment_id
+             AND s2.user_id = s.user_id
+             AND s2.problem_id = s.problem_id
+             AND (s2.score IS NULL OR s2.score < 100)
+             AND s2.submitted_at < COALESCE(
+               (SELECT MIN(s3.submitted_at) FROM submissions s3
+                WHERE s3.assignment_id = s.assignment_id
+                  AND s3.user_id = s.user_id
+                  AND s3.problem_id = s.problem_id
+                  AND s3.score = 100),
+               9999999999
+             )
+          ) AS wrongBeforeAc
+        FROM submissions s
+        INNER JOIN assignment_problems ap ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
+        INNER JOIN users u ON u.id = s.user_id
+        WHERE s.assignment_id = ?1
+        GROUP BY s.user_id, s.problem_id
+      )
+      SELECT * FROM user_problem
+    `;
+
+  const BASE_QUERY_WITH_CUTOFF = `
+      WITH user_problem AS (
+        SELECT
+          s.user_id AS userId,
+          u.username,
+          u.name,
+          u.class_name AS className,
+          s.problem_id AS problemId,
+          COALESCE(ap.points, 100) AS points,
+          COUNT(*) AS attemptCount,
+          MAX(
+            CASE
+              WHEN s.score IS NOT NULL THEN
+                CASE
+                  WHEN ?2 IS NOT NULL AND ?3 > 0 AND ?4 != 'windowed'
+                       AND s.submitted_at IS NOT NULL AND s.submitted_at > ?2
+                  THEN ROUND(MIN(MAX(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
+                       * (1.0 - ?3 / 100.0)
+                  ELSE ROUND(MIN(MAX(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
+                END
+              ELSE NULL
+            END
+          ) AS bestScore,
+          MAX(CASE WHEN s.score = 100 THEN 1 ELSE 0 END) AS hasAc,
+          MIN(CASE WHEN s.score = 100 THEN s.submitted_at ELSE NULL END) AS firstAcAt,
+          (SELECT COUNT(*) FROM submissions s2
+           WHERE s2.assignment_id = s.assignment_id
+             AND s2.user_id = s.user_id
+             AND s2.problem_id = s.problem_id
+             AND (s2.score IS NULL OR s2.score < 100)
+             AND s2.submitted_at <= ?5
+             AND s2.submitted_at < COALESCE(
+               (SELECT MIN(s3.submitted_at) FROM submissions s3
+                WHERE s3.assignment_id = s.assignment_id
+                  AND s3.user_id = s.user_id
+                  AND s3.problem_id = s.problem_id
+                  AND s3.score = 100
+                  AND s3.submitted_at <= ?5),
+               9999999999
+             )
+          ) AS wrongBeforeAc
+        FROM submissions s
+        INNER JOIN assignment_problems ap ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
+        INNER JOIN users u ON u.id = s.user_id
+        WHERE s.assignment_id = ?1 AND s.submitted_at <= ?5
+        GROUP BY s.user_id, s.problem_id
+      )
+      SELECT * FROM user_problem
+    `;
+
+  const rows =
+    cutoffSec != null
+      ? sqlite
+          .prepare<[string, number | null, number, string, number], RawLeaderboardRow>(BASE_QUERY_WITH_CUTOFF)
+          .all(assignmentId, deadlineSec, latePenalty, meta.examMode ?? "none", cutoffSec)
+      : sqlite
+          .prepare<[string, number | null, number, string], RawLeaderboardRow>(BASE_QUERY_NO_CUTOFF)
+          .all(assignmentId, deadlineSec, latePenalty, meta.examMode ?? "none");
+
+  // Group by user
+  const userMap = new Map<
+    string,
+    {
+      username: string;
+      name: string;
+      className: string | null;
+      problems: Map<string, RawLeaderboardRow>;
+    }
+  >();
+
+  for (const row of rows) {
+    if (!userMap.has(row.userId)) {
+      userMap.set(row.userId, {
+        username: row.username,
+        name: row.name,
+        className: row.className,
+        problems: new Map(),
+      });
+    }
+    userMap.get(row.userId)!.problems.set(row.problemId, row);
+  }
+
+  // Get all problem IDs in assignment order
+  const assignmentProblems = sqlite
+    .prepare<[string], { problemId: string; points: number }>(
+      `SELECT problem_id AS problemId, COALESCE(points, 100) AS points
+       FROM assignment_problems WHERE assignment_id = ? ORDER BY sort_order, problem_id`
+    )
+    .all(assignmentId);
+
+  // Build leaderboard entries
+  const entries: LeaderboardEntry[] = [];
+
+  for (const [userId, userData] of userMap) {
+    const problemResults: LeaderboardProblemResult[] = assignmentProblems.map(
+      (ap) => {
+        const row = userData.problems.get(ap.problemId);
+        if (!row) {
+          return {
+            problemId: ap.problemId,
+            score: 0,
+            attempts: 0,
+            solved: false,
+            firstAcAt: null,
+            penalty: 0,
+          };
+        }
+
+        if (scoringModel === "icpc") {
+          const solved = row.hasAc === 1;
+          const firstAcMs = row.firstAcAt ? row.firstAcAt * 1000 : null;
+          const penalty =
+            solved && firstAcMs
+              ? computeIcpcPenalty(contestStartMs, firstAcMs, row.wrongBeforeAc)
+              : 0;
+
+          return {
+            problemId: ap.problemId,
+            score: solved ? ap.points : 0,
+            attempts: row.attemptCount,
+            solved,
+            firstAcAt: firstAcMs,
+            penalty,
+          };
+        }
+
+        // IOI
+        return {
+          problemId: ap.problemId,
+          score: row.bestScore ?? 0,
+          attempts: row.attemptCount,
+          solved: (row.bestScore ?? 0) >= ap.points,
+          firstAcAt: row.firstAcAt ? row.firstAcAt * 1000 : null,
+          penalty: 0,
+        };
+      }
+    );
+
+    if (scoringModel === "icpc") {
+      const solvedCount = problemResults.filter((p) => p.solved).length;
+      const totalPenalty = problemResults.reduce((s, p) => s + p.penalty, 0);
+
+      entries.push({
+        userId,
+        username: userData.username,
+        name: userData.name,
+        className: userData.className,
+        rank: 0,
+        totalScore: solvedCount,
+        totalPenalty,
+        problems: problemResults,
+      });
+    } else {
+      const totalScore = problemResults.reduce((s, p) => s + p.score, 0);
+
+      entries.push({
+        userId,
+        username: userData.username,
+        name: userData.name,
+        className: userData.className,
+        rank: 0,
+        totalScore,
+        totalPenalty: 0,
+        problems: problemResults,
+      });
+    }
+  }
+
+  // Sort and assign ranks
+  if (scoringModel === "icpc") {
+    entries.sort((a, b) => {
+      // More problems solved first
+      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+      // Less penalty first
+      if (a.totalPenalty !== b.totalPenalty) return a.totalPenalty - b.totalPenalty;
+      // Earlier last AC first
+      const aLastAc = Math.max(...a.problems.filter((p) => p.solved).map((p) => p.firstAcAt ?? 0), 0);
+      const bLastAc = Math.max(...b.problems.filter((p) => p.solved).map((p) => p.firstAcAt ?? 0), 0);
+      return aLastAc - bLastAc;
+    });
+  } else {
+    entries.sort((a, b) => b.totalScore - a.totalScore);
+  }
+
+  // Assign ranks (tied entries get the same rank)
+  let currentRank = 1;
+  for (let i = 0; i < entries.length; i++) {
+    if (i > 0) {
+      const prev = entries[i - 1];
+      const curr = entries[i];
+      const tied =
+        scoringModel === "icpc"
+          ? prev.totalScore === curr.totalScore && prev.totalPenalty === curr.totalPenalty
+          : prev.totalScore === curr.totalScore;
+      if (!tied) {
+        currentRank = i + 1;
+      }
+    }
+    entries[i].rank = currentRank;
+  }
+
+  return { scoringModel, entries };
+}
