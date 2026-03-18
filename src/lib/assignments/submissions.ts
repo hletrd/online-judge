@@ -2,7 +2,9 @@ import { db, sqlite } from "@/lib/db";
 import {
   assignmentProblems,
   assignments,
+  contestAccessTokens,
   enrollments,
+  examSessions,
   groups,
   problems,
   scoreOverrides,
@@ -19,7 +21,9 @@ type AssignmentValidationError =
   | "assignmentNotStarted"
   | "assignmentClosed"
   | "assignmentEnrollmentRequired"
-  | "assignmentProblemMismatch";
+  | "assignmentProblemMismatch"
+  | "examNotStarted"
+  | "examTimeExpired";
 
 type AssignmentAccessRecord = {
   id: string;
@@ -28,6 +32,8 @@ type AssignmentAccessRecord = {
   startsAt: Date | null;
   deadline: Date | null;
   lateDeadline: Date | null;
+  examMode: string;
+  examDurationMinutes: number | null;
 };
 
 type AssignmentValidationSuccess = {
@@ -99,6 +105,9 @@ export type StudentAssignmentProblemContext = {
   startsAt: Date | null;
   deadline: Date | null;
   lateDeadline: Date | null;
+  examMode: string;
+  examDurationMinutes: number | null;
+  personalDeadline?: Date | null;
 };
 
 async function getAssignmentAccessRecord(
@@ -118,6 +127,8 @@ async function getAssignmentAccessRecord(
       startsAt: true,
       deadline: true,
       lateDeadline: true,
+      examMode: true,
+      examDurationMinutes: true,
     },
     with: {
       group: {
@@ -139,6 +150,8 @@ async function getAssignmentAccessRecord(
     startsAt: assignment.startsAt ?? null,
     deadline: assignment.deadline ?? null,
     lateDeadline: assignment.lateDeadline ?? null,
+    examMode: assignment.examMode ?? "none",
+    examDurationMinutes: assignment.examDurationMinutes ?? null,
   };
 }
 
@@ -197,11 +210,38 @@ export async function validateAssignmentSubmission(
     });
 
     if (!enrollment) {
-      return {
-        ok: false,
-        status: 403,
-        error: "assignmentEnrollmentRequired",
-      };
+      // Check for contest access token as enrollment alternative
+      const accessToken = await db.query.contestAccessTokens.findFirst({
+        where: and(
+          eq(contestAccessTokens.assignmentId, assignment.id),
+          eq(contestAccessTokens.userId, userId)
+        ),
+        columns: { id: true },
+      });
+
+      if (!accessToken) {
+        return {
+          ok: false,
+          status: 403,
+          error: "assignmentEnrollmentRequired",
+        };
+      }
+    }
+  }
+
+  // Windowed exam validation
+  if (!isAdmin(role) && assignment.examMode === "windowed") {
+    const session = await db.query.examSessions.findFirst({
+      where: and(eq(examSessions.assignmentId, assignment.id), eq(examSessions.userId, userId)),
+      columns: { personalDeadline: true },
+    });
+
+    if (!session) {
+      return { ok: false, status: 403, error: "examNotStarted" };
+    }
+
+    if (session.personalDeadline && session.personalDeadline.valueOf() < Date.now()) {
+      return { ok: false, status: 403, error: "examTimeExpired" };
     }
   }
 
@@ -321,6 +361,9 @@ export async function getStudentAssignmentContextsForProblem(
       startsAt: assignments.startsAt,
       deadline: assignments.deadline,
       lateDeadline: assignments.lateDeadline,
+      examMode: assignments.examMode,
+      examDurationMinutes: assignments.examDurationMinutes,
+      personalDeadline: examSessions.personalDeadline,
     })
     .from(assignmentProblems)
     .innerJoin(assignments, eq(assignments.id, assignmentProblems.assignmentId))
@@ -328,6 +371,10 @@ export async function getStudentAssignmentContextsForProblem(
     .innerJoin(
       enrollments,
       and(eq(enrollments.groupId, assignments.groupId), eq(enrollments.userId, userId))
+    )
+    .leftJoin(
+      examSessions,
+      and(eq(examSessions.assignmentId, assignments.id), eq(examSessions.userId, userId))
     )
     .where(eq(assignmentProblems.problemId, problemId))
     .orderBy(asc(assignments.deadline), asc(assignments.title));
@@ -372,6 +419,7 @@ export async function getAssignmentStatusRows(
       deadline: true,
       lateDeadline: true,
       latePenalty: true,
+      examMode: true,
     },
     with: {
       group: {
@@ -447,7 +495,7 @@ export async function getAssignmentStatusRows(
   //
   // We use better-sqlite3 directly for this complex query for clarity and performance.
 
-  const problemAggStmt = sqlite.prepare<[string, number | null, number], ProblemAggRow>(`
+  const problemAggStmt = sqlite.prepare<[string, number | null, number, string], ProblemAggRow>(`
     WITH scored AS (
       SELECT
         s.user_id,
@@ -460,7 +508,7 @@ export async function getAssignmentStatusRows(
         CASE
           WHEN s.score IS NOT NULL THEN
             CASE
-              WHEN ?2 IS NOT NULL AND ?3 > 0 AND s.submitted_at IS NOT NULL AND s.submitted_at > ?2
+              WHEN ?2 IS NOT NULL AND ?3 > 0 AND ?4 != 'windowed' AND s.submitted_at IS NOT NULL AND s.submitted_at > ?2
               THEN ROUND(
                 ROUND(MIN(MAX(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100), 2)
                 * (1.0 - ?3 / 100.0),
@@ -494,7 +542,8 @@ export async function getAssignmentStatusRows(
   const problemAggRows: ProblemAggRow[] = problemAggStmt.all(
     assignmentId,
     deadlineSec,
-    latePenalty
+    latePenalty,
+    assignment.examMode ?? "none"
   );
 
   // ---- SQL-aggregated per-user "latest submission" across all problems ----

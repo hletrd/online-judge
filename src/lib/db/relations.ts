@@ -20,6 +20,9 @@ import {
   problemSetProblems,
   problemSetGroupAccess,
   chatMessages,
+  examSessions,
+  contestAccessTokens,
+  antiCheatEvents,
 } from "./schema";
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -34,6 +37,9 @@ export const usersRelations = relations(users, ({ many }) => ({
   submissionComments: many(submissionComments),
   createdProblemSets: many(problemSets),
   chatMessages: many(chatMessages),
+  examSessions: many(examSessions),
+  contestAccessTokens: many(contestAccessTokens),
+  antiCheatEvents: many(antiCheatEvents),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -128,6 +134,9 @@ export const assignmentsRelations = relations(assignments, ({ one, many }) => ({
   assignmentProblems: many(assignmentProblems),
   submissions: many(submissions),
   scoreOverrides: many(scoreOverrides),
+  examSessions: many(examSessions),
+  contestAccessTokens: many(contestAccessTokens),
+  antiCheatEvents: many(antiCheatEvents),
 }));
 
 export const assignmentProblemsRelations = relations(
@@ -254,3 +263,42 @@ export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const examSessionsRelations = relations(examSessions, ({ one }) => ({
+  assignment: one(assignments, {
+    fields: [examSessions.assignmentId],
+    references: [assignments.id],
+  }),
+  user: one(users, {
+    fields: [examSessions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const contestAccessTokensRelations = relations(
+  contestAccessTokens,
+  ({ one }) => ({
+    assignment: one(assignments, {
+      fields: [contestAccessTokens.assignmentId],
+      references: [assignments.id],
+    }),
+    user: one(users, {
+      fields: [contestAccessTokens.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const antiCheatEventsRelations = relations(
+  antiCheatEvents,
+  ({ one }) => ({
+    assignment: one(assignments, {
+      fields: [antiCheatEvents.assignmentId],
+      references: [assignments.id],
+    }),
+    user: one(users, {
+      fields: [antiCheatEvents.userId],
+      references: [users.id],
+    }),
+  })
+);

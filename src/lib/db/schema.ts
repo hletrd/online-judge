@@ -8,7 +8,7 @@ import {
 } from "drizzle-orm/sqlite-core";
 import { nanoid } from "nanoid";
 import { generateSubmissionId } from "@/lib/submissions/id";
-import type { UserRole } from "@/types";
+import type { UserRole, ExamMode, ScoringModel } from "@/types";
 
 export const users = sqliteTable("users", {
   id: text("id")
@@ -237,6 +237,12 @@ export const assignments = sqliteTable(
     deadline: integer("deadline", { mode: "timestamp" }),
     lateDeadline: integer("late_deadline", { mode: "timestamp" }),
     latePenalty: real("late_penalty").default(0),
+    examMode: text("exam_mode").$type<ExamMode>().notNull().default("none"),
+    examDurationMinutes: integer("exam_duration_minutes"),
+    scoringModel: text("scoring_model").$type<ScoringModel>().notNull().default("ioi"),
+    accessCode: text("access_code"),
+    freezeLeaderboardAt: integer("freeze_leaderboard_at", { mode: "timestamp" }),
+    enableAntiCheat: integer("enable_anti_cheat", { mode: "boolean" }).notNull().default(false),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date(Date.now())),
@@ -246,6 +252,30 @@ export const assignments = sqliteTable(
   },
   (table) => [
     index("assignments_group_idx").on(table.groupId),
+    index("assignments_access_code_idx").on(table.accessCode),
+  ]
+);
+
+export const examSessions = sqliteTable(
+  "exam_sessions",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    assignmentId: text("assignment_id")
+      .notNull()
+      .references(() => assignments.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
+    personalDeadline: integer("personal_deadline", { mode: "timestamp" }).notNull(),
+    ipAddress: text("ip_address"),
+  },
+  (table) => [
+    uniqueIndex("exam_sessions_assignment_user_idx").on(table.assignmentId, table.userId),
+    index("exam_sessions_assignment_idx").on(table.assignmentId),
+    index("exam_sessions_user_idx").on(table.userId),
   ]
 );
 
@@ -296,6 +326,7 @@ export const submissions = sqliteTable(
     memoryUsedKb: integer("memory_used_kb"),
     score: real("score"),
     judgedAt: integer("judged_at", { mode: "timestamp" }),
+    ipAddress: text("ip_address"),
     submittedAt: integer("submitted_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date(Date.now())),
@@ -399,7 +430,7 @@ export const scoreOverrides = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    overrideScore: integer("override_score").notNull(),
+    overrideScore: real("override_score").notNull(),
     reason: text("reason"),
     createdBy: text("created_by")
       .references(() => users.id, { onDelete: "set null" }),
@@ -525,3 +556,51 @@ export const chatMessages = sqliteTable("chat_messages", {
     .notNull()
     .$defaultFn(() => new Date(Date.now())),
 });
+
+export const contestAccessTokens = sqliteTable(
+  "contest_access_tokens",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    assignmentId: text("assignment_id")
+      .notNull()
+      .references(() => assignments.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    redeemedAt: integer("redeemed_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    ipAddress: text("ip_address"),
+  },
+  (table) => [
+    uniqueIndex("cat_assignment_user_idx").on(table.assignmentId, table.userId),
+  ]
+);
+
+export const antiCheatEvents = sqliteTable(
+  "anti_cheat_events",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    assignmentId: text("assignment_id")
+      .notNull()
+      .references(() => assignments.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    eventType: text("event_type").notNull(),
+    details: text("details"),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("ace_assignment_user_idx").on(table.assignmentId, table.userId),
+    index("ace_assignment_type_idx").on(table.assignmentId, table.eventType),
+  ]
+);

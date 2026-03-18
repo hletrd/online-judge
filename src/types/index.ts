@@ -10,6 +10,8 @@ export type SubmissionStatus =
   | "memory_limit"
   | "runtime_error"
   | "compile_error";
+export type ExamMode = "none" | "scheduled" | "windowed";
+export type ScoringModel = "ioi" | "icpc";
 export type Language =
   | "c17"
   | "c23"

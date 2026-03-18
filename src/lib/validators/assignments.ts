@@ -28,6 +28,11 @@ export const assignmentMutationSchema = z
       .min(0, "assignmentLatePenaltyInvalid")
       .max(100, "assignmentLatePenaltyInvalid")
       .default(0),
+    examMode: z.enum(["none", "scheduled", "windowed"]).default("none"),
+    examDurationMinutes: z.number().int().min(1).max(1440).nullable().optional(),
+    scoringModel: z.enum(["ioi", "icpc"]).default("ioi"),
+    freezeLeaderboardAt: z.number().int().nullable().optional(),
+    enableAntiCheat: z.boolean().default(false),
     problems: z
       .array(assignmentProblemSchema)
       .min(1, "assignmentProblemRequired")
@@ -49,7 +54,7 @@ export const assignmentMutationSchema = z
       seenProblemIds.add(problem.problemId);
     });
 
-    if (value.startsAt && value.deadline && value.startsAt > value.deadline) {
+    if (value.startsAt && value.deadline && value.startsAt >= value.deadline) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "assignmentScheduleInvalid",
@@ -63,6 +68,45 @@ export const assignmentMutationSchema = z
         message: "assignmentLateDeadlineInvalid",
         path: ["lateDeadline"],
       });
+    }
+
+    // Exam mode cross-field validation
+    if (value.examMode === "windowed") {
+      if (!value.examDurationMinutes) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "examDurationRequired",
+          path: ["examDurationMinutes"],
+        });
+      }
+      if (!value.startsAt || !value.deadline) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "examWindowRequired",
+          path: ["examMode"],
+        });
+      }
+      // Windowed mode: clear late fields
+      value.lateDeadline = null;
+      value.latePenalty = 0;
+    }
+
+    if (value.examMode === "scheduled") {
+      if (!value.startsAt || !value.deadline) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "examScheduleRequired",
+          path: ["examMode"],
+        });
+      }
+      // Scheduled mode: clear late fields (exams don't allow late submissions)
+      value.lateDeadline = null;
+      value.latePenalty = 0;
+    }
+
+    // Non-exam mode: clear duration
+    if (value.examMode === "none") {
+      value.examDurationMinutes = null;
     }
   });
 

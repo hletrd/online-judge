@@ -4,6 +4,7 @@ import { db, sqlite } from "@/lib/db";
 import {
   assignmentProblems,
   assignments,
+  examSessions,
   problemGroupAccess,
   problems,
 } from "@/lib/db/schema";
@@ -94,6 +95,11 @@ export function createAssignmentWithProblems(
         deadline: input.deadline ? new Date(input.deadline) : null,
         lateDeadline: input.lateDeadline ? new Date(input.lateDeadline) : null,
         latePenalty: input.latePenalty,
+        examMode: input.examMode ?? "none",
+        examDurationMinutes: input.examDurationMinutes ?? null,
+        scoringModel: input.scoringModel ?? "ioi",
+        freezeLeaderboardAt: input.freezeLeaderboardAt ? new Date(input.freezeLeaderboardAt) : null,
+        enableAntiCheat: input.enableAntiCheat ?? false,
         createdAt: now,
         updatedAt: now,
       })
@@ -116,13 +122,46 @@ export function updateAssignmentWithProblems(
 
   const execute = sqlite.transaction(() => {
     const assignment = db
-      .select({ groupId: assignments.groupId })
+      .select({
+        groupId: assignments.groupId,
+        examMode: assignments.examMode,
+        startsAt: assignments.startsAt,
+        deadline: assignments.deadline,
+        examDurationMinutes: assignments.examDurationMinutes,
+      })
       .from(assignments)
       .where(eq(assignments.id, assignmentId))
       .get();
 
     if (!assignment) {
       throw new Error("Assignment not found");
+    }
+
+    if (assignment.examMode === "windowed") {
+      const existingSession = db
+        .select({ id: examSessions.id })
+        .from(examSessions)
+        .where(eq(examSessions.assignmentId, assignmentId))
+        .limit(1)
+        .get();
+
+      if (existingSession) {
+        if (input.examMode !== "windowed") {
+          throw new Error("examModeChangeBlocked");
+        }
+        // Block timing changes that affect existing sessions
+        const inputStartsAt = input.startsAt ? new Date(input.startsAt).getTime() : null;
+        const inputDeadline = input.deadline ? new Date(input.deadline).getTime() : null;
+        const currentStartsAt = assignment.startsAt?.getTime() ?? null;
+        const currentDeadline = assignment.deadline?.getTime() ?? null;
+        if (
+          inputStartsAt !== currentStartsAt ||
+          inputDeadline !== currentDeadline ||
+          (input.examDurationMinutes ?? null) !== (assignment.examDurationMinutes ?? null)
+        ) {
+          throw new Error("examTimingChangeBlocked");
+        }
+      }
     }
 
     db.update(assignments)
@@ -133,6 +172,11 @@ export function updateAssignmentWithProblems(
         deadline: input.deadline ? new Date(input.deadline) : null,
         lateDeadline: input.lateDeadline ? new Date(input.lateDeadline) : null,
         latePenalty: input.latePenalty,
+        examMode: input.examMode ?? "none",
+        examDurationMinutes: input.examDurationMinutes ?? null,
+        scoringModel: input.scoringModel ?? "ioi",
+        freezeLeaderboardAt: input.freezeLeaderboardAt ? new Date(input.freezeLeaderboardAt) : null,
+        enableAntiCheat: input.enableAntiCheat ?? false,
         updatedAt: now,
       })
       .where(eq(assignments.id, assignmentId))
