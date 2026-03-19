@@ -56,7 +56,7 @@ export function FilterForm({
         <CardTitle>{labels.filtersTitle}</CardTitle>
       </CardHeader>
       <CardContent>
-        <form className="flex flex-col gap-3 md:flex-row md:items-end" method="get">
+        <form className="flex flex-col gap-4 md:flex-row md:items-end" method="get">
           <div className="flex-1 space-y-2">
             <label className="block text-sm font-medium mb-1" htmlFor="student-search">
               {labels.studentSearch}

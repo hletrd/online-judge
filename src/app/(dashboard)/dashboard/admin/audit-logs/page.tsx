@@ -288,7 +288,7 @@ export default async function AdminAuditLogsPage({
           <CardTitle>{t("filtersTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="flex flex-col gap-3 md:flex-row md:items-end" method="get">
+          <form className="flex flex-col gap-4 md:flex-row md:items-end" method="get">
             <div className="flex-1 space-y-2">
               <label className="text-sm font-medium" htmlFor="audit-log-search">
                 {t("filters.searchLabel")}
