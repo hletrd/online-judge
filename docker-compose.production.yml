@@ -44,6 +44,7 @@ services:
     privileged: true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/judgekit-workspaces:/tmp  # Shared with host so sibling judge containers can access source files
       - judgekit-dead-letter:/app/dead-letter
     env_file:
       - .env.production
