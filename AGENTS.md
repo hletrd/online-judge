@@ -101,7 +101,11 @@ Changes take effect immediately for new submissions without restarting services.
 
 ## Docker Image Management API
 
-`GET /api/v1/admin/docker/images` — returns the list of locally available Docker images on the judge host. Used by the language management UI to populate image name suggestions and validate that selected images actually exist on the server.
+- `GET /api/v1/admin/docker/images` — returns the list of locally available Docker images on the judge host. Used by the language management UI to show image availability status.
+- `POST /api/v1/admin/docker/images/build` — builds a Docker image from its Dockerfile in `docker/`. Body: `{ language: string }`. Looks up the language config to derive the Dockerfile path. Admin/super_admin only. Audit logged.
+- `DELETE /api/v1/admin/docker/images` — removes a Docker image by tag. Body: `{ imageTag: string }`. Admin/super_admin only. Audit logged.
+
+The language admin UI at `/dashboard/admin/languages` includes per-language Build (hammer icon) and Remove (trash icon) buttons. Image availability is shown as a badge ("Available" / "Not built") per row.
 
 ## Student Detail Page
 
@@ -160,6 +164,20 @@ The following 4 languages are in the `KNOWN_FLAKY` set in `tests/e2e/all-languag
 
 All other 51 of 55 language variants pass the A+B E2E test.
 
+## Setup
+
+### `scripts/setup.sh` — Interactive Setup Wizard
+
+Run `bash scripts/setup.sh` for guided initial setup. The wizard handles:
+1. Admin credential configuration (`ADMIN_USERNAME` / `ADMIN_PASSWORD` env vars, defaults: `admin` / `admin123`)
+2. Language preset selection (`core`, `popular`, `extended`, `all`, `none`)
+3. Individual language add/remove
+4. `npm install`, `db:push`, seed, `languages:sync`, and Docker image builds
+
+Non-interactive mode: `bash scripts/setup.sh --defaults` (uses admin/admin123, no Docker images).
+
+The seed script (`scripts/seed.ts`) reads `ADMIN_USERNAME` and `ADMIN_PASSWORD` from environment variables. If not set, defaults to `admin` / `admin123`. Credentials are written to `data/.admin-password` for reference.
+
 ## Deployment
 
 ### `deploy-docker.sh` Workflow (Primary)
@@ -188,7 +206,15 @@ SSH_KEY=key.pem REMOTE_HOST=... REMOTE_USER=... DOMAIN=... ./deploy-docker.sh
 
 # Skip judge language images only
 ./deploy-docker.sh --skip-languages
+
+# Build only core language images (cpp, python, jvm)
+./deploy-docker.sh --languages=core
+
+# Build specific languages
+./deploy-docker.sh --languages=cpp,python,node,rust
 ```
+
+Language presets: `core` (~0.8 GB), `popular` (~2.5 GB), `extended` (~8 GB), `all` (~14 GB), `none`.
 
 ### SSH Authentication
 
@@ -252,7 +278,7 @@ For every feature, go through this checklist:
 
 - Use factories from `tests/unit/support/factories.ts` for test data
 - Mock external dependencies (DB, auth) in unit/API tests using `vi.mock()`
-- E2E tests run against the test server (`oj-internal.maum.ai`), never production
+- E2E tests run against the test server (see `ENV.md` for target), never production
 - Name test files as `<module>.test.ts` (unit/API) or `<feature>.spec.ts` (E2E)
 - Group related assertions in `describe` blocks
 - Test both success and error paths
@@ -260,11 +286,11 @@ For every feature, go through this checklist:
 
 ### E2E Testing Rules (MANDATORY)
 
-**Target:** Always run E2E tests against `oj-internal.maum.ai` (test server). Never against production.
+**Target:** Always run E2E tests against the test server (see `ENV.md` for host and credentials). Never against production.
 
 ```bash
-# Standard E2E run (read ENV.md for credentials)
-PLAYWRIGHT_BASE_URL=http://oj-internal.maum.ai E2E_USERNAME=admin E2E_PASSWORD='<from ENV.md>' \
+# Standard E2E run (read ENV.md for host, credentials)
+PLAYWRIGHT_BASE_URL=<from ENV.md> E2E_USERNAME=<from ENV.md> E2E_PASSWORD='<from ENV.md>' \
   npx playwright test tests/e2e/
 ```
 
@@ -316,7 +342,7 @@ The primary deploy script is `deploy-docker.sh`. Pass environment variables from
 
 **Seccomp profile:** Uses a deny-list approach — default action is `SCMP_ACT_ALLOW`, with specific dangerous syscalls explicitly blocked. This is more permissive during container init (avoids Docker 28+/modern-kernel init errors) while still restricting the attack surface during code execution.
 
-Always test against `oj-internal.maum.ai` (test), never against `oj.auraedu.me` (production).
+Always test against the test server documented in `ENV.md`, never against production. Read `ENV.md` for all target hosts and domains.
 
 ## Conventions
 

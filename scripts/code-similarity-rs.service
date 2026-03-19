@@ -1,0 +1,16 @@
+[Unit]
+Description=JudgeKit Code Similarity (Rust)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/online-judge/code-similarity-rs
+ExecStart=/home/ubuntu/online-judge/code-similarity-rs/target/release/code-similarity
+Restart=always
+RestartSec=3
+Environment=RUST_LOG=info
+Environment=CODE_SIMILARITY_PORT=3002
+
+[Install]
+WantedBy=multi-user.target

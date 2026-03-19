@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { db, sqlite } from "@/lib/db";
 import { antiCheatEvents, submissions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { computeSimilarityRust } from "./code-similarity-client";
 
 /**
  * Normalize source code for similarity comparison.
@@ -65,34 +66,14 @@ type SubmissionRow = {
 };
 
 /**
- * Run code similarity check for all submissions in an assignment.
- * Compares best submissions per (user, problem) pair.
- * Returns pairs with similarity > threshold.
+ * Run code similarity check using the TypeScript implementation.
+ * This is the fallback path when the Rust sidecar is unavailable.
  */
-export function runSimilarityCheck(
-  assignmentId: string,
-  threshold = 0.85,
-  ngramSize = 3
+function runSimilarityCheckTS(
+  rows: SubmissionRow[],
+  threshold: number,
+  ngramSize: number
 ): SimilarityPair[] {
-  // Get best submission per (user, problem) — the one with highest score
-  const rows = sqlite
-    .prepare<[string], SubmissionRow>(
-      `WITH best AS (
-        SELECT user_id AS userId, problem_id AS problemId, source_code AS sourceCode,
-               ROW_NUMBER() OVER (PARTITION BY user_id, problem_id ORDER BY score DESC, submitted_at DESC) AS rn
-        FROM submissions
-        WHERE assignment_id = ?
-      )
-      SELECT userId, problemId, sourceCode FROM best WHERE rn = 1`
-    )
-    .all(assignmentId);
-
-  // Guard against excessively large contests
-  const MAX_SUBMISSIONS_FOR_SIMILARITY = 1000;
-  if (rows.length > MAX_SUBMISSIONS_FOR_SIMILARITY) {
-    return [];
-  }
-
   // Group by problem
   const byProblem = new Map<string, Array<{ userId: string; sourceCode: string }>>();
   for (const row of rows) {
@@ -134,13 +115,57 @@ export function runSimilarityCheck(
 }
 
 /**
+ * Run code similarity check for all submissions in an assignment.
+ * Compares best submissions per (user, problem) pair.
+ * Returns pairs with similarity > threshold.
+ *
+ * Tries the Rust sidecar first for performance; falls back to TS if unavailable.
+ */
+export async function runSimilarityCheck(
+  assignmentId: string,
+  threshold = 0.85,
+  ngramSize = 3
+): Promise<SimilarityPair[]> {
+  // Get best submission per (user, problem) — the one with highest score
+  const rows = sqlite
+    .prepare<[string], SubmissionRow>(
+      `WITH best AS (
+        SELECT user_id AS userId, problem_id AS problemId, source_code AS sourceCode,
+               ROW_NUMBER() OVER (PARTITION BY user_id, problem_id ORDER BY score DESC, submitted_at DESC) AS rn
+        FROM submissions
+        WHERE assignment_id = ?
+      )
+      SELECT userId, problemId, sourceCode FROM best WHERE rn = 1`
+    )
+    .all(assignmentId);
+
+  // Guard against excessively large contests
+  const MAX_SUBMISSIONS_FOR_SIMILARITY = 1000;
+  if (rows.length > MAX_SUBMISSIONS_FOR_SIMILARITY) {
+    return [];
+  }
+
+  // Try Rust sidecar first
+  try {
+    const rustResult = await computeSimilarityRust(rows, threshold, ngramSize);
+    if (rustResult !== null) {
+      return rustResult;
+    }
+  } catch {
+    // Rust sidecar unavailable — fall through to TS
+  }
+
+  return runSimilarityCheckTS(rows, threshold, ngramSize);
+}
+
+/**
  * Run similarity check and store flagged pairs as anti-cheat events.
  */
-export function runAndStoreSimilarityCheck(
+export async function runAndStoreSimilarityCheck(
   assignmentId: string,
   threshold = 0.85
-): number {
-  const pairs = runSimilarityCheck(assignmentId, threshold);
+): Promise<number> {
+  const pairs = await runSimilarityCheck(assignmentId, threshold);
 
   // Delete previous code_similarity events for this assignment to avoid duplicates
   db.delete(antiCheatEvents)

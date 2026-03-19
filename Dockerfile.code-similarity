@@ -1,0 +1,25 @@
+# =============================================================================
+# JudgeKit Code Similarity — Multi-stage Rust Build
+# Produces a minimal Alpine image with the code-similarity binary
+# =============================================================================
+
+FROM rust:1-alpine AS builder
+
+RUN apk add --no-cache musl-dev
+
+WORKDIR /build
+COPY code-similarity-rs/ .
+RUN cargo build --release
+
+# ---------------------------------------------------------------------------
+# Runtime: minimal Alpine
+# ---------------------------------------------------------------------------
+FROM alpine:3.21 AS runner
+
+RUN apk add --no-cache ca-certificates
+
+COPY --from=builder /build/target/release/code-similarity /usr/local/bin/code-similarity
+
+ENV RUST_LOG=info
+
+CMD ["code-similarity"]
