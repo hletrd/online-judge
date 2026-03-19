@@ -163,9 +163,9 @@ async fn run_docker_once(
 ) -> Result<DockerRunResult, DockerError> {
     let container_name = format!("oj-{}", Uuid::new_v4());
     let mem_limit = get_memory_limit_mb(options.memory_limit_mb);
-    // Compilation (especially Go) spawns many threads; allow more PIDs.
-    // Run phase keeps strict limit to contain user code.
-    let pids_limit = if options.phase == Phase::Compile { "64" } else { "16" };
+    // VM-based languages (JVM, BEAM, .NET, pwsh) spawn many threads even at
+    // runtime, so the run-phase limit must accommodate them.
+    let pids_limit = if options.phase == Phase::Compile { "128" } else { "64" };
 
     let workspace_volume = if options.read_only_workspace {
         format!("{}:/workspace:ro", options.workspace_dir)
