@@ -3,10 +3,11 @@ FROM elixir:1.18-alpine
 ENV HOME=/tmp
 ENV MIX_HOME=/tmp/mix
 ENV HEX_HOME=/tmp/hex
+ENV ELIXIR_ERL_OPTIONS="+fnu"
 
 RUN adduser -D -s /bin/false judge && \
-    mkdir -p /workspace && \
-    chown judge:judge /workspace
+    mkdir -p /workspace /tmp/mix /tmp/hex && \
+    chown judge:judge /workspace /tmp/mix /tmp/hex
 
 WORKDIR /workspace
 USER judge

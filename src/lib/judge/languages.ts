@@ -29,7 +29,7 @@ export const JUDGE_TOOLCHAIN_VERSIONS = {
   fpc: "3.2",
   gnucobol: "3.2",
   clang: "18",
-  scala: "2.11",
+  scala: "3.5",
   erlang: "27",
   sbcl: "2.5",
   bash: "5.2",
@@ -343,7 +343,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".dart",
     dockerImage: "judge-dart:latest",
     compiler: `Dart ${JUDGE_TOOLCHAIN_VERSIONS.dart}`,
-    compileCommand: ["dart", "compile", "exe", "/workspace/solution.dart", "-o", "/workspace/solution"],
+    compileCommand: ["dart", "--disable-analytics", "compile", "exe", "/workspace/solution.dart", "-o", "/workspace/solution"],
     runCommand: ["/workspace/solution"],
   },
   zig: {
@@ -363,7 +363,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".nim",
     dockerImage: "judge-nim:latest",
     compiler: `Nim ${JUDGE_TOOLCHAIN_VERSIONS.nim}`,
-    compileCommand: ["nim", "compile", "--opt:speed", "-d:release", "--nimcache:/tmp/nimcache", "--out:/workspace/solution", "/workspace/solution.nim"],
+    compileCommand: ["sh", "-c", "mkdir -p /tmp/nimcache && nim compile --opt:speed -d:release --nimcache:/tmp/nimcache --out:/workspace/solution /workspace/solution.nim"],
     runCommand: ["/workspace/solution"],
   },
   ocaml: {
@@ -509,12 +509,12 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
   scala: {
     language: "scala",
     displayName: "Scala",
-    standard: "2.11",
+    standard: "3.5",
     extension: ".scala",
     dockerImage: "judge-scala:latest",
     compiler: `Scala ${JUDGE_TOOLCHAIN_VERSIONS.scala}`,
-    compileCommand: ["scalac", "-d", "/workspace/out", "/workspace/solution.scala"],
-    runCommand: ["scala", "-classpath", "/workspace/out", "solution"],
+    compileCommand: ["sh", "-c", "mkdir -p /workspace/out && scalac -d /workspace/out /workspace/solution.scala"],
+    runCommand: ["sh", "-c", "scala -classpath /workspace/out Main"],
   },
   erlang: {
     language: "erlang",
@@ -604,7 +604,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-clojure:latest",
     compiler: `Clojure ${JUDGE_TOOLCHAIN_VERSIONS.clojure} / Temurin ${JUDGE_TOOLCHAIN_VERSIONS.java}`,
     compileCommand: null,
-    runCommand: ["java", "-cp", "/usr/local/lib/clojure/*", "clojure.main", "/workspace/solution.clj"],
+    runCommand: ["sh", "-c", "java -cp '/usr/local/lib/clojure/*' clojure.main /workspace/solution.clj"],
   },
   prolog: {
     language: "prolog",
@@ -694,7 +694,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-postscript:latest",
     compiler: `Ghostscript ${JUDGE_TOOLCHAIN_VERSIONS.ghostscript}`,
     compileCommand: null,
-    runCommand: ["gs", "-q", "-dNODISPLAY", "-dBATCH", "-dNOPAUSE", "/workspace/solution.ps"],
+    runCommand: ["gs", "-q", "-dNODISPLAY", "-dBATCH", "-dNOPAUSE", "-dNOSAFER", "/workspace/solution.ps"],
   },
 };
 

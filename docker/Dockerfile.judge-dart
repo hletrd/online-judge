@@ -1,10 +1,12 @@
 FROM dart:3.8
 
 ENV PUB_CACHE=/tmp/pub-cache
+ENV DART_ANALYTICS_DISABLED=1
+ENV XDG_CONFIG_HOME=/tmp/xdg-config
 
 RUN useradd --create-home --shell /usr/sbin/nologin judge && \
-    mkdir -p /workspace && \
-    chown judge:judge /workspace
+    mkdir -p /workspace /tmp/pub-cache /tmp/xdg-config && \
+    chown judge:judge /workspace /tmp/pub-cache /tmp/xdg-config
 
 WORKDIR /workspace
 USER judge

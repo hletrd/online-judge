@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl zip unzip 
 
 ENV GROOVY_HOME=/opt/groovy
 ENV PATH="$GROOVY_HOME/bin:$PATH"
+ENV JAVA_TOOL_OPTIONS="-Djava.io.tmpdir=/tmp -Duser.home=/tmp"
 
 RUN adduser --disabled-password --gecos "" --shell /bin/false judge && \
     mkdir -p /workspace && chown judge:judge /workspace

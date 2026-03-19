@@ -4,8 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && \
     ARCH=$(case ${TARGETARCH} in amd64) echo "x86_64";; arm64) echo "aarch64";; *) echo "x86_64";; esac) && \
     curl -fsSL "https://github.com/coursier/coursier/releases/latest/download/cs-${ARCH}-pc-linux.gz" | gzip -d > /usr/local/bin/cs && \
     chmod +x /usr/local/bin/cs && \
-    cs setup --yes --install-dir /usr/local/bin && \
-    cs install scala:3.5.2 scalac:3.5.2 --install-dir /usr/local/bin && \
+    HOME=/root cs install --install-dir /usr/local/bin scala:3.5.2 scalac:3.5.2 && \
     rm -rf /var/lib/apt/lists/* && \
     useradd --create-home --shell /usr/sbin/nologin judge && \
     mkdir -p /workspace && chown judge:judge /workspace

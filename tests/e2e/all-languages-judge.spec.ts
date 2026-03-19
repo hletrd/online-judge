@@ -141,10 +141,11 @@ end Solution;`,
   prolog: `:- use_module(library(readutil)).
 main :-
     read_line_to_string(user_input, Line),
-    split_string(Line, " ", "", Parts),
+    split_string(Line, " ", " ", Parts),
     maplist(number_string, [A, B], Parts),
     S is A + B,
-    format("~d~n", [S]).`,
+    format("~d~n", [S]).
+:- initialization(main, main).`,
   tcl: `gets stdin line
 lassign [split $line " "] a b
 puts [expr {$a + $b}]`,
@@ -160,8 +161,8 @@ printf("%d\\n", ab(1) + ab(2));`,
 puts a + b`,
   powershell: `$line = [Console]::ReadLine()
 $parts = $line -split " "
-[int]$parts[0] + [int]$parts[1]`,
-  postscript: `(%stdin) (r) file dup token pop exch token pop exch pop add =`,
+Write-Output ([int]$parts[0] + [int]$parts[1])`,
+  postscript: `(%stdin) (r) file dup token pop exch token pop add =`,
   c89: `#include <stdio.h>
 int main() {
     int a, b;
@@ -178,7 +179,7 @@ int main() {
 }`,
   ruby: `a, b = gets.split.map(&:to_i)
 puts a + b`,
-  lua: `local a, b = io.read("*n"), io.read("*n")
+  lua: `local a, b = io.read("n"), io.read("n")
 print(a + b)`,
   haskell: `main = do
     line <- getLine
@@ -235,9 +236,9 @@ fn main() {
     write(*,'(I0)') a + b
 end program`,
   pascal: `program aplusb;
-var a, b: integer;
+var a, b: longint;
 begin
-    read(a, b);
+    readln(a, b);
     writeln(a + b);
 end.`,
   brainfuck: `>,>,<[->+<]>.`,
@@ -268,7 +269,9 @@ end.`,
     val Array(a, b) = scala.io.StdIn.readLine().split(" ").map(_.toInt)
     println(a + b)
 }`,
-  erlang: `main() ->
+  erlang: `-module(solution).
+-export([main/0]).
+main() ->
     {ok, [A, B]} = io:fread("", "~d ~d"),
     io:format("~w~n", [A + B]).`,
   commonlisp: `(let ((a (read)) (b (read)))
