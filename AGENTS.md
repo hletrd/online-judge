@@ -37,37 +37,49 @@ npx playwright test tests/e2e/               # E2E tests (needs PLAYWRIGHT_BASE_
 
 ## Testing Rules (MANDATORY)
 
-Every feature, fix, or enhancement MUST include appropriate tests. Do not merge or consider work complete without tests.
+Every feature, fix, or enhancement MUST include appropriate tests. **No code is considered complete without tests.** Work that lacks tests will be rejected.
 
-### Test Layers
+### Test Layers (ALL required per feature)
 
-| Layer | Tool | Location | When |
-|-------|------|----------|------|
-| **Unit** | Vitest | `tests/unit/` | Pure functions, validators, utilities, scoring logic |
-| **API** | Vitest | `tests/unit/api/` | Route handlers with mocked DB/auth |
-| **Integration** | Vitest | `tests/integration/` | Cross-module interactions, DB queries |
-| **E2E** | Playwright | `tests/e2e/` | Full user flows against running server |
+Every new feature MUST have tests across all applicable layers:
+
+| Layer | Tool | Location | Purpose | Required? |
+|-------|------|----------|---------|-----------|
+| **Unit** | Vitest | `tests/unit/` | Pure functions, validators, utilities, scoring logic, data helpers | Always |
+| **API / Mock** | Vitest | `tests/unit/api/` | Route handlers with mocked DB/auth, mock external deps | When API routes are added/changed |
+| **Integration** | Vitest | `tests/integration/` | Cross-module interactions, real DB queries | When DB logic is complex |
+| **E2E** | Playwright | `tests/e2e/` | Full user flows through the browser UI | Always for user-facing features |
+
+### Per-Feature Test Checklist
+
+For every feature, go through this checklist:
+
+1. **Unit tests** — Test all pure logic (helpers, validators, scoring, data transforms) with known inputs/outputs. Mock DB and external dependencies. Cover both success and error paths.
+2. **API / Mock tests** — Test route handlers with mocked auth and DB. Verify request validation, authorization checks, happy path responses, and error responses (401, 403, 404, 422).
+3. **E2E tests** — Test the full user flow in a real browser. Navigate to the feature, interact with it, verify all sections render, verify navigation works. Test with both Korean and English locales where applicable.
 
 ### What to Test
 
-- **New feature**: Unit tests for logic + API tests for routes + E2E test for user flow
+- **New feature**: Unit tests for logic + API/mock tests for routes + E2E test for user flow (ALL three)
 - **Bug fix**: Regression test that fails without the fix, passes with it
 - **Refactor**: Existing tests must still pass; add tests if coverage gaps found
 - **New language**: A+B solution in `tests/e2e/all-languages-judge.spec.ts` + Rust config test
-- **New API route**: API test with auth/validation/happy-path/error cases
+- **New API route**: API test with auth/validation/happy-path/error cases + unit test for any helper functions
 - **Validators**: Unit tests for valid/invalid inputs and edge cases
 - **Scoring/contest logic**: Unit tests with known inputs and expected outputs
+- **UI components**: E2E tests verifying rendering, interaction, and navigation
 
 ### Test Conventions
 
 - Use factories from `tests/unit/support/factories.ts` for test data
-- Mock external dependencies (DB, auth) in unit/API tests
+- Mock external dependencies (DB, auth) in unit/API tests using `vi.mock()`
 - E2E tests run against the test server (`oj-internal.maum.ai`), never production
 - Name test files as `<module>.test.ts` (unit/API) or `<feature>.spec.ts` (E2E)
 - Group related assertions in `describe` blocks
 - Test both success and error paths
+- Use `test.skip()` with clear reason for tests that depend on external state (e.g., "No contests available")
 
-### Quality Gates
+### Quality Gates (ALL must pass before deploy)
 
 - `npx tsc --noEmit` — zero type errors
 - `npx vitest run` — all unit tests pass
