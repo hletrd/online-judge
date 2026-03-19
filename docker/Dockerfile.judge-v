@@ -1,10 +1,15 @@
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc libc6-dev curl unzip ca-certificates && \
+    gcc libc6-dev curl ca-certificates && \
+    mkdir -p /opt/vlang && \
     curl -sL https://github.com/vlang/v/releases/latest/download/v_linux.zip -o /tmp/v.zip && \
-    unzip -q /tmp/v.zip -d /opt && \
-    ln -s /opt/v/v /usr/local/bin/v && \
-    rm /tmp/v.zip && \
+    apt-get install -y --no-install-recommends unzip && \
+    cd /tmp && unzip -o v.zip && \
+    cp -r /tmp/v/* /opt/vlang/ 2>/dev/null || cp -r /tmp/v /opt/vlang/ && \
+    chmod +x /opt/vlang/v && \
+    ln -sf /opt/vlang/v /usr/local/bin/v && \
+    v version && \
+    rm -rf /tmp/v.zip /tmp/v && \
     apt-get purge -y curl unzip && apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/* && \
     useradd --create-home --shell /usr/sbin/nologin judge && \
