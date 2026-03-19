@@ -1243,7 +1243,35 @@
       "avgScore": "평균 점수",
       "problemsSolved": "AC된 문제"
     },
-    "manageContest": "대회 관리"
+    "manageContest": "대회 관리",
+    "participantAudit": {
+      "title": "참가자 감사 로그",
+      "backToContest": "대회로 돌아가기",
+      "header": {
+        "rank": "순위",
+        "totalScore": "총점",
+        "penalty": "페널티",
+        "class": "반"
+      },
+      "solvingTimeline": {
+        "title": "풀이 타임라인",
+        "problem": "문제",
+        "status": "상태",
+        "attempts": "시도 횟수",
+        "firstAc": "첫 AC",
+        "solved": "풀이 완료",
+        "notSolved": "미풀이",
+        "noAttempts": "시도 없음"
+      },
+      "submissionHistory": {
+        "title": "제출 내역",
+        "noSubmissions": "이 문제에 대한 제출이 없습니다."
+      },
+      "antiCheatTimeline": {
+        "title": "부정행위 방지 타임라인",
+        "noEvents": "이 참가자에 대한 부정행위 방지 이벤트가 없습니다."
+      }
+    }
   },
   "capabilities": {
     "groups": {
@@ -1352,7 +1380,9 @@
       "disabled": "비활성화됨",
       "noCompileCommand": "없음 (인터프리터)",
       "runtimeInfo": "런타임 정보",
-      "languageCount": "{total}개 언어 중 {enabled}개 활성화"
+      "languageCount": "{total}개 언어 중 {enabled}개 활성화",
+      "search": "언어 검색...",
+      "noResults": "검색 결과가 없습니다."
     }
   }
 }

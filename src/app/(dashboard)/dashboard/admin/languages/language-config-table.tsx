@@ -48,6 +48,7 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
   const [isPending, startTransition] = useTransition();
   const [editingLang, setEditingLang] = useState<LanguageConfig | null>(null);
   const [editForm, setEditForm] = useState({ dockerImage: "", compileCommand: "", runCommand: "" });
+  const [search, setSearch] = useState("");
 
   function openEdit(lang: LanguageConfig) {
     setEditingLang(lang);
@@ -115,13 +116,34 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
   const existingImages = [...new Set(languages.map(l => l.dockerImage))];
   const allImageOptions = [...new Set([...existingImages, ...RECOMMENDED_IMAGES])].sort();
 
+  const filteredLanguages = search.trim()
+    ? languages.filter(lang => {
+        const q = search.toLowerCase();
+        return (
+          lang.displayName.toLowerCase().includes(q) ||
+          lang.language.toLowerCase().includes(q) ||
+          (lang.standard ?? "").toLowerCase().includes(q) ||
+          lang.dockerImage.toLowerCase().includes(q) ||
+          lang.extension.toLowerCase().includes(q)
+        );
+      })
+    : languages;
+
   return (
     <>
       <div className="flex items-center gap-2 mb-4">
-        <Button variant="outline" size="sm" onClick={handleResetAll} disabled={isPending}>
-          <RotateCcw className="size-4 mr-1.5" />
-          {t("actions.resetAll")}
-        </Button>
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t("search")}
+          className="max-w-xs"
+        />
+        <div className="ml-auto">
+          <Button variant="outline" size="sm" onClick={handleResetAll} disabled={isPending}>
+            <RotateCcw className="size-4 mr-1.5" />
+            {t("actions.resetAll")}
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-md border">
@@ -130,14 +152,21 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
             <TableRow>
               <TableHead className="w-[50px]">{t("table.enabled")}</TableHead>
               <TableHead>{t("table.language")}</TableHead>
-              <TableHead>{t("table.standard")}</TableHead>
+              <TableHead className="hidden sm:table-cell">{t("table.standard")}</TableHead>
+              <TableHead className="hidden md:table-cell">{t("table.extension")}</TableHead>
               <TableHead>{t("table.dockerImage")}</TableHead>
               <TableHead className="hidden lg:table-cell">{t("table.compileCommand")}</TableHead>
               <TableHead className="w-[80px]">{t("table.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {languages.map((lang) => (
+            {filteredLanguages.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  {t("noResults")}
+                </TableCell>
+              </TableRow>
+            ) : filteredLanguages.map((lang) => (
               <TableRow key={lang.language} className={lang.isEnabled ? "" : "opacity-50"}>
                 <TableCell>
                   <Checkbox
@@ -152,8 +181,11 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
                     <span className="text-xs text-muted-foreground font-mono">{lang.language}</span>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden sm:table-cell">
                   {lang.standard && <Badge variant="secondary">{lang.standard}</Badge>}
+                </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  <span className="text-xs font-mono text-muted-foreground">.{lang.extension}</span>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col">

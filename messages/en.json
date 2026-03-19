@@ -1251,7 +1251,35 @@
       "avgScore": "Avg Score",
       "problemsSolved": "Problems with AC"
     },
-    "manageContest": "Manage Contest"
+    "manageContest": "Manage Contest",
+    "participantAudit": {
+      "title": "Participant Audit",
+      "backToContest": "Back to Contest",
+      "header": {
+        "rank": "Rank",
+        "totalScore": "Total Score",
+        "penalty": "Penalty",
+        "class": "Class"
+      },
+      "solvingTimeline": {
+        "title": "Solving Timeline",
+        "problem": "Problem",
+        "status": "Status",
+        "attempts": "Attempts",
+        "firstAc": "First AC",
+        "solved": "Solved",
+        "notSolved": "Not Solved",
+        "noAttempts": "No Attempts"
+      },
+      "submissionHistory": {
+        "title": "Submission History",
+        "noSubmissions": "No submissions for this problem."
+      },
+      "antiCheatTimeline": {
+        "title": "Anti-Cheat Timeline",
+        "noEvents": "No anti-cheat events for this participant."
+      }
+    }
   },
   "capabilities": {
     "groups": {
@@ -1360,7 +1388,9 @@
       "disabled": "Disabled",
       "noCompileCommand": "None (interpreted)",
       "runtimeInfo": "Runtime Info",
-      "languageCount": "{enabled} of {total} languages enabled"
+      "languageCount": "{enabled} of {total} languages enabled",
+      "search": "Search languages...",
+      "noResults": "No languages match your search."
     }
   }
 }
