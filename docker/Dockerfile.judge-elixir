@@ -1,5 +1,9 @@
 FROM elixir:1.18-alpine
 
+ENV HOME=/tmp
+ENV MIX_HOME=/tmp/mix
+ENV HEX_HOME=/tmp/hex
+
 RUN adduser -D -s /bin/false judge && \
     mkdir -p /workspace && \
     chown judge:judge /workspace
