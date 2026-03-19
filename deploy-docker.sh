@@ -118,6 +118,15 @@ success "SSH connection to ${REMOTE_HOST} verified"
 remote "docker info >/dev/null 2>&1" || die "docker is not available on the remote host"
 success "Remote docker verified"
 
+# Detect remote architecture
+REMOTE_ARCH=$(remote "uname -m")
+case "$REMOTE_ARCH" in
+    x86_64)  PLATFORM="linux/amd64" ;;
+    aarch64) PLATFORM="linux/arm64" ;;
+    *)       PLATFORM="linux/amd64" ; warn "Unknown arch '${REMOTE_ARCH}', defaulting to linux/amd64" ;;
+esac
+info "Detected remote architecture: ${REMOTE_ARCH} → ${PLATFORM}"
+
 # ---------------------------------------------------------------------------
 # Step 1: Generate .env.production if it does not exist
 # ---------------------------------------------------------------------------
@@ -180,19 +189,19 @@ success "Source code synced to remote"
 # Step 3: Build Docker images on the remote host
 # ---------------------------------------------------------------------------
 if [[ "$SKIP_BUILD" == false ]]; then
-    info "Building app image on ${REMOTE_HOST} (judgekit-app:latest)..."
-    remote "cd ${REMOTE_DIR} && docker build -t judgekit-app:latest -f Dockerfile ."
+    info "Building app image on ${REMOTE_HOST} (judgekit-app:latest) [${PLATFORM}]..."
+    remote "cd ${REMOTE_DIR} && docker build --platform ${PLATFORM} -t judgekit-app:latest -f Dockerfile ."
     success "App image built on remote"
 
-    info "Building judge worker image on ${REMOTE_HOST} (judgekit-judge-worker:latest)..."
-    remote "cd ${REMOTE_DIR} && docker build -t judgekit-judge-worker:latest -f Dockerfile.judge-worker ."
+    info "Building judge worker image on ${REMOTE_HOST} (judgekit-judge-worker:latest) [${PLATFORM}]..."
+    remote "cd ${REMOTE_DIR} && docker build --platform ${PLATFORM} -t judgekit-judge-worker:latest -f Dockerfile.judge-worker ."
     success "Judge worker image built on remote"
 
     if [[ "$SKIP_LANGUAGES" == false ]]; then
-        info "Building judge language images on ${REMOTE_HOST}..."
-        remote "cd ${REMOTE_DIR} && (docker compose -f docker-compose.yml build \
+        info "Building judge language images on ${REMOTE_HOST} [${PLATFORM}]..."
+        remote "cd ${REMOTE_DIR} && (DOCKER_DEFAULT_PLATFORM=${PLATFORM} docker compose -f docker-compose.yml build \
             judge-cpp judge-python judge-node judge-jvm judge-rust judge-go 2>/dev/null || \
-            docker-compose -f docker-compose.yml build \
+            DOCKER_DEFAULT_PLATFORM=${PLATFORM} docker-compose -f docker-compose.yml build \
             judge-cpp judge-python judge-node judge-jvm judge-rust judge-go)"
         success "Judge language images built on remote"
     fi
