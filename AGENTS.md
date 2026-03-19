@@ -80,6 +80,8 @@ Deployment targets and credentials are documented in `ENV.md` (gitignored).
 The primary deploy script is `deploy-docker.sh`. See `ENV.md` for per-target configuration.
 Always test against `oj-internal.maum.ai` (test), never against `oj.auraedu.me` (production).
 
+**IMPORTANT:** Before deploying, always read `ENV.md` for SSH credentials, target hosts, and environment variables needed by deploy scripts.
+
 ## Conventions
 
 - Semantic commits: `<type>(<scope>): <gitmoji> <description>`
