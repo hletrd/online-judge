@@ -47,13 +47,14 @@ export default function CapabilityMatrix({ selected, onChange, disabled }: Capab
   }
 
   return (
-    <div className="space-y-4">
-      {Object.entries(CAPABILITY_GROUPS).map(([groupKey, group]) => {
+    <div className="space-y-3">
+      {Object.entries(CAPABILITY_GROUPS).map(([groupKey, group], index) => {
         const allSelected = group.capabilities.every((c) => selectedSet.has(c));
         const someSelected = group.capabilities.some((c) => selectedSet.has(c));
 
         return (
-          <div key={groupKey} className="border rounded-lg p-3">
+          <div key={groupKey}>
+            {index > 0 && <hr className="mb-3 border-border" />}
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-medium text-sm">{t(`groups.${groupKey}`)}</h4>
               <div className="flex gap-1">
@@ -79,7 +80,7 @@ export default function CapabilityMatrix({ selected, onChange, disabled }: Capab
                 </Button>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
               {group.capabilities.map((cap) => (
                 <div key={cap} className="flex items-center gap-2">
                   <Checkbox
