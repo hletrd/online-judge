@@ -159,7 +159,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     compiler: `Eclipse Temurin ${JUDGE_TOOLCHAIN_VERSIONS.java} (javac/java)`,
     compileCommand: [
       "sh",
-      "-lc",
+      "-c",
       "export JAVA_TOOL_OPTIONS='-Djava.io.tmpdir=/workspace' && mkdir -p /workspace/out && cp /workspace/solution.java /workspace/Main.java && javac --release 25 -encoding UTF-8 -d /workspace/out /workspace/Main.java",
     ],
     runCommand: ["java", "-Djava.io.tmpdir=/workspace", "-cp", "/workspace/out", "Main"],
@@ -196,6 +196,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
       "--pretty",
       "false",
       "--strict",
+      "--skipLibCheck",
       "--types",
       "node",
       "--typeRoots",

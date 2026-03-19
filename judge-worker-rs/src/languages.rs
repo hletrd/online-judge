@@ -45,6 +45,7 @@ static TYPESCRIPT_COMPILE: &[&str] = &[
     "tsc",
     "--pretty", "false",
     "--strict",
+    "--skipLibCheck",
     "--types", "node",
     "--typeRoots", "/usr/local/lib/node_modules/@types",
     "--target", "ES2024",
