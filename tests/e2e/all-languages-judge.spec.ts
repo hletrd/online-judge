@@ -353,7 +353,7 @@ async function waitForJudging(
 }
 
 test("submit A+B in all supported languages and verify judging", async ({ browser }) => {
-  test.setTimeout(600_000); // 10 minutes total
+  test.setTimeout(900_000); // 15 minutes for 55 languages
 
   const context = await browser.newContext();
   const page = await context.newPage();
