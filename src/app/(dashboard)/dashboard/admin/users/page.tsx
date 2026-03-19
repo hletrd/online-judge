@@ -185,7 +185,7 @@ export default async function UserManagementPage({
           </form>
         </CardContent>
       </Card>
-      <Card>
+      <Card className="mt-4">
         <CardHeader>
           <CardTitle>{t("resultsTitle")}</CardTitle>
         </CardHeader>
