@@ -6,7 +6,8 @@ use uuid::Uuid;
 
 const EXECUTION_CPU_LIMIT: &str = "1";
 const MIN_MEMORY_LIMIT_MB: u32 = 16;
-const CONTAINER_TMPFS: &str = "/tmp:rw,noexec,nosuid,size=64m";
+const COMPILE_TMPFS: &str = "/tmp:rw,nosuid,size=64m";
+const RUN_TMPFS: &str = "/tmp:rw,noexec,nosuid,size=64m";
 const MIN_TIMEOUT_MS: u64 = 100;
 
 const SECCOMP_INIT_ERROR_SNIPPETS: &[&str] = &[
@@ -188,7 +189,7 @@ async fn run_docker_once(
         pids_limit.into(),
         "--read-only".into(),
         "--tmpfs".into(),
-        CONTAINER_TMPFS.into(),
+        if options.phase == Phase::Compile { COMPILE_TMPFS } else { RUN_TMPFS }.into(),
         "--cap-drop=ALL".into(),
         "--security-opt=no-new-privileges".into(),
         "--ulimit".into(),
