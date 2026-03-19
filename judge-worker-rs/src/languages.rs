@@ -80,9 +80,9 @@ static SWIFT_COMPILE: &[&str] = &[
 static SWIFT_RUN: &[&str] = &["/workspace/solution"];
 
 static CSHARP_COMPILE: &[&str] = &[
-    "mcs", "-optimize+", "-out:/workspace/solution.exe", "/workspace/solution.cs",
+    "sh", "-c", "HOME=/tmp mcs -optimize+ -out:/workspace/solution.exe /workspace/solution.cs",
 ];
-static CSHARP_RUN: &[&str] = &["mono", "/workspace/solution.exe"];
+static CSHARP_RUN: &[&str] = &["sh", "-c", "HOME=/tmp mono /workspace/solution.exe"];
 
 static R_RUN: &[&str] = &["Rscript", "/workspace/solution.r"];
 
@@ -101,15 +101,15 @@ static HASKELL_COMPILE: &[&str] = &["ghc", "-O2", "-o", "/workspace/solution", "
 static HASKELL_RUN: &[&str] = &["/workspace/solution"];
 
 // Dart
-static DART_COMPILE: &[&str] = &["dart", "compile", "exe", "/workspace/solution.dart", "-o", "/workspace/solution"];
+static DART_COMPILE: &[&str] = &["sh", "-c", "HOME=/tmp dart compile exe /workspace/solution.dart -o /workspace/solution"];
 static DART_RUN: &[&str] = &["/workspace/solution"];
 
 // Zig
-static ZIG_COMPILE: &[&str] = &["zig", "build-exe", "--cache-dir", "/tmp/zig-cache", "--global-cache-dir", "/tmp/zig-global", "/workspace/solution.zig", "-O", "ReleaseSafe", "--name", "solution"];
+static ZIG_COMPILE: &[&str] = &["sh", "-c", "zig build-exe --cache-dir /tmp/zig-cache --global-cache-dir /tmp/zig-global -femit-binary=/workspace/solution /workspace/solution.zig -O ReleaseSafe"];
 static ZIG_RUN: &[&str] = &["/workspace/solution"];
 
 // Nim
-static NIM_COMPILE: &[&str] = &["nim", "compile", "--opt:speed", "-d:release", "--nimcache:/tmp/nimcache", "--out:/workspace/solution", "/workspace/solution.nim"];
+static NIM_COMPILE: &[&str] = &["sh", "-c", "mkdir -p /tmp/nimcache && nim compile --opt:speed -d:release --nimcache:/tmp/nimcache --out:/workspace/solution /workspace/solution.nim"];
 static NIM_RUN: &[&str] = &["/workspace/solution"];
 
 // OCaml
@@ -117,7 +117,7 @@ static OCAML_COMPILE: &[&str] = &["ocamlfind", "ocamlopt", "-package", "str", "-
 static OCAML_RUN: &[&str] = &["/workspace/solution"];
 
 // Elixir
-static ELIXIR_RUN: &[&str] = &["elixir", "/workspace/solution.exs"];
+static ELIXIR_RUN: &[&str] = &["sh", "-c", "HOME=/tmp elixir /workspace/solution.exs"];
 
 // Julia
 static JULIA_RUN: &[&str] = &["julia", "/workspace/solution.jl"];
@@ -165,12 +165,12 @@ static CLANG_CPP23_COMPILE: &[&str] = &["clang++", "-O2", "-std=c++23", "-o", "/
 static CLANG_CPP23_RUN: &[&str] = &["/workspace/solution"];
 
 // Scala
-static SCALA_COMPILE: &[&str] = &["scalac", "-d", "/workspace/out", "/workspace/solution.scala"];
-static SCALA_RUN: &[&str] = &["scala", "-classpath", "/workspace/out", "solution"];
+static SCALA_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp && mkdir -p /workspace/out && scalac -d /workspace/out /workspace/solution.scala"];
+static SCALA_RUN: &[&str] = &["sh", "-c", "export HOME=/tmp && scala -classpath /workspace/out Main"];
 
 // Erlang
-static ERLANG_COMPILE: &[&str] = &["erlc", "-o", "/workspace", "/workspace/solution.erl"];
-static ERLANG_RUN: &[&str] = &["erl", "-noshell", "-pa", "/workspace", "-s", "solution", "main", "-s", "init", "stop"];
+static ERLANG_COMPILE: &[&str] = &["sh", "-c", "HOME=/tmp erlc -o /workspace /workspace/solution.erl"];
+static ERLANG_RUN: &[&str] = &["sh", "-c", "HOME=/tmp erl -noshell -pa /workspace -s solution main -s init stop"];
 
 // Common Lisp
 static COMMONLISP_RUN: &[&str] = &["sbcl", "--script", "/workspace/solution.lisp"];
@@ -510,7 +510,7 @@ static ADA_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Clojure
-static CLOJURE_RUN: &[&str] = &["java", "-cp", "/usr/local/lib/clojure/*", "clojure.main", "/workspace/solution.clj"];
+static CLOJURE_RUN: &[&str] = &["sh", "-c", "java -cp '/usr/local/lib/clojure/*' clojure.main /workspace/solution.clj"];
 
 static CLOJURE_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".clj",
@@ -561,7 +561,7 @@ static SCHEME_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Groovy
-static GROOVY_RUN: &[&str] = &["groovy", "/workspace/solution.groovy"];
+static GROOVY_RUN: &[&str] = &["sh", "-c", "JAVA_OPTS='-Djava.io.tmpdir=/tmp -Duser.home=/tmp' groovy /workspace/solution.groovy"];
 
 static GROOVY_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".groovy",
@@ -592,7 +592,7 @@ static CRYSTAL_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // PowerShell
-static POWERSHELL_RUN: &[&str] = &["pwsh", "-NoProfile", "-File", "/workspace/solution.ps1"];
+static POWERSHELL_RUN: &[&str] = &["sh", "-c", "HOME=/tmp pwsh -NoProfile -NonInteractive -File /workspace/solution.ps1"];
 
 static POWERSHELL_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".ps1",
@@ -602,7 +602,7 @@ static POWERSHELL_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // PostScript
-static POSTSCRIPT_RUN: &[&str] = &["gs", "-q", "-dNODISPLAY", "-dBATCH", "-dNOPAUSE", "/workspace/solution.ps"];
+static POSTSCRIPT_RUN: &[&str] = &["gs", "-q", "-dNODISPLAY", "-dBATCH", "-dNOPAUSE", "-dNOSAFER", "/workspace/solution.ps"];
 
 static POSTSCRIPT_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".ps",

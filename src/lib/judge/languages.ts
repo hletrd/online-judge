@@ -273,8 +273,8 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".cs",
     dockerImage: "judge-csharp:latest",
     compiler: `Mono ${JUDGE_TOOLCHAIN_VERSIONS.mono} (mcs)`,
-    compileCommand: ["mcs", "-optimize+", "-out:/workspace/solution.exe", "/workspace/solution.cs"],
-    runCommand: ["mono", "/workspace/solution.exe"],
+    compileCommand: ["sh", "-c", "HOME=/tmp mcs -optimize+ -out:/workspace/solution.exe /workspace/solution.cs"],
+    runCommand: ["sh", "-c", "HOME=/tmp mono /workspace/solution.exe"],
   },
   r: {
     language: "r",
@@ -343,7 +343,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".dart",
     dockerImage: "judge-dart:latest",
     compiler: `Dart ${JUDGE_TOOLCHAIN_VERSIONS.dart}`,
-    compileCommand: ["dart", "--disable-analytics", "compile", "exe", "/workspace/solution.dart", "-o", "/workspace/solution"],
+    compileCommand: ["sh", "-c", "HOME=/tmp dart compile exe /workspace/solution.dart -o /workspace/solution"],
     runCommand: ["/workspace/solution"],
   },
   zig: {
@@ -353,7 +353,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".zig",
     dockerImage: "judge-zig:latest",
     compiler: `Zig ${JUDGE_TOOLCHAIN_VERSIONS.zig}`,
-    compileCommand: ["zig", "build-exe", "--cache-dir", "/tmp/zig-cache", "--global-cache-dir", "/tmp/zig-global", "/workspace/solution.zig", "-O", "ReleaseSafe", "--name", "solution"],
+    compileCommand: ["sh", "-c", "zig build-exe --cache-dir /tmp/zig-cache --global-cache-dir /tmp/zig-global -femit-binary=/workspace/solution /workspace/solution.zig -O ReleaseSafe"],
     runCommand: ["/workspace/solution"],
   },
   nim: {
@@ -384,7 +384,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-elixir:latest",
     compiler: `Elixir ${JUDGE_TOOLCHAIN_VERSIONS.elixir}`,
     compileCommand: null,
-    runCommand: ["elixir", "/workspace/solution.exs"],
+    runCommand: ["sh", "-c", "HOME=/tmp elixir /workspace/solution.exs"],
   },
   julia: {
     language: "julia",
@@ -513,8 +513,8 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".scala",
     dockerImage: "judge-scala:latest",
     compiler: `Scala ${JUDGE_TOOLCHAIN_VERSIONS.scala}`,
-    compileCommand: ["sh", "-c", "mkdir -p /workspace/out && scalac -d /workspace/out /workspace/solution.scala"],
-    runCommand: ["sh", "-c", "scala -classpath /workspace/out Main"],
+    compileCommand: ["sh", "-c", "export HOME=/tmp && mkdir -p /workspace/out && scalac -d /workspace/out /workspace/solution.scala"],
+    runCommand: ["sh", "-c", "export HOME=/tmp && scala -classpath /workspace/out Main"],
   },
   erlang: {
     language: "erlang",
@@ -523,8 +523,8 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".erl",
     dockerImage: "judge-erlang:latest",
     compiler: `Erlang/OTP ${JUDGE_TOOLCHAIN_VERSIONS.erlang}`,
-    compileCommand: ["erlc", "-o", "/workspace", "/workspace/solution.erl"],
-    runCommand: ["erl", "-noshell", "-pa", "/workspace", "-s", "solution", "main", "-s", "init", "stop"],
+    compileCommand: ["sh", "-c", "HOME=/tmp erlc -o /workspace /workspace/solution.erl"],
+    runCommand: ["sh", "-c", "HOME=/tmp erl -noshell -pa /workspace -s solution main -s init stop"],
   },
   commonlisp: {
     language: "commonlisp",
@@ -654,7 +654,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-groovy:latest",
     compiler: `Groovy ${JUDGE_TOOLCHAIN_VERSIONS.groovy} / Temurin ${JUDGE_TOOLCHAIN_VERSIONS.java}`,
     compileCommand: null,
-    runCommand: ["groovy", "/workspace/solution.groovy"],
+    runCommand: ["sh", "-c", "JAVA_OPTS='-Djava.io.tmpdir=/tmp -Duser.home=/tmp' groovy /workspace/solution.groovy"],
   },
   octave: {
     language: "octave",
@@ -684,7 +684,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-powershell:latest",
     compiler: `PowerShell ${JUDGE_TOOLCHAIN_VERSIONS.powershell}`,
     compileCommand: null,
-    runCommand: ["pwsh", "-NoProfile", "-File", "/workspace/solution.ps1"],
+    runCommand: ["sh", "-c", "HOME=/tmp pwsh -NoProfile -NonInteractive -File /workspace/solution.ps1"],
   },
   postscript: {
     language: "postscript",
