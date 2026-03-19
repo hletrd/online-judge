@@ -211,15 +211,15 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
 
       {/* Edit Sheet */}
       <Sheet open={editingLang !== null} onOpenChange={(open) => { if (!open) setEditingLang(null); }}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
+        <SheetContent className="sm:max-w-lg flex flex-col">
+          <SheetHeader className="px-6 pt-6">
             <SheetTitle>{t("edit.title")}</SheetTitle>
             <SheetDescription>
               {editingLang?.displayName} {editingLang?.standard ? `(${editingLang.standard})` : ""} — <code>{editingLang?.language}</code>
             </SheetDescription>
           </SheetHeader>
 
-          <div className="space-y-6 py-6">
+          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
             <div className="space-y-2">
               <Label>{t("edit.dockerImage")}</Label>
               <Input
@@ -256,24 +256,24 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
               />
               <p className="text-xs text-muted-foreground">{t("edit.runCommandHelp")}</p>
             </div>
+          </div>
 
-            <div className="flex gap-2">
-              <Button onClick={handleSave} disabled={isPending}>
-                {t("edit.save")}
-              </Button>
-              <Button variant="outline" onClick={() => setEditingLang(null)} disabled={isPending}>
-                {t("edit.cancel")}
-              </Button>
-              <Button
-                variant="ghost"
-                className="ml-auto text-destructive"
-                onClick={() => editingLang && handleReset(editingLang.language)}
-                disabled={isPending}
-              >
-                <RotateCcw className="size-4 mr-1.5" />
-                {t("edit.resetToDefaults")}
-              </Button>
-            </div>
+          <div className="border-t px-6 py-4 flex gap-2">
+            <Button onClick={handleSave} disabled={isPending}>
+              {t("edit.save")}
+            </Button>
+            <Button variant="outline" onClick={() => setEditingLang(null)} disabled={isPending}>
+              {t("edit.cancel")}
+            </Button>
+            <Button
+              variant="ghost"
+              className="ml-auto text-destructive"
+              onClick={() => editingLang && handleReset(editingLang.language)}
+              disabled={isPending}
+            >
+              <RotateCcw className="size-4 mr-1.5" />
+              {t("edit.resetToDefaults")}
+            </Button>
           </div>
         </SheetContent>
       </Sheet>

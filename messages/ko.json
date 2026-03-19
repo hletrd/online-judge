@@ -894,6 +894,49 @@
         "type": "유형",
         "action": "작업"
       }
+    },
+    "languages": {
+      "search": "언어 검색...",
+      "noResults": "언어를 찾을 수 없습니다.",
+      "noCompileCommand": "컴파일 없음",
+      "enabled": "활성화됨",
+      "disabled": "비활성화됨",
+      "table": {
+        "enabled": "활성화",
+        "language": "언어",
+        "standard": "표준",
+        "extension": "확장자",
+        "dockerImage": "Docker 이미지",
+        "compileCommand": "컴파일 명령어",
+        "actions": "작업"
+      },
+      "actions": {
+        "resetAll": "모두 기본값으로 초기화",
+        "resetAllConfirm": "모든 언어를 기본 설정으로 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+      },
+      "toast": {
+        "toggleSuccess": "{language} {state}.",
+        "toggleError": "언어 토글에 실패했습니다.",
+        "updateSuccess": "언어 설정이 저장되었습니다.",
+        "updateError": "언어 설정 저장에 실패했습니다.",
+        "resetSuccess": "언어가 기본값으로 초기화되었습니다.",
+        "resetError": "언어 초기화에 실패했습니다.",
+        "resetAllSuccess": "모든 언어가 기본값으로 초기화되었습니다.",
+        "resetAllError": "모든 언어 초기화에 실패했습니다."
+      },
+      "edit": {
+        "title": "언어 설정 편집",
+        "dockerImage": "Docker 이미지",
+        "dockerImagePlaceholder": "예: alpine:3.21",
+        "compileCommand": "컴파일 명령어",
+        "compileCommandHelp": "인터프리터 언어는 비워 두세요. {file}을 소스 파일 경로로 사용할 수 있습니다.",
+        "runCommand": "실행 명령어",
+        "runCommandHelp": "프로그램 실행 명령어입니다. {file} 또는 {binary}를 플레이스홀더로 사용할 수 있습니다.",
+        "save": "저장",
+        "cancel": "취소",
+        "resetToDefaults": "기본값으로 초기화",
+        "resetConfirm": "이 언어를 기본 설정으로 초기화하시겠습니까?"
+      }
     }
   },
   "profile": {

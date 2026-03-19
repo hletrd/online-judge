@@ -902,6 +902,49 @@
         "type": "Type",
         "action": "Action"
       }
+    },
+    "languages": {
+      "search": "Search languages...",
+      "noResults": "No languages found.",
+      "noCompileCommand": "No compile step",
+      "enabled": "enabled",
+      "disabled": "disabled",
+      "table": {
+        "enabled": "Enabled",
+        "language": "Language",
+        "standard": "Standard",
+        "extension": "Extension",
+        "dockerImage": "Docker Image",
+        "compileCommand": "Compile Command",
+        "actions": "Actions"
+      },
+      "actions": {
+        "resetAll": "Reset All to Defaults",
+        "resetAllConfirm": "Reset ALL languages to their default configuration? This cannot be undone."
+      },
+      "toast": {
+        "toggleSuccess": "{language} {state}.",
+        "toggleError": "Failed to toggle language.",
+        "updateSuccess": "Language configuration saved.",
+        "updateError": "Failed to save language configuration.",
+        "resetSuccess": "Language reset to defaults.",
+        "resetError": "Failed to reset language.",
+        "resetAllSuccess": "All languages reset to defaults.",
+        "resetAllError": "Failed to reset all languages."
+      },
+      "edit": {
+        "title": "Edit Language Configuration",
+        "dockerImage": "Docker Image",
+        "dockerImagePlaceholder": "e.g. alpine:3.21",
+        "compileCommand": "Compile Command",
+        "compileCommandHelp": "Leave blank for interpreted languages. Use {file} for the source file path.",
+        "runCommand": "Run Command",
+        "runCommandHelp": "Command to execute the program. Use {file} or {binary} as placeholders.",
+        "save": "Save",
+        "cancel": "Cancel",
+        "resetToDefaults": "Reset to Defaults",
+        "resetConfirm": "Reset this language to its default configuration?"
+      }
     }
   },
   "profile": {
