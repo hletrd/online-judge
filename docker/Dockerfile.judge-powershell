@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/powershell:lts-debian-bookworm-slim
+FROM mcr.microsoft.com/powershell:7.4-debian-bookworm-slim
 
 RUN adduser --disabled-password --gecos "" --shell /bin/false judge && \
     mkdir -p /workspace && chown judge:judge /workspace

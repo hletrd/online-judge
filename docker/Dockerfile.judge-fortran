@@ -1,7 +1,9 @@
-FROM alpine:3.21
+FROM debian:bookworm-slim
 
-RUN apk add --no-cache gfortran musl-dev && \
-    adduser -D -s /bin/false judge && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gfortran && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd --create-home --shell /usr/sbin/nologin judge && \
     mkdir -p /workspace && \
     chown judge:judge /workspace
 
