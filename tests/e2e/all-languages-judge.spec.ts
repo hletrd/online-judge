@@ -136,15 +136,8 @@ begin
    Put(A + B, Width => 0);
    New_Line;
 end Solution;`,
-  clojure: `(let [a (read) b (read)]
-  (println (+ a b)))`,
-  prolog: `:- use_module(library(readutil)).
-main :-
-    read_line_to_string(user_input, Line),
-    split_string(Line, " ", " ", Parts),
-    maplist(number_string, [A, B], Parts),
-    S is A + B,
-    format("~d~n", [S]).
+  clojure: `(let [line (read-line) nums (map #(Integer/parseInt %) (.split (.trim line) "\\\\s+"))] (println (apply + nums)))`,
+  prolog: `main :- read_line_to_string(user_input, Line), split_string(Line, " ", "", Parts), maplist(number_string, Nums, Parts), sumlist(Nums, S), write(S), nl.
 :- initialization(main, main).`,
   tcl: `gets stdin line
 lassign [split $line " "] a b
@@ -181,9 +174,8 @@ int main() {
   ruby: `a, b = gets.split.map(&:to_i)
 puts a + b`,
   lua: `local line = io.read("l")
-local parts = {}
-for w in line:gmatch("%S+") do parts[#parts+1] = tonumber(w) end
-io.write(string.format("%d\\n", parts[1] + parts[2]))`,
+local a, b = line:match("(%S+)%s+(%S+)")
+print(math.floor(tonumber(a) + tonumber(b)))`,
   haskell: `main = do
     line <- getLine
     let [a, b] = map read (words line) :: [Int]
@@ -274,7 +266,9 @@ end.`,
   erlang: `-module(solution).
 -export([main/0]).
 main() ->
-    {ok, [A, B]} = io:fread("", "~d ~d"),
+    Line = io:get_line(""),
+    Tokens = string:tokens(string:trim(Line), " "),
+    [A, B] = [list_to_integer(T) || T <- Tokens],
     io:format("~w~n", [A + B]).`,
   commonlisp: `(let ((a (read)) (b (read)))
   (format t "~d~%" (+ a b)))`,
@@ -509,21 +503,7 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
     "hyeong",      // reads one integer per line, not space-separated
     "brainfuck",   // byte-level I/O, cannot handle multi-digit decimal numbers
     "vlang",       // V Docker image fails to build from source reliably
-    "zig",         // ReadOnlyFileSystem — zig cache needs exec-capable writable dir
-    "nim",         // nimcache path issues with official Docker image
-    "dart",        // Dart SDK crash in restricted container environment
-    "lua",         // Lua 5.4 io.read format string differences
-    "elixir",      // BEAM VM needs writable home for runtime state
-    "clojure",     // JVM classpath resolution in restricted container
-    "groovy",      // JVM tmp/home dir issues in read-only container
-    "powershell",  // pwsh stdin handling in non-interactive container
-    "scala",       // scalac not found — Docker image build issue
-    "erlang",      // OTP compilation needs writable home directory
-    "csharp",      // Mono/dotnet runtime mismatch in container
-    "whitespace",  // Whitespace interpreter compatibility
-    "prolog",      // SWI-Prolog main/0 entry point handling in container
-    "java",        // Intermittent compile failure (works when tested directly)
-    "typescript",  // Intermittent compile failure (works when tested directly)
+    "whitespace",  // Whitespace interpreter file encoding issues
   ]);
 
   const unexpected = failed.filter((r) => !KNOWN_FLAKY.has(r.language));

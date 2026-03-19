@@ -101,11 +101,11 @@ static HASKELL_COMPILE: &[&str] = &["ghc", "-O2", "-o", "/workspace/solution", "
 static HASKELL_RUN: &[&str] = &["/workspace/solution"];
 
 // Dart
-static DART_COMPILE: &[&str] = &["sh", "-c", "HOME=/tmp dart compile exe /workspace/solution.dart -o /workspace/solution"];
+static DART_COMPILE: &[&str] = &["sh", "-c", "HOME=/tmp dart compile exe --suppress-analytics /workspace/solution.dart -o /workspace/solution"];
 static DART_RUN: &[&str] = &["/workspace/solution"];
 
 // Zig
-static ZIG_COMPILE: &[&str] = &["sh", "-c", "zig build-exe --cache-dir /tmp/zig-cache --global-cache-dir /tmp/zig-global -femit-binary=/workspace/solution /workspace/solution.zig -O ReleaseSafe"];
+static ZIG_COMPILE: &[&str] = &["sh", "-c", "zig build-exe --cache-dir /tmp/zig-cache --global-cache-dir /tmp/zig-global -femit-bin=/workspace/solution /workspace/solution.zig -O ReleaseSafe"];
 static ZIG_RUN: &[&str] = &["/workspace/solution"];
 
 // Nim
