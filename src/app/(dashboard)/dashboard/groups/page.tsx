@@ -102,10 +102,8 @@ export default async function GroupsPage() {
         )}
       </div>
       <Card>
-        <CardHeader>
-          <CardTitle>{t("myGroups")}</CardTitle>
-        </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -148,6 +146,7 @@ export default async function GroupsPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

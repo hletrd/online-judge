@@ -56,10 +56,8 @@ export default async function ProblemSetsPage() {
         </Link>
       </div>
       <Card>
-        <CardHeader>
-          <CardTitle>{t("description")}</CardTitle>
-        </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -103,6 +101,7 @@ export default async function ProblemSetsPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

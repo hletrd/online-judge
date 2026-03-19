@@ -77,10 +77,6 @@ export default async function RoleManagementPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>{t("title")}</CardTitle>
-          <CardDescription>{t("description")}</CardDescription>
-        </CardHeader>
         <CardContent>
           {roleData.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">{t("noRoles")}</p>

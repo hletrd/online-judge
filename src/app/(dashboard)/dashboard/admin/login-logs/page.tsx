@@ -253,6 +253,7 @@ export default async function AdminLoginLogsPage({
             </p>
           )}
 
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -320,6 +321,7 @@ export default async function AdminLoginLogsPage({
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

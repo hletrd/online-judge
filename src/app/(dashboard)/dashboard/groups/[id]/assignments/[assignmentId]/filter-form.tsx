@@ -52,13 +52,10 @@ export function FilterForm({
 }: FilterFormProps) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{labels.filtersTitle}</CardTitle>
-      </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-4 md:flex-row md:items-end" method="get">
-          <div className="flex-1 space-y-2">
-            <label className="block text-sm font-medium mb-1" htmlFor="student-search">
+          <div className="flex-1">
+            <label className="block text-sm font-medium" htmlFor="student-search">
               {labels.studentSearch}
             </label>
             <input
@@ -72,8 +69,8 @@ export function FilterForm({
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-medium mb-1" htmlFor="status-filter">
+          <div className="space-y-3">
+            <label className="block text-sm font-medium" htmlFor="status-filter">
               {labels.status}
             </label>
             <select

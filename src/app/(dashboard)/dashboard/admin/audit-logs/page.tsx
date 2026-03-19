@@ -332,6 +332,7 @@ export default async function AdminAuditLogsPage({
             </p>
           )}
 
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -437,6 +438,7 @@ export default async function AdminAuditLogsPage({
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
