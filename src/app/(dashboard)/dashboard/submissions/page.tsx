@@ -24,6 +24,7 @@ import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
 import { SubmissionListAutoRefresh } from "@/components/submission-list-auto-refresh";
+import { getLanguageDisplayLabel } from "@/lib/judge/languages";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("submissions");
@@ -204,7 +205,7 @@ export default async function SubmissionsPage({
                       tCommon("unknown")
                     )}
                   </TableCell>
-                  <TableCell>{sub.language}</TableCell>
+                  <TableCell>{getLanguageDisplayLabel(sub.language)}</TableCell>
                   <TableCell>
                     <SubmissionStatusBadge
                       label={statusLabels[sub.status as keyof typeof statusLabels] ?? sub.status}

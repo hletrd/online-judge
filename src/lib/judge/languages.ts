@@ -61,16 +61,16 @@ export interface JudgeLanguageDefinition {
 export const DOCKER_IMAGE_RUNTIME_INFO: Record<string, string> = {
   "judge-cpp:latest": `Alpine 3.21 / GCC ${JUDGE_TOOLCHAIN_VERSIONS.fortran}`,
   "judge-clang:latest": `Alpine 3.21 / Clang ${JUDGE_TOOLCHAIN_VERSIONS.clang}`,
-  "judge-python:latest": `Debian Bookworm / CPython ${JUDGE_TOOLCHAIN_VERSIONS.python}`,
-  "judge-node:latest": `Debian Bookworm / Node.js ${JUDGE_TOOLCHAIN_VERSIONS.nodejs}`,
-  "judge-jvm:latest": `Ubuntu Noble / Temurin ${JUDGE_TOOLCHAIN_VERSIONS.java} + Kotlin ${JUDGE_TOOLCHAIN_VERSIONS.kotlin}`,
-  "judge-rust:latest": `Debian Bookworm / Rust ${JUDGE_TOOLCHAIN_VERSIONS.rust}`,
-  "judge-go:latest": `Debian Bookworm / Go ${JUDGE_TOOLCHAIN_VERSIONS.go}`,
+  "judge-python:latest": `Alpine / CPython ${JUDGE_TOOLCHAIN_VERSIONS.python}`,
+  "judge-node:latest": `Alpine / Node.js ${JUDGE_TOOLCHAIN_VERSIONS.nodejs}`,
+  "judge-jvm:latest": `Alpine / Temurin ${JUDGE_TOOLCHAIN_VERSIONS.java} + Kotlin ${JUDGE_TOOLCHAIN_VERSIONS.kotlin}`,
+  "judge-rust:latest": `Alpine / Rust ${JUDGE_TOOLCHAIN_VERSIONS.rust}`,
+  "judge-go:latest": `Alpine / Go ${JUDGE_TOOLCHAIN_VERSIONS.go}`,
   "judge-swift:latest": `Ubuntu Noble / Swift ${JUDGE_TOOLCHAIN_VERSIONS.swift}`,
-  "judge-csharp:latest": `Mono ${JUDGE_TOOLCHAIN_VERSIONS.mono}`,
+  "judge-csharp:latest": `Debian Slim / Mono ${JUDGE_TOOLCHAIN_VERSIONS.mono}`,
   "judge-r:latest": `R ${JUDGE_TOOLCHAIN_VERSIONS.r}`,
-  "judge-perl:latest": `Debian Bookworm / Perl ${JUDGE_TOOLCHAIN_VERSIONS.perl}`,
-  "judge-php:latest": `Debian Bookworm / PHP ${JUDGE_TOOLCHAIN_VERSIONS.php}`,
+  "judge-perl:latest": `Alpine / Perl ${JUDGE_TOOLCHAIN_VERSIONS.perl}`,
+  "judge-php:latest": `Alpine / PHP ${JUDGE_TOOLCHAIN_VERSIONS.php}`,
   "judge-ruby:latest": `Alpine 3.21 / Ruby ${JUDGE_TOOLCHAIN_VERSIONS.ruby}`,
   "judge-lua:latest": `Alpine 3.21 / Lua ${JUDGE_TOOLCHAIN_VERSIONS.lua}`,
   "judge-haskell:latest": `Debian Bookworm / GHC ${JUDGE_TOOLCHAIN_VERSIONS.haskell}`,
@@ -83,26 +83,26 @@ export const DOCKER_IMAGE_RUNTIME_INFO: Record<string, string> = {
   "judge-d:latest": `Ubuntu Noble / LDC2 ${JUDGE_TOOLCHAIN_VERSIONS.d}`,
   "judge-racket:latest": `Debian Bookworm / Racket ${JUDGE_TOOLCHAIN_VERSIONS.racket}`,
   "judge-v:latest": `Alpine 3.21 / V ${JUDGE_TOOLCHAIN_VERSIONS.vlang}`,
-  "judge-fortran:latest": `Debian Bookworm / GFortran ${JUDGE_TOOLCHAIN_VERSIONS.fortran}`,
-  "judge-pascal:latest": `Debian Bookworm / FPC ${JUDGE_TOOLCHAIN_VERSIONS.fpc}`,
+  "judge-fortran:latest": `Alpine 3.21 / GFortran ${JUDGE_TOOLCHAIN_VERSIONS.fortran}`,
+  "judge-pascal:latest": `Alpine 3.21 / FPC ${JUDGE_TOOLCHAIN_VERSIONS.fpc}`,
   "judge-brainfuck:latest": "Debian Bookworm / beef interpreter",
-  "judge-cobol:latest": `Debian Bookworm / GnuCOBOL ${JUDGE_TOOLCHAIN_VERSIONS.gnucobol}`,
-  "judge-scala:latest": `Ubuntu Noble / Scala ${JUDGE_TOOLCHAIN_VERSIONS.scala}`,
+  "judge-cobol:latest": `Alpine 3.21 / GnuCOBOL ${JUDGE_TOOLCHAIN_VERSIONS.gnucobol}`,
+  "judge-scala:latest": `Alpine / Scala ${JUDGE_TOOLCHAIN_VERSIONS.scala}`,
   "judge-erlang:latest": `Debian Bookworm / OTP ${JUDGE_TOOLCHAIN_VERSIONS.erlang}`,
   "judge-commonlisp:latest": `Debian Bookworm / SBCL ${JUDGE_TOOLCHAIN_VERSIONS.sbcl}`,
   "judge-bash:latest": `Debian Bookworm / Bash ${JUDGE_TOOLCHAIN_VERSIONS.bash}`,
   "judge-esoteric:latest": "Debian Bookworm / Befunge-93 + Aheui (PyPI) + Hyeong (Rust) + Whitespace (Python)",
-  "judge-ada:latest": `Debian Bookworm / GNAT (GCC ${JUDGE_TOOLCHAIN_VERSIONS.gnat})`,
-  "judge-clojure:latest": `Ubuntu Noble / Clojure ${JUDGE_TOOLCHAIN_VERSIONS.clojure} / Temurin ${JUDGE_TOOLCHAIN_VERSIONS.java}`,
-  "judge-prolog:latest": `Debian Bookworm / SWI-Prolog ${JUDGE_TOOLCHAIN_VERSIONS.swiprolog}`,
+  "judge-ada:latest": `Alpine 3.21 / GNAT (GCC ${JUDGE_TOOLCHAIN_VERSIONS.gnat})`,
+  "judge-clojure:latest": `Alpine / Clojure ${JUDGE_TOOLCHAIN_VERSIONS.clojure} / Temurin ${JUDGE_TOOLCHAIN_VERSIONS.java}`,
+  "judge-prolog:latest": `Alpine 3.21 / SWI-Prolog ${JUDGE_TOOLCHAIN_VERSIONS.swiprolog}`,
   "judge-tcl:latest": `Alpine 3.21 / Tcl ${JUDGE_TOOLCHAIN_VERSIONS.tcl}`,
   "judge-awk:latest": `Alpine 3.21 / GNU AWK ${JUDGE_TOOLCHAIN_VERSIONS.gawk}`,
   "judge-scheme:latest": `Debian Bookworm / Chicken Scheme ${JUDGE_TOOLCHAIN_VERSIONS.chicken}`,
-  "judge-groovy:latest": `Ubuntu Jammy / Groovy ${JUDGE_TOOLCHAIN_VERSIONS.groovy} / Temurin 21`,
-  "judge-octave:latest": `Debian Bookworm / GNU Octave ${JUDGE_TOOLCHAIN_VERSIONS.octave}`,
+  "judge-groovy:latest": `Alpine / Groovy ${JUDGE_TOOLCHAIN_VERSIONS.groovy} / Temurin 21`,
+  "judge-octave:latest": `Alpine 3.21 / GNU Octave ${JUDGE_TOOLCHAIN_VERSIONS.octave}`,
   "judge-crystal:latest": `Debian Bookworm / Crystal ${JUDGE_TOOLCHAIN_VERSIONS.crystal}`,
   "judge-powershell:latest": `Debian Bookworm / PowerShell ${JUDGE_TOOLCHAIN_VERSIONS.powershell}`,
-  "judge-postscript:latest": `Debian Bookworm / Ghostscript ${JUDGE_TOOLCHAIN_VERSIONS.ghostscript}`,
+  "judge-postscript:latest": `Alpine 3.21 / Ghostscript ${JUDGE_TOOLCHAIN_VERSIONS.ghostscript}`,
 };
 
 export function getDockerImageRuntimeInfo(dockerImage: string): string {
@@ -706,6 +706,13 @@ export function isJudgeLanguage(language: string): language is Language {
 
 export function getJudgeLanguageDefinition(language: string) {
   return isJudgeLanguage(language) ? JUDGE_LANGUAGE_CONFIGS[language] : null;
+}
+
+/** Return a human-readable label such as "C++ (C++20)" or "Python". */
+export function getLanguageDisplayLabel(language: string): string {
+  const def = getJudgeLanguageDefinition(language);
+  if (!def) return language;
+  return def.standard ? `${def.displayName} (${def.standard})` : def.displayName;
 }
 
 export function serializeJudgeCommand(command: string[] | null | undefined) {

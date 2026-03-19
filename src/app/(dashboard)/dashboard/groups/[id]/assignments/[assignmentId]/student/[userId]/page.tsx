@@ -18,6 +18,7 @@ import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
+import { getLanguageDisplayLabel } from "@/lib/judge/languages";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -229,7 +230,7 @@ export default async function StudentSubmissionsPage({
                                 ? tSubmissions("memoryValue", { value: sub.memoryUsedKb })
                                 : "-"}
                             </TableCell>
-                            <TableCell>{sub.language}</TableCell>
+                            <TableCell>{getLanguageDisplayLabel(sub.language)}</TableCell>
                             <TableCell>
                               {sub.submittedAt
                                 ? formatDateTimeInTimeZone(sub.submittedAt, locale, timeZone)

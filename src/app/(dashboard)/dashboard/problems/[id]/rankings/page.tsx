@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
+import { getLanguageDisplayLabel } from "@/lib/judge/languages";
 
 export default async function ProblemRankingsPage({
   params,
@@ -141,7 +142,7 @@ export default async function ProblemRankingsPage({
                     </TableCell>
                     <TableCell>{row.name}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{row.language}</Badge>
+                      <Badge variant="outline">{getLanguageDisplayLabel(row.language)}</Badge>
                     </TableCell>
                     <TableCell className="text-right font-mono">
                       {row.executionTimeMs ?? "-"}

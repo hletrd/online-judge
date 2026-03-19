@@ -18,6 +18,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useSubmissionPolling, normalizeSubmission } from "@/hooks/use-submission-polling";
 import type { SubmissionDetailView } from "@/hooks/use-submission-polling";
 import { SubmissionResultPanel } from "./_components/submission-result-panel";
+import { getLanguageDisplayLabel } from "@/lib/judge/languages";
 import { CommentSection } from "./_components/comment-section";
 
 type SubmissionDetailClientProps = {
@@ -132,7 +133,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
                 </Badge>
               )}
               <Badge variant="outline">
-                {t("table.language")}: {submission.language}
+                {t("table.language")}: {getLanguageDisplayLabel(submission.language)}
               </Badge>
               <SubmissionStatusBadge
                 label={t(`status.${submission.status}` as Parameters<typeof t>[0]) ?? submission.status}

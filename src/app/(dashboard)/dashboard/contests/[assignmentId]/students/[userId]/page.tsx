@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
+import { getLanguageDisplayLabel } from "@/lib/judge/languages";
 
 export default async function StudentDetailPage({
   params,
@@ -160,7 +161,7 @@ export default async function StudentDetailPage({
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs font-mono">
-                        {sub.language}
+                        {getLanguageDisplayLabel(sub.language)}
                       </Badge>
                     </TableCell>
                     <TableCell>
