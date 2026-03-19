@@ -2,8 +2,8 @@
 # =============================================================================
 # JudgeKit Docker Deployment Script
 #
-# Builds Docker images locally, transfers them to the target VM via SSH,
-# and starts the production stack with nginx reverse proxy.
+# Syncs source code to the target VM and builds Docker images on the server,
+# then starts the production stack with nginx reverse proxy.
 #
 # Usage:
 #   ./deploy-docker.sh                    # Full deployment
@@ -16,7 +16,6 @@
 #   REMOTE_HOST     — Override target host (default: 10.50.1.116)
 #   REMOTE_USER     — Override target user (default: platform)
 #   DOMAIN          — Override domain name (default: oj-internal.maum.ai)
-#   PLATFORM        — Docker platform (default: linux/amd64, use linux/arm64 for ARM hosts)
 # =============================================================================
 set -euo pipefail
 
@@ -27,7 +26,6 @@ REMOTE_HOST="${REMOTE_HOST:-10.50.1.116}"
 REMOTE_USER="${REMOTE_USER:-platform}"
 REMOTE_DIR="/home/${REMOTE_USER}/judgekit"
 DOMAIN="${DOMAIN:-oj-internal.maum.ai}"
-PLATFORM="${PLATFORM:-linux/amd64}"
 APP_PORT=3100
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -89,12 +87,18 @@ remote_copy() {
     fi
 }
 
+remote_rsync() {
+    if [[ -n "${SSH_PASSWORD:-}" ]]; then
+        sshpass -p "$SSH_PASSWORD" rsync -e "ssh $SSH_OPTS" "$@"
+    else
+        rsync -e "ssh $SSH_OPTS" "$@"
+    fi
+}
+
 # ---------------------------------------------------------------------------
 # Pre-flight checks
 # ---------------------------------------------------------------------------
 info "Pre-flight checks..."
-
-command -v docker >/dev/null 2>&1 || die "docker is not installed locally"
 
 if [[ -n "${SSH_PASSWORD:-}" ]]; then
     command -v sshpass >/dev/null 2>&1 || die "sshpass is required when SSH_PASSWORD is set"
@@ -104,9 +108,15 @@ if [[ -n "${SSH_KEY:-}" && ! -f "${SSH_KEY}" ]]; then
     die "SSH key not found: ${SSH_KEY}"
 fi
 
+command -v rsync >/dev/null 2>&1 || die "rsync is not installed locally"
+
 # Test SSH connectivity
 remote "echo ok" >/dev/null 2>&1 || die "Cannot SSH to ${REMOTE_USER}@${REMOTE_HOST}"
 success "SSH connection to ${REMOTE_HOST} verified"
+
+# Verify docker is available on the remote host
+remote "docker info >/dev/null 2>&1" || die "docker is not available on the remote host"
+success "Remote docker verified"
 
 # ---------------------------------------------------------------------------
 # Step 1: Generate .env.production if it does not exist
@@ -138,79 +148,77 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Step 2: Build Docker images
+# Step 2: Sync source code to remote host
+# ---------------------------------------------------------------------------
+info "Syncing source code to ${REMOTE_HOST}:${REMOTE_DIR}..."
+remote "mkdir -p ${REMOTE_DIR}"
+
+remote_rsync -az --delete \
+    --exclude='node_modules/' \
+    --exclude='.next/' \
+    --exclude='.git/' \
+    --exclude='data/' \
+    --exclude='.env*' \
+    --exclude='*.db' \
+    --exclude='judge-worker-rs/target/' \
+    --exclude='rate-limiter-rs/target/' \
+    --exclude='.omc/' \
+    --exclude='.claude/' \
+    --exclude='tests/' \
+    --exclude='.playwright/' \
+    --exclude='backups/' \
+    --exclude='._*' \
+    "${SCRIPT_DIR}/" \
+    "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/"
+
+info "Transferring .env.production..."
+remote_copy "${SCRIPT_DIR}/.env.production" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/.env.production"
+
+success "Source code synced to remote"
+
+# ---------------------------------------------------------------------------
+# Step 3: Build Docker images on the remote host
 # ---------------------------------------------------------------------------
 if [[ "$SKIP_BUILD" == false ]]; then
-    info "Building app image (judgekit-app:latest)..."
-    docker build --platform ${PLATFORM} -t judgekit-app:latest -f "${SCRIPT_DIR}/Dockerfile" "${SCRIPT_DIR}"
-    success "App image built"
+    info "Building app image on ${REMOTE_HOST} (judgekit-app:latest)..."
+    remote "cd ${REMOTE_DIR} && docker build -t judgekit-app:latest -f Dockerfile ."
+    success "App image built on remote"
 
-    info "Building judge worker image (judgekit-judge-worker:latest)..."
-    docker build --platform ${PLATFORM} -t judgekit-judge-worker:latest -f "${SCRIPT_DIR}/Dockerfile.judge-worker" "${SCRIPT_DIR}"
-    success "Judge worker image built"
+    info "Building judge worker image on ${REMOTE_HOST} (judgekit-judge-worker:latest)..."
+    remote "cd ${REMOTE_DIR} && docker build -t judgekit-judge-worker:latest -f Dockerfile.judge-worker ."
+    success "Judge worker image built on remote"
 
     if [[ "$SKIP_LANGUAGES" == false ]]; then
-        info "Building judge language images..."
-        docker compose -f "${SCRIPT_DIR}/docker-compose.yml" build \
-            judge-cpp judge-python judge-node judge-jvm judge-rust judge-go
-        success "Judge language images built"
+        info "Building judge language images on ${REMOTE_HOST}..."
+        remote "cd ${REMOTE_DIR} && (docker compose -f docker-compose.yml build \
+            judge-cpp judge-python judge-node judge-jvm judge-rust judge-go 2>/dev/null || \
+            docker-compose -f docker-compose.yml build \
+            judge-cpp judge-python judge-node judge-jvm judge-rust judge-go)"
+        success "Judge language images built on remote"
     fi
 else
     info "Skipping image build (--skip-build)"
 fi
 
 # ---------------------------------------------------------------------------
-# Step 3: Save images to tarball
+# Step 4: Set up docker-compose config on remote
 # ---------------------------------------------------------------------------
-info "Saving Docker images to tarball..."
-IMAGES="judgekit-app:latest judgekit-judge-worker:latest"
-if [[ "$SKIP_LANGUAGES" == false && "$SKIP_BUILD" == false ]]; then
-    IMAGES="$IMAGES judge-cpp:latest judge-python:latest judge-node:latest judge-jvm:latest judge-rust:latest judge-go:latest"
-fi
-
-TARBALL="/tmp/judgekit-images.tar.gz"
-docker save $IMAGES | gzip > "$TARBALL"
-TARBALL_SIZE=$(du -h "$TARBALL" | cut -f1)
-success "Images saved ($TARBALL_SIZE)"
+info "Setting up docker-compose config on remote..."
+remote "cp -f ${REMOTE_DIR}/docker-compose.production.yml ${REMOTE_DIR}/docker-compose.yml.deploy 2>/dev/null || true"
+success "Config ready"
 
 # ---------------------------------------------------------------------------
-# Step 4: Transfer images to remote host
-# ---------------------------------------------------------------------------
-info "Transferring images to ${REMOTE_HOST} (this may take a while)..."
-remote_copy "$TARBALL" "${REMOTE_USER}@${REMOTE_HOST}:/tmp/judgekit-images.tar.gz"
-success "Images transferred"
-
-# ---------------------------------------------------------------------------
-# Step 5: Set up remote directory and transfer config
-# ---------------------------------------------------------------------------
-info "Setting up remote directory ${REMOTE_DIR}..."
-remote "mkdir -p ${REMOTE_DIR}"
-
-info "Transferring deployment files..."
-remote_copy "${SCRIPT_DIR}/docker-compose.production.yml" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/docker-compose.yml"
-remote_copy "${SCRIPT_DIR}/.env.production" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/.env.production"
-remote_copy "${SCRIPT_DIR}/docker/seccomp-profile.json" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/seccomp-profile.json"
-success "Deployment files transferred"
-
-# ---------------------------------------------------------------------------
-# Step 6: Load images on remote host
-# ---------------------------------------------------------------------------
-info "Loading Docker images on ${REMOTE_HOST}..."
-remote "docker load < /tmp/judgekit-images.tar.gz && rm -f /tmp/judgekit-images.tar.gz"
-success "Docker images loaded on remote"
-
-# ---------------------------------------------------------------------------
-# Step 7: Stop old containers and start new ones
+# Step 5: Stop old containers and start new ones
 # ---------------------------------------------------------------------------
 info "Stopping existing containers (if any)..."
-remote "cd ${REMOTE_DIR} && cp -f .env.production .env && (docker compose down --remove-orphans 2>/dev/null || docker-compose down --remove-orphans 2>/dev/null || true)"
+remote "cd ${REMOTE_DIR} && cp -f .env.production .env && (docker compose -f docker-compose.production.yml down --remove-orphans 2>/dev/null || docker-compose -f docker-compose.production.yml down --remove-orphans 2>/dev/null || true)"
 
 info "Starting containers..."
-remote "cd ${REMOTE_DIR} && (docker compose up -d 2>/dev/null || docker-compose up -d)"
+remote "cd ${REMOTE_DIR} && (docker compose -f docker-compose.production.yml --env-file .env.production up -d 2>/dev/null || docker-compose -f docker-compose.production.yml --env-file .env.production up -d)"
 success "Containers started"
 
 # ---------------------------------------------------------------------------
-# Step 8: Run database migrations
+# Step 6: Run database migrations
 # ---------------------------------------------------------------------------
 info "Waiting for app container to be healthy..."
 for i in $(seq 1 30); do
@@ -250,7 +258,7 @@ console.log('Migration complete: ' + files.length + ' files processed');
 success "Database migrated"
 
 # ---------------------------------------------------------------------------
-# Step 9: Set up nginx reverse proxy
+# Step 7: Set up nginx reverse proxy
 # ---------------------------------------------------------------------------
 info "Configuring nginx reverse proxy for ${DOMAIN}..."
 SUDO_CMD="sudo"
@@ -326,7 +334,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Step 10: Verify deployment
+# Step 8: Verify deployment
 # ---------------------------------------------------------------------------
 info "Verifying deployment..."
 sleep 3
@@ -336,11 +344,8 @@ if [[ "$HTTP_CODE" =~ ^(200|302|308)$ ]]; then
     success "JudgeKit is responding (HTTP ${HTTP_CODE})"
 else
     warn "App returned HTTP ${HTTP_CODE} — it may still be starting up"
-    warn "Check logs: ssh ${REMOTE_USER}@${REMOTE_HOST} 'cd ${REMOTE_DIR} && docker compose logs -f'"
+    warn "Check logs: ssh ${REMOTE_USER}@${REMOTE_HOST} 'cd ${REMOTE_DIR} && docker compose -f docker-compose.production.yml logs -f'"
 fi
-
-# Cleanup local temp
-rm -f "$TARBALL"
 
 # ---------------------------------------------------------------------------
 # Summary
@@ -351,7 +356,7 @@ success "Deployment complete!"
 echo "==========================================================================="
 info "URL:        http://${DOMAIN}"
 info "Remote dir: ${REMOTE_DIR}"
-info "Logs:       ssh ${REMOTE_USER}@${REMOTE_HOST} 'cd ${REMOTE_DIR} && docker compose logs -f'"
+info "Logs:       ssh ${REMOTE_USER}@${REMOTE_HOST} 'cd ${REMOTE_DIR} && docker compose -f docker-compose.production.yml logs -f'"
 info "Seed admin: ssh ${REMOTE_USER}@${REMOTE_HOST} 'docker exec -it judgekit-app node scripts/seed.ts'"
-info "Restart:    ssh ${REMOTE_USER}@${REMOTE_HOST} 'cd ${REMOTE_DIR} && docker compose --env-file .env.production restart'"
+info "Restart:    ssh ${REMOTE_USER}@${REMOTE_HOST} 'cd ${REMOTE_DIR} && docker compose -f docker-compose.production.yml --env-file .env.production restart'"
 echo "==========================================================================="
