@@ -59,7 +59,7 @@ static KOTLIN_COMPILE: &[&str] = &[
     "kotlinc", "-J-Djava.io.tmpdir=/workspace", "/workspace/solution.kt",
     "-include-runtime", "-d", "/workspace/solution.jar",
 ];
-static KOTLIN_RUN: &[&str] = &["java", "-Djava.io.tmpdir=/workspace", "-jar", "/workspace/solution.jar"];
+static KOTLIN_RUN: &[&str] = &["java", "-Djava.io.tmpdir=/workspace", "-cp", "/opt/kotlinc/lib/kotlin-stdlib.jar:/workspace/solution.jar", "SolutionKt"];
 
 static RUST_COMPILE: &[&str] = &[
     "rustc", "-O", "-o", "/workspace/solution", "/workspace/solution.rs",
