@@ -1,11 +1,40 @@
-FROM swift:6.2.4-noble
+FROM swift:6.2.4-noble AS toolchain
+
+# Remove unnecessary tools
+RUN rm -f /usr/bin/swift-package /usr/bin/swift-format \
+          /usr/bin/swift-build-sdk-interfaces /usr/bin/swift-help \
+          /usr/bin/swift-build /usr/bin/swift-test /usr/bin/swift-run \
+          /usr/bin/swift-sdk /usr/bin/swift-experimental-sdk \
+          /usr/bin/swift-package-collection /usr/bin/swift-package-registry \
+          /usr/bin/swift-build-tool /usr/bin/swift-api-checker.py \
+          /usr/bin/swift-plugin-server /usr/bin/swift-cache-tool \
+          /usr/bin/swift-legacy-driver /usr/bin/swiftc-legacy-driver
+
+FROM ubuntu:24.04
+
+# Install minimal runtime deps for Swift compiler
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      libc6-dev libgcc-s1 libstdc++6 zlib1g-dev binutils libcurl4 libxml2 \
+      libncurses6 libsqlite3-0 libuuid1 libedit2 libpython3.12 clang && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy Swift toolchain
+COPY --from=toolchain /usr/lib/swift /usr/lib/swift
+COPY --from=toolchain /usr/lib/clang /usr/lib/clang
+COPY --from=toolchain /usr/bin/swift /usr/bin/swift
+COPY --from=toolchain /usr/bin/swiftc /usr/bin/swiftc
+COPY --from=toolchain /usr/bin/swift-frontend /usr/bin/swift-frontend
+COPY --from=toolchain /usr/bin/swift-driver /usr/bin/swift-driver
+COPY --from=toolchain /usr/bin/swift-autolink-extract /usr/bin/swift-autolink-extract
+COPY --from=toolchain /usr/bin/swift-demangle /usr/bin/swift-demangle
 
 ENV HOME=/workspace
+ENV LD_LIBRARY_PATH=/usr/lib/swift/linux
 
 RUN useradd --create-home --shell /usr/sbin/nologin judge && \
     mkdir -p /workspace && \
     chown judge:judge /workspace
 
 WORKDIR /workspace
-
 USER judge

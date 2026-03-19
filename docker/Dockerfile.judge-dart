@@ -1,12 +1,28 @@
-FROM dart:3.8
+FROM dart:3.8 AS toolchain
+
+# Remove unnecessary snapshots and tools (~250 MB savings)
+RUN rm -f /usr/lib/dart/bin/snapshots/analysis_server.dart.snapshot \
+          /usr/lib/dart/bin/snapshots/dartdevc.dart.snapshot \
+          /usr/lib/dart/bin/snapshots/dartdevc_aot.dart.snapshot \
+          /usr/lib/dart/bin/snapshots/dart2js_aot.dart.snapshot \
+          /usr/lib/dart/bin/snapshots/dart2wasm_product.snapshot \
+          /usr/lib/dart/bin/snapshots/dart_tooling_daemon.dart.snapshot \
+          /usr/lib/dart/bin/snapshots/dart_tooling_daemon_aot.dart.snapshot \
+          /usr/lib/dart/bin/snapshots/dds_aot.dart.snapshot && \
+    rm -rf /usr/lib/dart/bin/resources/devtools
+
+FROM debian:bookworm-slim
+
+COPY --from=toolchain /usr/lib/dart /usr/lib/dart
+
+RUN ln -s /usr/lib/dart/bin/dart /usr/bin/dart && \
+    useradd --create-home --shell /usr/sbin/nologin judge && \
+    mkdir -p /workspace /tmp/pub-cache /tmp/xdg-config && \
+    chown judge:judge /workspace /tmp/pub-cache /tmp/xdg-config
 
 ENV PUB_CACHE=/tmp/pub-cache
 ENV DART_ANALYTICS_DISABLED=1
 ENV XDG_CONFIG_HOME=/tmp/xdg-config
-
-RUN useradd --create-home --shell /usr/sbin/nologin judge && \
-    mkdir -p /workspace /tmp/pub-cache /tmp/xdg-config && \
-    chown judge:judge /workspace /tmp/pub-cache /tmp/xdg-config
 
 WORKDIR /workspace
 USER judge

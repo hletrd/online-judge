@@ -67,7 +67,7 @@ export const DOCKER_IMAGE_RUNTIME_INFO: Record<string, string> = {
   "judge-rust:latest": `Debian Bookworm / Rust ${JUDGE_TOOLCHAIN_VERSIONS.rust}`,
   "judge-go:latest": `Alpine / Go ${JUDGE_TOOLCHAIN_VERSIONS.go}`,
   "judge-swift:latest": `Ubuntu Noble / Swift ${JUDGE_TOOLCHAIN_VERSIONS.swift}`,
-  "judge-csharp:latest": `Debian Slim / Mono ${JUDGE_TOOLCHAIN_VERSIONS.mono}`,
+  "judge-csharp:latest": `Mono ${JUDGE_TOOLCHAIN_VERSIONS.mono}`,
   "judge-r:latest": `R ${JUDGE_TOOLCHAIN_VERSIONS.r}`,
   "judge-perl:latest": `Alpine 3.21 / Perl ${JUDGE_TOOLCHAIN_VERSIONS.perl}`,
   "judge-php:latest": `Alpine / PHP ${JUDGE_TOOLCHAIN_VERSIONS.php}`,
