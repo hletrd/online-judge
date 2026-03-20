@@ -27,7 +27,7 @@ export function FilterSelect({
     <div>
       <input type="hidden" name={name} value={value} />
       <Select value={value} onValueChange={(v) => setValue(v ?? "")}>
-        <SelectTrigger className="w-48 h-8">
+        <SelectTrigger className="w-48 h-10">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
