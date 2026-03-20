@@ -402,7 +402,7 @@ async function waitForJudging(
 }
 
 test("submit A+B in all supported languages and verify judging", async ({ browser }) => {
-  test.setTimeout(900_000); // 15 minutes for 55 languages
+  test.setTimeout(600_000); // 10 minutes (parallel polling is much faster)
 
   const context = await browser.newContext();
   const page = await context.newPage();
@@ -464,9 +464,11 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
   const results: Result[] = [];
   const languages = Object.keys(SOLUTIONS);
 
+  // ── Phase 1: Batch submit all languages ──
+  const pending: Array<{ language: string; submissionId: string }> = [];
+
   for (const language of languages) {
     try {
-      // Submit with rate-limit retry
       let subRes!: Awaited<ReturnType<typeof apiPost>>;
       for (let attempt = 1; attempt <= 3; attempt++) {
         subRes = await apiPost(context, "/api/v1/submissions", {
@@ -494,24 +496,12 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
 
       const submissionId = (await subRes.json()).data?.id;
       console.log(`[${language}] Submitted: ${submissionId}`);
+      pending.push({ language, submissionId });
 
-      // Wait for result
-      const result = await waitForJudging(context, submissionId);
-      console.log(
-        `[${language}] ${result.status} (score: ${result.score})${
-          result.compileOutput ? ` — ${result.compileOutput.slice(0, 120)}` : ""
-        }`
-      );
-
-      results.push({ language, submissionId, ...result });
-
-      // Brief pause between submissions to avoid rate limiting
-      await new Promise((r) => setTimeout(r, 8000));
-
-      // Extra delay for worker cleanup between submissions
-      await new Promise((r) => setTimeout(r, 500));
+      // Brief delay between submissions to avoid rate limiting
+      await new Promise((r) => setTimeout(r, 1_000));
     } catch (e) {
-      console.log(`[${language}] Error: ${e}`);
+      console.log(`[${language}] Submit error: ${e}`);
       results.push({
         language,
         submissionId: "-",
@@ -521,6 +511,34 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
       });
     }
   }
+
+  console.log(`\nAll ${pending.length} submissions sent, polling results in parallel…`);
+
+  // ── Phase 2: Poll all submissions in parallel ──
+  const pollResults = await Promise.all(
+    pending.map(async ({ language, submissionId }) => {
+      try {
+        const result = await waitForJudging(context, submissionId);
+        console.log(
+          `[${language}] ${result.status} (score: ${result.score})${
+            result.compileOutput ? ` — ${result.compileOutput.slice(0, 120)}` : ""
+          }`
+        );
+        return { language, submissionId, ...result };
+      } catch (e) {
+        console.log(`[${language}] Poll error: ${e}`);
+        return {
+          language,
+          submissionId,
+          status: "test_error",
+          score: 0,
+          compileOutput: String(e),
+        };
+      }
+    })
+  );
+
+  results.push(...pollResults);
 
   // Retry failed languages once (handles transient BEAM VM / Docker startup issues)
   const retryable = results.filter(
