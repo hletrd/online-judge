@@ -663,6 +663,10 @@ static FREEBASIC_CONFIG: LanguageConfig = LanguageConfig {
     run_command: FREEBASIC_RUN,
 };
 
+// B
+static B_COMPILE: &[&str] = &["bcause", "-o", "/workspace/solution", "/workspace/solution.b"];
+static B_RUN: &[&str] = &["/workspace/solution"];
+
 // Smalltalk (GNU Smalltalk)
 static SMALLTALK_RUN: &[&str] = &["gst", "/workspace/solution.st"];
 
@@ -671,6 +675,13 @@ static SMALLTALK_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-smalltalk:latest",
     compile_command: None,
     run_command: SMALLTALK_RUN,
+};
+
+static B_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".b",
+    docker_image: "judge-b:latest",
+    compile_command: Some(B_COMPILE),
+    run_command: B_RUN,
 };
 
 pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
@@ -736,6 +747,7 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::Apl => Some(&APL_CONFIG),
         Language::Freebasic => Some(&FREEBASIC_CONFIG),
         Language::Smalltalk => Some(&SMALLTALK_CONFIG),
+        Language::B => Some(&B_CONFIG),
         Language::Unknown => None,
     }
 }
@@ -809,6 +821,7 @@ mod tests {
             Language::Apl,
             Language::Freebasic,
             Language::Smalltalk,
+            Language::B,
         ];
 
         for lang in &languages {

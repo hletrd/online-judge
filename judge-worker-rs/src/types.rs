@@ -117,6 +117,8 @@ pub enum Language {
     Apl,
     Freebasic,
     Smalltalk,
+    #[serde(rename = "b")]
+    B,
     #[serde(other)]
     Unknown,
 }

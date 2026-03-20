@@ -21,6 +21,7 @@ export type SubmissionStatus =
 export type ExamMode = "none" | "scheduled" | "windowed";
 export type ScoringModel = "ioi" | "icpc";
 export type Language =
+  | "b"
   | "c17"
   | "c23"
   | "cpp20"

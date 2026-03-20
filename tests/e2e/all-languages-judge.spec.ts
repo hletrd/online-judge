@@ -309,6 +309,16 @@ parts := line subStrings: $ .
 a := (parts at: 1) asInteger.
 b := (parts at: 2) asInteger.
 Transcript show: (a + b) printString; cr.`,
+  b: `main() {
+    extrn getchar, printf;
+    auto a, b, c;
+    a = 0; b = 0;
+    c = getchar();
+    while(c != ' ') { a = a * 10 + c - '0'; c = getchar(); }
+    c = getchar();
+    while(c != '*n' & c != 4) { b = b * 10 + c - '0'; c = getchar(); }
+    printf("%d*n", a + b);
+}`,
 };
 
 // Keep inputs as positive single-digit numbers with single-digit sums (≤ 9)

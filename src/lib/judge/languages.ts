@@ -108,6 +108,7 @@ export const DOCKER_IMAGE_RUNTIME_INFO: Record<string, string> = {
   "judge-apl:latest": "Debian Bookworm / GNU APL 1.8",
   "judge-freebasic:latest": "Debian Bookworm / FreeBASIC 1.10.1",
   "judge-smalltalk:latest": "Ubuntu 22.04 / GNU Smalltalk",
+  "judge-b:latest": "Debian Bookworm / BCause B compiler",
 };
 
 export function getDockerImageRuntimeInfo(dockerImage: string): string {
@@ -760,6 +761,16 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     compiler: null,
     compileCommand: null,
     runCommand: ["gst", "/workspace/solution.st"],
+  },
+  b: {
+    language: "b",
+    displayName: "B",
+    standard: "BCause",
+    extension: ".b",
+    dockerImage: "judge-b:latest",
+    compiler: "BCause B compiler",
+    compileCommand: ["bcause", "-o", "/workspace/solution", "/workspace/solution.b"],
+    runCommand: ["/workspace/solution"],
   },
 };
 
