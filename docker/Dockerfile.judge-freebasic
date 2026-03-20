@@ -1,5 +1,11 @@
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends freebasic && \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates libncurses5 libx11-6 libxext6 libxpm4 libxrandr2 \
+        libgpm2 libtinfo6 gcc libc6-dev libgcc-12-dev && \
+    curl -sL https://sourceforge.net/projects/fbc/files/FreeBASIC-1.10.1/Binaries-Linux/FreeBASIC-1.10.1-linux-x86_64.tar.gz/download | \
+        tar -xzf - -C /opt && \
+    cd /opt/FreeBASIC-1.10.1-linux-x86_64 && ./install.sh -i /usr/local && \
+    rm -rf /opt/FreeBASIC-1.10.1-linux-x86_64 && \
     rm -rf /var/lib/apt/lists/* && \
     useradd --create-home --shell /usr/sbin/nologin judge && \
     mkdir -p /workspace && chown judge:judge /workspace

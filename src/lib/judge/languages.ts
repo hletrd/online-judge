@@ -105,9 +105,9 @@ export const DOCKER_IMAGE_RUNTIME_INFO: Record<string, string> = {
   "judge-postscript:latest": `Alpine 3.21 / Ghostscript ${JUDGE_TOOLCHAIN_VERSIONS.ghostscript}`,
   "judge-fsharp:latest": "Alpine / .NET SDK 8.0 (dotnet fsi)",
   "judge-j:latest": "Debian Bookworm / J 9.6",
-  "judge-apl:latest": "Debian Bookworm / GNU APL",
-  "judge-freebasic:latest": "Debian Bookworm / FreeBASIC",
-  "judge-smalltalk:latest": "Debian Bookworm / GNU Smalltalk",
+  "judge-apl:latest": "Debian Bookworm / GNU APL 1.8",
+  "judge-freebasic:latest": "Debian Bookworm / FreeBASIC 1.10.1",
+  "judge-smalltalk:latest": "Ubuntu 22.04 / GNU Smalltalk",
 };
 
 export function getDockerImageRuntimeInfo(dockerImage: string): string {

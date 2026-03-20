@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim
+FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y --no-install-recommends gnu-smalltalk && \
     rm -rf /var/lib/apt/lists/* && \
     useradd --create-home --shell /usr/sbin/nologin judge && \
