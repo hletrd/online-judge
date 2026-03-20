@@ -103,6 +103,8 @@ export const DOCKER_IMAGE_RUNTIME_INFO: Record<string, string> = {
   "judge-crystal:latest": `Debian Bookworm / Crystal ${JUDGE_TOOLCHAIN_VERSIONS.crystal}`,
   "judge-powershell:latest": `Debian Bookworm / PowerShell ${JUDGE_TOOLCHAIN_VERSIONS.powershell}`,
   "judge-postscript:latest": `Alpine 3.21 / Ghostscript ${JUDGE_TOOLCHAIN_VERSIONS.ghostscript}`,
+  "judge-fsharp:latest": "Alpine / .NET SDK 8.0 (dotnet fsi)",
+  "judge-j:latest": "Debian Bookworm / J 9.6",
 };
 
 export function getDockerImageRuntimeInfo(dockerImage: string): string {
@@ -695,6 +697,36 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     compiler: `Ghostscript ${JUDGE_TOOLCHAIN_VERSIONS.ghostscript}`,
     compileCommand: null,
     runCommand: ["gs", "-q", "-dNODISPLAY", "-dBATCH", "-dNOPAUSE", "-dNOSAFER", "/workspace/solution.ps"],
+  },
+  delphi: {
+    language: "delphi",
+    displayName: "Delphi",
+    standard: "Free Pascal (Delphi mode)",
+    extension: ".dpr",
+    dockerImage: "judge-pascal:latest",
+    compiler: `Free Pascal ${JUDGE_TOOLCHAIN_VERSIONS.fpc} (Delphi mode)`,
+    compileCommand: ["fpc", "-Mdelphi", "-O2", "-o/workspace/solution", "/workspace/solution.dpr"],
+    runCommand: ["/workspace/solution"],
+  },
+  fsharp: {
+    language: "fsharp",
+    displayName: "F#",
+    standard: ".NET 8",
+    extension: ".fsx",
+    dockerImage: "judge-fsharp:latest",
+    compiler: "dotnet fsi (.NET 8)",
+    compileCommand: null,
+    runCommand: ["dotnet", "fsi", "/workspace/solution.fsx"],
+  },
+  j: {
+    language: "j",
+    displayName: "J",
+    standard: "J 9.6",
+    extension: ".ijs",
+    dockerImage: "judge-j:latest",
+    compiler: "jconsole 9.6",
+    compileCommand: null,
+    runCommand: ["jconsole", "/workspace/solution.ijs"],
   },
 };
 

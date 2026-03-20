@@ -285,6 +285,20 @@ main() ->
   (format t "~d~%" (+ a b)))`,
   bash: `read a b
 echo $((a + b))`,
+  delphi: `program Solution;
+var a, b: Integer;
+begin
+  Read(a, b);
+  WriteLn(a + b);
+end.`,
+  fsharp: `open System
+let line = Console.ReadLine()
+let parts = line.Split(' ')
+let a = int parts.[0]
+let b = int parts.[1]
+printfn "%d" (a + b)`,
+  j: `echo +/ ". > ;: stdin ''
+exit ''`,
 };
 
 // Keep inputs as positive single-digit numbers with single-digit sums (≤ 9)

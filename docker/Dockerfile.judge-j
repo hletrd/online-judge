@@ -1,0 +1,10 @@
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
+    curl -sL https://www.jsoftware.com/download/j9.6/install/j9.6.2_linux64.tar.gz | \
+    tar -xzf - -C /opt && \
+    ln -s /opt/j9.6.2/bin/jconsole /usr/local/bin/jconsole && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd --create-home --shell /usr/sbin/nologin judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+WORKDIR /workspace
+USER judge

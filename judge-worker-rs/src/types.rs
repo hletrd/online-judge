@@ -111,6 +111,9 @@ pub enum Language {
     Crystal,
     Powershell,
     Postscript,
+    Delphi,
+    Fsharp,
+    J,
     #[serde(other)]
     Unknown,
 }

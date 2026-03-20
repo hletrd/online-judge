@@ -75,4 +75,7 @@ export type Language =
   | "octave"
   | "crystal"
   | "powershell"
-  | "postscript";
+  | "postscript"
+  | "delphi"
+  | "fsharp"
+  | "j";

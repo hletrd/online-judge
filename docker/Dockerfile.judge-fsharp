@@ -1,0 +1,5 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine
+RUN adduser -D -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+WORKDIR /workspace
+USER judge

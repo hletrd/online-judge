@@ -611,6 +611,37 @@ static POSTSCRIPT_CONFIG: LanguageConfig = LanguageConfig {
     run_command: POSTSCRIPT_RUN,
 };
 
+// Delphi (reuses judge-pascal image via FPC -Mdelphi)
+static DELPHI_COMPILE: &[&str] = &["fpc", "-Mdelphi", "-O2", "-o/workspace/solution", "/workspace/solution.dpr"];
+static DELPHI_RUN: &[&str] = &["/workspace/solution"];
+
+static DELPHI_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".dpr",
+    docker_image: "judge-pascal:latest",
+    compile_command: Some(DELPHI_COMPILE),
+    run_command: DELPHI_RUN,
+};
+
+// F# (script mode via dotnet fsi)
+static FSHARP_RUN: &[&str] = &["dotnet", "fsi", "/workspace/solution.fsx"];
+
+static FSHARP_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".fsx",
+    docker_image: "judge-fsharp:latest",
+    compile_command: None,
+    run_command: FSHARP_RUN,
+};
+
+// J language
+static J_RUN: &[&str] = &["jconsole", "/workspace/solution.ijs"];
+
+static J_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".ijs",
+    docker_image: "judge-j:latest",
+    compile_command: None,
+    run_command: J_RUN,
+};
+
 pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
     match language {
         Language::C17 => Some(&C17_CONFIG),
@@ -668,6 +699,9 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::Crystal => Some(&CRYSTAL_CONFIG),
         Language::Powershell => Some(&POWERSHELL_CONFIG),
         Language::Postscript => Some(&POSTSCRIPT_CONFIG),
+        Language::Delphi => Some(&DELPHI_CONFIG),
+        Language::Fsharp => Some(&FSHARP_CONFIG),
+        Language::J => Some(&J_CONFIG),
         Language::Unknown => None,
     }
 }
@@ -735,6 +769,9 @@ mod tests {
             Language::Crystal,
             Language::Powershell,
             Language::Postscript,
+            Language::Delphi,
+            Language::Fsharp,
+            Language::J,
         ];
 
         for lang in &languages {
