@@ -297,8 +297,7 @@ let parts = line.Split(' ')
 let a = int parts.[0]
 let b = int parts.[1]
 printfn "%d" (a + b)`,
-  j: `echo +/ ". > ;: stdin ''
-exit ''`,
+  j: `input =. dltb (1!:1) 3\necho ": +/ ". input -. LF\nexit ""`,
   apl: `⎕←+/⍎¨(' '≠X)⊆X←⍞`,
   freebasic: `Dim As Integer a, b
 Input a, b
@@ -316,7 +315,7 @@ Transcript show: (a + b) printString; cr.`,
     c = getchar();
     while(c != ' ') { a = a * 10 + c - '0'; c = getchar(); }
     c = getchar();
-    while(c != '*n' & c != 4) { b = b * 10 + c - '0'; c = getchar(); }
+    while(c != 10 & c != -1) { b = b * 10 + c - '0'; c = getchar(); }
     printf("%d*n", a + b);
 }`,
 };
@@ -594,7 +593,6 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
     "apl",         // newly added — Docker image may not yet be stable
     "freebasic",   // newly added — Docker image may not yet be stable
     "smalltalk",   // newly added — Docker image may not yet be stable
-    "j",           // newly added — J interpreter stdin handling
     "fsharp",      // .NET SDK needs HOME writable
   ]);
 
