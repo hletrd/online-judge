@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
 import {
   ChevronLeft,
   ChevronRight,
@@ -13,6 +12,11 @@ interface PaginationControlsProps {
   totalPages: number;
   buildHref: (page: number) => string;
 }
+
+const navBtn = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground size-8";
+const navBtnDisabled = "inline-flex items-center justify-center rounded-md text-sm font-medium size-8 pointer-events-none opacity-40";
+const pageBtn = "inline-flex items-center justify-center rounded-md font-medium transition-colors hover:bg-accent hover:text-accent-foreground size-8 text-xs";
+const pageBtnActive = "inline-flex items-center justify-center rounded-md font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 size-8 text-xs";
 
 function getPageNumbers(current: number, total: number): (number | "...")[] {
   if (total <= 7) {
@@ -54,36 +58,22 @@ export function PaginationControls({
     <div className="flex items-center justify-center gap-1 mt-4">
       {/* First */}
       {currentPage > 1 ? (
-        <Link
-          href={buildHref(1)}
-          aria-label="First page"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-8")}
-        >
+        <Link href={buildHref(1)} aria-label="First page" className={navBtn}>
           <ChevronsLeft className="size-4" aria-hidden="true" />
         </Link>
       ) : (
-        <span
-          aria-hidden="true"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-8 pointer-events-none opacity-40")}
-        >
+        <span aria-hidden="true" className={navBtnDisabled}>
           <ChevronsLeft className="size-4" />
         </span>
       )}
 
       {/* Prev */}
       {currentPage > 1 ? (
-        <Link
-          href={buildHref(currentPage - 1)}
-          aria-label="Previous page"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-8")}
-        >
+        <Link href={buildHref(currentPage - 1)} aria-label="Previous page" className={navBtn}>
           <ChevronLeft className="size-4" aria-hidden="true" />
         </Link>
       ) : (
-        <span
-          aria-hidden="true"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-8 pointer-events-none opacity-40")}
-        >
+        <span aria-hidden="true" className={navBtnDisabled}>
           <ChevronLeft className="size-4" />
         </span>
       )}
@@ -103,10 +93,7 @@ export function PaginationControls({
             href={buildHref(p)}
             aria-label={`Page ${p}`}
             aria-current={p === currentPage ? "page" : undefined}
-            className={cn(
-              buttonVariants({ variant: p === currentPage ? "default" : "ghost", size: "icon" }),
-              "size-8 text-xs"
-            )}
+            className={p === currentPage ? pageBtnActive : pageBtn}
           >
             {p}
           </Link>
@@ -115,36 +102,22 @@ export function PaginationControls({
 
       {/* Next */}
       {currentPage < totalPages ? (
-        <Link
-          href={buildHref(currentPage + 1)}
-          aria-label="Next page"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-8")}
-        >
+        <Link href={buildHref(currentPage + 1)} aria-label="Next page" className={navBtn}>
           <ChevronRight className="size-4" aria-hidden="true" />
         </Link>
       ) : (
-        <span
-          aria-hidden="true"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-8 pointer-events-none opacity-40")}
-        >
+        <span aria-hidden="true" className={navBtnDisabled}>
           <ChevronRight className="size-4" />
         </span>
       )}
 
       {/* Last */}
       {currentPage < totalPages ? (
-        <Link
-          href={buildHref(totalPages)}
-          aria-label="Last page"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-8")}
-        >
+        <Link href={buildHref(totalPages)} aria-label="Last page" className={navBtn}>
           <ChevronsRight className="size-4" aria-hidden="true" />
         </Link>
       ) : (
-        <span
-          aria-hidden="true"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-8 pointer-events-none opacity-40")}
-        >
+        <span aria-hidden="true" className={navBtnDisabled}>
           <ChevronsRight className="size-4" />
         </span>
       )}
