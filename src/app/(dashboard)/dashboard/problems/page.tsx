@@ -425,7 +425,10 @@ export default async function ProblemsPage({
       <Card>
         <CardContent>
           <form className="flex flex-col gap-4 md:flex-row md:items-end" method="get">
-            <div className="flex-1">
+            <div className="flex-1 space-y-1.5">
+              <label className="block text-sm font-medium" htmlFor="problem-search">
+                {t("searchLabel")}
+              </label>
               <Input
                 id="problem-search"
                 name="search"
@@ -436,7 +439,7 @@ export default async function ProblemsPage({
             </div>
 
             {canManageProblems && (
-              <div className="space-y-3">
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium" htmlFor="problem-visibility">
                   {t("filterByVisibility")}
                 </label>

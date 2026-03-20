@@ -148,7 +148,10 @@ export default async function UserManagementPage({
       <Card>
         <CardContent>
           <form className="flex flex-col gap-4 md:flex-row md:items-end" method="get">
-            <div className="flex-1">
+            <div className="flex-1 space-y-1.5">
+              <label className="block text-sm font-medium" htmlFor="users-search">
+                {t("filters.searchLabel")}
+              </label>
               <Input
                 id="users-search"
                 name="search"
@@ -157,7 +160,7 @@ export default async function UserManagementPage({
                 placeholder={t("filters.searchPlaceholder")}
               />
             </div>
-            <div className="space-y-3">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium" htmlFor="users-role">
                 {t("filters.roleLabel")}
               </label>
