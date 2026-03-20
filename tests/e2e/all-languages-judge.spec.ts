@@ -610,10 +610,19 @@ async function waitForJudging(
 
 // ── Shared state for serial test suite ──
 const KNOWN_FLAKY = new Set<string>([
-  "simula", "intercal", "malbolge", "unlambda",
-  "bqn", "lolcode", "umjunsik", "k", "uiua",
-  "odin", "haxe", "shakespeare", "algol68",
-  "coffeescript", "llvm_ir", "vbnet", "fsharp",
+  "simula",        // Docker image won't build (GNU Cim)
+  "intercal",      // No A+B solution possible
+  "malbolge",      // No A+B solution possible
+  "unlambda",      // No A+B solution possible
+  "bqn",           // BQN solution syntax error
+  "lolcode",       // libreadline.so.8 missing in image
+  "umjunsik",      // Needs testing
+  "k",             // Wrong output (solution needs fix)
+  "uiua",          // GLIBC_2.39 missing in image
+  "coffeescript",  // coffee not in judge-node PATH
+  "llvm_ir",       // Needs compile step
+  "vbnet",         // dotnet-script not available
+  "shakespeare",   // Needs testing
 ]);
 
 let sharedContext: Awaited<ReturnType<typeof import("@playwright/test").chromium.launch>> extends { newContext: infer F } ? never : never;
