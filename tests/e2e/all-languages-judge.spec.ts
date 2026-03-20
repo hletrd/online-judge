@@ -707,7 +707,7 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
       pending.push({ language, submissionId });
 
       // Brief delay between submissions to avoid rate limiting
-      await new Promise((r) => setTimeout(r, 1_000));
+      await new Promise((r) => setTimeout(r, 200));
     } catch (e) {
       console.log(`[${language}] Submit error: ${e}`);
       results.push({
