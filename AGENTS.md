@@ -15,9 +15,9 @@ JudgeKit is a secure online judge platform for programming assignments. Next.js 
 | `tests/` | Playwright E2E tests, Vitest unit/integration tests |
 | `data/` | SQLite database (gitignored) |
 
-## Supported Languages (55)
+## Supported Languages (86)
 
-JudgeKit supports 55 language variants across 44 Docker images:
+JudgeKit supports 86 language variants across 69 Docker images:
 
 | # | Language ID | Description | Docker Image |
 |---|-------------|-------------|--------------|
@@ -29,53 +29,84 @@ JudgeKit supports 55 language variants across 44 Docker images:
 | 6 | `cpp23` | C++ (C++23, GCC) | `judge-cpp` |
 | 7 | `clang_c23` | C (C23, Clang) | `judge-clang` |
 | 8 | `clang_cpp23` | C++ (C++23, Clang) | `judge-clang` |
-| 9 | `java` | Java 25 | `judge-jvm` |
-| 10 | `kotlin` | Kotlin 2.3 | `judge-jvm` |
-| 11 | `python` | Python 3.14 | `judge-python` |
-| 12 | `javascript` | Node.js 24 | `judge-node` |
-| 13 | `typescript` | TypeScript 5.9 (Node.js 24) | `judge-node` |
-| 14 | `rust` | Rust 1.94 | `judge-rust` |
-| 15 | `go` | Go 1.26 | `judge-go` |
-| 16 | `swift` | Swift 6.2 | `judge-swift` |
-| 17 | `csharp` | C# (Mono 6.12) | `judge-csharp` |
-| 18 | `r` | R 4.5 | `judge-r` |
-| 19 | `perl` | Perl 5.40 | `judge-perl` |
-| 20 | `php` | PHP 8.4 | `judge-php` |
-| 21 | `ruby` | Ruby 3.4 | `judge-ruby` |
-| 22 | `lua` | Lua 5.4 | `judge-lua` |
-| 23 | `haskell` | Haskell (GHC 9.4) | `judge-haskell` |
-| 24 | `dart` | Dart 3.8 | `judge-dart` |
-| 25 | `zig` | Zig 0.13 | `judge-zig` |
-| 26 | `nim` | Nim 2.2 | `judge-nim` |
-| 27 | `ocaml` | OCaml 4.14 | `judge-ocaml` |
-| 28 | `elixir` | Elixir 1.18 | `judge-elixir` |
-| 29 | `julia` | Julia 1.12 | `judge-julia` |
-| 30 | `d` | D (LDC 1.39) | `judge-d` |
-| 31 | `racket` | Racket 8.10 | `judge-racket` |
-| 32 | `vlang` | V 0.5 | `judge-v` |
-| 33 | `fortran` | Fortran (GFortran 14) | `judge-fortran` |
-| 34 | `pascal` | Pascal (FPC 3.2) | `judge-pascal` |
-| 35 | `cobol` | COBOL (GnuCOBOL 3.2) | `judge-cobol` |
-| 36 | `scala` | Scala 3.5 | `judge-scala` |
-| 37 | `erlang` | Erlang 27 | `judge-erlang` |
-| 38 | `commonlisp` | Common Lisp (SBCL 2.5) | `judge-commonlisp` |
-| 39 | `bash` | Bash 5.2 | `judge-bash` |
-| 40 | `ada` | Ada (GNAT 14) | `judge-ada` |
-| 41 | `clojure` | Clojure 1.12 | `judge-clojure` |
-| 42 | `prolog` | Prolog (SWI-Prolog 9) | `judge-prolog` |
-| 43 | `tcl` | Tcl 8.6 | `judge-tcl` |
-| 44 | `awk` | AWK (GAWK 5) | `judge-awk` |
-| 45 | `scheme` | Scheme (Chicken 5) | `judge-scheme` |
-| 46 | `groovy` | Groovy 4.0 | `judge-groovy` |
-| 47 | `octave` | GNU Octave 9 | `judge-octave` |
-| 48 | `crystal` | Crystal 1.14 | `judge-crystal` |
-| 49 | `powershell` | PowerShell 7.5 | `judge-powershell` |
-| 50 | `postscript` | PostScript (Ghostscript 10) | `judge-postscript` |
-| 51 | `brainfuck` | Brainfuck | `judge-brainfuck` |
-| 52 | `befunge` | Befunge-93 | `judge-esoteric` |
-| 53 | `aheui` | Aheui | `judge-esoteric` |
-| 54 | `hyeong` | Hyeong | `judge-esoteric` |
-| 55 | `whitespace` | Whitespace | `judge-esoteric` |
+| 9 | `llvm_ir` | LLVM IR | `judge-clang` |
+| 10 | `java` | Java 25 | `judge-jvm` |
+| 11 | `kotlin` | Kotlin 2.3 | `judge-jvm` |
+| 12 | `python` | Python 3.14 | `judge-python` |
+| 13 | `javascript` | Node.js 24 | `judge-node` |
+| 14 | `typescript` | TypeScript 5.9 (Node.js 24) | `judge-node` |
+| 15 | `coffeescript` | CoffeeScript 2.7 | `judge-node` |
+| 16 | `rust` | Rust 1.94 | `judge-rust` |
+| 17 | `go` | Go 1.26 | `judge-go` |
+| 18 | `swift` | Swift 6.2 | `judge-swift` |
+| 19 | `objective_c` | Objective-C (GCC gobjc) | `judge-objective-c` |
+| 20 | `csharp` | C# (Mono 6.12) | `judge-csharp` |
+| 21 | `fsharp` | F# (.NET 8) | `judge-fsharp` |
+| 22 | `vbnet` | Visual Basic .NET (.NET 8) | `judge-fsharp` |
+| 23 | `r` | R 4.5 | `judge-r` |
+| 24 | `perl` | Perl 5.40 | `judge-perl` |
+| 25 | `php` | PHP 8.4 | `judge-php` |
+| 26 | `ruby` | Ruby 3.4 | `judge-ruby` |
+| 27 | `lua` | Lua 5.4 | `judge-lua` |
+| 28 | `haskell` | Haskell (GHC 9.4) | `judge-haskell` |
+| 29 | `dart` | Dart 3.8 | `judge-dart` |
+| 30 | `zig` | Zig 0.13 | `judge-zig` |
+| 31 | `nim` | Nim 2.2 | `judge-nim` |
+| 32 | `ocaml` | OCaml 4.14 | `judge-ocaml` |
+| 33 | `elixir` | Elixir 1.18 | `judge-elixir` |
+| 34 | `julia` | Julia 1.12 | `judge-julia` |
+| 35 | `d` | D (LDC 1.39) | `judge-d` |
+| 36 | `racket` | Racket 8.10 | `judge-racket` |
+| 37 | `vlang` | V 0.5 | `judge-v` |
+| 38 | `fortran` | Fortran (GFortran 14) | `judge-fortran` |
+| 39 | `pascal` | Pascal (FPC 3.2) | `judge-pascal` |
+| 40 | `delphi` | Delphi (FPC, Delphi mode) | `judge-pascal` |
+| 41 | `nasm` | Assembly (NASM, x86-64) | `judge-nasm` |
+| 42 | `cobol` | COBOL (GnuCOBOL 3.2) | `judge-cobol` |
+| 43 | `scala` | Scala 3.5 | `judge-scala` |
+| 44 | `erlang` | Erlang 27 | `judge-erlang` |
+| 45 | `commonlisp` | Common Lisp (SBCL 2.5) | `judge-commonlisp` |
+| 46 | `bash` | Bash 5.2 | `judge-bash` |
+| 47 | `sed` | Sed | `judge-bash` |
+| 48 | `dc` | dc (desk calculator) | `judge-bash` |
+| 49 | `ada` | Ada (GNAT 14) | `judge-ada` |
+| 50 | `clojure` | Clojure 1.12 | `judge-clojure` |
+| 51 | `prolog` | Prolog (SWI-Prolog 9) | `judge-prolog` |
+| 52 | `tcl` | Tcl 8.6 | `judge-tcl` |
+| 53 | `awk` | AWK (GAWK 5) | `judge-awk` |
+| 54 | `scheme` | Scheme (Chicken 5) | `judge-scheme` |
+| 55 | `raku` | Raku (Rakudo) | `judge-raku` |
+| 56 | `groovy` | Groovy 4.0 | `judge-groovy` |
+| 57 | `octave` | GNU Octave 9 | `judge-octave` |
+| 58 | `crystal` | Crystal 1.14 | `judge-crystal` |
+| 59 | `powershell` | PowerShell 7.5 | `judge-powershell` |
+| 60 | `postscript` | PostScript (Ghostscript 10) | `judge-postscript` |
+| 61 | `haxe` | Haxe 4.3 (Python backend) | `judge-haxe` |
+| 62 | `odin` | Odin | `judge-odin` |
+| 63 | `forth` | Forth (Gforth) | `judge-forth` |
+| 64 | `brainfuck` | Brainfuck | `judge-brainfuck` |
+| 65 | `befunge` | Befunge-93 | `judge-esoteric` |
+| 66 | `aheui` | Aheui | `judge-esoteric` |
+| 67 | `hyeong` | Hyeong | `judge-esoteric` |
+| 68 | `whitespace` | Whitespace | `judge-esoteric` |
+| 69 | `b` | B (BCause) | `judge-b` |
+| 70 | `j` | J 9.6 | `judge-j` |
+| 71 | `apl` | APL (GNU APL) | `judge-apl` |
+| 72 | `freebasic` | FreeBASIC | `judge-freebasic` |
+| 73 | `smalltalk` | Smalltalk (GNU Smalltalk) | `judge-smalltalk` |
+| 74 | `bqn` | BQN (CBQN) | `judge-bqn` |
+| 75 | `k` | K (ngn/k) | `judge-k` |
+| 76 | `uiua` | Uiua | `judge-uiua` |
+| 77 | `icon` | Icon | `judge-icon` |
+| 78 | `algol68` | Algol 68 (a68g) | `judge-algol68` |
+| 79 | `simula` | Simula (GNU Cim) | `judge-simula` |
+| 80 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` |
+| 81 | `lolcode` | LOLCODE (lci) | `judge-lolcode` |
+| 82 | `intercal` | INTERCAL (C-INTERCAL) | `judge-intercal` |
+| 83 | `malbolge` | Malbolge | `judge-malbolge` |
+| 84 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` |
+| 85 | `unlambda` | Unlambda | `judge-unlambda` |
+| 86 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` |
 
 ## Adding a New Language
 
@@ -214,6 +245,7 @@ JudgeKit supports full contest management with two scoring models and two schedu
 ### Docker Deployment Architecture
 - **Server-side builds**: `deploy-docker.sh` rsyncs source to the remote server and builds Docker images there. No local image builds — avoids architecture mismatches between dev machines (e.g., arm64 Mac) and the target host (e.g., amd64 Linux).
 - **`--no-cache` on app and worker builds**: `deploy-docker.sh` passes `--no-cache` when building `judgekit-app` and `judgekit-judge-worker` to ensure a clean build on every deploy. Language images are not rebuilt with `--no-cache` by default.
+- **DNS in Dockerfiles**: Languages that need network access during build (e.g., `cargo install`) set DNS explicitly in their Dockerfiles via `resolv.conf` override. The `--dns` flag is not used because it is incompatible with Docker BuildKit/buildx.
 - **Architecture auto-detection**: The deploy script runs `uname -m` on the remote host and sets `--platform linux/amd64` or `--platform linux/arm64` accordingly. All `docker build` commands (app, judge worker, and all language images) receive this flag.
 - **Docker CLI in the app container**: The `judgekit-app` image installs `docker-cli` (Alpine package) and the `nextjs` user is added to the `docker` group (gid 987) so it can reach the socket. The compose file mounts `/var/run/docker.sock:/var/run/docker.sock` on both the `app` and `judge-worker` containers. This enables the admin Docker image management API (`GET/POST/DELETE /api/v1/admin/docker/images`) to operate without a separate privileged sidecar.
 - **`privileged: true`** on the judge-worker container — required for Docker-in-Docker execution (the worker spawns sibling containers to run student code).
@@ -227,20 +259,11 @@ JudgeKit supports full contest management with two scoring models and two schedu
 
 ### Known Flaky Languages (E2E)
 
-The following 8 languages are in the `KNOWN_FLAKY` set in `tests/e2e/all-languages-judge.spec.ts` and do not fail the overall E2E suite:
+`fsharp` and `freebasic` were previously flaky but are now fixed:
+- **F#**: Dockerfile sets `HOME=/tmp` and `DOTNET_CLI_HOME=/tmp` so the .NET SDK writes to writable directories.
+- **FreeBASIC**: SourceForge download uses `--retry 5 --retry-delay 10 --max-time 180` with file-based download instead of piped tar.
 
-| Language | Reason |
-|----------|--------|
-| `hyeong` | Reads one integer per line, incompatible with space-separated test input |
-| `whitespace` | Whitespace interpreter file encoding issues |
-| `brainfuck` | Byte-level I/O; uses `beef` interpreter |
-| `vlang` | Pre-built binary zip install; intermittent failures |
-| `scala` | JVM startup / classpath issues in container |
-| `erlang` | BEAM VM startup; intermittent OOM in container |
-| `elixir` | BEAM VM startup; intermittent failures |
-| `prolog` | SWI-Prolog startup; intermittent failures |
-
-47 of 55 language variants pass the A+B E2E test reliably. Test cases use only positive single-digit sums (≤9) to maximize esoteric language compatibility.
+All 86 language variants are expected to pass the A+B E2E test. Test cases use only positive single-digit sums (≤9) to maximize esoteric language compatibility.
 
 ## Setup
 

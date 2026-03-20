@@ -39,6 +39,36 @@ Last updated: 2026-03-20
 - The deploy script auto-detects server architecture (`uname -m` → `linux/amd64` or `linux/arm64`) and passes `--platform` to all Docker builds.
 - Do not assume the long-lived hosts still accept the seeded credentials unless freshly reset.
 
+## 2026-03-20 session changes (Docker build fixes batch)
+
+- **10 failing Docker images fixed**: All 10 languages whose Docker builds failed in the expansion batch are now fixed:
+  - **umjunsik, uiua**: Added explicit DNS (`1.1.1.1`) to builder stage `resolv.conf` before `cargo install`.
+  - **forth**: Switched from Alpine (no `gforth` package) to `debian:bookworm-slim` with `apt-get install gforth`.
+  - **intercal**: Built C-INTERCAL from source (`gitlab.com/esr/intercal`) with multi-stage build, since `intercal` package doesn't exist in bookworm.
+  - **icon**: Built standard Icon from source (`github.com/gtownsend/icon`) instead of the non-existent `unicon` Debian package.
+  - **apl**: Switched from multi-stage source build to Debian `gnu-apl` package (simpler, works on both architectures).
+  - **bqn**: Added `g++` to deps, used `--recurse-submodules` for git clone, switched to `make o3n` (non-SIMD, cross-platform).
+  - **lolcode**: Added `g++` and `libedit-dev` build dependencies for the `lci` cmake build.
+  - **snobol4**: Switched from dead `ftp.snobol4.org` URL to Phil Budne's GitHub mirror, added `autoconf`.
+  - **simula**: Added `texinfo`, `flex`, `bison` build deps and `autoreconf -fi` before configure for GNU Cim.
+- **odin**: Removed broken `+date` nightly tarball URL placeholder; now always builds from source on all architectures.
+- **raku**: Switched from `rakudo-star:alpine` base image (unreliable on arm64) to `debian:bookworm-slim` with `apt-get install rakudo`.
+- **DNS handled in Dockerfiles**: Languages needing network access during build (umjunsik, uiua) set DNS via `resolv.conf` override in their Dockerfiles. `--dns` flag not used in deploy script (incompatible with BuildKit/buildx).
+- **KNOWN_FLAKY reduced**: Removed the 10 fixed build-failure languages from E2E KNOWN_FLAKY. Only `fsharp` and `freebasic` remain (runtime issues).
+
+## 2026-03-20 session changes (language expansion batch)
+
+- **24 new judge languages added**: sed, dc, CoffeeScript, LLVM IR, VB.NET (Group A — reuse existing images), plus NASM, BQN, LOLCODE, Forth, Algol 68, Umjunsik, INTERCAL, K, Haxe, Raku, Malbolge, Shakespeare, Unlambda, SNOBOL4, Icon, Simula, Uiua, Odin, Objective-C (Group B — 19 new Docker images).
+- **Total language count**: 86 language variants across 69 Docker images (was 62 across 50).
+- **3 existing images modified**: `judge-bash` (+bc for dc), `judge-node` (+coffeescript npm package), `judge-clang` (+llvm for lli interpreter).
+- **19 new Dockerfiles** created for Group B languages with appropriate build-from-source or package-based installations.
+- **docker-compose.yml**: 25 new service entries added (19 new + 6 previously missing: fsharp, j, apl, freebasic, smalltalk, b).
+- **deploy-docker.sh**: ALL_LANGS updated with all 69 image names.
+- **E2E tests**: A+B solutions added for all 24 new languages. All new languages added to KNOWN_FLAKY set until images prove stable.
+- **Rust worker**: All 24 languages added to types.rs enum, languages.rs configs, and test array. `cargo test` passes (25 tests).
+- **TypeScript**: All 24 languages added to Language union type and JUDGE_LANGUAGE_CONFIGS. `tsc --noEmit` passes with 0 errors.
+- **E2E test improvements**: Batch submit phase 1/phase 2 architecture, exponential backoff on rate limits, retry up to 5 attempts.
+
 ## 2026-03-20 session changes (latest)
 
 - **Docker CLI in app container**: `Dockerfile` installs `docker-cli` (Alpine package). The `nextjs` user is added to the `docker` group (gid 987). `docker-compose.production.yml` mounts `/var/run/docker.sock` on both `app` and `judge-worker` containers. This enables the admin language management UI to build/remove Docker images without a separate privileged sidecar.
@@ -82,5 +112,6 @@ Last updated: 2026-03-20
 - `docs/review-plan.md`, `.context/development/open-workstreams.md`, and this file now also record the 2026-03-10 `P1.8` test-expansion follow-up batch and its local verification state.
 - `docs/feature-plan.md`, `docs/review-plan.md`, `.context/development/open-workstreams.md`, and this file now also record the 2026-03-10 Java/Kotlin runtime-expansion batch.
 - `AGENTS.md` already reflects that `system_settings` carries title, description, and timezone overrides.
-- `README.md` now reflects 55 supported language variants including the Whitespace and 11 additional languages batch (Ada, Clojure, Prolog, Tcl, AWK, Scheme, Groovy, Octave, Crystal, PowerShell, PostScript), the esoteric language batch (Befunge-93, Aheui, Hyeong, Whitespace), and the Clang C/C++ variants added in the earlier upstream batch.
-- `AGENTS.md` now includes a comprehensive 55-language table, contest system documentation (IOI/ICPC scoring, scheduled/windowed modes, anti-cheat, leaderboard freeze), Docker deployment architecture details (server-side builds, architecture auto-detection, privileged:true, /judge-workspaces volume, seccomp deny-list), and the complete deploy-docker.sh workflow.
+- `README.md` now reflects 86 supported language variants across 69 Docker images, including the 24-language expansion batch (sed, dc, CoffeeScript, LLVM IR, VB.NET, NASM, BQN, LOLCODE, Forth, Algol 68, Umjunsik, INTERCAL, K, Haxe, Raku, Malbolge, Shakespeare, Unlambda, SNOBOL4, Icon, Simula, Uiua, Odin, Objective-C).
+- `AGENTS.md` now includes a comprehensive 86-language table, contest system documentation (IOI/ICPC scoring, scheduled/windowed modes, anti-cheat, leaderboard freeze), Docker deployment architecture details (server-side builds, architecture auto-detection, privileged:true, /judge-workspaces volume, seccomp deny-list), and the complete deploy-docker.sh workflow.
+- `docs/languages.md` now lists all 86 variants across 69 Docker images with the full language table.

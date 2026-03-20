@@ -1,0 +1,14 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git gcc g++ make libffi-dev libc6-dev ca-certificates && \
+    git clone --recurse-submodules --depth 1 https://github.com/dzaima/CBQN.git /tmp/cbqn && \
+    cd /tmp/cbqn && make o3n -j$(nproc) && cp BQN /usr/local/bin/bqn && \
+    cd / && rm -rf /tmp/cbqn && \
+    apt-get purge -y git gcc g++ make libffi-dev ca-certificates && \
+    apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
+    useradd -m -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+
+WORKDIR /workspace
+USER judge

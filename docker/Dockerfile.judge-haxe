@@ -1,0 +1,11 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends haxe python3 ca-certificates && \
+    mkdir -p /usr/local/lib/haxe/lib && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd -m -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+
+WORKDIR /workspace
+USER judge

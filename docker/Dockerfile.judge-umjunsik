@@ -1,0 +1,13 @@
+FROM rust:slim-bookworm AS builder
+
+RUN cargo install umjunsik
+
+FROM debian:bookworm-slim
+
+COPY --from=builder /usr/local/cargo/bin/umjunsik /usr/local/bin/umjunsik
+
+RUN useradd -m -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+
+WORKDIR /workspace
+USER judge

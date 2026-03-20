@@ -277,3 +277,153 @@ services:
       context: .
       dockerfile: docker/Dockerfile.judge-postscript
     image: judge-postscript:${GIT_SHA:-latest}
+
+  judge-fsharp:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-fsharp
+    image: judge-fsharp:${GIT_SHA:-latest}
+
+  judge-j:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-j
+    image: judge-j:${GIT_SHA:-latest}
+
+  judge-apl:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-apl
+    image: judge-apl:${GIT_SHA:-latest}
+
+  judge-freebasic:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-freebasic
+    image: judge-freebasic:${GIT_SHA:-latest}
+
+  judge-smalltalk:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-smalltalk
+    image: judge-smalltalk:${GIT_SHA:-latest}
+
+  judge-b:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-b
+    image: judge-b:${GIT_SHA:-latest}
+
+  judge-nasm:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-nasm
+    image: judge-nasm:${GIT_SHA:-latest}
+
+  judge-bqn:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-bqn
+    image: judge-bqn:${GIT_SHA:-latest}
+
+  judge-lolcode:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-lolcode
+    image: judge-lolcode:${GIT_SHA:-latest}
+
+  judge-forth:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-forth
+    image: judge-forth:${GIT_SHA:-latest}
+
+  judge-algol68:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-algol68
+    image: judge-algol68:${GIT_SHA:-latest}
+
+  judge-umjunsik:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-umjunsik
+    image: judge-umjunsik:${GIT_SHA:-latest}
+
+  judge-intercal:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-intercal
+    image: judge-intercal:${GIT_SHA:-latest}
+
+  judge-k:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-k
+    image: judge-k:${GIT_SHA:-latest}
+
+  judge-haxe:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-haxe
+    image: judge-haxe:${GIT_SHA:-latest}
+
+  judge-raku:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-raku
+    image: judge-raku:${GIT_SHA:-latest}
+
+  judge-malbolge:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-malbolge
+    image: judge-malbolge:${GIT_SHA:-latest}
+
+  judge-shakespeare:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-shakespeare
+    image: judge-shakespeare:${GIT_SHA:-latest}
+
+  judge-unlambda:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-unlambda
+    image: judge-unlambda:${GIT_SHA:-latest}
+
+  judge-snobol4:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-snobol4
+    image: judge-snobol4:${GIT_SHA:-latest}
+
+  judge-icon:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-icon
+    image: judge-icon:${GIT_SHA:-latest}
+
+  judge-simula:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-simula
+    image: judge-simula:${GIT_SHA:-latest}
+
+  judge-uiua:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-uiua
+    image: judge-uiua:${GIT_SHA:-latest}
+
+  judge-odin:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-odin
+    image: judge-odin:${GIT_SHA:-latest}
+
+  judge-objective-c:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.judge-objective-c
+    image: judge-objective-c:${GIT_SHA:-latest}

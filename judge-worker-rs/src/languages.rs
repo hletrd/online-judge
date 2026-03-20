@@ -684,6 +684,266 @@ static B_CONFIG: LanguageConfig = LanguageConfig {
     run_command: B_RUN,
 };
 
+// Sed (reuses judge-bash)
+static SED_RUN: &[&str] = &["sed", "-f", "/workspace/solution.sed"];
+
+static SED_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".sed",
+    docker_image: "judge-bash:latest",
+    compile_command: None,
+    run_command: SED_RUN,
+};
+
+// dc (reuses judge-bash)
+static DC_RUN: &[&str] = &["dc", "/workspace/solution.dc"];
+
+static DC_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".dc",
+    docker_image: "judge-bash:latest",
+    compile_command: None,
+    run_command: DC_RUN,
+};
+
+// CoffeeScript (reuses judge-node)
+static COFFEESCRIPT_RUN: &[&str] = &["coffee", "/workspace/solution.coffee"];
+
+static COFFEESCRIPT_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".coffee",
+    docker_image: "judge-node:latest",
+    compile_command: None,
+    run_command: COFFEESCRIPT_RUN,
+};
+
+// LLVM IR (reuses judge-clang)
+static LLVM_IR_RUN: &[&str] = &["lli", "/workspace/solution.ll"];
+
+static LLVM_IR_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".ll",
+    docker_image: "judge-clang:latest",
+    compile_command: None,
+    run_command: LLVM_IR_RUN,
+};
+
+// Visual Basic .NET (reuses judge-fsharp)
+static VBNET_COMPILE: &[&str] = &[
+    "sh", "-c",
+    "mkdir -p /workspace/out && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><RootNamespace>Solution</RootNamespace></PropertyGroup></Project>' > /workspace/out/solution.vbproj && cp /workspace/solution.vb /workspace/out/Program.vb && cd /workspace/out && dotnet build -c Release -o /workspace/bin --nologo -v q",
+];
+static VBNET_RUN: &[&str] = &["/workspace/bin/solution"];
+
+static VBNET_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".vb",
+    docker_image: "judge-fsharp:latest",
+    compile_command: Some(VBNET_COMPILE),
+    run_command: VBNET_RUN,
+};
+
+// Assembly (NASM)
+static NASM_COMPILE: &[&str] = &[
+    "sh", "-c",
+    "nasm -f elf64 -o /workspace/solution.o /workspace/solution.asm && ld -o /workspace/solution /workspace/solution.o",
+];
+static NASM_RUN: &[&str] = &["/workspace/solution"];
+
+static NASM_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".asm",
+    docker_image: "judge-nasm:latest",
+    compile_command: Some(NASM_COMPILE),
+    run_command: NASM_RUN,
+};
+
+// BQN
+static BQN_RUN: &[&str] = &["bqn", "/workspace/solution.bqn"];
+
+static BQN_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".bqn",
+    docker_image: "judge-bqn:latest",
+    compile_command: None,
+    run_command: BQN_RUN,
+};
+
+// LOLCODE
+static LOLCODE_RUN: &[&str] = &["lci", "/workspace/solution.lol"];
+
+static LOLCODE_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".lol",
+    docker_image: "judge-lolcode:latest",
+    compile_command: None,
+    run_command: LOLCODE_RUN,
+};
+
+// Forth
+static FORTH_RUN: &[&str] = &["gforth", "/workspace/solution.fth", "-e", "bye"];
+
+static FORTH_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".fth",
+    docker_image: "judge-forth:latest",
+    compile_command: None,
+    run_command: FORTH_RUN,
+};
+
+// Algol 68
+static ALGOL68_RUN: &[&str] = &["a68g", "/workspace/solution.a68"];
+
+static ALGOL68_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".a68",
+    docker_image: "judge-algol68:latest",
+    compile_command: None,
+    run_command: ALGOL68_RUN,
+};
+
+// Umjunsik
+static UMJUNSIK_RUN: &[&str] = &["umjunsik", "/workspace/solution.umm"];
+
+static UMJUNSIK_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".umm",
+    docker_image: "judge-umjunsik:latest",
+    compile_command: None,
+    run_command: UMJUNSIK_RUN,
+};
+
+// INTERCAL
+static INTERCAL_COMPILE: &[&str] = &["ick", "-b", "/workspace/solution.i"];
+static INTERCAL_RUN: &[&str] = &["/workspace/solution"];
+
+static INTERCAL_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".i",
+    docker_image: "judge-intercal:latest",
+    compile_command: Some(INTERCAL_COMPILE),
+    run_command: INTERCAL_RUN,
+};
+
+// K (ngn/k)
+static K_RUN: &[&str] = &["k", "/workspace/solution.k"];
+
+static K_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".k",
+    docker_image: "judge-k:latest",
+    compile_command: None,
+    run_command: K_RUN,
+};
+
+// Haxe
+static HAXE_COMPILE: &[&str] = &[
+    "sh", "-c",
+    "cd /workspace && haxe --main Solution --python /workspace/solution_out.py",
+];
+static HAXE_RUN: &[&str] = &["python3", "/workspace/solution_out.py"];
+
+static HAXE_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".hx",
+    docker_image: "judge-haxe:latest",
+    compile_command: Some(HAXE_COMPILE),
+    run_command: HAXE_RUN,
+};
+
+// Raku
+static RAKU_RUN: &[&str] = &["raku", "/workspace/solution.raku"];
+
+static RAKU_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".raku",
+    docker_image: "judge-raku:latest",
+    compile_command: None,
+    run_command: RAKU_RUN,
+};
+
+// Malbolge
+static MALBOLGE_RUN: &[&str] = &["malbolge", "/workspace/solution.mal"];
+
+static MALBOLGE_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".mal",
+    docker_image: "judge-malbolge:latest",
+    compile_command: None,
+    run_command: MALBOLGE_RUN,
+};
+
+// Shakespeare
+static SHAKESPEARE_RUN: &[&str] = &["shakespeare_run", "/workspace/solution.spl"];
+
+static SHAKESPEARE_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".spl",
+    docker_image: "judge-shakespeare:latest",
+    compile_command: None,
+    run_command: SHAKESPEARE_RUN,
+};
+
+// Unlambda
+static UNLAMBDA_RUN: &[&str] = &["unlambda", "/workspace/solution.unl"];
+
+static UNLAMBDA_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".unl",
+    docker_image: "judge-unlambda:latest",
+    compile_command: None,
+    run_command: UNLAMBDA_RUN,
+};
+
+// SNOBOL4
+static SNOBOL4_RUN: &[&str] = &["snobol4", "/workspace/solution.sno"];
+
+static SNOBOL4_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".sno",
+    docker_image: "judge-snobol4:latest",
+    compile_command: None,
+    run_command: SNOBOL4_RUN,
+};
+
+// Icon
+static ICON_COMPILE: &[&str] = &["sh", "-c", "cd /workspace && icont -o /workspace/solution /workspace/solution.icn"];
+static ICON_RUN: &[&str] = &["/workspace/solution"];
+
+static ICON_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".icn",
+    docker_image: "judge-icon:latest",
+    compile_command: Some(ICON_COMPILE),
+    run_command: ICON_RUN,
+};
+
+// Simula
+static SIMULA_COMPILE: &[&str] = &["sh", "-c", "cd /workspace && cim /workspace/solution.sim -o /workspace/solution"];
+static SIMULA_RUN: &[&str] = &["/workspace/solution"];
+
+static SIMULA_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".sim",
+    docker_image: "judge-simula:latest",
+    compile_command: Some(SIMULA_COMPILE),
+    run_command: SIMULA_RUN,
+};
+
+// Uiua
+static UIUA_RUN: &[&str] = &["uiua", "run", "/workspace/solution.ua"];
+
+static UIUA_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".ua",
+    docker_image: "judge-uiua:latest",
+    compile_command: None,
+    run_command: UIUA_RUN,
+};
+
+// Odin
+static ODIN_COMPILE: &[&str] = &[
+    "sh", "-c",
+    "odin build /workspace/solution.odin -file -o:speed -out:/workspace/solution",
+];
+static ODIN_RUN: &[&str] = &["/workspace/solution"];
+
+static ODIN_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".odin",
+    docker_image: "judge-odin:latest",
+    compile_command: Some(ODIN_COMPILE),
+    run_command: ODIN_RUN,
+};
+
+// Objective-C
+static OBJECTIVE_C_COMPILE: &[&str] = &["gcc", "-O2", "-lobjc", "-o", "/workspace/solution", "/workspace/solution.m"];
+static OBJECTIVE_C_RUN: &[&str] = &["/workspace/solution"];
+
+static OBJECTIVE_C_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".m",
+    docker_image: "judge-objective-c:latest",
+    compile_command: Some(OBJECTIVE_C_COMPILE),
+    run_command: OBJECTIVE_C_RUN,
+};
+
 pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
     match language {
         Language::C17 => Some(&C17_CONFIG),
@@ -748,6 +1008,30 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::Freebasic => Some(&FREEBASIC_CONFIG),
         Language::Smalltalk => Some(&SMALLTALK_CONFIG),
         Language::B => Some(&B_CONFIG),
+        Language::Sed => Some(&SED_CONFIG),
+        Language::Dc => Some(&DC_CONFIG),
+        Language::Coffeescript => Some(&COFFEESCRIPT_CONFIG),
+        Language::LlvmIr => Some(&LLVM_IR_CONFIG),
+        Language::Vbnet => Some(&VBNET_CONFIG),
+        Language::Nasm => Some(&NASM_CONFIG),
+        Language::Bqn => Some(&BQN_CONFIG),
+        Language::Lolcode => Some(&LOLCODE_CONFIG),
+        Language::Forth => Some(&FORTH_CONFIG),
+        Language::Algol68 => Some(&ALGOL68_CONFIG),
+        Language::Umjunsik => Some(&UMJUNSIK_CONFIG),
+        Language::Intercal => Some(&INTERCAL_CONFIG),
+        Language::K => Some(&K_CONFIG),
+        Language::Haxe => Some(&HAXE_CONFIG),
+        Language::Raku => Some(&RAKU_CONFIG),
+        Language::Malbolge => Some(&MALBOLGE_CONFIG),
+        Language::Shakespeare => Some(&SHAKESPEARE_CONFIG),
+        Language::Unlambda => Some(&UNLAMBDA_CONFIG),
+        Language::Snobol4 => Some(&SNOBOL4_CONFIG),
+        Language::Icon => Some(&ICON_CONFIG),
+        Language::Simula => Some(&SIMULA_CONFIG),
+        Language::Uiua => Some(&UIUA_CONFIG),
+        Language::Odin => Some(&ODIN_CONFIG),
+        Language::ObjectiveC => Some(&OBJECTIVE_C_CONFIG),
         Language::Unknown => None,
     }
 }
@@ -822,6 +1106,30 @@ mod tests {
             Language::Freebasic,
             Language::Smalltalk,
             Language::B,
+            Language::Sed,
+            Language::Dc,
+            Language::Coffeescript,
+            Language::LlvmIr,
+            Language::Vbnet,
+            Language::Nasm,
+            Language::Bqn,
+            Language::Lolcode,
+            Language::Forth,
+            Language::Algol68,
+            Language::Umjunsik,
+            Language::Intercal,
+            Language::K,
+            Language::Haxe,
+            Language::Raku,
+            Language::Malbolge,
+            Language::Shakespeare,
+            Language::Unlambda,
+            Language::Snobol4,
+            Language::Icon,
+            Language::Simula,
+            Language::Uiua,
+            Language::Odin,
+            Language::ObjectiveC,
         ];
 
         for lang in &languages {

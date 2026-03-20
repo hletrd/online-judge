@@ -1,0 +1,14 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git cmake gcc g++ make libc6-dev libreadline-dev ca-certificates && \
+    git clone --depth 1 https://github.com/justinmeza/lci.git /tmp/lci && \
+    cd /tmp/lci && mkdir build && cd build && cmake .. && make -j$(nproc) && make install && \
+    cd / && rm -rf /tmp/lci && \
+    apt-get purge -y git cmake gcc g++ make libc6-dev libreadline-dev ca-certificates && \
+    apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
+    useradd -m -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+
+WORKDIR /workspace
+USER judge

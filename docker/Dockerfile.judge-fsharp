@@ -1,5 +1,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine
+ENV DOTNET_CLI_HOME=/tmp \
+    DOTNET_NOLOGO=1 \
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
+    HOME=/tmp
 RUN adduser -D -s /bin/false judge && \
-    mkdir -p /workspace && chown judge:judge /workspace
+    mkdir -p /workspace && chown judge:judge /workspace && \
+    mkdir -p /tmp/.dotnet /tmp/.nuget && chmod 777 /tmp/.dotnet /tmp/.nuget && \
+    dotnet fsi --version > /dev/null 2>&1 || true
 WORKDIR /workspace
 USER judge

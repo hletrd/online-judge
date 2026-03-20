@@ -119,6 +119,34 @@ pub enum Language {
     Smalltalk,
     #[serde(rename = "b")]
     B,
+    Sed,
+    Dc,
+    Coffeescript,
+    #[serde(rename = "llvm_ir")]
+    LlvmIr,
+    Vbnet,
+    Nasm,
+    Bqn,
+    Lolcode,
+    Forth,
+    #[serde(rename = "algol68")]
+    Algol68,
+    Umjunsik,
+    Intercal,
+    K,
+    Haxe,
+    Raku,
+    Malbolge,
+    Shakespeare,
+    Unlambda,
+    #[serde(rename = "snobol4")]
+    Snobol4,
+    Icon,
+    Simula,
+    Uiua,
+    Odin,
+    #[serde(rename = "objective_c")]
+    ObjectiveC,
     #[serde(other)]
     Unknown,
 }

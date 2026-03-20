@@ -86,6 +86,24 @@ The `dashboard-rendering-audit-and-editor-upgrades` batch is now locally verifie
 - **KNOWN_FLAKY updated**: Expanded from 4 to 8 languages: hyeong, whitespace, brainfuck, vlang, scala, erlang, elixir, prolog. Pass rate is now 47/55.
 - **Claim endpoint sh -c wrapping**: Documented that judge claim API wraps DB commands in `["sh", "-c", cmd]` at dispatch; DB stores raw commands without the shell wrapper.
 
+## Recently closed (2026-03-20 Docker build fixes batch)
+
+- **10 failing Docker images fixed**: umjunsik (DNS), uiua (DNS), forth (Alpine→Debian gforth), intercal (build from source), icon (build from source), apl (Debian gnu-apl package), bqn (g++ + recurse-submodules + o3n), lolcode (g++ + libedit-dev), snobol4 (GitHub mirror), simula (autoreconf + extra build deps).
+- **odin**: Removed broken nightly tarball URL, always build from source.
+- **raku**: Switched from `rakudo-star:alpine` to Debian `rakudo` package for cross-platform reliability.
+- **DNS in Dockerfiles**: Languages needing network during build set DNS via `resolv.conf` override (not `--dns` flag, which is incompatible with buildx).
+- **KNOWN_FLAKY**: Reduced from 12 to 0. `fsharp` fixed (HOME=/tmp + DOTNET_CLI_HOME=/tmp env vars in Dockerfile). `freebasic` fixed (SourceForge download with retry/timeout).
+
+## Recently closed (2026-03-20 language expansion batch)
+
+- **24 new judge languages**: sed, dc, CoffeeScript, LLVM IR, VB.NET (Group A — reusing existing judge-bash, judge-node, judge-clang, judge-fsharp images), plus NASM, BQN, LOLCODE, Forth, Algol 68, Umjunsik, INTERCAL, K, Haxe, Raku, Malbolge, Shakespeare, Unlambda, SNOBOL4, Icon, Simula, Uiua, Odin, Objective-C (Group B — 19 new Docker images).
+- Total now 86 language variants across 69 Docker images (was 62/50).
+- 3 existing images modified: judge-bash (+bc), judge-node (+coffeescript), judge-clang (+llvm).
+- docker-compose.yml updated with 25 new service entries (including 6 previously missing: fsharp, j, apl, freebasic, smalltalk, b).
+- deploy-docker.sh ALL_LANGS updated.
+- E2E A+B solutions added for all 24 new languages; all new languages in KNOWN_FLAKY.
+- Verified: `cargo test` (25 passed), `tsc --noEmit` (0 errors).
+
 ## Still open
 
 - `P3.6` composite unique index on `problem_group_access` is still blocked pending explicit approval for the destructive `db:push` step

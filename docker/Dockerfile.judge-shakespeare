@@ -1,0 +1,10 @@
+FROM python:3.12-slim-bookworm
+
+RUN pip install --no-cache-dir shakespearelang && \
+    printf '#!/bin/sh\npython3 -c "import sys; from shakespearelang import Shakespeare; Shakespeare(open(sys.argv[1]).read()).run()" "$@"\n' > /usr/local/bin/shakespeare_run && \
+    chmod +x /usr/local/bin/shakespeare_run && \
+    useradd -m -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+
+WORKDIR /workspace
+USER judge

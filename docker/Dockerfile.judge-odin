@@ -1,0 +1,16 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git make clang llvm-dev libc6-dev ca-certificates && \
+    git clone --depth 1 https://github.com/odin-lang/Odin.git /tmp/odin && \
+    cd /tmp/odin && make release && \
+    mkdir -p /opt/odin && cp -r /tmp/odin/* /opt/odin/ && \
+    rm -rf /tmp/odin && \
+    ln -s /opt/odin/odin /usr/local/bin/odin && \
+    apt-get purge -y git && \
+    apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
+    useradd -m -s /bin/false judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+
+WORKDIR /workspace
+USER judge

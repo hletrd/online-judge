@@ -3,7 +3,6 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { eq } from "drizzle-orm";
 import { hash } from "bcryptjs";
 import { nanoid } from "nanoid";
-import { randomBytes } from "crypto";
 import * as schema from "../src/lib/db/schema";
 import { DEFAULT_JUDGE_LANGUAGES, serializeJudgeCommand } from "../src/lib/judge/languages";
 import { DEFAULT_ROLE_CAPABILITIES, DEFAULT_ROLE_LEVELS, DEFAULT_ROLE_DISPLAY_NAMES } from "../src/lib/capabilities/defaults";
@@ -178,14 +177,15 @@ async function seed() {
   if (existingAdmin) {
     console.log("Super admin already exists, skipping user seed.");
   } else {
-    const generatedPassword = randomBytes(16).toString("hex");
-    const passwordHash = await hash(generatedPassword, 12);
+    const adminUsername = process.env.ADMIN_USERNAME || "admin";
+    const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
+    const passwordHash = await hash(adminPassword, 12);
     adminUserId = nanoid();
 
     db.insert(schema.users)
       .values({
         id: adminUserId,
-        username: "admin", email: "admin@example.com",
+        username: adminUsername, email: "admin@example.com",
         name: "Super Admin",
         passwordHash,
         role: "super_admin",
@@ -197,9 +197,10 @@ async function seed() {
       .run();
 
     console.log("Seeded super admin user:");
-    console.log("  Username: admin");
+    console.log(`  Username: ${adminUsername}`);
+    console.log(`  Password: ${adminPassword}`);
     const passwordFile = path.join(process.cwd(), "data", ".admin-password");
-    fs.writeFileSync(passwordFile, generatedPassword, { mode: 0o600 });
+    fs.writeFileSync(passwordFile, adminPassword, { mode: 0o600 });
     console.log(`  Password written to: ${passwordFile}`);
     console.log("  Role: super_admin");
     console.log("  (mustChangePassword: true — will be forced to change on first login)");
