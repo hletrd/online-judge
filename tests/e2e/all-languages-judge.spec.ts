@@ -608,234 +608,92 @@ async function waitForJudging(
   throw new Error(`Submission ${submissionId} did not finish within ${timeoutMs}ms`);
 }
 
-test("submit A+B in all supported languages and verify judging", async ({ browser }) => {
-  test.setTimeout(1_800_000); // 30 minutes for 86 languages
+// ── Shared state for serial test suite ──
+const KNOWN_FLAKY = new Set<string>([
+  "simula", "intercal", "malbolge", "unlambda",
+  "bqn", "lolcode", "umjunsik", "k", "uiua",
+  "odin", "haxe", "shakespeare", "algol68",
+  "coffeescript", "llvm_ir", "vbnet", "fsharp",
+]);
 
-  const context = await browser.newContext();
-  const page = await context.newPage();
+let sharedContext: Awaited<ReturnType<typeof import("@playwright/test").chromium.launch>> extends { newContext: infer F } ? never : never;
+let problemId: string;
+let ctx: import("@playwright/test").BrowserContext;
 
-  // Login
-  await login(page);
-  console.log("Logged in successfully");
+test.describe.serial("Judge all supported languages", () => {
+  test("setup: create A+B problem", async ({ browser }) => {
+    test.setTimeout(60_000);
+    ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    await login(page);
 
-  // Always create a fresh [E2E] A+B problem, deleting any stale one first
-  let problemId: string | undefined;
-
-  const listRes = await apiGet(context, "/api/v1/problems");
-  if (listRes.status() === 200) {
-    const listJson = await listRes.json();
-    const problems: Array<{ id: string; title: string }> =
-      listJson.data?.problems ?? listJson.data ?? listJson.problems ?? [];
-    const existing = problems.find((p) => p.title.includes("[E2E] A+B"));
-    if (existing) {
-      console.log(`Deleting stale problem: ${existing.id}`);
-      await apiDelete(context, `/api/v1/problems/${existing.id}`);
+    // Delete stale E2E problems
+    const listRes = await apiGet(ctx, "/api/v1/problems");
+    if (listRes.status() === 200) {
+      const listJson = await listRes.json();
+      const problems: Array<{ id: string; title: string }> =
+        listJson.data?.problems ?? listJson.data ?? listJson.problems ?? [];
+      const existing = problems.find((p) => p.title.includes("[E2E] A+B"));
+      if (existing) await apiDelete(ctx, `/api/v1/problems/${existing.id}`);
     }
-  }
 
-  const problemBody = {
-    title: `[E2E] A+B All Languages — ${Date.now()}`,
-    description: "Read two integers A and B from stdin, print A+B.",
-    timeLimitMs: 10000,
-    memoryLimitMb: 512,
-    visibility: "public",
-    testCases: TEST_CASES.map((tc, i) => ({
-      input: tc.input,
-      expectedOutput: tc.expectedOutput,
-      isVisible: true,
-      sortOrder: i,
-    })),
-  };
-
-  let createRes;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    createRes = await apiPost(context, "/api/v1/problems", problemBody);
-    if (createRes.status() !== 429) break;
-    console.log(`Problem creation rate-limited (attempt ${attempt}), waiting 5s…`);
-    await new Promise((r) => setTimeout(r, 5_000));
-  }
-
-  expect(createRes!.status()).toBe(201);
-  problemId = (await createRes!.json()).data?.id;
-  console.log(`Created problem: ${problemId}`);
-
-  // Submit all languages and collect results
-  type Result = {
-    language: string;
-    submissionId: string;
-    status: string;
-    score: number;
-    compileOutput: string;
-  };
-
-  const results: Result[] = [];
-  const languages = Object.keys(SOLUTIONS);
-
-  // ── Phase 1: Fire ALL submissions in parallel ──
-  const pending: Array<{ language: string; submissionId: string }> = [];
-
-  const submitResults = await Promise.all(
-    languages.map(async (language) => {
-      try {
-        const subRes = await apiPost(context, "/api/v1/submissions", {
-          problemId,
-          language,
-          sourceCode: SOLUTIONS[language],
-        });
-        if (subRes.status() !== 201) {
-          const err = await subRes.text();
-          return { language, ok: false as const, status: subRes.status(), err };
-        }
-        const submissionId = (await subRes.json()).data?.id;
-        return { language, ok: true as const, submissionId };
-      } catch (e) {
-        return { language, ok: false as const, status: 0, err: String(e) };
-      }
-    })
-  );
-
-  for (const r of submitResults) {
-    if (r.ok) {
-      console.log(`[${r.language}] Submitted: ${r.submissionId}`);
-      pending.push({ language: r.language, submissionId: r.submissionId });
-    } else {
-      console.log(`[${r.language}] Submit failed: ${r.status} ${r.err}`);
-      results.push({
-        language: r.language,
-        submissionId: "-",
-        status: `submit_error_${r.status}`,
-        score: 0,
-        compileOutput: r.err ?? "",
-      });
-    }
-  }
-
-  console.log(`\nAll ${pending.length} submissions sent, polling results in parallel…`);
-
-  // ── Phase 2: Poll all submissions in parallel ──
-  const pollResults = await Promise.all(
-    pending.map(async ({ language, submissionId }) => {
-      try {
-        const result = await waitForJudging(context, submissionId);
-        console.log(
-          `[${language}] ${result.status} (score: ${result.score})${
-            result.compileOutput ? ` — ${result.compileOutput.slice(0, 120)}` : ""
-          }`
-        );
-        return { language, submissionId, ...result };
-      } catch (e) {
-        console.log(`[${language}] Poll error: ${e}`);
-        return {
-          language,
-          submissionId,
-          status: "test_error",
-          score: 0,
-          compileOutput: String(e),
-        };
-      }
-    })
-  );
-
-  results.push(...pollResults);
-
-  // Retry failed languages once (handles transient BEAM VM / Docker startup issues)
-  const retryable = results.filter(
-    (r) => r.status !== "accepted" && r.status !== "test_error"
-  );
-  if (retryable.length > 0 && retryable.length <= 10) {
-    console.log(`\nRetrying ${retryable.length} failed languages...`);
-    for (const prev of retryable) {
-      const language = prev.language as keyof typeof SOLUTIONS;
-      try {
-        let subRes!: Awaited<ReturnType<typeof apiPost>>;
-        for (let attempt = 1; attempt <= 3; attempt++) {
-          subRes = await apiPost(context, "/api/v1/submissions", {
-            problemId,
-            language,
-            sourceCode: SOLUTIONS[language],
-          });
-          if (subRes.status() !== 429) break;
-          await new Promise((r) => setTimeout(r, 15_000));
-        }
-        if (subRes.status() !== 201) continue;
-        const subId = (await subRes.json()).data?.id;
-        if (!subId) continue;
-        const result = await waitForJudging(context, subId);
-        if (result.status === "accepted") {
-          console.log(`  [${language}] RETRY PASSED`);
-          const idx = results.indexOf(prev);
-          results[idx] = { ...result, language, submissionId: subId };
-        } else {
-          console.log(`  [${language}] retry still ${result.status}`);
-        }
-      } catch { /* ignore retry errors */ }
-    }
-  }
-
-  // Print summary table
-  console.log("\n========== RESULTS SUMMARY ==========");
-  console.log("Language       | Status         | Score");
-  console.log("---------------|----------------|------");
-  for (const r of results) {
-    const lang = r.language.padEnd(14);
-    const status = r.status.padEnd(15);
-    console.log(`${lang} | ${status} | ${r.score}`);
-  }
-
-  const accepted = results.filter((r) => r.status === "accepted");
-  const failed = results.filter((r) => r.status !== "accepted");
-  console.log(`\nAccepted: ${accepted.length}/${results.length}`);
-
-  if (failed.length > 0) {
-    console.log("\nFailed languages:");
-    for (const r of failed) {
-      console.log(`  ${r.language}: ${r.status}`);
-      if (r.compileOutput) {
-        console.log(`    → ${r.compileOutput.slice(0, 200)}`);
-      }
-    }
-  }
-  console.log("=====================================\n");
-
-  // Take a final screenshot of the problem page
-  await page.goto(`${BASE_URL}/dashboard/problems/${problemId}`, {
-    waitUntil: "networkidle",
+    const createRes = await apiPost(ctx, "/api/v1/problems", {
+      title: `[E2E] A+B All Languages — ${Date.now()}`,
+      description: "Read two integers A and B from stdin, print A+B.",
+      timeLimitMs: 10000,
+      memoryLimitMb: 512,
+      visibility: "public",
+      testCases: TEST_CASES.map((tc, i) => ({
+        input: tc.input,
+        expectedOutput: tc.expectedOutput,
+        isVisible: true,
+        sortOrder: i,
+      })),
+    });
+    expect(createRes.status()).toBe(201);
+    problemId = (await createRes.json()).data?.id;
+    expect(problemId).toBeTruthy();
   });
 
-  // Languages with known issues that should not fail the overall test:
-  // - I/O models incompatible with the test's space-separated integer input
-  // - Docker images that intermittently fail under E2E load
-  const KNOWN_FLAKY = new Set<string>([
-    // Docker image not built
-    "simula",      // GNU Cim: won't compile with modern GCC
-    // No A+B solution possible
-    "intercal",    // No A+B solution implemented
-    "malbolge",    // No A+B solution implemented
-    "unlambda",    // No A+B solution implemented
-    // Runtime/compile issues (images built, need command tuning)
-    "bqn",         // Runtime error — command/path issue
-    "lolcode",     // Runtime error — command/path issue
-    "umjunsik",    // Runtime error — command/path issue
-    "k",           // Runtime error — command/path issue
-    "uiua",        // Runtime error — command/path issue
-    "odin",        // Compile error — -o flag syntax
-    "haxe",        // Compile error — package resolution
-    "shakespeare", // Runtime error — command/path issue
-    "algol68",     // Wrong answer — output format
-    "coffeescript", // Runtime error
-    "llvm_ir",     // Runtime error
-    "vbnet",       // Compile error
-    "fsharp",      // dotnet JIT needs exec tmpfs (blocked by noexec in run phase)
-  ]);
+  // Generate one test per language
+  for (const language of Object.keys(SOLUTIONS)) {
+    const isFlaky = KNOWN_FLAKY.has(language);
 
-  const unexpected = failed.filter((r) => !KNOWN_FLAKY.has(r.language));
+    test(`${language}${isFlaky ? " (known flaky)" : ""}`, async () => {
+      test.setTimeout(120_000);
+      test.skip(!problemId, "setup failed");
 
-  // Assert all non-exempted languages passed
-  expect(
-    unexpected.map((r) => `${r.language}: ${r.status}`),
-    "Some languages failed judging"
-  ).toEqual([]);
+      const subRes = await apiPost(ctx, "/api/v1/submissions", {
+        problemId,
+        language,
+        sourceCode: (SOLUTIONS as Record<string, string>)[language],
+      });
 
-  await page.close();
-  await context.close();
+      if (subRes.status() !== 201) {
+        const err = await subRes.text();
+        if (isFlaky) {
+          test.skip(true, `submit failed: ${subRes.status()}`);
+          return;
+        }
+        expect(subRes.status(), `Submit failed: ${err}`).toBe(201);
+        return;
+      }
+
+      const submissionId = (await subRes.json()).data?.id;
+      expect(submissionId).toBeTruthy();
+
+      const result = await waitForJudging(ctx, submissionId);
+
+      if (isFlaky && result.status !== "accepted") {
+        test.skip(true, `${result.status}: ${result.compileOutput?.slice(0, 100) ?? ""}`);
+        return;
+      }
+
+      expect(result.status, `${language}: ${result.compileOutput?.slice(0, 200) ?? ""}`).toBe("accepted");
+    });
+  }
+
+  test("cleanup", async () => {
+    await ctx?.close();
+  });
 });
