@@ -935,6 +935,8 @@
         "removeSuccess": "Docker 이미지가 삭제되었습니다.",
         "removeError": "Docker 이미지 삭제에 실패했습니다."
       },
+      "diskUsage": "디스크",
+      "diskAvailable": "사용 가능",
       "imageStatus": {
         "available": "사용 가능",
         "notBuilt": "미빌드"

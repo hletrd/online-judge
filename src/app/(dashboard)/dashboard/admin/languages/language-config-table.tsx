@@ -52,6 +52,7 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
   const [editForm, setEditForm] = useState({ dockerImage: "", compileCommand: "", runCommand: "", dockerfile: "" });
   const [search, setSearch] = useState("");
   const [imageInfo, setImageInfo] = useState<Map<string, string>>(new Map());
+  const [diskUsage, setDiskUsage] = useState<{ total: string; used: string; available: string; usePercent: string } | null>(null);
   const [buildingLangs, setBuildingLangs] = useState<Set<string>>(new Set());
 
   const fetchImageStatus = useCallback(async () => {
@@ -59,11 +60,14 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
       const res = await fetch("/api/v1/admin/docker/images");
       if (res.ok) {
         const json = await res.json();
+        const data = json.data ?? {};
+        const images = data.images ?? data ?? [];
         const info = new Map<string, string>();
-        for (const img of json.data ?? []) {
+        for (const img of Array.isArray(images) ? images : []) {
           info.set(`${img.repository}:${img.tag}`, img.size ?? "");
         }
         setImageInfo(info);
+        if (data.disk) setDiskUsage(data.disk);
       }
     } catch { /* ignore */ }
   }, []);
@@ -74,7 +78,7 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
     setBuildingLangs(prev => new Set(prev).add(lang.language));
     fetch("/api/v1/admin/docker/images/build", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-csrf-token": "1" },
+      headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
       body: JSON.stringify({ language: lang.language }),
     })
       .then(async (res) => {
@@ -94,7 +98,7 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
     if (!confirm(t("actions.removeConfirm"))) return;
     fetch("/api/v1/admin/docker/images", {
       method: "DELETE",
-      headers: { "Content-Type": "application/json", "x-csrf-token": "1" },
+      headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
       body: JSON.stringify({ imageTag: lang.dockerImage }),
     })
       .then(async (res) => {
@@ -191,6 +195,20 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
 
   return (
     <>
+      {diskUsage && (
+        <div className="flex items-center gap-3 rounded-lg border p-3 text-sm mb-4">
+          <span className="font-medium">{t("diskUsage")}</span>
+          <span>{diskUsage.used} / {diskUsage.total} ({diskUsage.usePercent})</span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-green-600">{diskUsage.available} {t("diskAvailable")}</span>
+          <div className="ml-auto h-2 w-32 rounded-full bg-muted overflow-hidden">
+            <div
+              className={`h-full rounded-full ${parseInt(diskUsage.usePercent) > 90 ? "bg-red-500" : parseInt(diskUsage.usePercent) > 70 ? "bg-yellow-500" : "bg-green-500"}`}
+              style={{ width: diskUsage.usePercent }}
+            />
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-2 mb-4">
         <Input
           value={search}

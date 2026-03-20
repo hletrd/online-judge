@@ -2,15 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess } from "@/lib/api/responses";
-import { listDockerImages, pullDockerImage, removeDockerImage } from "@/lib/docker/client";
+import { listDockerImages, pullDockerImage, removeDockerImage, getDiskUsage } from "@/lib/docker/client";
 import { recordAuditEvent } from "@/lib/audit/events";
 
 export const GET = createApiHandler({
   auth: { roles: ["admin", "super_admin"] },
   handler: async (req: NextRequest) => {
     const filter = req.nextUrl.searchParams.get("filter") ?? "judge-*";
-    const images = await listDockerImages(filter);
-    return apiSuccess(images);
+    const [images, disk] = await Promise.all([
+      listDockerImages(filter),
+      getDiskUsage(),
+    ]);
+    return apiSuccess({ images, disk });
   },
 });
 

@@ -95,6 +95,24 @@ export async function buildDockerImage(
   }
 }
 
+/** Get disk usage info */
+export async function getDiskUsage(): Promise<{ total: string; used: string; available: string; usePercent: string } | null> {
+  try {
+    const { stdout } = await exec("df", ["-h", "/"], { timeout: 5_000 });
+    const lines = stdout.trim().split("\n");
+    if (lines.length < 2) return null;
+    const parts = lines[1].split(/\s+/);
+    return {
+      total: parts[1] ?? "?",
+      used: parts[2] ?? "?",
+      available: parts[3] ?? "?",
+      usePercent: parts[4] ?? "?",
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Remove a Docker image */
 export async function removeDockerImage(imageTag: string): Promise<{ success: boolean; error?: string }> {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._\-/:]+$/.test(imageTag)) {

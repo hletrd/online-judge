@@ -943,6 +943,8 @@
         "removeSuccess": "Docker image removed.",
         "removeError": "Failed to remove Docker image."
       },
+      "diskUsage": "Disk",
+      "diskAvailable": "available",
       "imageStatus": {
         "available": "Available",
         "notBuilt": "Not built"
