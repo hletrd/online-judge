@@ -9,6 +9,8 @@
 #   ./deploy-docker.sh                    # Full deployment
 #   ./deploy-docker.sh --skip-build       # Skip image build (reuse existing)
 #   ./deploy-docker.sh --skip-languages   # Skip building judge language images
+#   ./deploy-docker.sh --languages=core   # Build only core language images
+#   ./deploy-docker.sh --languages=cpp,python,jvm  # Build specific languages
 #
 # Environment:
 #   SSH_PASSWORD    — SSH password for the remote host (password auth)
@@ -29,15 +31,42 @@ DOMAIN="${DOMAIN:-oj-internal.maum.ai}"
 APP_PORT=3100
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Language presets
+CORE_LANGS="cpp python jvm"
+POPULAR_LANGS="$CORE_LANGS node rust go"
+EXTENDED_LANGS="$POPULAR_LANGS ruby lua bash csharp php perl swift r haskell dart zig"
+ALL_LANGS="cpp clang python node jvm rust go swift csharp r perl php ruby lua haskell dart zig nim ocaml elixir julia d racket v fortran pascal cobol brainfuck scala erlang commonlisp bash esoteric ada clojure prolog tcl awk scheme groovy octave crystal powershell postscript"
+
+resolve_languages() {
+  local spec="$1"
+  case "$spec" in
+    core)     echo "$CORE_LANGS" ;;
+    popular)  echo "$POPULAR_LANGS" ;;
+    extended) echo "$EXTENDED_LANGS" ;;
+    all)      echo "$ALL_LANGS" ;;
+    none)     echo "" ;;
+    *)        echo "$spec" | tr ',' ' ' ;;
+  esac
+}
+
 # Parse arguments
 SKIP_BUILD=false
 SKIP_LANGUAGES=false
+LANGUAGE_FILTER=""
 for arg in "$@"; do
   case "$arg" in
     --skip-build) SKIP_BUILD=true ;;
     --skip-languages) SKIP_LANGUAGES=true ;;
+    --languages=*) LANGUAGE_FILTER="${arg#--languages=}" ;;
     --help|-h)
-      echo "Usage: $0 [--skip-build] [--skip-languages]"
+      echo "Usage: $0 [--skip-build] [--skip-languages] [--languages=<preset|lang,lang,...>]"
+      echo ""
+      echo "Language presets: core, popular, extended, all, none"
+      echo "  core     — C/C++, Python, Java/Kotlin (~1.2 GB)"
+      echo "  popular  — Core + Node.js, Rust, Go (~4 GB)"
+      echo "  extended — Popular + Ruby, Lua, Bash, C#, PHP, Perl, Swift, R, Haskell, Dart, Zig (~12 GB)"
+      echo "  all      — All 44 language images (~20 GB)"
+      echo "  none     — Skip language image builds"
       exit 0
       ;;
   esac
@@ -190,18 +219,33 @@ success "Source code synced to remote"
 # ---------------------------------------------------------------------------
 if [[ "$SKIP_BUILD" == false ]]; then
     info "Building app image on ${REMOTE_HOST} (judgekit-app:latest) [${PLATFORM}]..."
-    remote "cd ${REMOTE_DIR} && docker build --platform ${PLATFORM} -t judgekit-app:latest -f Dockerfile ."
+    remote "cd ${REMOTE_DIR} && docker build --no-cache --platform ${PLATFORM} -t judgekit-app:latest -f Dockerfile ."
     success "App image built on remote"
 
     info "Building judge worker image on ${REMOTE_HOST} (judgekit-judge-worker:latest) [${PLATFORM}]..."
-    remote "cd ${REMOTE_DIR} && docker build --platform ${PLATFORM} -t judgekit-judge-worker:latest -f Dockerfile.judge-worker ."
+    remote "cd ${REMOTE_DIR} && docker build --no-cache --platform ${PLATFORM} -t judgekit-judge-worker:latest -f Dockerfile.judge-worker ."
     success "Judge worker image built on remote"
 
     if [[ "$SKIP_LANGUAGES" == false ]]; then
-        info "Building all judge language images on ${REMOTE_HOST} [${PLATFORM}]..."
-        remote "cd ${REMOTE_DIR} && (DOCKER_DEFAULT_PLATFORM=${PLATFORM} docker compose -f docker-compose.yml build 2>/dev/null || \
-            DOCKER_DEFAULT_PLATFORM=${PLATFORM} docker-compose -f docker-compose.yml build)"
-        success "Judge language images built on remote"
+        if [[ -n "$LANGUAGE_FILTER" ]]; then
+            LANGS_TO_BUILD=$(resolve_languages "$LANGUAGE_FILTER")
+            if [[ -z "$LANGS_TO_BUILD" ]]; then
+                info "No languages selected (--languages=none), skipping language builds"
+            else
+                LANG_COUNT=$(echo $LANGS_TO_BUILD | wc -w | tr -d ' ')
+                info "Building ${LANG_COUNT} judge language images on ${REMOTE_HOST} [${PLATFORM}]..."
+                for lang in $LANGS_TO_BUILD; do
+                    info "  Building judge-${lang}..."
+                    remote "cd ${REMOTE_DIR} && docker build --platform ${PLATFORM} -t judge-${lang} -f docker/Dockerfile.judge-${lang} ."
+                done
+                success "Selected judge language images built on remote"
+            fi
+        else
+            info "Building all judge language images on ${REMOTE_HOST} [${PLATFORM}]..."
+            remote "cd ${REMOTE_DIR} && (DOCKER_DEFAULT_PLATFORM=${PLATFORM} docker compose -f docker-compose.yml build 2>/dev/null || \
+                DOCKER_DEFAULT_PLATFORM=${PLATFORM} docker-compose -f docker-compose.yml build)"
+            success "Judge language images built on remote"
+        fi
     fi
 else
     info "Skipping image build (--skip-build)"
