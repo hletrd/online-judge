@@ -671,48 +671,41 @@ test("submit A+B in all supported languages and verify judging", async ({ browse
   const results: Result[] = [];
   const languages = Object.keys(SOLUTIONS);
 
-  // ── Phase 1: Batch submit all languages ──
+  // ── Phase 1: Fire ALL submissions in parallel ──
   const pending: Array<{ language: string; submissionId: string }> = [];
 
-  for (const language of languages) {
-    try {
-      let subRes!: Awaited<ReturnType<typeof apiPost>>;
-      for (let attempt = 1; attempt <= 8; attempt++) {
-        subRes = await apiPost(context, "/api/v1/submissions", {
+  const submitResults = await Promise.all(
+    languages.map(async (language) => {
+      try {
+        const subRes = await apiPost(context, "/api/v1/submissions", {
           problemId,
           language,
           sourceCode: SOLUTIONS[language],
         });
-        if (subRes.status() !== 429) break;
-        await new Promise((r) => setTimeout(r, 2_000));
+        if (subRes.status() !== 201) {
+          const err = await subRes.text();
+          return { language, ok: false as const, status: subRes.status(), err };
+        }
+        const submissionId = (await subRes.json()).data?.id;
+        return { language, ok: true as const, submissionId };
+      } catch (e) {
+        return { language, ok: false as const, status: 0, err: String(e) };
       }
+    })
+  );
 
-      if (subRes.status() !== 201) {
-        const err = await subRes.text();
-        console.log(`[${language}] Submit failed: ${subRes.status()} ${err}`);
-        results.push({
-          language,
-          submissionId: "-",
-          status: `submit_error_${subRes.status()}`,
-          score: 0,
-          compileOutput: err,
-        });
-        continue;
-      }
-
-      const submissionId = (await subRes.json()).data?.id;
-      console.log(`[${language}] Submitted: ${submissionId}`);
-      pending.push({ language, submissionId });
-
-      // No delay needed — rate limit raised to 120/min
-    } catch (e) {
-      console.log(`[${language}] Submit error: ${e}`);
+  for (const r of submitResults) {
+    if (r.ok) {
+      console.log(`[${r.language}] Submitted: ${r.submissionId}`);
+      pending.push({ language: r.language, submissionId: r.submissionId });
+    } else {
+      console.log(`[${r.language}] Submit failed: ${r.status} ${r.err}`);
       results.push({
-        language,
+        language: r.language,
         submissionId: "-",
-        status: "test_error",
+        status: `submit_error_${r.status}`,
         score: 0,
-        compileOutput: String(e),
+        compileOutput: r.err ?? "",
       });
     }
   }
