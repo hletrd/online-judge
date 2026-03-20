@@ -513,7 +513,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".scala",
     dockerImage: "judge-scala:latest",
     compiler: `Scala ${JUDGE_TOOLCHAIN_VERSIONS.scala}`,
-    compileCommand: ["sh", "-c", "export HOME=/tmp && mkdir -p /workspace/out && scalac -d /workspace/out /workspace/solution.scala"],
+    compileCommand: ["sh", "-c", "export HOME=/tmp && mkdir -p /workspace/out && /usr/local/bin/scalac -d /workspace/out /workspace/solution.scala"],
     runCommand: ["sh", "-c", "export HOME=/tmp && java -classpath /workspace/out Main"],
   },
   erlang: {
@@ -574,7 +574,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-esoteric:latest",
     compiler: "Hyeong Interpreter",
     compileCommand: null,
-    runCommand: ["hyeong", "run", "/workspace/solution.hyeong"],
+    runCommand: ["sh", "-c", "hyeong run --color never /workspace/solution.hyeong 2>&1 | sed '/^==> /d'"],
   },
   whitespace: {
     language: "whitespace",
