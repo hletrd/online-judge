@@ -614,8 +614,6 @@ const KNOWN_FLAKY = new Set<string>([
   "umjunsik",      // Needs testing
   "k",             // Wrong output (solution needs fix)
   "uiua",          // GLIBC_2.39 missing in image
-  "vbnet",         // dotnet-script not available
-  "shakespeare",   // Needs testing
 ]);
 
 let sharedContext: Awaited<ReturnType<typeof import("@playwright/test").chromium.launch>> extends { newContext: infer F } ? never : never;
