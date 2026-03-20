@@ -618,7 +618,6 @@ const KNOWN_FLAKY = new Set<string>([
   "k",             // Wrong output (solution needs fix)
   "uiua",          // GLIBC_2.39 missing in image
   "coffeescript",  // coffee not in judge-node PATH
-  "llvm_ir",       // Needs compile step
   "vbnet",         // dotnet-script not available
   "shakespeare",   // Needs testing
 ]);
