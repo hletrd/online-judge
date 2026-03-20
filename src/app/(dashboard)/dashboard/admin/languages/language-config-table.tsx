@@ -41,6 +41,7 @@ interface LanguageConfig {
   isEnabled: boolean | null;
   updatedAt: Date;
   runtimeInfo: string;
+  dockerSize: string | null;
 }
 
 export function LanguageConfigTable({ languages }: { languages: LanguageConfig[] }) {

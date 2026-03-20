@@ -7,7 +7,6 @@ import { languageConfigs } from "@/lib/db/schema";
 import { asc } from "drizzle-orm";
 import { LanguageConfigTable } from "./language-config-table";
 import { getDockerImageRuntimeInfo } from "@/lib/judge/languages";
-
 export default async function AdminLanguagesPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -21,6 +20,7 @@ export default async function AdminLanguagesPage() {
   const enrichedLanguages = languages.map(lang => ({
     ...lang,
     runtimeInfo: getDockerImageRuntimeInfo(lang.dockerImage),
+    dockerSize: null as string | null,
   }));
 
   const enabledCount = languages.filter(l => l.isEnabled).length;
