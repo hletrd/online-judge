@@ -161,7 +161,7 @@ export default async function UserManagementPage({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium" htmlFor="users-role">
+              <label className="block text-sm font-medium" htmlFor="users-role">
                 {t("filters.roleLabel")}
               </label>
               <FilterSelect
