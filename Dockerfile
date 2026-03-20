@@ -46,8 +46,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# better-sqlite3 requires these at runtime for the native binding
-RUN apk add --no-cache libstdc++
+# better-sqlite3 requires libstdc++ at runtime; Docker CLI for admin image management
+RUN apk add --no-cache libstdc++ docker-cli
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs

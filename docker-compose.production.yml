@@ -22,6 +22,7 @@ services:
       - "127.0.0.1:3100:3000"
     volumes:
       - judgekit-data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker CLI for admin image management
     env_file:
       - .env.production
     environment:
