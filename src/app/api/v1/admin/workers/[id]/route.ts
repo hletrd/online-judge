@@ -7,6 +7,56 @@ import { getApiUser, unauthorized, forbidden } from "@/lib/api/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { logger } from "@/lib/logger";
+import { z } from "zod";
+
+const updateWorkerSchema = z.object({
+  alias: z.string().max(100).nullable().optional(),
+});
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getApiUser(request);
+    if (!user) return unauthorized();
+
+    const caps = await resolveCapabilities(user.role);
+    if (!caps.has("system.settings")) return forbidden();
+
+    const { id } = await params;
+    const parsed = updateWorkerSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return apiError("invalidRequest", 400);
+    }
+
+    const worker = await db.query.judgeWorkers.findFirst({
+      where: eq(judgeWorkers.id, id),
+    });
+
+    if (!worker) {
+      return apiError("workerNotFound", 404);
+    }
+
+    const updates: Record<string, unknown> = {};
+    if (parsed.data.alias !== undefined) {
+      updates.alias = parsed.data.alias;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      db.update(judgeWorkers).set(updates).where(eq(judgeWorkers.id, id)).run();
+    }
+
+    const updated = await db.query.judgeWorkers.findFirst({
+      where: eq(judgeWorkers.id, id),
+    });
+
+    return apiSuccess(updated);
+  } catch (error) {
+    logger.error({ err: error }, "PATCH /api/v1/admin/workers/[id] error");
+    return apiError("internalServerError", 500);
+  }
+}
 
 export async function DELETE(
   request: NextRequest,

@@ -12,16 +12,35 @@
 Start from `.env.example` and set at least:
 
 ```bash
+# App server
 AUTH_SECRET=<openssl rand -base64 32>
 AUTH_URL=https://your-domain.example
 AUTH_TRUST_HOST=true
+
+# Judge worker (shared secret between app and worker)
 JUDGE_AUTH_TOKEN=<openssl rand -hex 32>
-JUDGE_POLL_URL=http://localhost:3000/api/v1/judge/poll
+JUDGE_BASE_URL=http://localhost:3000/api/v1
 POLL_INTERVAL=2000
+JUDGE_CONCURRENCY=2
 JUDGE_DISABLE_CUSTOM_SECCOMP=0
+# JUDGE_WORKER_HOSTNAME=worker-1   # Reported during registration (default: system hostname)
 ```
 
-- Keep `JUDGE_POLL_URL` on the internal host URL unless the worker runs on another machine
+### Environment Variable Reference
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `AUTH_SECRET` | Yes | — | Session encryption key (`openssl rand -base64 32`) |
+| `AUTH_URL` | Yes | — | App public URL |
+| `AUTH_TRUST_HOST` | No | `false` | Set `true` behind a reverse proxy |
+| `DATABASE_PATH` | No | `./data/judge.db` | SQLite database path |
+| `JUDGE_AUTH_TOKEN` | Yes | — | Shared secret for worker auth (`openssl rand -hex 32`) |
+| `JUDGE_BASE_URL` | No | `http://localhost:3000/api/v1` | App API URL for workers |
+| `JUDGE_CONCURRENCY` | No | `1` | Max parallel submissions per worker (1-16) |
+| `JUDGE_WORKER_HOSTNAME` | No | System hostname | Worker name shown in admin dashboard |
+| `POLL_INTERVAL` | No | `2000` | Worker poll interval in ms |
+| `JUDGE_DISABLE_CUSTOM_SECCOMP` | No | `0` | Set `1` on Docker 28+/modern kernels |
+
 - Set `JUDGE_DISABLE_CUSTOM_SECCOMP=1` on hosts where Docker 28+/modern kernels reject the repository seccomp profile
 
 ## Initial Provisioning
@@ -97,6 +116,38 @@ SSH_KEY=key.pem REMOTE_HOST=... REMOTE_USER=... DOMAIN=... ./deploy-docker.sh
 
 # Flags: --skip-build, --skip-languages, --languages=core, --languages=cpp,python
 ```
+
+## Dedicated Judge Workers
+
+Scale judging capacity by deploying workers on separate machines. Each worker connects to the app server via HTTP(S), registers on startup, and sends periodic heartbeats.
+
+### Deploy a remote worker
+
+```bash
+./scripts/deploy-worker.sh \
+  --host=192.168.1.10 \
+  --app-url=https://oj.example.com/api/v1 \
+  --concurrency=4 \
+  --sync-images
+```
+
+### Or use docker-compose.worker.yml directly on the worker machine
+
+```bash
+JUDGE_BASE_URL=https://oj.example.com/api/v1 \
+JUDGE_AUTH_TOKEN=<same-token-as-app> \
+JUDGE_CONCURRENCY=4 \
+JUDGE_WORKER_HOSTNAME=worker-2 \
+docker compose -f docker-compose.worker.yml up -d
+```
+
+### Monitor workers
+
+- Admin dashboard: `/dashboard/admin/workers`
+- Set friendly aliases via the edit icon in the Alias column
+- Force-remove stale workers to reclaim their in-flight submissions
+
+See [Judge Workers](judge-workers.md) for full architecture and API reference.
 
 ## Post-deploy Verification
 

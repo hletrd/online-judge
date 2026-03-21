@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,12 +31,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Trash2, RefreshCw } from "lucide-react";
+import { Trash2, RefreshCw, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface Worker {
   id: string;
   hostname: string;
+  alias: string | null;
   ipAddress: string | null;
   concurrency: number;
   activeTasks: number;
@@ -79,6 +81,61 @@ function formatRelativeTime(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function AliasCell({ worker, onUpdate }: { worker: Worker; onUpdate: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(worker.alias ?? "");
+
+  async function handleSave() {
+    const res = await fetch(`/api/v1/admin/workers/${worker.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ alias: value || null }),
+    });
+    if (res.ok) {
+      setEditing(false);
+      onUpdate();
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="h-7 w-32 text-sm"
+          placeholder="Alias..."
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSave();
+            if (e.key === "Escape") setEditing(false);
+          }}
+        />
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleSave}>
+          <Check className="h-3 w-3" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditing(false)}>
+          <X className="h-3 w-3" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1 group">
+      <span className="text-sm">{worker.alias || "-"}</span>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={() => { setValue(worker.alias ?? ""); setEditing(true); }}
+      >
+        <Pencil className="h-3 w-3" />
+      </Button>
+    </div>
+  );
 }
 
 export function WorkersPageClient() {
@@ -179,6 +236,7 @@ export function WorkersPageClient() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>{t("colAlias")}</TableHead>
                   <TableHead>{t("colHostname")}</TableHead>
                   <TableHead>{t("colIpAddress")}</TableHead>
                   <TableHead>{t("colStatus")}</TableHead>
@@ -192,6 +250,9 @@ export function WorkersPageClient() {
               <TableBody>
                 {workers.map((w) => (
                   <TableRow key={w.id}>
+                    <TableCell>
+                      <AliasCell worker={w} onUpdate={fetchData} />
+                    </TableCell>
                     <TableCell className="font-mono text-sm">
                       {w.hostname}
                     </TableCell>
@@ -227,7 +288,7 @@ export function WorkersPageClient() {
                             </AlertDialogTitle>
                             <AlertDialogDescription>
                               {t("removeConfirmDescription", {
-                                hostname: w.hostname,
+                                hostname: w.alias || w.hostname,
                               })}
                             </AlertDialogDescription>
                           </AlertDialogHeader>

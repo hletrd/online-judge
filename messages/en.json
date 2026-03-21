@@ -1051,6 +1051,7 @@
       "refresh": "Refresh",
       "loading": "Loading...",
       "noWorkers": "No judge workers registered.",
+      "colAlias": "Alias",
       "colHostname": "Hostname",
       "colIpAddress": "IP Address",
       "colStatus": "Status",

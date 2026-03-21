@@ -1043,6 +1043,7 @@
       "refresh": "새로고침",
       "loading": "로딩 중...",
       "noWorkers": "등록된 채점 워커가 없습니다.",
+      "colAlias": "별칭",
       "colHostname": "호스트명",
       "colIpAddress": "IP 주소",
       "colStatus": "상태",

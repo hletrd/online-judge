@@ -308,6 +308,7 @@ export const judgeWorkers = sqliteTable(
       .primaryKey()
       .$defaultFn(() => nanoid()),
     hostname: text("hostname").notNull(),
+    alias: text("alias"),
     ipAddress: text("ip_address"),
     concurrency: integer("concurrency").notNull().default(1),
     activeTasks: integer("active_tasks").notNull().default(0),

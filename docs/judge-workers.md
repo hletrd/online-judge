@@ -127,7 +127,8 @@ For larger fleets, consider a private Docker registry and set `JUDGE_DOCKER_REGI
 The workers admin page at `/dashboard/admin/workers` (requires `system.settings` capability) provides:
 
 - **Stats cards** — Workers online, queue depth, active judging, total concurrency
-- **Workers table** — Hostname, status, concurrency, active tasks, version, last heartbeat
+- **Workers table** — Alias, hostname, IP address, status, concurrency, active tasks, version, last heartbeat
+- **Alias editing** — Click the pencil icon to set a friendly name for each worker
 - **Force-remove** — Remove a worker and reclaim its in-flight submissions
 
 Data auto-refreshes every 10 seconds.
