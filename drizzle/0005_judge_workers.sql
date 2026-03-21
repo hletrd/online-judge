@@ -15,6 +15,8 @@ CREATE INDEX `judge_workers_status_idx` ON `judge_workers` (`status`);
 --> statement-breakpoint
 CREATE INDEX `judge_workers_last_heartbeat_idx` ON `judge_workers` (`last_heartbeat_at`);
 --> statement-breakpoint
+ALTER TABLE `judge_workers` ADD `ip_address` text;
+--> statement-breakpoint
 ALTER TABLE `submissions` ADD `judge_worker_id` text;
 --> statement-breakpoint
 CREATE INDEX `submissions_judge_worker_idx` ON `submissions` (`judge_worker_id`);

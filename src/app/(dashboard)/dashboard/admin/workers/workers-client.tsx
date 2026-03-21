@@ -36,6 +36,7 @@ import { toast } from "sonner";
 interface Worker {
   id: string;
   hostname: string;
+  ipAddress: string | null;
   concurrency: number;
   activeTasks: number;
   version: string | null;
@@ -179,6 +180,7 @@ export function WorkersPageClient() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("colHostname")}</TableHead>
+                  <TableHead>{t("colIpAddress")}</TableHead>
                   <TableHead>{t("colStatus")}</TableHead>
                   <TableHead>{t("colConcurrency")}</TableHead>
                   <TableHead>{t("colActiveTasks")}</TableHead>
@@ -192,6 +194,9 @@ export function WorkersPageClient() {
                   <TableRow key={w.id}>
                     <TableCell className="font-mono text-sm">
                       {w.hostname}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">
+                      {w.ipAddress ?? "-"}
                     </TableCell>
                     <TableCell>
                       <Badge variant={statusVariant(w.status)}>

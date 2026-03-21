@@ -3,6 +3,7 @@ import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { judgeWorkers } from "@/lib/db/schema";
 import { isJudgeAuthorized } from "@/lib/judge/auth";
+import { extractClientIp } from "@/lib/security/ip";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 
@@ -28,11 +29,13 @@ export async function POST(request: NextRequest) {
     }
 
     const { hostname, concurrency, version, labels } = parsed.data;
+    const ipAddress = extractClientIp(request.headers);
 
     const [worker] = await db
       .insert(judgeWorkers)
       .values({
         hostname,
+        ipAddress,
         concurrency,
         version: version ?? null,
         labels: labels ?? [],

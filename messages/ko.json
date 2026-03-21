@@ -1044,6 +1044,7 @@
       "loading": "로딩 중...",
       "noWorkers": "등록된 채점 워커가 없습니다.",
       "colHostname": "호스트명",
+      "colIpAddress": "IP 주소",
       "colStatus": "상태",
       "colConcurrency": "동시 처리",
       "colActiveTasks": "활성 작업",

@@ -1052,6 +1052,7 @@
       "loading": "Loading...",
       "noWorkers": "No judge workers registered.",
       "colHostname": "Hostname",
+      "colIpAddress": "IP Address",
       "colStatus": "Status",
       "colConcurrency": "Concurrency",
       "colActiveTasks": "Active Tasks",
