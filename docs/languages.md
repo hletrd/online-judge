@@ -1,6 +1,6 @@
-# Supported Languages (100 variants)
+# Supported Languages (114 variants)
 
-82 Docker images covering 100 language variants. Deployed on both AMD64 (test) and ARM64 (production).
+95 Docker images covering 114 language variants. Deployed on both AMD64 (test) and ARM64 (production).
 
 | # | Language ID | Description | Docker Image | amd64 | arm64 | amd64 E2E | arm64 E2E |
 |---|-------------|-------------|--------------|-------|-------|-----------|-----------|
@@ -104,6 +104,20 @@
 | 98 | `hare` | Hare | `judge-hare` | ❓ | ❓ | ❓ | ❓ |
 | 99 | `koka` | Koka | `judge-koka` | ✅ | ❌ amd64 only | ❓ | ❓ |
 | 100 | `lean` | Lean 4 | `judge-lean` | ❓ | ❓ | ❓ | ❓ |
+| 101 | `picat` | Picat 3.9 | `judge-picat` | ✅ | ❌ build from src | ❓ | ❓ |
+| 102 | `mercury` | Mercury 22.01.8 | `judge-mercury` | ✅ | ✅ | ❓ | ❓ |
+| 103 | `wat` | WebAssembly (WAT, wabt+wasmtime) | `judge-wat` | ✅ | ✅ | ❓ | ❓ |
+| 104 | `purescript` | PureScript 0.15.16 | `judge-purescript` | ✅ | ✅ | ❓ | ❓ |
+| 105 | `modula2` | Modula-2 (GCC gm2) | `judge-modula2` | ✅ | ✅ | ❓ | ❓ |
+| 106 | `factor` | Factor 0.101 | `judge-factor` | ✅ | ❌ amd64 only | ❓ | ❓ |
+| 107 | `spark` | SPARK (Ada/SPARK 2014, GNAT) | `judge-ada` | ✅ | ✅ | ❓ | ❓ |
+| 108 | `minizinc` | MiniZinc 2.9.5 | `judge-minizinc` | ✅ | ❌ amd64 only | ❓ | ❓ |
+| 109 | `curry` | Curry (PAKCS 3.9.0) | `judge-curry` | ✅ | ❌ amd64 only | ❓ | ❓ |
+| 110 | `clean` | Clean 3.1 | `judge-clean` | ✅ | ✅ | ❓ | ❓ |
+| 111 | `roc` | Roc (alpha4) | `judge-roc` | ✅ | ✅ | ❓ | ❓ |
+| 112 | `carp` | Carp 0.5.5 | `judge-carp` | ✅ | ❌ amd64 only | ❓ | ❓ |
+| 113 | `grain` | Grain 0.7.2 | `judge-grain` | ✅ | ❌ x64 only | ❓ | ❓ |
+| 114 | `pony` | Pony 0.61.1 | `judge-pony` | ✅ | ✅ | ❓ | ❓ |
 
 ### ARM64 Build Summary
 
@@ -111,7 +125,7 @@
 - **B (BCause)**: uses x86-64 inline assembly (`syscall` instruction), fundamentally incompatible with ARM64
 - **APL (GNU APL 1.8)**: `make` fails on ARM64 due to old C++ code with portability issues
 
-12 new images (Phase 1+2) pending ARM64 verification.
+26 new images (Phase 1+2+3) pending ARM64 verification.
 
 ### amd64 E2E Summary (2026-03-21)
 
@@ -137,7 +151,7 @@ Pending — will be tested after Docker images are built on ARM64.
 | `core` | C/C++, Python, Java/Kotlin | ~0.8 GB |
 | `popular` | Core + Node.js, Rust, Go | ~2.5 GB |
 | `extended` | Popular + Ruby, Lua, Bash, C#, PHP, Perl, Swift, R, Haskell, Dart, Zig | ~8 GB |
-| `all` | All 82 images | ~35 GB |
+| `all` | All 95 images | ~35 GB |
 
 ## Admin Language Management
 

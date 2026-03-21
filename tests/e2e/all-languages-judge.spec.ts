@@ -638,6 +638,216 @@ export fn main() void = {
   match parts with
   | [a, b] => IO.println s!"{a.toInt! + b.toInt!}"
   | _ => return ()`,
+  picat: `main =>
+    A = read_int(),
+    B = read_int(),
+    writeln(A + B).`,
+  mercury: `:- module solution.
+:- interface.
+:- import_module io.
+:- pred main(io::di, io::uo) is det.
+:- implementation.
+:- import_module int, string, list.
+main(!IO) :-
+    io.read_line_as_string(Result, !IO),
+    (
+        Result = ok(Line),
+        Words = string.words(string.strip(Line)),
+        (
+            Words = [AStr, BStr],
+            string.to_int(AStr, A),
+            string.to_int(BStr, B)
+        ->
+            io.write_int(A + B, !IO),
+            io.nl(!IO)
+        ;
+            true
+        )
+    ;
+        Result = eof
+    ;
+        Result = error(_)
+    ).`,
+  wat: `(module
+  (import "wasi_snapshot_preview1" "fd_read" (func $fd_read (param i32 i32 i32 i32) (result i32)))
+  (import "wasi_snapshot_preview1" "fd_write" (func $fd_write (param i32 i32 i32 i32) (result i32)))
+  (import "wasi_snapshot_preview1" "proc_exit" (func $proc_exit (param i32)))
+  (memory 1)
+  (export "memory" (memory 0))
+  (func $main (export "_start")
+    (local $pos i32) (local $a i32) (local $b i32) (local $ch i32)
+    (local $sum i32) (local $out_pos i32) (local $tmp i32) (local $digits i32) (local $i i32)
+    (i32.store (i32.const 0) (i32.const 256))
+    (i32.store (i32.const 4) (i32.const 128))
+    (drop (call $fd_read (i32.const 0) (i32.const 0) (i32.const 1) (i32.const 8)))
+    (local.set $pos (i32.const 256))
+    (local.set $a (i32.const 0))
+    (block $da (loop $la
+      (local.set $ch (i32.load8_u (local.get $pos)))
+      (br_if $da (i32.eq (local.get $ch) (i32.const 32)))
+      (local.set $a (i32.add (i32.mul (local.get $a) (i32.const 10)) (i32.sub (local.get $ch) (i32.const 48))))
+      (local.set $pos (i32.add (local.get $pos) (i32.const 1)))
+      (br $la)))
+    (local.set $pos (i32.add (local.get $pos) (i32.const 1)))
+    (local.set $b (i32.const 0))
+    (block $db (loop $lb
+      (local.set $ch (i32.load8_u (local.get $pos)))
+      (br_if $db (i32.le_u (local.get $ch) (i32.const 32)))
+      (local.set $b (i32.add (i32.mul (local.get $b) (i32.const 10)) (i32.sub (local.get $ch) (i32.const 48))))
+      (local.set $pos (i32.add (local.get $pos) (i32.const 1)))
+      (br $lb)))
+    (local.set $sum (i32.add (local.get $a) (local.get $b)))
+    (if (i32.eqz (local.get $sum)) (then
+      (i32.store8 (i32.const 512) (i32.const 48))
+      (i32.store8 (i32.const 513) (i32.const 10))
+      (i32.store (i32.const 16) (i32.const 512))
+      (i32.store (i32.const 20) (i32.const 2))
+      (drop (call $fd_write (i32.const 1) (i32.const 16) (i32.const 1) (i32.const 24)))
+      (call $proc_exit (i32.const 0)) (return)))
+    (local.set $tmp (local.get $sum))
+    (local.set $out_pos (i32.const 600))
+    (local.set $digits (i32.const 0))
+    (block $dc (loop $lc
+      (br_if $dc (i32.eqz (local.get $tmp)))
+      (i32.store8 (local.get $out_pos) (i32.add (i32.rem_u (local.get $tmp) (i32.const 10)) (i32.const 48)))
+      (local.set $tmp (i32.div_u (local.get $tmp) (i32.const 10)))
+      (local.set $out_pos (i32.add (local.get $out_pos) (i32.const 1)))
+      (local.set $digits (i32.add (local.get $digits) (i32.const 1)))
+      (br $lc)))
+    (local.set $i (i32.const 0))
+    (block $dr (loop $lr
+      (br_if $dr (i32.ge_u (local.get $i) (local.get $digits)))
+      (i32.store8 (i32.add (i32.const 512) (local.get $i))
+        (i32.load8_u (i32.sub (i32.sub (local.get $out_pos) (i32.const 1)) (local.get $i))))
+      (local.set $i (i32.add (local.get $i) (i32.const 1)))
+      (br $lr)))
+    (i32.store8 (i32.add (i32.const 512) (local.get $digits)) (i32.const 10))
+    (i32.store (i32.const 16) (i32.const 512))
+    (i32.store (i32.const 20) (i32.add (local.get $digits) (i32.const 1)))
+    (drop (call $fd_write (i32.const 1) (i32.const 16) (i32.const 1) (i32.const 24)))
+    (call $proc_exit (i32.const 0))))`,
+  purescript: `module Main where
+
+import Prelude
+import Effect (Effect)
+import Effect.Console (log)
+import Data.String.Common (split, trim)
+import Data.String.Pattern (Pattern(..))
+import Data.Int (fromString)
+import Data.Maybe (fromMaybe)
+import Node.FS.Sync (readTextFile)
+import Node.Encoding (Encoding(..))
+
+main :: Effect Unit
+main = do
+  input <- readTextFile UTF8 "/dev/stdin"
+  let parts = split (Pattern " ") (trim input)
+  case parts of
+    [a, b] -> log (show (fromMaybe 0 (fromString a) + fromMaybe 0 (fromString b)))
+    _ -> pure unit`,
+  modula2: `MODULE solution;
+FROM SWholeIO IMPORT ReadInt, WriteInt;
+FROM STextIO IMPORT WriteLn;
+VAR a, b: INTEGER;
+BEGIN
+  ReadInt(a);
+  ReadInt(b);
+  WriteInt(a + b, 0);
+  WriteLn;
+END solution.`,
+  factor: `USING: io kernel math math.parser sequences splitting ;
+readln " " split [ string>number ] map first2 + number>string print`,
+  spark: `pragma SPARK_Mode (On);
+with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Integer_Text_IO; use Ada.Integer_Text_IO;
+procedure Solution is
+   A, B : Integer;
+begin
+   Get(A);
+   Get(B);
+   Put(A + B, Width => 0);
+   New_Line;
+end Solution;`,
+  minizinc: `int: a;
+int: b;
+var int: c;
+constraint c = a + b;
+solve satisfy;
+output [show(c), "\\n"];`,
+  curry: `main :: IO ()
+main = do
+  line <- getLine
+  let ws = words line
+      a = read (ws !! 0) :: Int
+      b = read (ws !! 1) :: Int
+  print (a + b)`,
+  clean: `module Solution
+import StdEnv
+Start :: *World -> *World
+Start w
+  # (io, w) = stdio w
+  # (ok, a, io) = freadi io
+  # (ok, b, io) = freadi io
+  # io = io <<< (a + b) <<< "\\n"
+  # (ok, w) = fclose io w
+  = w`,
+  roc: `app [main] { pf: platform "https://github.com/roc-lang/basic-cli/releases/download/0.19.0/Hj-J_zxz7V9YurCSTFcFdu7cQbJ4_e3CJ2M1tz6g3ms.tar.br" }
+
+import pf.Stdout
+import pf.Stdin
+
+main =
+    input = Stdin.line! {}
+    parts = Str.splitOn input " "
+    when parts is
+        [aStr, bStr] ->
+            a = Str.toI64 aStr |> Result.withDefault 0
+            b = Str.toI64 bStr |> Result.withDefault 0
+            Stdout.line! (Num.toStr (a + b))
+        _ ->
+            Stdout.line! "0"`,
+  carp: `(defn main []
+  (let [line (IO.get-line)
+        parts (String.split-by &line &[\\space])
+        a (Int.from-string &(Array.unsafe-nth &parts 0))
+        b (Int.from-string &(Array.unsafe-nth &parts 1))]
+    (println* (+ a b))))`,
+  grain: `module Main
+
+from "sys/file" include File
+from "bytes" include Bytes
+from "string" include String
+from "number" include Number
+from "result" include Result
+
+let buf = Bytes.make(1024)
+let nread = File.fdRead(File.stdin, buf, 1024)
+let input = Bytes.toString(Bytes.slice(0, Result.unwrap(nread), buf))
+let parts = String.split(" ", String.trim(input))
+match (parts) {
+  [a, b] => {
+    let na = Result.unwrap(Number.parseInt(a, 10))
+    let nb = Result.unwrap(Number.parseInt(b, 10))
+    print(toString(na + nb))
+  },
+  _ => void,
+}`,
+  pony: `use "files"
+
+actor Main
+  new create(env: Env) =>
+    let caps = recover val FileCaps .> set(FileRead) .> set(FileStat) end
+    try
+      let path = FilePath(FileAuth(env.root), "/dev/stdin", caps)
+      match OpenFile(path)
+      | let file: File =>
+        let line = file.read_string(1024)
+        let parts = line.strip().split(" ")
+        let a = parts(0)?.i64()?
+        let b = parts(1)?.i64()?
+        env.out.print((a + b).string())
+      end
+    end`,
 };
 
 // Keep inputs as positive single-digit numbers with single-digit sums (≤ 9)
@@ -730,18 +940,9 @@ const KNOWN_FAILING = new Set<string>([
   "lolcode",   // interpreter availability
   "forth",     // gforth stdin handling
   "algol68",   // compiler availability
-  "micropython",  // newly added — pending Docker image build
-  "squirrel",     // newly added — pending Docker image build
-  "rexx",         // newly added — pending Docker image build
-  "hy",           // newly added — pending Docker image build
-  "arturo",       // newly added — pending Docker image build
-  "janet",        // newly added — pending Docker image build
-  "c3",           // newly added — pending Docker image build
-  "vala",         // newly added — pending Docker image build
-  "nelua",        // newly added — pending Docker image build
-  "hare",         // newly added — pending Docker image build
-  "koka",         // newly added — pending Docker image build
-  "lean",         // newly added — pending Docker image build
+  "purescript",  // complex pre-built library setup
+  "curry",       // PAKCS interactive mode handling
+  "carp",        // unmaintained, x86-64 only
 ]);
 
 const KNOWN_FLAKY = new Set<string>([]);
@@ -765,6 +966,15 @@ const LANGUAGE_TIMEOUTS: Record<string, number> = {
   hare: 120_000,
   koka: 150_000,
   lean: 180_000,
+  mercury: 180_000,
+  purescript: 150_000,
+  pony: 120_000,
+  roc: 120_000,
+  clean: 120_000,
+  carp: 120_000,
+  grain: 120_000,
+  curry: 150_000,
+  minizinc: 120_000,
 };
 
 let sharedContext: Awaited<ReturnType<typeof import("@playwright/test").chromium.launch>> extends { newContext: infer F } ? never : never;
