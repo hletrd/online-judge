@@ -24,6 +24,7 @@
 
 - **Cross-platform (AMD64 + ARM64)** — Full stack runs natively on both architectures: Next.js app, Rust judge worker, Rust sidecars, and all 70 Docker judge images. Deploy on x86-64 servers or ARM64 (AWS Graviton, Ampere Altra, Apple Silicon) with automatic architecture detection — no emulation, no cross-compilation
 - **88 languages** — C/C++, Java, Python, Rust, Go, Deno, Bun, Gleam, Standard ML, and [78 more](docs/languages.md), all with multi-arch Docker images and admin-customizable compile/run settings
+- **Scalable judging** — Dedicated judge workers with multi-worker support. Workers register, send heartbeats, and gracefully deregister. Admin dashboard for real-time monitoring. Deploy N workers across multiple machines with a single deploy script
 - **Secure execution** — Docker containers with no network, seccomp, memory/CPU limits
 - **Role-based access** — Super admin, admin, instructor, student
 - **Classroom management** — Groups, enrollments, assignments with deadlines and late penalties
@@ -121,7 +122,7 @@ See [Language presets](docs/languages.md#docker-image-presets) for preset option
 | Database | SQLite + Drizzle ORM |
 | Auth | Auth.js v5 (Credentials) |
 | UI | Tailwind CSS v4, shadcn/ui |
-| Judge Worker | Rust binary with Docker-sandboxed execution |
+| Judge Worker | Rust binary with Docker-sandboxed execution (multi-worker) |
 | Code Similarity | Rust axum sidecar (rayon + ahash) |
 
 ## Project Structure
@@ -143,7 +144,54 @@ judgekit/
 └── data/                # SQLite database (gitignored)
 ```
 
-## Deployment Prerequisites
+## Architecture
+
+```
+                    +-------------------+
+                    |   App Server      |
+                    |   (Next.js)       |
+                    |   SQLite DB       |
+                    +-------------------+
+                     /    |    |     \
+                HTTPS  HTTPS  HTTPS  HTTPS
+                  /      |      |      \
+          +--------+ +--------+ +--------+ +--------+
+          |Worker-1| |Worker-2| |Worker-3| |Worker-N|
+          |Rust bin| |Rust bin| |Rust bin| |Rust bin|
+          |Docker  | |Docker  | |Docker  | |Docker  |
+          +--------+ +--------+ +--------+ +--------+
+```
+
+Workers connect to the app server via HTTP(S) only. Each worker registers on startup, sends periodic heartbeats, and deregisters on graceful shutdown. The atomic `UPDATE...RETURNING` claim SQL ensures no two workers can claim the same submission. Stale workers are automatically detected and their submissions reclaimed.
+
+## Deployment
+
+### Single-machine (default)
+
+```bash
+docker compose -f docker-compose.production.yml --env-file .env.production up -d
+```
+
+### Dedicated workers (scale-out)
+
+Deploy additional workers to separate machines using `docker-compose.worker.yml`:
+
+```bash
+JUDGE_BASE_URL=https://your-app-server/api/v1 \
+JUDGE_AUTH_TOKEN=your-token \
+JUDGE_CONCURRENCY=4 \
+docker compose -f docker-compose.worker.yml up -d
+```
+
+Or use the deploy script:
+
+```bash
+./scripts/deploy-worker.sh --host=192.168.1.10 --app-url=https://oj.example.com/api/v1 --concurrency=4 --sync-images
+```
+
+Monitor workers at `/dashboard/admin/workers`.
+
+### Prerequisites
 
 - **Docker socket**: Both the `app` and `judge-worker` containers require `/var/run/docker.sock` mounted. The app container uses it for admin image management (build/remove language images via `/dashboard/admin/languages`). The judge worker uses it for sandboxed code execution.
 - **`/judge-workspaces`**: Must exist on the host before starting the stack — used as the shared workspace volume between the judge worker and sibling judge containers.
@@ -154,6 +202,7 @@ judgekit/
 - [Deployment Guide](docs/deployment.md) — provisioning, deploy scripts, nginx, post-deploy checks
 - [Authentication](docs/authentication.md) — sign-in flow, cookie architecture, API smoke test
 - [Languages](docs/languages.md) — all 88 variants, Docker image presets, admin management
+- [Judge Workers](docs/judge-workers.md) — multi-worker architecture, registration, deployment
 
 ## License
 
