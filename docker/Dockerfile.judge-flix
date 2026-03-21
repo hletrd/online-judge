@@ -1,0 +1,11 @@
+FROM judge-jvm:latest
+
+USER root
+
+# Create a Flix project template with pre-downloaded deps
+RUN mkdir -p /opt/flix-template && cd /opt/flix-template && \
+    java -jar /opt/flix.jar init 2>/dev/null && \
+    java -jar /opt/flix.jar build 2>/dev/null || true && \
+    chmod -R a+rX /opt/flix-template
+
+USER judge

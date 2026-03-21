@@ -449,7 +449,7 @@ END`,
 준....
 식어어!
 이 사람이름이냐ㅋㅋ`,
-  k: '`0:$+/`I$" "\\*0:"/dev/stdin"',
+  k: '`0:$+/`I$" "\\*0:"/tmp/in"',
   haxe: `class Solution {
   static function main() {
     var line = Sys.stdin().readLine();
@@ -555,16 +555,15 @@ in print (Int.toString sum ^ "\\n") end;`,
   fennel: `(let [line (io.read :l)
       (a b) (line:match "(%S+)%s+(%S+)")]
   (print (math.floor (+ (tonumber a) (tonumber b)))))`,
-  flix: `import java.io.BufferedReader
-import java.io.InputStreamReader
+  flix: `import java.nio.file.Files
+import java.nio.file.Path
 
-def main(): Unit \ IO =
-    let reader = new BufferedReader(new InputStreamReader(System.in));
-    let line = reader.readLine();
-    let parts = String.splitOn({substr = " "}, line);
+def main(): Unit \\ IO =
+    let content = Files.readString(Path.of("/tmp/in"));
+    let parts = String.split({regex = " "}, String.trim(content));
     let a = List.head(parts) |> Option.flatMap(Int32.fromString) |> Option.getWithDefault(0);
     let b = List.drop(1, parts) |> List.head |> Option.flatMap(Int32.fromString) |> Option.getWithDefault(0);
-    println(a + b)`,
+    println(Int32.toString(a + b))`,
 };
 
 // Keep inputs as positive single-digit numbers with single-digit sums (≤ 9)
@@ -648,8 +647,7 @@ async function waitForJudging(
 
 // ── Shared state for serial test suite ──
 const KNOWN_FLAKY = new Set<string>([
-  "k",             // ngn/k can't read stdin in script mode (eoleof)
-  "flix",          // Flix 0.69.2 effect system blocks Java interop for stdin
+  "k",             // ngn/k can't write to stdout in script mode (type/eoleof errors)
 ]);
 
 let sharedContext: Awaited<ReturnType<typeof import("@playwright/test").chromium.launch>> extends { newContext: infer F } ? never : never;
