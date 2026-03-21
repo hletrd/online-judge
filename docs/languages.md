@@ -1,6 +1,6 @@
-# Supported Languages (89 variants)
+# Supported Languages (88 variants)
 
-70 Docker images covering 89 language variants. Deployed on both AMD64 (test) and ARM64 (production).
+70 Docker images covering 88 language variants. Deployed on both AMD64 (test) and ARM64 (production).
 
 | # | Language ID | Description | Docker Image | arm64 Build |
 |---|-------------|-------------|--------------|-------------|
@@ -79,20 +79,19 @@
 | 73 | `odin` | Odin | `judge-odin` | ✅ |
 | 74 | `uiua` | Uiua | `judge-uiua` | ✅ |
 | 75 | `bqn` | BQN (CBQN) | `judge-bqn` | ✅ |
-| 76 | `k` | K (ngn/k) | `judge-k` | ✅ |
-| 77 | `icon` | Icon | `judge-icon` | ✅ |
-| 78 | `algol68` | Algol 68 (a68g) | `judge-algol68` | ✅ |
-| 79 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` | ✅ |
-| 80 | `lolcode` | LOLCODE (lci) | `judge-lolcode` | ✅ |
-| 81 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` | ✅ |
-| 82 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` | ✅ |
-| 83 | `deno_js` | JavaScript (Deno) | `judge-deno` | ✅ |
-| 84 | `deno_ts` | TypeScript (Deno) | `judge-deno` | ✅ |
-| 85 | `bun_js` | JavaScript (Bun) | `judge-bun` | ✅ |
-| 86 | `bun_ts` | TypeScript (Bun) | `judge-bun` | ✅ |
-| 87 | `gleam` | Gleam (Erlang target) | `judge-gleam` | ✅ |
-| 88 | `sml` | Standard ML (Poly/ML) | `judge-sml` | ✅ |
-| 89 | `fennel` | Fennel (Lua VM) | `judge-lua` | ✅ |
+| 76 | `icon` | Icon | `judge-icon` | ✅ |
+| 77 | `algol68` | Algol 68 (a68g) | `judge-algol68` | ✅ |
+| 78 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` | ✅ |
+| 79 | `lolcode` | LOLCODE (lci) | `judge-lolcode` | ✅ |
+| 80 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` | ✅ |
+| 81 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` | ✅ |
+| 82 | `deno_js` | JavaScript (Deno) | `judge-deno` | ✅ |
+| 83 | `deno_ts` | TypeScript (Deno) | `judge-deno` | ✅ |
+| 84 | `bun_js` | JavaScript (Bun) | `judge-bun` | ✅ |
+| 85 | `bun_ts` | TypeScript (Bun) | `judge-bun` | ✅ |
+| 86 | `gleam` | Gleam (Erlang target) | `judge-gleam` | ✅ |
+| 87 | `sml` | Standard ML (Poly/ML) | `judge-sml` | ✅ |
+| 88 | `fennel` | Fennel (Lua VM) | `judge-lua` | ✅ |
 
 ### ARM64 Build Summary
 
@@ -100,10 +99,9 @@
 - **B (BCause)**: uses x86-64 inline assembly (`syscall` instruction), fundamentally incompatible with ARM64
 - **APL (GNU APL 1.8)**: `make` fails on ARM64 due to old C++ code with portability issues
 
-### KNOWN_FLAKY (1 language)
+### KNOWN_FLAKY
 
-These languages are skipped in E2E tests:
-- **k**: ngn/k can't write to stdout in script mode (type/eoleof errors)
+No languages are currently skipped in E2E tests.
 
 ### Newly Fixed (previously flaky, now passing)
 

@@ -131,7 +131,6 @@ pub enum Language {
     #[serde(rename = "algol68")]
     Algol68,
     Umjunsik,
-    K,
     Haxe,
     Raku,
 

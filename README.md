@@ -82,7 +82,6 @@ See [Language presets](docs/languages.md#docker-image-presets) for preset option
 | `judge-python` | 71 MB | 51 MB | `judge-commonlisp` | 80 MB | 50 MB |
 | `judge-postscript` | 124 MB | 95 MB | `judge-ruby` | 128 MB | 84 MB |
 | `judge-erlang` | 147 MB | 88 MB | `judge-algol68` | 115 MB | 100 MB |
-| `judge-k` | 115 MB | 99 MB | `judge-unlambda` | 114 MB | 99 MB |
 | `judge-forth` | 116 MB | 101 MB | `judge-lolcode` | 116 MB | 101 MB |
 | `judge-snobol4` | — | 101 MB | `judge-icon` | 120 MB | 102 MB |
 | `judge-elixir` | 173 MB | 102 MB | `judge-brainfuck` | 119 MB | 103 MB |

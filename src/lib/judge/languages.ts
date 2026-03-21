@@ -122,7 +122,6 @@ export const DOCKER_IMAGE_RUNTIME_INFO: Record<string, string> = {
   "judge-forth:latest": "Alpine 3.21 / Gforth",
   "judge-algol68:latest": "Debian Bookworm / Algol 68 Genie",
   "judge-umjunsik:latest": "Rust slim-bookworm / umjunsik",
-  "judge-k:latest": "Debian Bookworm / ngn/k",
   "judge-haxe:latest": `Debian Bookworm / Haxe ${JUDGE_TOOLCHAIN_VERSIONS.haxe} (Python backend)`,
   "judge-raku:latest": `Alpine / Rakudo Star ${JUDGE_TOOLCHAIN_VERSIONS.rakudo}`,
 
@@ -902,16 +901,6 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     compiler: null,
     compileCommand: null,
     runCommand: ["umjunsik", "/workspace/solution.umm"],
-  },
-  k: {
-    language: "k",
-    displayName: "K",
-    standard: "ngn/k",
-    extension: ".k",
-    dockerImage: "judge-k:latest",
-    compiler: null,
-    compileCommand: null,
-    runCommand: ["k", "/workspace/solution.k"],
   },
   haxe: {
     language: "haxe",

@@ -93,7 +93,6 @@ export type Language =
   | "forth"
   | "algol68"
   | "umjunsik"
-  | "k"
   | "haxe"
   | "raku"
 

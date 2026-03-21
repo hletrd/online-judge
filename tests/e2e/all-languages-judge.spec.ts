@@ -449,7 +449,6 @@ END`,
 준....
 식어어!
 이 사람이름이냐ㅋㅋ`,
-  k: '`0:$+/`I$" "\\*0:"/tmp/in"',
   haxe: `class Solution {
   static function main() {
     var line = Sys.stdin().readLine();
@@ -646,9 +645,7 @@ async function waitForJudging(
 }
 
 // ── Shared state for serial test suite ──
-const KNOWN_FLAKY = new Set<string>([
-  "k",             // ngn/k can't write to stdout in script mode (type/eoleof errors)
-]);
+const KNOWN_FLAKY = new Set<string>([]);
 
 let sharedContext: Awaited<ReturnType<typeof import("@playwright/test").chromium.launch>> extends { newContext: infer F } ? never : never;
 let problemId: string;

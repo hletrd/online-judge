@@ -789,16 +789,6 @@ static UMJUNSIK_CONFIG: LanguageConfig = LanguageConfig {
     run_command: UMJUNSIK_RUN,
 };
 
-// K (ngn/k)
-static K_RUN: &[&str] = &["k", "/workspace/solution.k"];
-
-static K_CONFIG: LanguageConfig = LanguageConfig {
-    extension: ".k",
-    docker_image: "judge-k:latest",
-    compile_command: None,
-    run_command: K_RUN,
-};
-
 // Haxe
 static HAXE_COMPILE: &[&str] = &[
     "sh", "-c",
@@ -1049,7 +1039,6 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::Forth => Some(&FORTH_CONFIG),
         Language::Algol68 => Some(&ALGOL68_CONFIG),
         Language::Umjunsik => Some(&UMJUNSIK_CONFIG),
-        Language::K => Some(&K_CONFIG),
         Language::Haxe => Some(&HAXE_CONFIG),
         Language::Raku => Some(&RAKU_CONFIG),
 
@@ -1151,7 +1140,6 @@ mod tests {
             Language::Forth,
             Language::Algol68,
             Language::Umjunsik,
-            Language::K,
             Language::Haxe,
             Language::Raku,
 

@@ -15,9 +15,9 @@ JudgeKit is a secure online judge platform for programming assignments. Next.js 
 | `tests/` | Playwright E2E tests, Vitest unit/integration tests |
 | `data/` | SQLite database (gitignored) |
 
-## Supported Languages (89)
+## Supported Languages (88)
 
-JudgeKit supports 89 language variants across 69 Docker images:
+JudgeKit supports 88 language variants across 69 Docker images:
 
 | # | Language ID | Description | Docker Image |
 |---|-------------|-------------|--------------|
@@ -94,22 +94,21 @@ JudgeKit supports 89 language variants across 69 Docker images:
 | 72 | `freebasic` | FreeBASIC | `judge-freebasic` |
 | 73 | `smalltalk` | Smalltalk (GNU Smalltalk) | `judge-smalltalk` |
 | 74 | `bqn` | BQN (CBQN) | `judge-bqn` |
-| 75 | `k` | K (ngn/k) | `judge-k` |
-| 76 | `uiua` | Uiua | `judge-uiua` |
-| 77 | `icon` | Icon | `judge-icon` |
-| 78 | `algol68` | Algol 68 (a68g) | `judge-algol68` |
-| 79 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` |
-| 80 | `lolcode` | LOLCODE (lci) | `judge-lolcode` |
-| 81 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` |
-| 82 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` |
-| 83 | `deno_js` | JavaScript (Deno) | `judge-deno` |
-| 84 | `deno_ts` | TypeScript (Deno) | `judge-deno` |
-| 85 | `bun_js` | JavaScript (Bun) | `judge-bun` |
-| 86 | `bun_ts` | TypeScript (Bun) | `judge-bun` |
-| 87 | `gleam` | Gleam (Erlang target) | `judge-gleam` |
-| 88 | `sml` | Standard ML (Poly/ML) | `judge-sml` |
-| 89 | `fennel` | Fennel (Lua VM) | `judge-lua` |
-| 90 | `flix` | Flix (JVM) | `judge-jvm` |
+| 75 | `uiua` | Uiua | `judge-uiua` |
+| 76 | `icon` | Icon | `judge-icon` |
+| 77 | `algol68` | Algol 68 (a68g) | `judge-algol68` |
+| 78 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` |
+| 79 | `lolcode` | LOLCODE (lci) | `judge-lolcode` |
+| 80 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` |
+| 81 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` |
+| 82 | `deno_js` | JavaScript (Deno) | `judge-deno` |
+| 83 | `deno_ts` | TypeScript (Deno) | `judge-deno` |
+| 84 | `bun_js` | JavaScript (Bun) | `judge-bun` |
+| 85 | `bun_ts` | TypeScript (Bun) | `judge-bun` |
+| 86 | `gleam` | Gleam (Erlang target) | `judge-gleam` |
+| 87 | `sml` | Standard ML (Poly/ML) | `judge-sml` |
+| 88 | `fennel` | Fennel (Lua VM) | `judge-lua` |
+| 89 | `flix` | Flix (JVM) | `judge-jvm` |
 
 ## Adding a New Language
 
@@ -258,7 +257,6 @@ These images fail to build on arm64 and are amd64-only:
 
 Languages in KNOWN_FLAKY are skipped in E2E tests:
 - **umjunsik**: Korean esoteric lang — compiler compiles to Lamina IR, syntax unclear
-- **k**: ngn/k can't read stdin in script mode (eoleof error)
 - **flix**: No A+B solution yet (complex functional JVM language)
 - **gleam**: Project template setup needed for compilation
 - **simula**: Docker image won't build (GNU Cim)
