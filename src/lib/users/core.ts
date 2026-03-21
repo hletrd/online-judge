@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import { hash } from "bcryptjs";
+import { hashPassword } from "@/lib/security/password-hash";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { canManageRole, isUserRole } from "@/lib/security/constants";
@@ -53,7 +53,7 @@ export async function validateAndHashPassword(
   if (validationError) {
     return { error: validationError };
   }
-  return { hash: await hash(password, 12) };
+  return { hash: await hashPassword(password) };
 }
 
 // ─── Role validation ──────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@ import type { NextAuthConfig } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import crypto from "crypto";
-import { compare } from "bcryptjs";
+import { verifyPassword, hashPassword } from "@/lib/security/password-hash";
 import {
   AUTH_SESSION_MAX_AGE_SECONDS,
   clearAuthToken,
@@ -52,7 +52,11 @@ type AuthenticatedLoginUser = Omit<AuthUserRecord, "mustChangePassword"> & {
   mustChangePassword: boolean;
 } & LoginEventContextCarrier;
 
-const DUMMY_PASSWORD_HASH = "$2b$12$QC3n1zFm/d.VeSd2lLKcnuUmuj1CiQHs3t7UuJ.8HW2XMFJaknQeq";
+// Pre-computed Argon2id hash of a random string, used for timing-safe
+// comparison when the requested user does not exist (prevents user-enumeration
+// via response-time differences).
+const DUMMY_PASSWORD_HASH =
+  "$argon2id$v=19$m=19456,t=2,p=1$Y2xhdWRlZHVtbXloYXNo$KQH6bMKH3t2fGK8qMJzrOGmG5bNRVZ0bQfO7aDVz0Zk";
 
 function createSuccessfulLoginResponse(
   user: AuthUserRecord,
@@ -148,7 +152,7 @@ export const authConfig: NextAuthConfig = {
         }
 
         if (!user || !user.passwordHash || !user.isActive) {
-          await compare(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
+          await verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
           recordRateLimitFailureMulti(...rateLimitKeys);
           recordLoginEvent({
             outcome: "invalid_credentials",
@@ -159,7 +163,7 @@ export const authConfig: NextAuthConfig = {
           return null;
         }
 
-        const isValid = await compare(password, user.passwordHash);
+        const { valid: isValid, needsRehash } = await verifyPassword(password, user.passwordHash);
         if (!isValid) {
           recordRateLimitFailureMulti(...rateLimitKeys);
           recordLoginEvent({
@@ -169,6 +173,19 @@ export const authConfig: NextAuthConfig = {
             request,
           });
           return null;
+        }
+
+        // Transparent rehash: migrate legacy bcrypt hashes to Argon2id on
+        // successful login.  Fire-and-forget so it never blocks the login flow.
+        if (needsRehash) {
+          hashPassword(password)
+            .then((newHash) =>
+              db
+                .update(users)
+                .set({ passwordHash: newHash })
+                .where(eq(users.id, user.id))
+            )
+            .catch(() => {});
         }
 
         clearRateLimitMulti(...rateLimitKeys);

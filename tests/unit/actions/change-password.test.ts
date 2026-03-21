@@ -14,8 +14,8 @@ const mocks = vi.hoisted(() => {
     recordRateLimitFailure: vi.fn(),
     clearRateLimit: vi.fn(),
     getPasswordValidationError: vi.fn<() => string | null>(),
-    compare: vi.fn<() => Promise<boolean>>(),
-    hash: vi.fn<() => Promise<string>>(),
+    verifyPassword: vi.fn<() => Promise<{ valid: boolean; needsRehash: boolean }>>(),
+    hashPassword: vi.fn<() => Promise<string>>(),
     loggerError: vi.fn(),
 
     dbUpdateSetWhereRun: vi.fn(),
@@ -52,9 +52,9 @@ vi.mock("@/lib/security/password", () => ({
   getPasswordValidationError: mocks.getPasswordValidationError,
 }));
 
-vi.mock("bcryptjs", () => ({
-  compare: mocks.compare,
-  hash: mocks.hash,
+vi.mock("@/lib/security/password-hash", () => ({
+  verifyPassword: mocks.verifyPassword,
+  hashPassword: mocks.hashPassword,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -184,7 +184,7 @@ describe("changePassword", () => {
   it("returns currentPasswordIncorrect and records rate limit failure for wrong password", async () => {
     const { changePassword } = await import("@/lib/actions/change-password");
     setupAuthenticatedUser();
-    mocks.compare.mockResolvedValue(false);
+    mocks.verifyPassword.mockResolvedValue({ valid: false, needsRehash: false });
 
     const result = await changePassword("wrongpass", "NewPass123");
     expect(result).toEqual({ success: false, error: "currentPasswordIncorrect" });
@@ -194,7 +194,7 @@ describe("changePassword", () => {
   it("returns password validation error for weak new password", async () => {
     const { changePassword } = await import("@/lib/actions/change-password");
     setupAuthenticatedUser();
-    mocks.compare.mockResolvedValue(true);
+    mocks.verifyPassword.mockResolvedValue({ valid: true, needsRehash: false });
     mocks.getPasswordValidationError.mockReturnValue("passwordTooShort");
 
     const result = await changePassword("correctpass", "short");
@@ -204,15 +204,15 @@ describe("changePassword", () => {
   it("changes password successfully, clears rate limit, and records audit", async () => {
     const { changePassword } = await import("@/lib/actions/change-password");
     setupAuthenticatedUser();
-    mocks.compare.mockResolvedValue(true);
+    mocks.verifyPassword.mockResolvedValue({ valid: true, needsRehash: false });
     mocks.getPasswordValidationError.mockReturnValue(null);
-    mocks.hash.mockResolvedValue("new-hashed-password");
+    mocks.hashPassword.mockResolvedValue("new-hashed-password");
 
     const result = await changePassword("correctpass", "StrongNewPass1");
     expect(result).toEqual({ success: true });
 
-    // Verify bcrypt hash was called with new password
-    expect(mocks.hash).toHaveBeenCalledWith("StrongNewPass1", 12);
+    // Verify argon2 hash was called with new password
+    expect(mocks.hashPassword).toHaveBeenCalledWith("StrongNewPass1");
 
     // Verify rate limit was cleared on success
     expect(mocks.clearRateLimit).toHaveBeenCalledWith("change-password:user:user-1");
@@ -235,9 +235,9 @@ describe("changePassword", () => {
   it("returns error when db update throws", async () => {
     const { changePassword } = await import("@/lib/actions/change-password");
     setupAuthenticatedUser();
-    mocks.compare.mockResolvedValue(true);
+    mocks.verifyPassword.mockResolvedValue({ valid: true, needsRehash: false });
     mocks.getPasswordValidationError.mockReturnValue(null);
-    mocks.hash.mockResolvedValue("new-hashed-password");
+    mocks.hashPassword.mockResolvedValue("new-hashed-password");
 
     // Make db.update chain throw
     const { db } = await import("@/lib/db");
@@ -264,9 +264,9 @@ describe("changePassword", () => {
   it("passes correct context to getPasswordValidationError", async () => {
     const { changePassword } = await import("@/lib/actions/change-password");
     setupAuthenticatedUser();
-    mocks.compare.mockResolvedValue(true);
+    mocks.verifyPassword.mockResolvedValue({ valid: true, needsRehash: false });
     mocks.getPasswordValidationError.mockReturnValue(null);
-    mocks.hash.mockResolvedValue("hashed");
+    mocks.hashPassword.mockResolvedValue("hashed");
 
     await changePassword("correctpass", "StrongNewPass1");
 

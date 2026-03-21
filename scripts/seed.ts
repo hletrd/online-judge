@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { eq } from "drizzle-orm";
-import { hash } from "bcryptjs";
+import { hashPassword } from "../src/lib/security/password-hash";
 import { nanoid } from "nanoid";
 import * as schema from "../src/lib/db/schema";
 import { DEFAULT_JUDGE_LANGUAGES, serializeJudgeCommand } from "../src/lib/judge/languages";
@@ -179,7 +179,7 @@ async function seed() {
   } else {
     const adminUsername = process.env.ADMIN_USERNAME || "admin";
     const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
-    const passwordHash = await hash(adminPassword, 12);
+    const passwordHash = await hashPassword(adminPassword);
     adminUserId = nanoid();
 
     db.insert(schema.users)

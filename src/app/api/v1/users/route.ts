@@ -6,7 +6,7 @@ import { eq, desc, sql } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, isAdmin, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { nanoid } from "nanoid";
-import { hash } from "bcryptjs";
+import { hashPassword } from "@/lib/security/password-hash";
 import { generateSecurePassword } from "@/lib/auth/generated-password";
 import { safeUserSelect } from "@/lib/db/selects";
 import { assertUserRole, isUserRole } from "@/lib/security/constants";
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
 
     const generatedPassword = generateSecurePassword();
     const passwordToHash = password ?? generatedPassword;
-    const passwordHash = await hash(passwordToHash, 12);
+    const passwordHash = await hashPassword(passwordToHash);
     const id = nanoid();
 
     const [created] = await db.insert(users).values({

@@ -66,8 +66,8 @@ vi.mock("nanoid", () => ({
   nanoid: () => "test-nanoid-id",
 }));
 
-vi.mock("bcryptjs", () => ({
-  hash: vi.fn(() => Promise.resolve("hashed-password")),
+vi.mock("@/lib/security/password-hash", () => ({
+  hashPassword: vi.fn(() => Promise.resolve("hashed-password")),
 }));
 
 vi.mock("@/lib/auth/generated-password", () => ({

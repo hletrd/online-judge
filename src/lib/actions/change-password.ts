@@ -1,6 +1,6 @@
 "use server";
 
-import { hash, compare } from "bcryptjs";
+import { hashPassword, verifyPassword } from "@/lib/security/password-hash";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { findSessionUserWithPassword, hasSessionIdentity } from "@/lib/auth/find-session-user";
@@ -43,7 +43,7 @@ export async function changePassword(
     return { success: false, error: "changePasswordRateLimited" };
   }
 
-  const isValid = await compare(currentPassword, user.passwordHash);
+  const { valid: isValid } = await verifyPassword(currentPassword, user.passwordHash);
   if (!isValid) {
     recordRateLimitFailure(rateLimitKey);
     return { success: false, error: "currentPasswordIncorrect" };
@@ -58,7 +58,7 @@ export async function changePassword(
     return { success: false, error: passwordValidationError };
   }
 
-  const newHash = await hash(newPassword, 12);
+  const newHash = await hashPassword(newPassword);
 
   try {
     db.update(users)

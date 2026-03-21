@@ -5,7 +5,7 @@ import { users } from "@/lib/db/schema";
 import { getApiUser, unauthorized, forbidden, isAdmin, isInstructor, csrfForbidden } from "@/lib/api/auth";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { nanoid } from "nanoid";
-import { hash } from "bcryptjs";
+import { hashPassword } from "@/lib/security/password-hash";
 import { generateSecurePassword } from "@/lib/auth/generated-password";
 import { bulkUserCreateSchema } from "@/lib/validators/bulk-users";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     const preparedEntries = await Promise.all(
       filteredItems.map(async (item) => {
         const generatedPassword = generateSecurePassword();
-        const passwordHash = await hash(generatedPassword, 12);
+        const passwordHash = await hashPassword(generatedPassword);
         const id = nanoid();
         const normalizedEmail = item.email && item.email.trim() !== "" ? item.email.trim() : null;
         const normalizedClassName =

@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => {
     validateRoleChange: vi.fn<() => string | null>(),
     isUserRole: vi.fn<(v: string) => boolean>(),
     generateSecurePassword: vi.fn<() => string>(),
-    hash: vi.fn<() => Promise<string>>(),
+    hashPassword: vi.fn<() => Promise<string>>(),
     nanoid: vi.fn<() => string>(),
     loggerError: vi.fn(),
 
@@ -72,8 +72,8 @@ vi.mock("@/lib/auth/generated-password", () => ({
   generateSecurePassword: mocks.generateSecurePassword,
 }));
 
-vi.mock("bcryptjs", () => ({
-  hash: mocks.hash,
+vi.mock("@/lib/security/password-hash", () => ({
+  hashPassword: mocks.hashPassword,
 }));
 
 vi.mock("nanoid", () => ({
@@ -754,7 +754,7 @@ describe("createUser", () => {
     mocks.isEmailTaken.mockResolvedValue(false);
     mocks.nanoid.mockReturnValue("new-id");
     mocks.generateSecurePassword.mockReturnValue("gen-password-abc");
-    mocks.hash.mockResolvedValue("hashed-gen-password");
+    mocks.hashPassword.mockResolvedValue("hashed-gen-password");
 
     const result = await createUser({
       ...defaultUserInput,
@@ -779,7 +779,7 @@ describe("createUser", () => {
     mocks.isEmailTaken.mockResolvedValue(false);
     mocks.nanoid.mockReturnValue("new-id");
     mocks.generateSecurePassword.mockReturnValue("gen-pw");
-    mocks.hash.mockResolvedValue("hashed");
+    mocks.hashPassword.mockResolvedValue("hashed");
     const { db } = await import("@/lib/db");
     (db.insert as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
       values: vi.fn(() => Promise.reject(new Error("db error"))),

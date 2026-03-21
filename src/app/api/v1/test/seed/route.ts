@@ -15,7 +15,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { hash } from "bcryptjs";
+import { hashPassword } from "@/lib/security/password-hash";
 import { like } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users, problems } from "@/lib/db/schema";
@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
         const { username, name, password, role } = body.data;
 
         // Low bcrypt rounds (4) for speed — acceptable in test environments only.
-        const passwordHash = await hash(password ?? "TestPass123!", 4);
+        const passwordHash = await hashPassword(password ?? "TestPass123!");
 
         const [created] = await db
           .insert(users)

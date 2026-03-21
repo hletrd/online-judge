@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { withUpdatedAt } from "@/lib/db/helpers";
 import { auth } from "@/lib/auth";
-import { hash } from "bcryptjs";
+import { hashPassword } from "@/lib/security/password-hash";
 import { nanoid } from "nanoid";
 import { buildServerActionAuditContext, recordAuditEvent } from "@/lib/audit/events";
 import { generateSecurePassword } from "@/lib/auth/generated-password";
@@ -369,7 +369,7 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
       passwordHash = result.hash!;
     } else {
       generatedPassword = generateSecurePassword();
-      passwordHash = await hash(generatedPassword, 12);
+      passwordHash = await hashPassword(generatedPassword);
     }
 
     await db.insert(users).values({
