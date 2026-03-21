@@ -6,22 +6,9 @@ JudgeKit supports N concurrent judge workers connecting to a single app server. 
 
 Workers access the app via HTTP(S) only. SQLite remains the single writer (app process). The atomic `UPDATE...RETURNING` claim SQL prevents race conditions — only one worker can claim a given submission.
 
-```
-                    +-------------------+
-                    |   App Server      |
-                    |   (Next.js)       |
-                    |   SQLite DB       |
-                    |   Port 3000       |
-                    +-------------------+
-                     /    |    |     \
-                HTTPS  HTTPS  HTTPS  HTTPS
-                  /      |      |      \
-          +--------+ +--------+ +--------+ +--------+
-          |Worker-1| |Worker-2| |Worker-3| |Worker-N|
-          |Rust bin| |Rust bin| |Rust bin| |Rust bin|
-          |Docker  | |Docker  | |Docker  | |Docker  |
-          +--------+ +--------+ +--------+ +--------+
-```
+<p align="center">
+  <img src="./judge-workers-architecture.svg" alt="Judge Workers Architecture" width="720" />
+</p>
 
 ## Worker Lifecycle
 

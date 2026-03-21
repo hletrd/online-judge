@@ -66,6 +66,15 @@ function matchesStudentQuery(
     .includes(normalizedQuery);
 }
 
+export async function generateMetadata({ params }: { params: Promise<{ assignmentId: string }> }) {
+  const { assignmentId } = await params;
+  const assignment = await db.query.assignments.findFirst({
+    where: eq(assignments.id, assignmentId),
+    columns: { title: true },
+  });
+  return { title: assignment?.title ?? "Contest" };
+}
+
 export default async function ContestDetailPage({
   params,
   searchParams,

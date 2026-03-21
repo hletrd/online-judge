@@ -12,6 +12,9 @@ declare module "next-auth" {
       role: string;
       mustChangePassword: boolean;
       image?: string | null;
+      preferredLanguage?: string | null;
+      preferredTheme?: string | null;
+      editorTheme?: string | null;
     };
   }
 
@@ -23,6 +26,9 @@ declare module "next-auth" {
     className?: string | null;
     role: string;
     mustChangePassword?: boolean;
+    preferredLanguage?: string | null;
+    preferredTheme?: string | null;
+    editorTheme?: string | null;
   }
 }
 
@@ -36,5 +42,8 @@ declare module "next-auth/jwt" {
     mustChangePassword?: boolean;
     authenticatedAt?: number;
     uaHash?: string;
+    preferredLanguage?: string | null;
+    preferredTheme?: string | null;
+    editorTheme?: string | null;
   }
 }

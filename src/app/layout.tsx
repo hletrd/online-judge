@@ -29,7 +29,10 @@ export async function generateMetadata(): Promise<Metadata> {
   });
 
   return {
-    title: settings.siteTitle,
+    title: {
+      default: settings.siteTitle,
+      template: `%s - ${settings.siteTitle}`,
+    },
     description: settings.siteDescription,
     metadataBase: getAuthUrlObject() ?? undefined,
   };

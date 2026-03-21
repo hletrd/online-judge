@@ -22,6 +22,15 @@ import { Button } from "@/components/ui/button";
 import { ProblemDeleteButton } from "./problem-delete-button";
 import { ArrowLeft, Trophy } from "lucide-react";
 
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const problem = await db.query.problems.findFirst({
+    where: eq(problems.id, id),
+    columns: { title: true },
+  });
+  return { title: problem?.title ?? "Problem" };
+}
+
 export default async function ProblemDetailPage({
   params,
   searchParams,
@@ -283,6 +292,8 @@ export default async function ProblemDetailPage({
                 problemId={problem.id}
                 languages={enabledLanguages}
                 assignmentId={assignmentContext?.id ?? null}
+                preferredLanguage={session.user.preferredLanguage ?? null}
+                editorTheme={session.user.editorTheme ?? null}
               />
             )}
           </CardContent>

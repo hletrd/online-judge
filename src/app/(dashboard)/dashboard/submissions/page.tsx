@@ -83,8 +83,8 @@ export default async function SubmissionsPage({
       )
     : undefined;
 
-  // Instructors/admins see ALL submissions; students see only their own
-  const userFilter = isPrivileged ? undefined : eq(submissions.userId, session.user.id);
+  // Always filter by current user — admins use /admin/submissions for all
+  const userFilter = eq(submissions.userId, session.user.id);
   const whereClause = userFilter && searchFilter
     ? and(userFilter, searchFilter)
     : userFilter ?? searchFilter ?? undefined;
@@ -172,7 +172,7 @@ export default async function SubmissionsPage({
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>{isPrivileged ? t("allSubmissions") : t("mySubmissions")}</CardTitle>
+          <CardTitle>{t("mySubmissions")}</CardTitle>
         </CardHeader>
         <CardContent>
           {visibleSubmissions.length > 0 && (

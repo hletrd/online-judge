@@ -1107,7 +1107,21 @@
     "classNameTooLong": "반 정보는 100자 이하여야 합니다",
     "emailInUse": "이미 사용 중인 이메일입니다",
     "emailChangeNotAllowed": "이메일 변경은 관리자에게 요청해야 합니다",
-    "username": "사용자명"
+    "username": "사용자명",
+    "preferences": "환경 설정",
+    "preferencesDesc": "기본 언어와 테마를 설정합니다.",
+    "preferredLanguage": "기본 언어",
+    "preferredLanguagePlaceholder": "언어 선택",
+    "preferredTheme": "테마",
+    "preferredThemePlaceholder": "테마 선택",
+    "themeLight": "라이트",
+    "themeDark": "다크",
+    "themeSystem": "시스템",
+    "editorTheme": "에디터 테마",
+    "editorThemeDesc": "에디터 색상 테마를 선택하세요. 미리보기가 즉시 반영됩니다.",
+    "editorThemePlaceholder": "에디터 테마 선택",
+    "editorThemeLight": "라이트 테마",
+    "editorThemeDark": "다크 테마"
   },
   "changePassword": {
     "title": "비밀번호 변경",

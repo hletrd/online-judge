@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { Monitor, MoonStar, SunMedium, SunMoon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
@@ -48,11 +48,22 @@ function ThemeTriggerIcon({ className, theme }: { className?: string; theme: The
   }
 }
 
-export function ThemeToggle({ className }: { className?: string }) {
+export function ThemeToggle({ className, dbTheme }: { className?: string; dbTheme?: string | null }) {
   const t = useTranslations("common");
   const { theme, setTheme } = useTheme();
   const mounted = useSyncExternalStore(subscribeToHydration, () => true, () => false);
   const selectedTheme = mounted && isThemeOption(theme) ? theme : "system";
+  const dbSynced = useRef(false);
+
+  // Sync DB theme on first mount (cross-device persistence)
+  useEffect(() => {
+    if (mounted && dbTheme && isThemeOption(dbTheme) && !dbSynced.current) {
+      dbSynced.current = true;
+      if (theme !== dbTheme) {
+        setTheme(dbTheme);
+      }
+    }
+  }, [mounted, dbTheme, theme, setTheme]);
 
   return (
     <DropdownMenu>
@@ -75,6 +86,10 @@ export function ThemeToggle({ className }: { className?: string }) {
             onValueChange={(value) => {
               if (isThemeOption(value)) {
                 setTheme(value);
+                // Persist to DB in background (best-effort)
+                import("@/lib/actions/update-preferences").then(({ updatePreferences }) => {
+                  updatePreferences({ preferredTheme: value }).catch(() => {});
+                }).catch(() => {});
               }
             }}
           >

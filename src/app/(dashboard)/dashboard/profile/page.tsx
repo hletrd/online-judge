@@ -7,7 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { languageConfigs } from "@/lib/db/schema";
+import { getJudgeLanguageDefinition } from "@/lib/judge/languages";
 import ProfileForm from "./profile-form";
+import { EditorThemePicker } from "./editor-theme-picker";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -15,6 +20,13 @@ export default async function ProfilePage() {
 
   const t = await getTranslations("profile");
   const tCommon = await getTranslations("common");
+  const langs = await db.select().from(languageConfigs).where(eq(languageConfigs.isEnabled, true));
+  const enabledLanguages = langs.flatMap((lang) => {
+    const def = getJudgeLanguageDefinition(lang.language);
+    if (!def) return [];
+    return [{ value: lang.language, label: `${def.displayName}${def.standard ? ` (${def.standard})` : ""}` }];
+  });
+
   const roleLabels: Record<string, string> = {
     student: tCommon("roles.student"),
     instructor: tCommon("roles.instructor"),
@@ -68,7 +80,20 @@ export default async function ProfilePage() {
           <ProfileForm
             initialName={session.user.name || ""}
             initialClassName={session.user.className || ""}
+            initialPreferredLanguage={session.user.preferredLanguage || ""}
+            initialPreferredTheme={session.user.preferredTheme || ""}
+            languages={enabledLanguages}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("editorTheme")}</CardTitle>
+          <CardDescription>{t("editorThemeDesc")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <EditorThemePicker initialTheme={session.user.editorTheme || ""} />
         </CardContent>
       </Card>
 

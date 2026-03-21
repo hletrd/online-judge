@@ -24,6 +24,8 @@ type ProblemSubmissionFormProps = {
   problemId: string;
   languages: SubmissionLanguage[];
   assignmentId?: string | null;
+  preferredLanguage?: string | null;
+  editorTheme?: string | null;
 };
 
 export function ProblemSubmissionForm({
@@ -31,6 +33,8 @@ export function ProblemSubmissionForm({
   problemId,
   languages,
   assignmentId = null,
+  preferredLanguage = null,
+  editorTheme = null,
 }: ProblemSubmissionFormProps) {
   const router = useRouter();
   const t = useTranslations("problems");
@@ -38,11 +42,14 @@ export function ProblemSubmissionForm({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const availableLanguages = useMemo(() => languages.map((entry) => entry.language), [languages]);
+  const languageLabelMap = useMemo(() => Object.fromEntries(
+    languages.map((entry) => [entry.language, `${entry.displayName}${entry.standard ? ` (${entry.standard})` : ""}`])
+  ), [languages]);
   const { language, setLanguage, sourceCode, setSourceCode, isDirty, clearAllDrafts } = useSourceDraft({
     userId,
     problemId,
     languages: availableLanguages,
-    initialLanguage: languages[0]?.language ?? "python",
+    initialLanguage: (preferredLanguage && availableLanguages.includes(preferredLanguage) ? preferredLanguage : null) ?? languages[0]?.language ?? "python",
   });
 
   const { allowNextNavigation } = useUnsavedChangesGuard({ isDirty });
@@ -172,7 +179,9 @@ export function ProblemSubmissionForm({
         </div>
         <Select value={language} onValueChange={(value) => value && setLanguage(value)}>
           <SelectTrigger id="language">
-            <SelectValue placeholder={t("selectLanguage")} />
+            <SelectValue placeholder={t("selectLanguage")}>
+              {(value: string) => languageLabelMap[value] ?? value}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {languages.map((entry) => (
@@ -193,6 +202,7 @@ export function ProblemSubmissionForm({
           placeholder={t("writeCodePlaceholder")}
           value={sourceCode}
           language={language}
+          editorTheme={editorTheme}
           onValueChange={setSourceCode}
         />
       </div>

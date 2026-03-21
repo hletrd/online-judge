@@ -43,6 +43,9 @@ export async function updateProfile(
       username: true,
       name: true,
       className: true,
+      preferredLanguage: true,
+      preferredTheme: true,
+      editorTheme: true,
     },
   });
 
@@ -50,15 +53,27 @@ export async function updateProfile(
     return { success: false, error: "notAuthenticated" };
   }
 
-  const { name, className } = parsedInput.data;
+  const { name, className, preferredLanguage, preferredTheme, editorTheme } = parsedInput.data;
   const normalizedClassName = className ?? null;
+  const normalizedPreferredLanguage = preferredLanguage ?? null;
+  const normalizedPreferredTheme = preferredTheme ?? null;
+  const normalizedEditorTheme = editorTheme ?? null;
   const changedFields = [
     currentUser.name !== name ? "name" : null,
     currentUser.className !== normalizedClassName ? "className" : null,
+    currentUser.preferredLanguage !== normalizedPreferredLanguage ? "preferredLanguage" : null,
+    currentUser.preferredTheme !== normalizedPreferredTheme ? "preferredTheme" : null,
+    currentUser.editorTheme !== normalizedEditorTheme ? "editorTheme" : null,
   ].flatMap((value) => (value ? [value] : []));
 
   db.update(users)
-    .set(withUpdatedAt({ name, className: normalizedClassName }))
+    .set(withUpdatedAt({
+      name,
+      className: normalizedClassName,
+      preferredLanguage: normalizedPreferredLanguage,
+      preferredTheme: normalizedPreferredTheme,
+      editorTheme: normalizedEditorTheme,
+    }))
     .where(eq(users.id, session.user.id))
     .run();
 
@@ -66,6 +81,9 @@ export async function updateProfile(
     user: {
       name,
       className: normalizedClassName,
+      preferredLanguage: normalizedPreferredLanguage,
+      preferredTheme: normalizedPreferredTheme,
+      editorTheme: normalizedEditorTheme,
     },
   });
 

@@ -32,6 +32,7 @@ type CodeSurfaceProps = {
   ariaLabel?: string;
   ariaLabelledby?: string;
   className?: string;
+  editorTheme?: string | null;
   id?: string;
   language?: string | null;
   minHeight?: number;
@@ -128,15 +129,15 @@ const materialLightHighlightStyle = HighlightStyle.define([
   { tag: tags.invalid, color: "#FF5370" },
 ]);
 
-// GNU-style newline: only auto-indent after `{`, otherwise keep current indent.
+// Smart newline: auto-indent after `{` or `:`, otherwise keep current indent.
 function insertNewlineGnuStyle(view: EditorView): boolean {
   const { state } = view;
   const changes = state.changeByRange((range) => {
     const line = state.doc.lineAt(range.head);
     const indent = /^[\t ]*/.exec(line.text)?.[0] ?? "";
     const textBeforeCursor = line.text.slice(0, range.head - line.from).trimEnd();
-    const endsWithBrace = textBeforeCursor.endsWith("{");
-    const insert = state.lineBreak + indent + (endsWithBrace ? "    " : "");
+    const shouldIndent = textBeforeCursor.endsWith("{") || textBeforeCursor.endsWith(":");
+    const insert = state.lineBreak + indent + (shouldIndent ? "    " : "");
     return {
       changes: { from: range.from, to: range.to, insert },
       range: EditorSelection.cursor(range.from + insert.length),
@@ -242,6 +243,11 @@ function getHighlightExtension(isDark: boolean) {
   return syntaxHighlighting(isDark ? oneDarkHighlightStyle : materialLightHighlightStyle);
 }
 
+async function getCustomThemeExtension(themeId: string): Promise<Extension[]> {
+  const { loadEditorTheme } = await import("@/lib/code/editor-themes");
+  return loadEditorTheme(themeId);
+}
+
 function getEditabilityExtension(readOnly: boolean) {
   return [EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)];
 }
@@ -275,6 +281,7 @@ export function CodeSurface({
   ariaLabel,
   ariaLabelledby,
   className,
+  editorTheme: editorThemeProp,
   id,
   language,
   minHeight = 220,
@@ -290,10 +297,11 @@ export function CodeSurface({
   const editorViewRef = useRef<EditorView | null>(null);
   const onValueChangeRef = useRef(onValueChangeAction);
   const isSyncingRef = useRef(false);
-  const { language: languageCompartmentRef, highlight: highlightCompartmentRef, minHeight: minHeightCompartmentRef, editability: editabilityCompartmentRef, placeholderComp: placeholderCompartmentRef, contentAttributes: contentAttributesCompartmentRef } = useEditorCompartments();
+  const { language: languageCompartmentRef, highlight: highlightCompartmentRef, minHeight: minHeightCompartmentRef, editability: editabilityCompartmentRef, placeholderComp: placeholderCompartmentRef, contentAttributes: contentAttributesCompartmentRef, customTheme: customThemeCompartmentRef } = useEditorCompartments();
   const [initialEditorConfig] = useState(() => ({
     ariaLabel,
     ariaLabelledby,
+    editorTheme: editorThemeProp,
     id,
     language,
     minHeight,
@@ -338,6 +346,7 @@ export function CodeSurface({
             )
           )
         ),
+        customThemeCompartmentRef.current.of([]),
         EditorView.cspNonce.of(initialEditorConfig.nonce ?? ""),
         EditorView.updateListener.of((update) => {
           if (!update.docChanged || isSyncingRef.current) {
@@ -383,6 +392,33 @@ export function CodeSurface({
     });
     return () => { cancelled = true; };
   }, [language]);
+
+  // Load and apply custom editor theme
+  useEffect(() => {
+    if (!editorThemeProp || editorThemeProp === "material-lighter" || editorThemeProp === "one-dark") {
+      // Use built-in highlight for default themes
+      if (editorViewRef.current) {
+        editorViewRef.current.dispatch({
+          effects: customThemeCompartmentRef.current.reconfigure([]),
+        });
+      }
+      return;
+    }
+
+    let cancelled = false;
+    getCustomThemeExtension(editorThemeProp).then((ext) => {
+      if (!cancelled && editorViewRef.current) {
+        editorViewRef.current.dispatch({
+          effects: [
+            customThemeCompartmentRef.current.reconfigure(ext),
+            // Override the default highlight when using custom theme
+            highlightCompartmentRef.current.reconfigure([]),
+          ],
+        });
+      }
+    });
+    return () => { cancelled = true; };
+  }, [editorThemeProp]);
 
   useEffect(() => {
     const view = editorViewRef.current;

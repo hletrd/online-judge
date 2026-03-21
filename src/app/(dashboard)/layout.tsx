@@ -47,7 +47,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <SidebarTrigger />
           <h1 className="text-sm font-semibold">{settings.siteTitle}</h1>
           <div className="ml-auto flex items-center gap-1">
-            <ThemeToggle />
+            <ThemeToggle dbTheme={session.user.preferredTheme} />
             <LocaleSwitcher />
           </div>
         </header>

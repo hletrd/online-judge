@@ -46,6 +46,9 @@ type AuthUserRecord = {
   className: string | null;
   role: string;
   mustChangePassword: boolean | null;
+  preferredLanguage?: string | null;
+  preferredTheme?: string | null;
+  editorTheme?: string | null;
 };
 
 type AuthenticatedLoginUser = Omit<AuthUserRecord, "mustChangePassword"> & {
@@ -87,6 +90,9 @@ function syncTokenWithUser(
   token.name = user.name;
   token.className = user.className;
   token.mustChangePassword = user.mustChangePassword ?? false;
+  token.preferredLanguage = user.preferredLanguage ?? null;
+  token.preferredTheme = user.preferredTheme ?? null;
+  token.editorTheme = user.editorTheme ?? null;
   token.authenticatedAt = authenticatedAtSeconds;
 
   return token;
@@ -199,6 +205,9 @@ export const authConfig: NextAuthConfig = {
             className: user.className,
             role: user.role,
             mustChangePassword: user.mustChangePassword ?? false,
+            preferredLanguage: user.preferredLanguage,
+            preferredTheme: user.preferredTheme,
+            editorTheme: user.editorTheme,
           },
           {
             attemptedIdentifier: identifier,
@@ -278,6 +287,9 @@ export const authConfig: NextAuthConfig = {
           className: user.className ?? null,
           role: user.role,
           mustChangePassword: user.mustChangePassword ?? false,
+          preferredLanguage: user.preferredLanguage ?? null,
+          preferredTheme: user.preferredTheme ?? null,
+          editorTheme: user.editorTheme ?? null,
         }, authenticatedAtSeconds);
 
         const loginContext = getLoginEventContextFromUser(user);
@@ -309,6 +321,9 @@ export const authConfig: NextAuthConfig = {
           isActive: true,
           mustChangePassword: true,
           tokenInvalidatedAt: true,
+          preferredLanguage: true,
+          preferredTheme: true,
+          editorTheme: true,
         },
       });
 
@@ -328,6 +343,9 @@ export const authConfig: NextAuthConfig = {
         className: freshUser.className,
         role: freshUser.role,
         mustChangePassword: freshUser.mustChangePassword ?? false,
+        preferredLanguage: freshUser.preferredLanguage,
+        preferredTheme: freshUser.preferredTheme,
+        editorTheme: freshUser.editorTheme,
       });
     },
     async session({ session, token }) {
@@ -340,6 +358,9 @@ export const authConfig: NextAuthConfig = {
         session.user.name = token.name ?? session.user.name ?? "";
         session.user.className = token.className ?? null;
         session.user.mustChangePassword = token.mustChangePassword ?? false;
+        session.user.preferredLanguage = token.preferredLanguage ?? null;
+        session.user.preferredTheme = token.preferredTheme ?? null;
+        session.user.editorTheme = token.editorTheme ?? null;
 
         if (typeof token.email === "string") {
           session.user.email = token.email;

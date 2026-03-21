@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
 const STORAGE_PREFIX = "oj:submission-draft";
+const LANGUAGE_PREF_PREFIX = "oj:preferred-language";
 const STORAGE_VERSION = 1;
 const DRAFT_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 const SAVE_DEBOUNCE_MS = 500;
@@ -49,6 +50,20 @@ type UseSourceDraftResult = {
 
 function getStorageKey(userId: string, problemId: string) {
   return `${STORAGE_PREFIX}:${userId}:${problemId}`;
+}
+
+function getPreferredLanguage(userId: string, languages: readonly string[]): string | null {
+  try {
+    const value = window.localStorage.getItem(`${LANGUAGE_PREF_PREFIX}:${userId}`);
+    if (value && languages.includes(value)) return value;
+  } catch {}
+  return null;
+}
+
+function savePreferredLanguage(userId: string, language: string) {
+  try {
+    window.localStorage.setItem(`${LANGUAGE_PREF_PREFIX}:${userId}`, language);
+  } catch {}
 }
 
 function normalizeDrafts(drafts: unknown, languages: readonly string[]) {
@@ -190,7 +205,10 @@ export function useSourceDraft({ userId, problemId, languages, initialLanguage }
     () => (languages.length > 0 ? languages : [initialLanguage]),
     [initialLanguage, languages],
   );
-  const fallbackLanguage = availableLanguages[0] ?? initialLanguage;
+  const fallbackLanguage = useMemo(() => {
+    if (typeof window === "undefined") return availableLanguages[0] ?? initialLanguage;
+    return getPreferredLanguage(userId, availableLanguages) ?? availableLanguages[0] ?? initialLanguage;
+  }, [availableLanguages, initialLanguage, userId]);
   const storageKey = useMemo(() => getStorageKey(userId, problemId), [problemId, userId]);
   const draftStore = useMemo(
     () => createDraftStore(storageKey, availableLanguages, fallbackLanguage),
@@ -271,12 +289,13 @@ export function useSourceDraft({ userId, problemId, languages, initialLanguage }
 
   const setLanguage = useCallback(
     (nextLanguage: string) => {
+      savePreferredLanguage(userId, nextLanguage);
       draftStore.updateSnapshot((state) => ({
         ...state,
         selectedLanguage: nextLanguage,
       }));
     },
-    [draftStore],
+    [draftStore, userId],
   );
 
   const setSourceCode = useCallback(

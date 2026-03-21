@@ -86,7 +86,7 @@ export default function ChatWidget(_props: PluginWidgetProps) {
   // Track pending auto-analysis request
   const [pendingAutoAnalysis, setPendingAutoAnalysis] = useState<{ status: string; submissionId: string } | null>(null);
 
-  // Auto-open on submission results and trigger proactive analysis
+  // Set context on submission results for proactive analysis when manually opened
   useEffect(() => {
     function handleSubmissionResult(e: CustomEvent) {
       if (e.detail?.problemId) {
@@ -99,8 +99,7 @@ export default function ChatWidget(_props: PluginWidgetProps) {
           status: e.detail.status,
           submissionId: e.detail.submissionId,
         });
-        setIsOpen(true);
-        setIsMinimized(false);
+        // Context is set so the widget can use it when manually opened
       }
     }
     window.addEventListener("oj:submission-result", handleSubmissionResult as EventListener);

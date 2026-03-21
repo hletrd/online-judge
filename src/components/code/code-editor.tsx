@@ -12,6 +12,7 @@ type CodeEditorProps = {
   ariaLabel?: string;
   ariaLabelledby?: string;
   className?: string;
+  editorTheme?: string | null;
   id?: string;
   language?: string | null;
   minHeight?: number;

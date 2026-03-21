@@ -25,6 +25,9 @@ export const users = sqliteTable("users", {
   tokenInvalidatedAt: integer("token_invalidated_at", { mode: "timestamp" }),
   emailVerified: integer("email_verified", { mode: "timestamp" }),
   image: text("image"),
+  preferredLanguage: text("preferred_language"),
+  preferredTheme: text("preferred_theme"),
+  editorTheme: text("editor_theme"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date(Date.now())),

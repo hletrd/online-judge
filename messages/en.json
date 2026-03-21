@@ -1115,7 +1115,21 @@
     "classNameTooLong": "Class must be 100 characters or less",
     "emailInUse": "Email already in use",
     "emailChangeNotAllowed": "Email changes must be handled by an administrator",
-    "username": "Username"
+    "username": "Username",
+    "preferences": "Preferences",
+    "preferencesDesc": "Set your default language and theme.",
+    "preferredLanguage": "Default Language",
+    "preferredLanguagePlaceholder": "Select language",
+    "preferredTheme": "Theme",
+    "preferredThemePlaceholder": "Select theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
+    "editorTheme": "Editor Theme",
+    "editorThemeDesc": "Choose an editor color scheme. Preview updates instantly.",
+    "editorThemePlaceholder": "Select editor theme",
+    "editorThemeLight": "Light Themes",
+    "editorThemeDark": "Dark Themes"
   },
   "changePassword": {
     "title": "Change Password",

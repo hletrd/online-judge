@@ -10,6 +10,18 @@ export const updateProfileSchema = z.object({
     normalizeOptionalString,
     z.string().max(100, "classNameTooLong").optional()
   ),
+  preferredLanguage: z.preprocess(
+    normalizeOptionalString,
+    z.string().max(50).optional()
+  ),
+  preferredTheme: z.preprocess(
+    normalizeOptionalString,
+    z.enum(["light", "dark", "system"]).optional()
+  ),
+  editorTheme: z.preprocess(
+    normalizeOptionalString,
+    z.string().max(50).optional()
+  ),
 });
 
 export const adminUpdateUserSchema = updateProfileSchema.extend({
