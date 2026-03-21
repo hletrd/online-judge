@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 340" font-family="system-ui, -apple-system, sans-serif" font-size="13">
+  <defs>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.1"/>
+    </filter>
+  </defs>
+
+  <!-- App Server -->
+  <rect x="240" y="20" width="240" height="100" rx="10" fill="#f0f4ff" stroke="#4a6fa5" stroke-width="2" filter="url(#shadow)"/>
+  <text x="360" y="50" text-anchor="middle" font-weight="bold" font-size="15" fill="#1a1a2e">App Server</text>
+  <text x="360" y="70" text-anchor="middle" fill="#4a6fa5">(Next.js)</text>
+  <text x="360" y="88" text-anchor="middle" fill="#4a6fa5">SQLite DB</text>
+  <text x="360" y="106" text-anchor="middle" fill="#4a6fa5">Port 3000</text>
+
+  <!-- Connection lines -->
+  <line x1="290" y1="120" x2="110" y2="200" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <line x1="330" y1="120" x2="270" y2="200" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <line x1="390" y1="120" x2="450" y2="200" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <line x1="430" y1="120" x2="610" y2="200" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="6,3"/>
+
+  <!-- HTTPS labels -->
+  <text x="185" y="164" text-anchor="middle" font-size="11" fill="#6b7280" transform="rotate(-25, 185, 164)">HTTPS</text>
+  <text x="290" y="164" text-anchor="middle" font-size="11" fill="#6b7280" transform="rotate(-12, 290, 164)">HTTPS</text>
+  <text x="430" y="164" text-anchor="middle" font-size="11" fill="#6b7280" transform="rotate(12, 430, 164)">HTTPS</text>
+  <text x="535" y="164" text-anchor="middle" font-size="11" fill="#6b7280" transform="rotate(25, 535, 164)">HTTPS</text>
+
+  <!-- Worker 1 -->
+  <rect x="40" y="200" width="140" height="100" rx="8" fill="#f0fdf4" stroke="#4ade80" stroke-width="2" filter="url(#shadow)"/>
+  <text x="110" y="228" text-anchor="middle" font-weight="bold" fill="#166534">Worker-1</text>
+  <text x="110" y="250" text-anchor="middle" font-size="12" fill="#4ade80">Rust bin</text>
+  <text x="110" y="270" text-anchor="middle" font-size="12" fill="#4ade80">Docker</text>
+
+  <!-- Worker 2 -->
+  <rect x="200" y="200" width="140" height="100" rx="8" fill="#f0fdf4" stroke="#4ade80" stroke-width="2" filter="url(#shadow)"/>
+  <text x="270" y="228" text-anchor="middle" font-weight="bold" fill="#166534">Worker-2</text>
+  <text x="270" y="250" text-anchor="middle" font-size="12" fill="#4ade80">Rust bin</text>
+  <text x="270" y="270" text-anchor="middle" font-size="12" fill="#4ade80">Docker</text>
+
+  <!-- Worker 3 -->
+  <rect x="380" y="200" width="140" height="100" rx="8" fill="#f0fdf4" stroke="#4ade80" stroke-width="2" filter="url(#shadow)"/>
+  <text x="450" y="228" text-anchor="middle" font-weight="bold" fill="#166534">Worker-3</text>
+  <text x="450" y="250" text-anchor="middle" font-size="12" fill="#4ade80">Rust bin</text>
+  <text x="450" y="270" text-anchor="middle" font-size="12" fill="#4ade80">Docker</text>
+
+  <!-- Worker N -->
+  <rect x="540" y="200" width="140" height="100" rx="8" fill="#f0fdf4" stroke="#4ade80" stroke-width="2" filter="url(#shadow)"/>
+  <text x="610" y="228" text-anchor="middle" font-weight="bold" fill="#166534">Worker-N</text>
+  <text x="610" y="250" text-anchor="middle" font-size="12" fill="#4ade80">Rust bin</text>
+  <text x="610" y="270" text-anchor="middle" font-size="12" fill="#4ade80">Docker</text>
+
+  <!-- Ellipsis between Worker-3 and Worker-N (not needed, they're adjacent) -->
+
+  <!-- Bottom caption -->
+  <text x="360" y="330" text-anchor="middle" font-size="11" fill="#9ca3af">Each worker polls the app server independently via HTTPS</text>
+</svg>

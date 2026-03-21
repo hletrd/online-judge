@@ -1,0 +1,75 @@
+"use server";
+
+import { eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { withUpdatedAt } from "@/lib/db/helpers";
+import { auth, unstable_update } from "@/lib/auth";
+import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
+import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
+import { z } from "zod";
+import { normalizeOptionalString } from "@/lib/validators/preprocess";
+
+const updatePreferencesSchema = z.object({
+  preferredLanguage: z.preprocess(
+    normalizeOptionalString,
+    z.string().max(50).optional()
+  ),
+  preferredTheme: z.preprocess(
+    normalizeOptionalString,
+    z.enum(["light", "dark", "system"]).optional()
+  ),
+  editorTheme: z.preprocess(
+    normalizeOptionalString,
+    z.string().max(50).optional()
+  ),
+});
+
+type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;
+
+export async function updatePreferences(
+  input: UpdatePreferencesInput
+): Promise<{ success: boolean; error?: string }> {
+  if (!(await isTrustedServerActionOrigin())) {
+    return { success: false, error: "unauthorized" };
+  }
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "notAuthenticated" };
+  }
+
+  const rateLimit = checkServerActionRateLimit(session.user.id, "updatePreferences", 30, 60);
+  if (rateLimit) return { success: false, error: "rateLimited" };
+
+  const parsed = updatePreferencesSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "invalidInput" };
+  }
+
+  const updates: Record<string, string | null> = {};
+  if (parsed.data.preferredLanguage !== undefined) {
+    updates.preferredLanguage = parsed.data.preferredLanguage ?? null;
+  }
+  if (parsed.data.preferredTheme !== undefined) {
+    updates.preferredTheme = parsed.data.preferredTheme ?? null;
+  }
+  if (parsed.data.editorTheme !== undefined) {
+    updates.editorTheme = parsed.data.editorTheme ?? null;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return { success: true };
+  }
+
+  db.update(users)
+    .set(withUpdatedAt(updates))
+    .where(eq(users.id, session.user.id))
+    .run();
+
+  await unstable_update({
+    user: updates,
+  });
+
+  return { success: true };
+}
