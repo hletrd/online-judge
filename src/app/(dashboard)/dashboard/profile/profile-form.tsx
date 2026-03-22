@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { updateProfile } from "@/lib/actions/update-profile";
 import { useRouter } from "next/navigation";
+import { EDITOR_FONT_SIZES, EDITOR_FONT_FAMILIES, DEFAULT_EDITOR_FONT_SIZE, DEFAULT_EDITOR_FONT_FAMILY } from "@/lib/code/editor-fonts";
 
 type LanguageOption = {
   value: string;
@@ -21,13 +22,19 @@ export default function ProfileForm({
   initialClassName,
   initialPreferredLanguage,
   initialPreferredTheme,
+  initialEditorFontSize,
+  initialEditorFontFamily,
   languages,
+  canEditClassName,
 }: {
   initialName: string;
   initialClassName: string;
   initialPreferredLanguage: string;
   initialPreferredTheme: string;
+  initialEditorFontSize: string;
+  initialEditorFontFamily: string;
   languages: LanguageOption[];
+  canEditClassName: boolean;
 }) {
   const t = useTranslations("profile");
   const tCommon = useTranslations("common");
@@ -38,7 +45,9 @@ export default function ProfileForm({
   const [className, setClassName] = useState(initialClassName);
   const [preferredLanguage, setPreferredLanguage] = useState(initialPreferredLanguage);
   const languageLabelMap = Object.fromEntries(languages.map((l) => [l.value, l.label]));
-  const [preferredTheme, setPreferredTheme] = useState(initialPreferredTheme);
+  const [preferredTheme, setPreferredTheme] = useState(initialPreferredTheme || "system");
+  const [editorFontSize, setEditorFontSize] = useState(initialEditorFontSize || String(DEFAULT_EDITOR_FONT_SIZE));
+  const [editorFontFamily, setEditorFontFamily] = useState(initialEditorFontFamily || DEFAULT_EDITOR_FONT_FAMILY);
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -48,9 +57,11 @@ export default function ProfileForm({
     try {
       const result = await updateProfile({
         name,
-        className,
+        className: canEditClassName ? className : undefined,
         preferredLanguage: preferredLanguage || undefined,
         preferredTheme: (preferredTheme as "light" | "dark" | "system") || undefined,
+        editorFontSize: editorFontSize || undefined,
+        editorFontFamily: editorFontFamily || undefined,
       });
       if (result.success) {
         if (preferredTheme) {
@@ -80,15 +91,17 @@ export default function ProfileForm({
           required
         />
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="className">{t("className")}</Label>
-        <Input
-          id="className"
-          value={className}
-          onChange={(e) => setClassName(e.target.value)}
-          placeholder={t("classNamePlaceholder")}
-        />
-      </div>
+      {canEditClassName && (
+        <div className="space-y-2">
+          <Label htmlFor="className">{t("className")}</Label>
+          <Input
+            id="className"
+            value={className}
+            onChange={(e) => setClassName(e.target.value)}
+            placeholder={t("classNamePlaceholder")}
+          />
+        </div>
+      )}
       <div className="space-y-2">
         <Label htmlFor="preferredLanguage">{t("preferredLanguage")}</Label>
         <Select value={preferredLanguage} onValueChange={(v) => setPreferredLanguage(v ?? "")}>
@@ -121,6 +134,41 @@ export default function ProfileForm({
             <SelectItem value="light">{t("themeLight")}</SelectItem>
             <SelectItem value="dark">{t("themeDark")}</SelectItem>
             <SelectItem value="system">{t("themeSystem")}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="editorFontSize">{t("editorFontSize")}</Label>
+        <Select value={editorFontSize} onValueChange={(v) => setEditorFontSize(v ?? String(DEFAULT_EDITOR_FONT_SIZE))}>
+          <SelectTrigger id="editorFontSize">
+            <SelectValue placeholder={t("editorFontSizePlaceholder")} />
+          </SelectTrigger>
+          <SelectContent>
+            {EDITOR_FONT_SIZES.map((size) => (
+              <SelectItem key={size} value={String(size)}>
+                {size}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="editorFontFamily">{t("editorFontFamily")}</Label>
+        <Select value={editorFontFamily} onValueChange={(v) => setEditorFontFamily(v ?? DEFAULT_EDITOR_FONT_FAMILY)}>
+          <SelectTrigger id="editorFontFamily">
+            <SelectValue placeholder={t("editorFontFamilyPlaceholder")}>
+              {(value: string) => {
+                const font = EDITOR_FONT_FAMILIES.find((f) => f.id === value);
+                return font?.name ?? t("editorFontDefault");
+              }}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {EDITOR_FONT_FAMILIES.map((font) => (
+              <SelectItem key={font.id} value={font.id}>
+                {font.id === "system" ? t("editorFontDefault") : font.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

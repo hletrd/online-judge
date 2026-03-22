@@ -49,6 +49,11 @@ type AuthUserRecord = {
   preferredLanguage?: string | null;
   preferredTheme?: string | null;
   editorTheme?: string | null;
+  editorFontSize?: string | null;
+  editorFontFamily?: string | null;
+  lectureMode?: string | null;
+  lectureFontScale?: string | null;
+  lectureColorScheme?: string | null;
 };
 
 type AuthenticatedLoginUser = Omit<AuthUserRecord, "mustChangePassword"> & {
@@ -93,6 +98,11 @@ function syncTokenWithUser(
   token.preferredLanguage = user.preferredLanguage ?? null;
   token.preferredTheme = user.preferredTheme ?? null;
   token.editorTheme = user.editorTheme ?? null;
+  token.editorFontSize = user.editorFontSize ?? null;
+  token.editorFontFamily = user.editorFontFamily ?? null;
+  token.lectureMode = user.lectureMode ?? null;
+  token.lectureFontScale = user.lectureFontScale ?? null;
+  token.lectureColorScheme = user.lectureColorScheme ?? null;
   token.authenticatedAt = authenticatedAtSeconds;
 
   return token;
@@ -208,6 +218,11 @@ export const authConfig: NextAuthConfig = {
             preferredLanguage: user.preferredLanguage,
             preferredTheme: user.preferredTheme,
             editorTheme: user.editorTheme,
+            editorFontSize: user.editorFontSize,
+            editorFontFamily: user.editorFontFamily,
+            lectureMode: user.lectureMode,
+            lectureFontScale: user.lectureFontScale,
+            lectureColorScheme: user.lectureColorScheme,
           },
           {
             attemptedIdentifier: identifier,
@@ -290,6 +305,11 @@ export const authConfig: NextAuthConfig = {
           preferredLanguage: user.preferredLanguage ?? null,
           preferredTheme: user.preferredTheme ?? null,
           editorTheme: user.editorTheme ?? null,
+          editorFontSize: user.editorFontSize ?? null,
+          editorFontFamily: user.editorFontFamily ?? null,
+          lectureMode: user.lectureMode ?? null,
+          lectureFontScale: user.lectureFontScale ?? null,
+          lectureColorScheme: user.lectureColorScheme ?? null,
         }, authenticatedAtSeconds);
 
         const loginContext = getLoginEventContextFromUser(user);
@@ -324,6 +344,11 @@ export const authConfig: NextAuthConfig = {
           preferredLanguage: true,
           preferredTheme: true,
           editorTheme: true,
+          editorFontSize: true,
+          editorFontFamily: true,
+          lectureMode: true,
+          lectureFontScale: true,
+          lectureColorScheme: true,
         },
       });
 
@@ -346,6 +371,11 @@ export const authConfig: NextAuthConfig = {
         preferredLanguage: freshUser.preferredLanguage,
         preferredTheme: freshUser.preferredTheme,
         editorTheme: freshUser.editorTheme,
+        editorFontSize: freshUser.editorFontSize,
+        editorFontFamily: freshUser.editorFontFamily,
+        lectureMode: freshUser.lectureMode,
+        lectureFontScale: freshUser.lectureFontScale,
+        lectureColorScheme: freshUser.lectureColorScheme,
       });
     },
     async session({ session, token }) {
@@ -361,6 +391,11 @@ export const authConfig: NextAuthConfig = {
         session.user.preferredLanguage = token.preferredLanguage ?? null;
         session.user.preferredTheme = token.preferredTheme ?? null;
         session.user.editorTheme = token.editorTheme ?? null;
+        session.user.editorFontSize = token.editorFontSize ?? null;
+        session.user.editorFontFamily = token.editorFontFamily ?? null;
+        session.user.lectureMode = token.lectureMode ?? null;
+        session.user.lectureFontScale = token.lectureFontScale ?? null;
+        session.user.lectureColorScheme = token.lectureColorScheme ?? null;
 
         if (typeof token.email === "string") {
           session.user.email = token.email;

@@ -33,6 +33,8 @@ type CodeSurfaceProps = {
   ariaLabelledby?: string;
   className?: string;
   editorTheme?: string | null;
+  fontFamily?: string | null;
+  fontSize?: number | null;
   id?: string;
   language?: string | null;
   minHeight?: number;
@@ -282,6 +284,8 @@ export function CodeSurface({
   ariaLabelledby,
   className,
   editorTheme: editorThemeProp,
+  fontFamily,
+  fontSize,
   id,
   language,
   minHeight = 220,
@@ -503,7 +507,11 @@ export function CodeSurface({
         readOnly ? "focus-within:border-border" : "focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/15",
         className
       )}
-      style={{ minHeight }}
+      style={{
+        minHeight,
+        ...(fontSize ? { fontSize: `${fontSize}px` } : {}),
+        ...(fontFamily ? { "--font-mono": fontFamily } as Record<string, string> : {}),
+      }}
     >
       <div ref={editorHostRef} />
     </div>

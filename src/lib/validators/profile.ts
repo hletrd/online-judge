@@ -22,6 +22,8 @@ export const updateProfileSchema = z.object({
     normalizeOptionalString,
     z.string().max(50).optional()
   ),
+  editorFontSize: z.string().max(5).optional(),
+  editorFontFamily: z.string().max(100).optional(),
 });
 
 export const adminUpdateUserSchema = updateProfileSchema.extend({

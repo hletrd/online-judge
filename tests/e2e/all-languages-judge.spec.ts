@@ -888,7 +888,7 @@ async function login(page: Page) {
   await page.locator("#username").fill(CREDENTIALS.username);
   await page.locator("#password").fill(CREDENTIALS.password);
   await page.getByRole("button", { name: /sign in|로그인|signing/i }).click();
-  await page.waitForURL(url => !url.includes("/login"), { timeout: 60_000 });
+  await page.waitForURL(/\/(dashboard|change-password)/, { timeout: 60_000 });
 
   if (page.url().includes("/change-password")) {
     throw new Error("Account requires password change");

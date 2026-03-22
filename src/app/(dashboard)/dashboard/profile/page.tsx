@@ -81,8 +81,11 @@ export default async function ProfilePage() {
             initialName={session.user.name || ""}
             initialClassName={session.user.className || ""}
             initialPreferredLanguage={session.user.preferredLanguage || ""}
-            initialPreferredTheme={session.user.preferredTheme || ""}
+            initialPreferredTheme={session.user.preferredTheme || "system"}
+            initialEditorFontSize={session.user.editorFontSize || "14"}
+            initialEditorFontFamily={session.user.editorFontFamily || "system"}
             languages={enabledLanguages}
+            canEditClassName={session.user.role !== "student"}
           />
         </CardContent>
       </Card>

@@ -23,6 +23,26 @@ const updatePreferencesSchema = z.object({
     normalizeOptionalString,
     z.string().max(50).optional()
   ),
+  editorFontSize: z.preprocess(
+    normalizeOptionalString,
+    z.string().max(5).optional()
+  ),
+  editorFontFamily: z.preprocess(
+    normalizeOptionalString,
+    z.string().max(100).optional()
+  ),
+  lectureMode: z.preprocess(
+    normalizeOptionalString,
+    z.enum(["on"]).nullable().optional()
+  ),
+  lectureFontScale: z.preprocess(
+    normalizeOptionalString,
+    z.enum(["1.25", "1.5", "1.75", "2.0"]).optional()
+  ),
+  lectureColorScheme: z.preprocess(
+    normalizeOptionalString,
+    z.enum(["dark", "light", "solarized"]).optional()
+  ),
 });
 
 type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;
@@ -56,6 +76,21 @@ export async function updatePreferences(
   }
   if (parsed.data.editorTheme !== undefined) {
     updates.editorTheme = parsed.data.editorTheme ?? null;
+  }
+  if (parsed.data.editorFontSize !== undefined) {
+    updates.editorFontSize = parsed.data.editorFontSize ?? null;
+  }
+  if (parsed.data.editorFontFamily !== undefined) {
+    updates.editorFontFamily = parsed.data.editorFontFamily ?? null;
+  }
+  if (parsed.data.lectureMode !== undefined) {
+    updates.lectureMode = parsed.data.lectureMode ?? null;
+  }
+  if (parsed.data.lectureFontScale !== undefined) {
+    updates.lectureFontScale = parsed.data.lectureFontScale ?? null;
+  }
+  if (parsed.data.lectureColorScheme !== undefined) {
+    updates.lectureColorScheme = parsed.data.lectureColorScheme ?? null;
   }
 
   if (Object.keys(updates).length === 0) {

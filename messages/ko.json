@@ -1121,7 +1121,12 @@
     "editorThemeDesc": "에디터 색상 테마를 선택하세요. 미리보기가 즉시 반영됩니다.",
     "editorThemePlaceholder": "에디터 테마 선택",
     "editorThemeLight": "라이트 테마",
-    "editorThemeDark": "다크 테마"
+    "editorThemeDark": "다크 테마",
+    "editorFontSize": "에디터 글꼴 크기",
+    "editorFontSizePlaceholder": "글꼴 크기 선택",
+    "editorFontFamily": "에디터 글꼴",
+    "editorFontFamilyPlaceholder": "글꼴 선택",
+    "editorFontDefault": "시스템 기본값"
   },
   "changePassword": {
     "title": "비밀번호 변경",

@@ -1129,7 +1129,12 @@
     "editorThemeDesc": "Choose an editor color scheme. Preview updates instantly.",
     "editorThemePlaceholder": "Select editor theme",
     "editorThemeLight": "Light Themes",
-    "editorThemeDark": "Dark Themes"
+    "editorThemeDark": "Dark Themes",
+    "editorFontSize": "Editor Font Size",
+    "editorFontSizePlaceholder": "Select font size",
+    "editorFontFamily": "Editor Font Family",
+    "editorFontFamilyPlaceholder": "Select font family",
+    "editorFontDefault": "System Default"
   },
   "changePassword": {
     "title": "Change Password",

@@ -46,6 +46,8 @@ export async function updateProfile(
       preferredLanguage: true,
       preferredTheme: true,
       editorTheme: true,
+      editorFontSize: true,
+      editorFontFamily: true,
     },
   });
 
@@ -53,17 +55,21 @@ export async function updateProfile(
     return { success: false, error: "notAuthenticated" };
   }
 
-  const { name, className, preferredLanguage, preferredTheme, editorTheme } = parsedInput.data;
+  const { name, className, preferredLanguage, preferredTheme, editorTheme, editorFontSize, editorFontFamily } = parsedInput.data;
   const normalizedClassName = className ?? null;
   const normalizedPreferredLanguage = preferredLanguage ?? null;
   const normalizedPreferredTheme = preferredTheme ?? null;
   const normalizedEditorTheme = editorTheme ?? null;
+  const normalizedEditorFontSize = editorFontSize ?? null;
+  const normalizedEditorFontFamily = editorFontFamily ?? null;
   const changedFields = [
     currentUser.name !== name ? "name" : null,
     currentUser.className !== normalizedClassName ? "className" : null,
     currentUser.preferredLanguage !== normalizedPreferredLanguage ? "preferredLanguage" : null,
     currentUser.preferredTheme !== normalizedPreferredTheme ? "preferredTheme" : null,
     currentUser.editorTheme !== normalizedEditorTheme ? "editorTheme" : null,
+    currentUser.editorFontSize !== normalizedEditorFontSize ? "editorFontSize" : null,
+    currentUser.editorFontFamily !== normalizedEditorFontFamily ? "editorFontFamily" : null,
   ].flatMap((value) => (value ? [value] : []));
 
   db.update(users)
@@ -73,6 +79,8 @@ export async function updateProfile(
       preferredLanguage: normalizedPreferredLanguage,
       preferredTheme: normalizedPreferredTheme,
       editorTheme: normalizedEditorTheme,
+      editorFontSize: normalizedEditorFontSize,
+      editorFontFamily: normalizedEditorFontFamily,
     }))
     .where(eq(users.id, session.user.id))
     .run();
@@ -84,6 +92,8 @@ export async function updateProfile(
       preferredLanguage: normalizedPreferredLanguage,
       preferredTheme: normalizedPreferredTheme,
       editorTheme: normalizedEditorTheme,
+      editorFontSize: normalizedEditorFontSize,
+      editorFontFamily: normalizedEditorFontFamily,
     },
   });
 

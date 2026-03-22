@@ -15,6 +15,11 @@ declare module "next-auth" {
       preferredLanguage?: string | null;
       preferredTheme?: string | null;
       editorTheme?: string | null;
+      editorFontSize?: string | null;
+      editorFontFamily?: string | null;
+      lectureMode?: string | null;
+      lectureFontScale?: string | null;
+      lectureColorScheme?: string | null;
     };
   }
 
@@ -29,6 +34,11 @@ declare module "next-auth" {
     preferredLanguage?: string | null;
     preferredTheme?: string | null;
     editorTheme?: string | null;
+    editorFontSize?: string | null;
+    editorFontFamily?: string | null;
+    lectureMode?: string | null;
+    lectureFontScale?: string | null;
+    lectureColorScheme?: string | null;
   }
 }
 
@@ -45,5 +55,10 @@ declare module "next-auth/jwt" {
     preferredLanguage?: string | null;
     preferredTheme?: string | null;
     editorTheme?: string | null;
+    editorFontSize?: string | null;
+    editorFontFamily?: string | null;
+    lectureMode?: string | null;
+    lectureFontScale?: string | null;
+    lectureColorScheme?: string | null;
   }
 }
