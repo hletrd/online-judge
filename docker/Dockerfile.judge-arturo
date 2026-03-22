@@ -1,10 +1,16 @@
-FROM arturolang/arturo:mini AS base
-
 FROM debian:bookworm-slim
-COPY --from=base /usr/local/bin/arturo /usr/local/bin/arturo
-COPY --from=base /usr/local/lib/ /usr/local/lib/
-RUN ldconfig && \
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates unzip && \
+    ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then ART_ARCH="linux-amd64"; \
+    elif [ "$ARCH" = "arm64" ]; then ART_ARCH="linux-arm64"; fi && \
+    curl -fsSL "https://github.com/arturo-lang/arturo/releases/download/v0.10.0/arturo-0.10.0-${ART_ARCH}-mini.zip" -o /tmp/arturo.zip && \
+    unzip /tmp/arturo.zip -d /usr/local/bin/ && \
+    chmod +x /usr/local/bin/arturo && \
+    rm /tmp/arturo.zip && \
+    apt-get purge -y curl unzip && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
     useradd -m -s /bin/false judge && \
     mkdir -p /workspace && chown judge:judge /workspace
+
 WORKDIR /workspace
 USER judge

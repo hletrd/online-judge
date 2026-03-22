@@ -432,7 +432,8 @@ I HAS A len ITZ STRING'Z LEN line
 I HAS A sp ITZ 0
 I HAS A i ITZ 0
 IM IN YR findsp UPPIN YR i TIL BOTH SAEM i AN len
-  BOTH SAEM (STRING'Z AT line AN i) AN " "
+  I HAS A ch ITZ STRING'Z AT line AN i
+  BOTH SAEM ch AN " "
   O RLY?
   YA RLY
     sp R i
@@ -442,12 +443,14 @@ IM OUTTA YR findsp
 I HAS A as ITZ ""
 I HAS A j ITZ 0
 IM IN YR loopa UPPIN YR j TIL BOTH SAEM j AN sp
-  as R SMOOSH as AN (STRING'Z AT line AN j) MKAY
+  I HAS A ca ITZ STRING'Z AT line AN j
+  as R SMOOSH as AN ca MKAY
 IM OUTTA YR loopa
 I HAS A bs ITZ ""
 j R SUM OF sp AN 1
 IM IN YR loopb UPPIN YR j TIL BOTH SAEM j AN len
-  bs R SMOOSH bs AN (STRING'Z AT line AN j) MKAY
+  I HAS A cb ITZ STRING'Z AT line AN j
+  bs R SMOOSH bs AN cb MKAY
 IM OUTTA YR loopb
 as IS NOW A NUMBR
 bs IS NOW A NUMBR
