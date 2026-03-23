@@ -930,11 +930,6 @@ const KNOWN_FAILING = new Set<string>([
   "roc",         // platform file not pre-cached in Docker
   "grain",       // grainc internal compiler error
   "pony",        // ponyc permission/timeout
-  // .NET runtime — empty output in judge sandbox (works in direct Docker)
-  "fsharp",      // dotnet fsi produces empty output in judge sandbox
-  "vbnet",       // dotnet build fails in judge sandbox
-  "powershell",  // pwsh produces empty output in judge sandbox
-  // Interpreter stdin issues
 ]);
 
 /** Per-language timeout overrides (ms). JVM/compiled languages get more time. */

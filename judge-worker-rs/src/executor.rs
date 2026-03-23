@@ -44,6 +44,7 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
         _ => lang_config.map(|c| c.run_command.to_vec()).unwrap_or_default(),
     };
     let extension = lang_config.map(|c| c.extension).unwrap_or(default_ext);
+    let needs_exec_tmp = lang_config.is_some_and(|c| c.needs_exec_tmp);
 
     // Report "judging" status; log errors but continue
     if let Err(e) = client
@@ -129,6 +130,7 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
             timeout_ms: compile_timeout_ms,
             memory_limit_mb: compile_memory_mb,
             read_only_workspace: false,
+            needs_exec_tmp,
         };
 
         let compilation = match docker::run_docker(
@@ -200,6 +202,7 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
             timeout_ms: run_timeout_ms,
             memory_limit_mb: submission.memory_limit_mb.min(MAX_MEMORY_LIMIT_MB),
             read_only_workspace: true,
+            needs_exec_tmp,
         };
 
         let execution = match docker::run_docker(
