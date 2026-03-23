@@ -11,8 +11,8 @@ export const test = base.extend<E2EFixtures>({
   runtimeSuffix: async ({}, applyFixture, testInfo) => {
     await applyFixture(`${Date.now()}-${testInfo.workerIndex}`);
   },
-  runtimeAdminPage: async ({ page }, applyFixture) => {
-    await ensureRuntimeAdminUser();
+  runtimeAdminPage: async ({ browser, page }, applyFixture) => {
+    await ensureRuntimeAdminUser(browser);
     await loginAsRuntimeAdmin(page);
     await applyFixture(page);
   },
