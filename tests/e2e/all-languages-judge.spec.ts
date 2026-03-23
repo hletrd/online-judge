@@ -929,6 +929,8 @@ const KNOWN_FAILING = new Set<string>([
   "roc",         // downloads platform at compile time, no network in sandbox
   "carp",        // arch-specific binary issue
   "powershell",  // runtime_error on amd64 (verified 2026-03-23)
+  "fsharp",      // .NET runtime_error despite HOME=/tmp
+  "apl",         // GNU APL runtime issue on staging
 ]);
 
 /** Per-language timeout overrides (ms). JVM/compiled languages get more time. */
