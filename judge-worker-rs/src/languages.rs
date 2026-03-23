@@ -5,6 +5,8 @@ pub struct LanguageConfig {
     pub docker_image: &'static str,
     pub compile_command: Option<&'static [&'static str]>,
     pub run_command: &'static [&'static str],
+    /// .NET/Mono languages need /tmp without noexec for JIT compilation
+    pub needs_exec_tmp: bool,
 }
 
 static C17_COMPILE: &[&str] = &[
@@ -183,6 +185,7 @@ static C17_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-cpp:latest",
     compile_command: Some(C17_COMPILE),
     run_command: C17_RUN,
+    needs_exec_tmp: false,
 };
 
 static C23_CONFIG: LanguageConfig = LanguageConfig {
@@ -190,6 +193,7 @@ static C23_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-cpp:latest",
     compile_command: Some(C23_COMPILE),
     run_command: C23_RUN,
+    needs_exec_tmp: false,
 };
 
 static CPP20_CONFIG: LanguageConfig = LanguageConfig {
@@ -197,6 +201,7 @@ static CPP20_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-cpp:latest",
     compile_command: Some(CPP20_COMPILE),
     run_command: CPP20_RUN,
+    needs_exec_tmp: false,
 };
 
 static CPP23_CONFIG: LanguageConfig = LanguageConfig {
@@ -204,6 +209,7 @@ static CPP23_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-cpp:latest",
     compile_command: Some(CPP23_COMPILE),
     run_command: CPP23_RUN,
+    needs_exec_tmp: false,
 };
 
 static JAVA_CONFIG: LanguageConfig = LanguageConfig {
@@ -211,6 +217,7 @@ static JAVA_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-jvm:latest",
     compile_command: Some(JAVA_COMPILE),
     run_command: JAVA_RUN,
+    needs_exec_tmp: false,
 };
 
 static PYTHON_CONFIG: LanguageConfig = LanguageConfig {
@@ -218,6 +225,7 @@ static PYTHON_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-python:latest",
     compile_command: None,
     run_command: PYTHON_RUN,
+    needs_exec_tmp: false,
 };
 
 static JAVASCRIPT_CONFIG: LanguageConfig = LanguageConfig {
@@ -225,6 +233,7 @@ static JAVASCRIPT_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-node:latest",
     compile_command: None,
     run_command: JAVASCRIPT_RUN,
+    needs_exec_tmp: false,
 };
 
 static TYPESCRIPT_CONFIG: LanguageConfig = LanguageConfig {
@@ -232,6 +241,7 @@ static TYPESCRIPT_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-node:latest",
     compile_command: Some(TYPESCRIPT_COMPILE),
     run_command: TYPESCRIPT_RUN,
+    needs_exec_tmp: false,
 };
 
 static KOTLIN_CONFIG: LanguageConfig = LanguageConfig {
@@ -239,6 +249,7 @@ static KOTLIN_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-jvm:latest",
     compile_command: Some(KOTLIN_COMPILE),
     run_command: KOTLIN_RUN,
+    needs_exec_tmp: false,
 };
 
 static RUST_CONFIG: LanguageConfig = LanguageConfig {
@@ -246,6 +257,7 @@ static RUST_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-rust:latest",
     compile_command: Some(RUST_COMPILE),
     run_command: RUST_RUN,
+    needs_exec_tmp: false,
 };
 
 static GO_CONFIG: LanguageConfig = LanguageConfig {
@@ -253,6 +265,7 @@ static GO_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-go:latest",
     compile_command: Some(GO_COMPILE),
     run_command: GO_RUN,
+    needs_exec_tmp: false,
 };
 
 static SWIFT_CONFIG: LanguageConfig = LanguageConfig {
@@ -260,6 +273,7 @@ static SWIFT_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-swift:latest",
     compile_command: Some(SWIFT_COMPILE),
     run_command: SWIFT_RUN,
+    needs_exec_tmp: false,
 };
 
 static CSHARP_CONFIG: LanguageConfig = LanguageConfig {
@@ -267,6 +281,7 @@ static CSHARP_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-csharp:latest",
     compile_command: Some(CSHARP_COMPILE),
     run_command: CSHARP_RUN,
+    needs_exec_tmp: true,
 };
 
 static R_CONFIG: LanguageConfig = LanguageConfig {
@@ -274,6 +289,7 @@ static R_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-r:latest",
     compile_command: None,
     run_command: R_RUN,
+    needs_exec_tmp: false,
 };
 
 static PERL_CONFIG: LanguageConfig = LanguageConfig {
@@ -281,6 +297,7 @@ static PERL_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-perl:latest",
     compile_command: None,
     run_command: PERL_RUN,
+    needs_exec_tmp: false,
 };
 
 static PHP_CONFIG: LanguageConfig = LanguageConfig {
@@ -288,6 +305,7 @@ static PHP_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-php:latest",
     compile_command: None,
     run_command: PHP_RUN,
+    needs_exec_tmp: false,
 };
 
 static RUBY_CONFIG: LanguageConfig = LanguageConfig {
@@ -295,6 +313,7 @@ static RUBY_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-ruby:latest",
     compile_command: None,
     run_command: RUBY_RUN,
+    needs_exec_tmp: false,
 };
 
 static LUA_CONFIG: LanguageConfig = LanguageConfig {
@@ -302,6 +321,7 @@ static LUA_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-lua:latest",
     compile_command: None,
     run_command: LUA_RUN,
+    needs_exec_tmp: false,
 };
 
 static HASKELL_CONFIG: LanguageConfig = LanguageConfig {
@@ -309,6 +329,7 @@ static HASKELL_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-haskell:latest",
     compile_command: Some(HASKELL_COMPILE),
     run_command: HASKELL_RUN,
+    needs_exec_tmp: false,
 };
 
 static DART_CONFIG: LanguageConfig = LanguageConfig {
@@ -316,6 +337,7 @@ static DART_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-dart:latest",
     compile_command: Some(DART_COMPILE),
     run_command: DART_RUN,
+    needs_exec_tmp: false,
 };
 
 static ZIG_CONFIG: LanguageConfig = LanguageConfig {
@@ -323,6 +345,7 @@ static ZIG_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-zig:latest",
     compile_command: Some(ZIG_COMPILE),
     run_command: ZIG_RUN,
+    needs_exec_tmp: false,
 };
 
 static NIM_CONFIG: LanguageConfig = LanguageConfig {
@@ -330,6 +353,7 @@ static NIM_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-nim:latest",
     compile_command: Some(NIM_COMPILE),
     run_command: NIM_RUN,
+    needs_exec_tmp: false,
 };
 
 static OCAML_CONFIG: LanguageConfig = LanguageConfig {
@@ -337,6 +361,7 @@ static OCAML_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-ocaml:latest",
     compile_command: Some(OCAML_COMPILE),
     run_command: OCAML_RUN,
+    needs_exec_tmp: false,
 };
 
 static ELIXIR_CONFIG: LanguageConfig = LanguageConfig {
@@ -344,6 +369,7 @@ static ELIXIR_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-elixir:latest",
     compile_command: None,
     run_command: ELIXIR_RUN,
+    needs_exec_tmp: false,
 };
 
 static JULIA_CONFIG: LanguageConfig = LanguageConfig {
@@ -351,6 +377,7 @@ static JULIA_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-julia:latest",
     compile_command: None,
     run_command: JULIA_RUN,
+    needs_exec_tmp: false,
 };
 
 static D_CONFIG: LanguageConfig = LanguageConfig {
@@ -358,6 +385,7 @@ static D_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-d:latest",
     compile_command: Some(D_COMPILE),
     run_command: D_RUN,
+    needs_exec_tmp: false,
 };
 
 static RACKET_CONFIG: LanguageConfig = LanguageConfig {
@@ -365,6 +393,7 @@ static RACKET_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-racket:latest",
     compile_command: None,
     run_command: RACKET_RUN,
+    needs_exec_tmp: false,
 };
 
 static VLANG_CONFIG: LanguageConfig = LanguageConfig {
@@ -372,6 +401,7 @@ static VLANG_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-v:latest",
     compile_command: Some(V_COMPILE),
     run_command: V_RUN,
+    needs_exec_tmp: false,
 };
 
 static C99_CONFIG: LanguageConfig = LanguageConfig {
@@ -379,6 +409,7 @@ static C99_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-cpp:latest",
     compile_command: Some(C99_COMPILE),
     run_command: C99_RUN,
+    needs_exec_tmp: false,
 };
 
 static C89_CONFIG: LanguageConfig = LanguageConfig {
@@ -386,6 +417,7 @@ static C89_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-cpp:latest",
     compile_command: Some(C89_COMPILE),
     run_command: C89_RUN,
+    needs_exec_tmp: false,
 };
 
 static FORTRAN_CONFIG: LanguageConfig = LanguageConfig {
@@ -393,6 +425,7 @@ static FORTRAN_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-fortran:latest",
     compile_command: Some(FORTRAN_COMPILE),
     run_command: FORTRAN_RUN,
+    needs_exec_tmp: false,
 };
 
 static PASCAL_CONFIG: LanguageConfig = LanguageConfig {
@@ -400,6 +433,7 @@ static PASCAL_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-pascal:latest",
     compile_command: Some(PASCAL_COMPILE),
     run_command: PASCAL_RUN,
+    needs_exec_tmp: false,
 };
 
 static BRAINFUCK_CONFIG: LanguageConfig = LanguageConfig {
@@ -407,6 +441,7 @@ static BRAINFUCK_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-brainfuck:latest",
     compile_command: None,
     run_command: BRAINFUCK_RUN,
+    needs_exec_tmp: false,
 };
 
 static COBOL_CONFIG: LanguageConfig = LanguageConfig {
@@ -414,6 +449,7 @@ static COBOL_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-cobol:latest",
     compile_command: Some(COBOL_COMPILE),
     run_command: COBOL_RUN,
+    needs_exec_tmp: false,
 };
 
 static CLANG_C23_CONFIG: LanguageConfig = LanguageConfig {
@@ -421,6 +457,7 @@ static CLANG_C23_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-clang:latest",
     compile_command: Some(CLANG_C23_COMPILE),
     run_command: CLANG_C23_RUN,
+    needs_exec_tmp: false,
 };
 
 static CLANG_CPP23_CONFIG: LanguageConfig = LanguageConfig {
@@ -428,6 +465,7 @@ static CLANG_CPP23_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-clang:latest",
     compile_command: Some(CLANG_CPP23_COMPILE),
     run_command: CLANG_CPP23_RUN,
+    needs_exec_tmp: false,
 };
 
 static SCALA_CONFIG: LanguageConfig = LanguageConfig {
@@ -435,6 +473,7 @@ static SCALA_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-scala:latest",
     compile_command: Some(SCALA_COMPILE),
     run_command: SCALA_RUN,
+    needs_exec_tmp: false,
 };
 
 static ERLANG_CONFIG: LanguageConfig = LanguageConfig {
@@ -442,6 +481,7 @@ static ERLANG_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-erlang:latest",
     compile_command: Some(ERLANG_COMPILE),
     run_command: ERLANG_RUN,
+    needs_exec_tmp: false,
 };
 
 static COMMONLISP_CONFIG: LanguageConfig = LanguageConfig {
@@ -449,6 +489,7 @@ static COMMONLISP_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-commonlisp:latest",
     compile_command: None,
     run_command: COMMONLISP_RUN,
+    needs_exec_tmp: false,
 };
 
 static BASH_CONFIG: LanguageConfig = LanguageConfig {
@@ -456,6 +497,7 @@ static BASH_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-bash:latest",
     compile_command: None,
     run_command: BASH_RUN,
+    needs_exec_tmp: false,
 };
 
 // Befunge
@@ -466,6 +508,7 @@ static BEFUNGE_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-esoteric:latest",
     compile_command: None,
     run_command: BEFUNGE_RUN,
+    needs_exec_tmp: false,
 };
 
 // Aheui
@@ -476,6 +519,7 @@ static AHEUI_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-esoteric:latest",
     compile_command: None,
     run_command: AHEUI_RUN,
+    needs_exec_tmp: false,
 };
 
 // Hyeong
@@ -486,6 +530,7 @@ static HYEONG_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-esoteric:latest",
     compile_command: None,
     run_command: HYEONG_RUN,
+    needs_exec_tmp: false,
 };
 
 // Whitespace
@@ -496,6 +541,7 @@ static WHITESPACE_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-esoteric:latest",
     compile_command: None,
     run_command: WHITESPACE_RUN,
+    needs_exec_tmp: false,
 };
 
 // Ada
@@ -507,6 +553,7 @@ static ADA_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-ada:latest",
     compile_command: Some(ADA_COMPILE),
     run_command: ADA_RUN,
+    needs_exec_tmp: false,
 };
 
 // Clojure
@@ -517,6 +564,7 @@ static CLOJURE_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-clojure:latest",
     compile_command: None,
     run_command: CLOJURE_RUN,
+    needs_exec_tmp: false,
 };
 
 // Prolog
@@ -527,6 +575,7 @@ static PROLOG_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-prolog:latest",
     compile_command: None,
     run_command: PROLOG_RUN,
+    needs_exec_tmp: false,
 };
 
 // Tcl
@@ -537,6 +586,7 @@ static TCL_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-tcl:latest",
     compile_command: None,
     run_command: TCL_RUN,
+    needs_exec_tmp: false,
 };
 
 // AWK
@@ -547,6 +597,7 @@ static AWK_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-awk:latest",
     compile_command: None,
     run_command: AWK_RUN,
+    needs_exec_tmp: false,
 };
 
 // Scheme (Chicken)
@@ -558,6 +609,7 @@ static SCHEME_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-scheme:latest",
     compile_command: Some(SCHEME_COMPILE),
     run_command: SCHEME_RUN,
+    needs_exec_tmp: false,
 };
 
 // Groovy
@@ -568,6 +620,7 @@ static GROOVY_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-groovy:latest",
     compile_command: None,
     run_command: GROOVY_RUN,
+    needs_exec_tmp: false,
 };
 
 // Octave
@@ -578,6 +631,7 @@ static OCTAVE_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-octave:latest",
     compile_command: None,
     run_command: OCTAVE_RUN,
+    needs_exec_tmp: false,
 };
 
 // Crystal
@@ -589,6 +643,7 @@ static CRYSTAL_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-crystal:latest",
     compile_command: Some(CRYSTAL_COMPILE),
     run_command: CRYSTAL_RUN,
+    needs_exec_tmp: false,
 };
 
 // PowerShell
@@ -599,6 +654,7 @@ static POWERSHELL_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-powershell:latest",
     compile_command: None,
     run_command: POWERSHELL_RUN,
+    needs_exec_tmp: true,
 };
 
 // PostScript
@@ -609,6 +665,7 @@ static POSTSCRIPT_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-postscript:latest",
     compile_command: None,
     run_command: POSTSCRIPT_RUN,
+    needs_exec_tmp: false,
 };
 
 // Delphi (reuses judge-pascal image via FPC -Mdelphi)
@@ -620,6 +677,7 @@ static DELPHI_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-pascal:latest",
     compile_command: Some(DELPHI_COMPILE),
     run_command: DELPHI_RUN,
+    needs_exec_tmp: false,
 };
 
 // F# (script mode via dotnet fsi)
@@ -630,6 +688,7 @@ static FSHARP_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-fsharp:latest",
     compile_command: None,
     run_command: FSHARP_RUN,
+    needs_exec_tmp: true,
 };
 
 // APL (GNU APL)
@@ -640,6 +699,7 @@ static APL_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-apl:latest",
     compile_command: None,
     run_command: APL_RUN,
+    needs_exec_tmp: false,
 };
 
 // FreeBASIC
@@ -651,6 +711,7 @@ static FREEBASIC_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-freebasic:latest",
     compile_command: Some(FREEBASIC_COMPILE),
     run_command: FREEBASIC_RUN,
+    needs_exec_tmp: false,
 };
 
 // B
@@ -665,6 +726,7 @@ static SMALLTALK_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-smalltalk:latest",
     compile_command: None,
     run_command: SMALLTALK_RUN,
+    needs_exec_tmp: false,
 };
 
 static B_CONFIG: LanguageConfig = LanguageConfig {
@@ -672,6 +734,7 @@ static B_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-b:latest",
     compile_command: Some(B_COMPILE),
     run_command: B_RUN,
+    needs_exec_tmp: false,
 };
 
 // Sed (reuses judge-bash)
@@ -682,6 +745,7 @@ static SED_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-bash:latest",
     compile_command: None,
     run_command: SED_RUN,
+    needs_exec_tmp: false,
 };
 
 // dc (reuses judge-bash)
@@ -692,6 +756,7 @@ static DC_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-bash:latest",
     compile_command: None,
     run_command: DC_RUN,
+    needs_exec_tmp: false,
 };
 
 // CoffeeScript (reuses judge-node)
@@ -702,6 +767,7 @@ static COFFEESCRIPT_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-node:latest",
     compile_command: None,
     run_command: COFFEESCRIPT_RUN,
+    needs_exec_tmp: false,
 };
 
 // LLVM IR (reuses judge-clang)
@@ -712,6 +778,7 @@ static LLVM_IR_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-clang:latest",
     compile_command: None,
     run_command: LLVM_IR_RUN,
+    needs_exec_tmp: false,
 };
 
 // Visual Basic .NET (reuses judge-fsharp)
@@ -726,6 +793,7 @@ static VBNET_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-fsharp:latest",
     compile_command: Some(VBNET_COMPILE),
     run_command: VBNET_RUN,
+    needs_exec_tmp: true,
 };
 
 // Assembly (NASM on x86-64, GNU as on AArch64)
@@ -737,6 +805,7 @@ static NASM_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-nasm:latest",
     compile_command: Some(NASM_COMPILE),
     run_command: NASM_RUN,
+    needs_exec_tmp: false,
 };
 
 // BQN
@@ -747,6 +816,7 @@ static BQN_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-bqn:latest",
     compile_command: None,
     run_command: BQN_RUN,
+    needs_exec_tmp: false,
 };
 
 // LOLCODE
@@ -757,6 +827,7 @@ static LOLCODE_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-lolcode:latest",
     compile_command: None,
     run_command: LOLCODE_RUN,
+    needs_exec_tmp: false,
 };
 
 // Forth
@@ -767,6 +838,7 @@ static FORTH_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-forth:latest",
     compile_command: None,
     run_command: FORTH_RUN,
+    needs_exec_tmp: false,
 };
 
 // Algol 68
@@ -777,6 +849,7 @@ static ALGOL68_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-algol68:latest",
     compile_command: None,
     run_command: ALGOL68_RUN,
+    needs_exec_tmp: false,
 };
 
 // Umjunsik
@@ -787,6 +860,7 @@ static UMJUNSIK_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-umjunsik:latest",
     compile_command: None,
     run_command: UMJUNSIK_RUN,
+    needs_exec_tmp: false,
 };
 
 // Haxe
@@ -801,6 +875,7 @@ static HAXE_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-haxe:latest",
     compile_command: Some(HAXE_COMPILE),
     run_command: HAXE_RUN,
+    needs_exec_tmp: false,
 };
 
 // Raku
@@ -811,6 +886,7 @@ static RAKU_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-raku:latest",
     compile_command: None,
     run_command: RAKU_RUN,
+    needs_exec_tmp: false,
 };
 
 
@@ -822,6 +898,7 @@ static SHAKESPEARE_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-shakespeare:latest",
     compile_command: None,
     run_command: SHAKESPEARE_RUN,
+    needs_exec_tmp: false,
 };
 
 // SNOBOL4
@@ -832,6 +909,7 @@ static SNOBOL4_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-snobol4:latest",
     compile_command: None,
     run_command: SNOBOL4_RUN,
+    needs_exec_tmp: false,
 };
 
 // Icon
@@ -843,6 +921,7 @@ static ICON_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-icon:latest",
     compile_command: Some(ICON_COMPILE),
     run_command: ICON_RUN,
+    needs_exec_tmp: false,
 };
 
 // Uiua
@@ -853,6 +932,7 @@ static UIUA_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-uiua:latest",
     compile_command: None,
     run_command: UIUA_RUN,
+    needs_exec_tmp: false,
 };
 
 // Odin
@@ -867,6 +947,7 @@ static ODIN_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-odin:latest",
     compile_command: Some(ODIN_COMPILE),
     run_command: ODIN_RUN,
+    needs_exec_tmp: false,
 };
 
 // Objective-C
@@ -878,6 +959,7 @@ static OBJECTIVE_C_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-objective-c:latest",
     compile_command: Some(OBJECTIVE_C_COMPILE),
     run_command: OBJECTIVE_C_RUN,
+    needs_exec_tmp: false,
 };
 
 // Deno (JavaScript)
@@ -888,6 +970,7 @@ static DENO_JS_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-deno:latest",
     compile_command: None,
     run_command: DENO_JS_RUN,
+    needs_exec_tmp: false,
 };
 
 // Deno (TypeScript)
@@ -898,6 +981,7 @@ static DENO_TS_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-deno:latest",
     compile_command: None,
     run_command: DENO_TS_RUN,
+    needs_exec_tmp: false,
 };
 
 // Bun (JavaScript)
@@ -908,6 +992,7 @@ static BUN_JS_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-bun:latest",
     compile_command: None,
     run_command: BUN_JS_RUN,
+    needs_exec_tmp: false,
 };
 
 // Bun (TypeScript)
@@ -918,6 +1003,7 @@ static BUN_TS_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-bun:latest",
     compile_command: None,
     run_command: BUN_TS_RUN,
+    needs_exec_tmp: false,
 };
 
 // Gleam
@@ -932,6 +1018,7 @@ static GLEAM_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-gleam:latest",
     compile_command: Some(GLEAM_COMPILE),
     run_command: GLEAM_RUN,
+    needs_exec_tmp: false,
 };
 
 // Standard ML (Poly/ML)
@@ -943,6 +1030,7 @@ static SML_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-sml:latest",
     compile_command: Some(SML_COMPILE),
     run_command: SML_RUN,
+    needs_exec_tmp: false,
 };
 
 // Fennel (runs on Lua VM)
@@ -953,6 +1041,7 @@ static FENNEL_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-lua:latest",
     compile_command: None,
     run_command: FENNEL_RUN,
+    needs_exec_tmp: false,
 };
 
 // Flix (JVM)
@@ -963,6 +1052,7 @@ static FLIX_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-jvm:latest",
     compile_command: None,
     run_command: FLIX_RUN,
+    needs_exec_tmp: false,
 };
 
 // MicroPython
@@ -973,6 +1063,7 @@ static MICROPYTHON_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-micropython:latest",
     compile_command: None,
     run_command: MICROPYTHON_RUN,
+    needs_exec_tmp: false,
 };
 
 // Squirrel
@@ -983,6 +1074,7 @@ static SQUIRREL_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-squirrel:latest",
     compile_command: None,
     run_command: SQUIRREL_RUN,
+    needs_exec_tmp: false,
 };
 
 // Rexx (Regina)
@@ -993,6 +1085,7 @@ static REXX_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-rexx:latest",
     compile_command: None,
     run_command: REXX_RUN,
+    needs_exec_tmp: false,
 };
 
 // Hy
@@ -1003,6 +1096,7 @@ static HY_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-hy:latest",
     compile_command: None,
     run_command: HY_RUN,
+    needs_exec_tmp: false,
 };
 
 // Arturo
@@ -1013,6 +1107,7 @@ static ARTURO_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-arturo:latest",
     compile_command: None,
     run_command: ARTURO_RUN,
+    needs_exec_tmp: false,
 };
 
 // Janet
@@ -1023,6 +1118,7 @@ static JANET_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-janet:latest",
     compile_command: None,
     run_command: JANET_RUN,
+    needs_exec_tmp: false,
 };
 
 // C3
@@ -1034,6 +1130,7 @@ static C3_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-c3:latest",
     compile_command: Some(C3_COMPILE),
     run_command: C3_RUN,
+    needs_exec_tmp: false,
 };
 
 // Vala
@@ -1045,6 +1142,7 @@ static VALA_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-vala:latest",
     compile_command: Some(VALA_COMPILE),
     run_command: VALA_RUN,
+    needs_exec_tmp: false,
 };
 
 // Nelua
@@ -1056,6 +1154,7 @@ static NELUA_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-nelua:latest",
     compile_command: Some(NELUA_COMPILE),
     run_command: NELUA_RUN,
+    needs_exec_tmp: false,
 };
 
 // Hare
@@ -1067,6 +1166,7 @@ static HARE_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-hare:latest",
     compile_command: Some(HARE_COMPILE),
     run_command: HARE_RUN,
+    needs_exec_tmp: false,
 };
 
 // Koka
@@ -1078,6 +1178,7 @@ static KOKA_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-koka:latest",
     compile_command: Some(KOKA_COMPILE),
     run_command: KOKA_RUN,
+    needs_exec_tmp: false,
 };
 
 // Lean 4
@@ -1088,6 +1189,7 @@ static LEAN_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-lean:latest",
     compile_command: None,
     run_command: LEAN_RUN,
+    needs_exec_tmp: false,
 };
 
 // Picat
@@ -1098,6 +1200,7 @@ static PICAT_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-picat:latest",
     compile_command: None,
     run_command: PICAT_RUN,
+    needs_exec_tmp: false,
 };
 
 // Mercury
@@ -1109,6 +1212,7 @@ static MERCURY_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-mercury:latest",
     compile_command: Some(MERCURY_COMPILE),
     run_command: MERCURY_RUN,
+    needs_exec_tmp: false,
 };
 
 // WebAssembly (WAT)
@@ -1120,6 +1224,7 @@ static WAT_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-wat:latest",
     compile_command: Some(WAT_COMPILE),
     run_command: WAT_RUN,
+    needs_exec_tmp: false,
 };
 
 // PureScript
@@ -1131,6 +1236,7 @@ static PURESCRIPT_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-purescript:latest",
     compile_command: Some(PURESCRIPT_COMPILE),
     run_command: PURESCRIPT_RUN,
+    needs_exec_tmp: false,
 };
 
 // Modula-2
@@ -1142,6 +1248,7 @@ static MODULA2_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-modula2:latest",
     compile_command: Some(MODULA2_COMPILE),
     run_command: MODULA2_RUN,
+    needs_exec_tmp: false,
 };
 
 // Factor
@@ -1152,6 +1259,7 @@ static FACTOR_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-factor:latest",
     compile_command: None,
     run_command: FACTOR_RUN,
+    needs_exec_tmp: false,
 };
 
 // SPARK (Ada subset)
@@ -1163,6 +1271,7 @@ static SPARK_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-ada:latest",
     compile_command: Some(SPARK_COMPILE),
     run_command: SPARK_RUN,
+    needs_exec_tmp: false,
 };
 
 // MiniZinc
@@ -1173,6 +1282,7 @@ static MINIZINC_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-minizinc:latest",
     compile_command: None,
     run_command: MINIZINC_RUN,
+    needs_exec_tmp: false,
 };
 
 // Curry (PAKCS)
@@ -1184,6 +1294,7 @@ static CURRY_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-curry:latest",
     compile_command: Some(CURRY_COMPILE),
     run_command: CURRY_RUN,
+    needs_exec_tmp: false,
 };
 
 // Clean
@@ -1195,6 +1306,7 @@ static CLEAN_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-clean:latest",
     compile_command: Some(CLEAN_COMPILE),
     run_command: CLEAN_RUN,
+    needs_exec_tmp: false,
 };
 
 // Roc
@@ -1206,6 +1318,7 @@ static ROC_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-roc:latest",
     compile_command: Some(ROC_COMPILE),
     run_command: ROC_RUN,
+    needs_exec_tmp: false,
 };
 
 // Carp
@@ -1217,6 +1330,7 @@ static CARP_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-carp:latest",
     compile_command: Some(CARP_COMPILE),
     run_command: CARP_RUN,
+    needs_exec_tmp: false,
 };
 
 // Grain
@@ -1228,6 +1342,7 @@ static GRAIN_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-grain:latest",
     compile_command: Some(GRAIN_COMPILE),
     run_command: GRAIN_RUN,
+    needs_exec_tmp: false,
 };
 
 // Pony
@@ -1239,6 +1354,7 @@ static PONY_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-pony:latest",
     compile_command: Some(PONY_COMPILE),
     run_command: PONY_RUN,
+    needs_exec_tmp: false,
 };
 
 pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {

@@ -25,6 +25,9 @@ pub struct DockerRunOptions {
     pub timeout_ms: u64,
     pub memory_limit_mb: u32,
     pub read_only_workspace: bool,
+    /// When true, use tmpfs without noexec even during the run phase
+    /// (.NET/Mono JIT needs to execute code from /tmp)
+    pub needs_exec_tmp: bool,
 }
 
 #[derive(PartialEq)]
@@ -189,7 +192,7 @@ async fn run_docker_once(
         pids_limit.into(),
         "--read-only".into(),
         "--tmpfs".into(),
-        if options.phase == Phase::Compile { COMPILE_TMPFS } else { RUN_TMPFS }.into(),
+        if options.phase == Phase::Compile || options.needs_exec_tmp { COMPILE_TMPFS } else { RUN_TMPFS }.into(),
         "--cap-drop=ALL".into(),
         "--security-opt=no-new-privileges".into(),
         "--ulimit".into(),
