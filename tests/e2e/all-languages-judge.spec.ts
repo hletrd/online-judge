@@ -922,15 +922,10 @@ async function waitForJudging(
 // Languages with known issues on the current judge infrastructure.
 // Tagged test.fixme() so they show as "to-do" rather than failures.
 const KNOWN_FAILING = new Set<string>([
-  "arturo",      // memory_limit — binary too large for sandbox
   "mercury",     // Docker image needs source build fix
-  "purescript",  // spago ecosystem Docker build fails
+  "purescript",  // BusyBox cp fix applied, needs Docker rebuild to verify
   "curry",       // PAKCS execution mode issue
-  "roc",         // downloads platform at compile time, no network in sandbox
   "carp",        // arch-specific binary issue
-  "powershell",  // runtime_error on amd64 (verified 2026-03-23)
-  "fsharp",      // .NET runtime_error despite HOME=/tmp
-  "apl",         // GNU APL runtime issue on staging
 ]);
 
 /** Per-language timeout overrides (ms). JVM/compiled languages get more time. */
