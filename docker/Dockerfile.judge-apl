@@ -1,7 +1,5 @@
 FROM debian:bookworm-slim AS builder
 
-ARG TARGETARCH
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential g++ libreadline-dev pkg-config curl ca-certificates autoconf autotools-dev && \
     curl -sL https://ftp.gnu.org/gnu/apl/apl-1.8.tar.gz -o /tmp/apl.tar.gz && \
@@ -9,7 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cd /tmp/apl-1.8 && \
     cp /usr/share/misc/config.sub . && \
     cp /usr/share/misc/config.guess . && \
-    if [ "$TARGETARCH" = "arm64" ]; then \
+    ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "arm64" ]; then \
       sed -i 's/PERFORMANCE_WANTED=yes/PERFORMANCE_WANTED=no/' configure && \
       ./configure --prefix=/usr/local --without-gtk3 CXXFLAGS="-O2"; \
     else \

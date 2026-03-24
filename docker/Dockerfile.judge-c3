@@ -1,16 +1,15 @@
 FROM debian:trixie-slim AS builder
 
-ARG TARGETARCH
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl ca-certificates && \
-    if [ "$TARGETARCH" = "amd64" ]; then \
+    ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
       curl -fsSL -o /tmp/c3.tar.gz \
         "https://github.com/c3lang/c3c/releases/download/v0.7.10/c3-linux.tar.gz" && \
       mkdir -p /opt/c3 && \
       tar xzf /tmp/c3.tar.gz -C /opt/c3 --strip-components=1 && \
       rm /tmp/c3.tar.gz; \
-    elif [ "$TARGETARCH" = "arm64" ]; then \
+    elif [ "$ARCH" = "arm64" ]; then \
       apt-get install -y --no-install-recommends \
         git cmake build-essential llvm-dev lld libclang-dev \
         zlib1g-dev libzstd-dev libxml2-dev libcurl4-openssl-dev && \
