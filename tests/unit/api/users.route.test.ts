@@ -305,11 +305,12 @@ describe("POST /api/v1/users", () => {
   it("creates user with valid data and returns 201", async () => {
     getApiUserMock.mockResolvedValue(adminUser);
 
-    const insertChain = { values: vi.fn().mockResolvedValue(undefined) };
+    const insertChain = {
+      values: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([safeUser]),
+      }),
+    };
     dbInsertMock.mockReturnValue(insertChain);
-
-    // select after insert → created user
-    dbSelectMock.mockReturnValue(makeSelectChain([safeUser]));
 
     const req = makeRequest("http://localhost:3000/api/v1/users", {
       method: "POST",

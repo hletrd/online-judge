@@ -305,7 +305,7 @@ describe("POST /api/v1/submissions", () => {
     let callCount = 0;
     selectMock.mockImplementation(() => {
       callCount++;
-      const count = callCount === 1 ? 5 : 0; // SUBMISSION_RATE_LIMIT_MAX_PER_MINUTE default = 5
+      const count = callCount === 1 ? 120 : 0; // SUBMISSION_RATE_LIMIT_MAX_PER_MINUTE default = 120
       return {
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([{ count }]),
@@ -423,9 +423,8 @@ describe("POST /api/v1/submissions", () => {
   });
 
   it("does not fire audit event when post-insert findFirst returns null", async () => {
-    // Override: insert succeeds but findFirst returns null (edge case)
-    submissionsFindFirstMock
-      .mockResolvedValueOnce(null); // the lookup after insert
+    // Override: insert returns empty array so destructured [submission] is undefined
+    insertMock.mockResolvedValueOnce([]);
 
     const response = await POST(makeRequest(VALID_BODY));
     // Still returns 201 with null data
