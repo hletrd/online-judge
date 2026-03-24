@@ -32,6 +32,11 @@ export const users = pgTable("users", {
   preferredLanguage: text("preferred_language"),
   preferredTheme: text("preferred_theme"),
   editorTheme: text("editor_theme"),
+  editorFontSize: text("editor_font_size"),
+  editorFontFamily: text("editor_font_family"),
+  lectureMode: text("lecture_mode"),
+  lectureFontScale: text("lecture_font_scale"),
+  lectureColorScheme: text("lecture_color_scheme"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .$defaultFn(() => new Date(Date.now())),

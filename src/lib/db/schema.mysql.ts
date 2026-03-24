@@ -33,6 +33,11 @@ export const users = mysqlTable("users", {
   preferredLanguage: varchar("preferred_language", { length: 255 }),
   preferredTheme: varchar("preferred_theme", { length: 255 }),
   editorTheme: varchar("editor_theme", { length: 255 }),
+  editorFontSize: varchar("editor_font_size", { length: 255 }),
+  editorFontFamily: varchar("editor_font_family", { length: 255 }),
+  lectureMode: varchar("lecture_mode", { length: 255 }),
+  lectureFontScale: varchar("lecture_font_scale", { length: 255 }),
+  lectureColorScheme: varchar("lecture_color_scheme", { length: 255 }),
   createdAt: timestamp("created_at")
     .notNull()
     .$defaultFn(() => new Date(Date.now())),
