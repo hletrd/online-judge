@@ -925,6 +925,7 @@ async function waitForJudging(
 const KNOWN_FAILING = new Set<string>([
   "apl",         // GNU APL build fails on ARM64, output format issues
   "carp",        // Carp 0.5.5 core library API incompatibility
+  "clean",       // clm compiler hangs in sandboxed Docker environment
 ]);
 
 /** Per-language timeout overrides (ms). JVM/compiled languages get more time. */
