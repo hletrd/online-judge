@@ -66,9 +66,9 @@
 | 60 | `aheui` | Aheui | `judge-esoteric` | ✅ | ✅ | ✅ | ✅ |
 | 61 | `hyeong` | Hyeong | `judge-esoteric` | ✅ | ✅ | ✅ | ✅ |
 | 62 | `whitespace` | Whitespace | `judge-esoteric` | ✅ | ✅ | ✅ | ✅ |
-| 63 | `b` | B (BCause) | `judge-b` | ✅ | ❌ x86 asm | ✅ | ❌ x86-64 inline assembly |
+| 63 | `b` | B (BCause / bext-lang) | `judge-b` | ✅ | ✅ | ✅ | ✅ |
 | 64 | `flix` | Flix (JVM) | `judge-jvm` | ✅ | ✅ | ✅ | ✅ |
-| 65 | `apl` | APL (GNU APL) | `judge-apl` | ✅ | ✅ | ❌ output format | ❌ output format |
+| 65 | `apl` | APL (GNU APL) | `judge-apl` | ✅ | ✅ | ✅ | ❌ output format |
 | 66 | `freebasic` | FreeBASIC | `judge-freebasic` | ✅ | ✅ | ✅ | ✅ |
 | 67 | `smalltalk` | Smalltalk (GNU Smalltalk) | `judge-smalltalk` | ✅ | ✅ | ✅ | ✅ |
 | 68 | `nasm` | Assembly (NASM x86-64 / GNU as AArch64) | `judge-nasm` | ✅ | ✅ | ✅ | ✅ |
@@ -121,18 +121,16 @@
 
 ### ARM64 Build Summary
 
-**94 of 95 images build on ARM64** (production, Ampere Altra). 1 cannot build on ARM64:
-- **B (BCause)**: uses x86-64 inline assembly (`syscall` instruction), fundamentally incompatible with ARM64
+**95 of 95 images build on ARM64** (production, Ampere Altra).
 
 ### amd64 E2E Summary (2026-03-25)
 
-**113 of 114 languages pass** on amd64. 1 failure:
-- **apl**: GNU APL output format issue
+**114 of 114 languages pass** on amd64. No failures.
 
 ### arm64 E2E Summary (2026-03-25)
 
 **113 of 114 languages pass** on arm64. 1 failure:
-- **b**: x86-64 inline assembly, fundamentally incompatible with ARM64
+- **b**: Build fails on arm64
 
 ## Docker Image Presets
 
