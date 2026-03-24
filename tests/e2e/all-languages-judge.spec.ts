@@ -826,13 +826,13 @@ match (parts) {
 
 actor Main
   new create(env: Env) =>
-    let caps = recover val FileCaps .> set(FileRead) .> set(FileStat) end
     try
-      let path = FilePath(FileAuth(env.root), "/dev/stdin", caps)
+      let path = FilePath(FileAuth(env.root), "/dev/stdin")
       match OpenFile(path)
       | let file: File =>
         let line = file.read_string(1024)
-        let parts = line.strip().split(" ")
+        let stripped: String val = line.clone().>strip()
+        let parts = stripped.split(" ")
         let a = parts(0)?.i64()?
         let b = parts(1)?.i64()?
         env.out.print((a + b).string())
