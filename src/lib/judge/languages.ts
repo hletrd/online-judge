@@ -135,7 +135,7 @@ export const DOCKER_IMAGE_RUNTIME_INFO: Record<string, string> = {
   "judge-apl:latest": "Debian Bookworm / GNU APL 1.8",
   "judge-freebasic:latest": "Debian Bookworm / FreeBASIC 1.10.1",
   "judge-smalltalk:latest": "Ubuntu 22.04 / GNU Smalltalk",
-  "judge-b:latest": "Debian Bookworm / BCause B compiler",
+  "judge-b:latest": "Debian Bookworm / BCause (amd64) or bext-lang B compiler (arm64)",
   "judge-nasm:latest": "Alpine 3.21 / NASM (x86-64) or GNU as (arm64)",
   "judge-bqn:latest": "Debian Bookworm / CBQN",
   "judge-lolcode:latest": "Debian Bookworm / lci (LOLCODE interpreter)",
@@ -801,7 +801,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-apl:latest",
     compiler: null,
     compileCommand: null,
-    runCommand: ["apl", "--script", "-f", "/workspace/solution.apl"],
+    runCommand: ["sh", "-c", "apl --script -f /workspace/solution.apl 2>/dev/null"],
   },
   freebasic: {
     language: "freebasic",

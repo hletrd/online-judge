@@ -297,7 +297,7 @@ let parts = line.Split(' ')
 let a = int parts.[0]
 let b = int parts.[1]
 printfn "%d" (a + b)`,
-  apl: `⎕←+/⎕\n)OFF`,
+  apl: `⎕←+/⍎⍞\n)OFF`,
   freebasic: `Dim As Integer a, b
 Input a, b
 Print Str(a + b)`,
@@ -926,7 +926,6 @@ async function waitForJudging(
 // Languages with known issues on the current judge infrastructure.
 // Tagged test.fixme() so they show as "to-do" rather than failures.
 const KNOWN_FAILING = new Set<string>([
-  "apl",         // GNU APL build fails on ARM64, output format issues
 ]);
 
 /** Per-language timeout overrides (ms). JVM/compiled languages get more time. */

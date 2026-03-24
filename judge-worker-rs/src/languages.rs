@@ -693,7 +693,7 @@ static FSHARP_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // APL (GNU APL)
-static APL_RUN: &[&str] = &["apl", "--script", "-f", "/workspace/solution.apl"];
+static APL_RUN: &[&str] = &["sh", "-c", "apl --script -f /workspace/solution.apl 2>/dev/null"];
 
 static APL_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".apl",
