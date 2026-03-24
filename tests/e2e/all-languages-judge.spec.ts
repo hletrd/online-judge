@@ -797,12 +797,15 @@ main! = |_args|
             Stdout.line!("\${Num.toStr (a + b)}")
         _ ->
             Stdout.line!("0")`,
-  carp: `(defn main []
-  (let [line (IO.get-line)
-        parts (String.words &line)
-        a (Int.from-string &(Array.unsafe-nth &parts 0))
-        b (Int.from-string &(Array.unsafe-nth &parts 1))]
-    (println* (+ a b))))`,
+  carp: `(register-type FILE "FILE")
+(defmodule MyIO
+  (register scanf (Fn [&String (Ptr Int) (Ptr Int)] Int) "scanf"))
+
+(defn main []
+  (let-do [a 0
+           b 0]
+    (MyIO.scanf "%d %d" (address a) (address b))
+    (IO.println &(str (+ a b)))))`,
   grain: `module Main
 
 from "wasi/file" include File
@@ -924,8 +927,6 @@ async function waitForJudging(
 // Tagged test.fixme() so they show as "to-do" rather than failures.
 const KNOWN_FAILING = new Set<string>([
   "apl",         // GNU APL build fails on ARM64, output format issues
-  "carp",        // Carp 0.5.5 core library API incompatibility
-  "clean",       // clm compiler hangs in sandboxed Docker environment
 ]);
 
 /** Per-language timeout overrides (ms). JVM/compiled languages get more time. */
