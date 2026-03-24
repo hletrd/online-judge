@@ -1285,11 +1285,11 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
   modula2: {
     language: "modula2",
     displayName: "Modula-2",
-    standard: "PIM",
+    standard: "ISO",
     extension: ".mod",
     dockerImage: "judge-modula2:latest",
     compiler: `GCC gm2 ${JUDGE_TOOLCHAIN_VERSIONS.fortran}`,
-    compileCommand: ["sh", "-c", "M2LOG=$(find /usr/lib/gcc -path '*/m2log' -type d 2>/dev/null | head -1) && gm2 -O2 ${M2LOG:+-I$M2LOG} -o /workspace/solution /workspace/solution.mod"],
+    compileCommand: ["gm2", "-fiso", "-O2", "-o", "/workspace/solution", "/workspace/solution.mod"],
     runCommand: ["/workspace/solution"],
   },
   factor: {

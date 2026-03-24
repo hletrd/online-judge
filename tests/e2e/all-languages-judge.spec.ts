@@ -736,12 +736,13 @@ main = do
     [a, b] -> log (show (fromMaybe 0 (fromString a) + fromMaybe 0 (fromString b)))
     _ -> pure unit`,
   modula2: `MODULE solution;
-FROM InOut IMPORT ReadInt, WriteInt, WriteLn;
+FROM SWholeIO IMPORT ReadInt, WriteCard;
+FROM STextIO IMPORT WriteLn;
 VAR a, b: INTEGER;
 BEGIN
   ReadInt(a);
   ReadInt(b);
-  WriteInt(a + b, 0);
+  WriteCard(VAL(CARDINAL, a + b), 0);
   WriteLn;
 END solution.`,
   factor: `USING: io kernel math math.parser sequences splitting ;

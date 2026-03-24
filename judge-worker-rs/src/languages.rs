@@ -1241,7 +1241,7 @@ static PURESCRIPT_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Modula-2
-static MODULA2_COMPILE: &[&str] = &["sh", "-c", "M2LOG=$(find /usr/lib/gcc -path '*/m2log' -type d 2>/dev/null | head -1) && gm2 -O2 ${M2LOG:+-I$M2LOG} -o /workspace/solution /workspace/solution.mod"];
+static MODULA2_COMPILE: &[&str] = &["gm2", "-fiso", "-O2", "-o", "/workspace/solution", "/workspace/solution.mod"];
 static MODULA2_RUN: &[&str] = &["/workspace/solution"];
 
 static MODULA2_CONFIG: LanguageConfig = LanguageConfig {
