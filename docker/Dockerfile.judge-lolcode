@@ -6,7 +6,9 @@ RUN apt-get update && \
     cd /tmp/lci && mkdir build && cd build && cmake .. && make -j$(nproc) && make install && \
     cd / && rm -rf /tmp/lci && \
     apt-get purge -y git cmake gcc g++ make libc6-dev libreadline-dev ca-certificates && \
-    apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
+    apt-get autoremove -y && \
+    apt-get install -y --no-install-recommends libreadline8 && \
+    rm -rf /var/lib/apt/lists/* && \
     useradd -m -s /bin/false judge && \
     mkdir -p /workspace && chown judge:judge /workspace
 
