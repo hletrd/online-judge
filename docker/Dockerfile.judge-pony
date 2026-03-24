@@ -4,7 +4,7 @@ USER root
 RUN cp -a /root/.local/share/ponyup /opt/ponyup && \
     chmod -R a+rX /opt/ponyup && \
     find /opt/ponyup -name "ponyc" -exec chmod +x {} \; && \
-    ln -sf /opt/ponyup/bin/ponyc /usr/local/bin/ponyc && \
+    ln -sf $(find /opt/ponyup -name "ponyc" -type f -path "*/bin/ponyc" | head -1) /usr/local/bin/ponyc && \
     adduser -D -s /bin/false judge && \
     mkdir -p /workspace && chown judge:judge /workspace
 
