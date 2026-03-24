@@ -792,7 +792,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     compiler: "dotnet publish (.NET)",
     compileCommand: [
       "sh", "-c",
-      "cd /workspace && mkdir -p proj && printf 'module Program\\n\\n' > proj/Program.fs && cat solution.fsx >> proj/Program.fs && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>' > proj/proj.fsproj && cd proj && dotnet publish -c Release -o /workspace/bin --nologo -v q 2>&1",
+      "mkdir -p /tmp/.nuget /tmp/.dotnet && cd /workspace && mkdir -p proj && cp solution.fsx proj/Program.fs && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>' > proj/proj.fsproj && cd proj && HOME=/tmp DOTNET_CLI_HOME=/tmp DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=true DOTNET_NOLOGO=1 dotnet publish -c Release -o /workspace/bin --nologo -v q 2>&1",
     ],
     runCommand: ["/workspace/bin/proj"],
   },
@@ -813,7 +813,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".bas",
     dockerImage: "judge-freebasic:latest",
     compiler: "fbc",
-    compileCommand: ["fbc", "-O", "2", "-o", "/workspace/solution", "/workspace/solution.bas"],
+    compileCommand: ["fbc", "-O2", "-o", "/workspace/solution", "/workspace/solution.bas"],
     runCommand: ["/workspace/solution"],
   },
   smalltalk: {
@@ -885,7 +885,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     compiler: "dotnet build (.NET)",
     compileCommand: [
       "sh", "-c",
-      "mkdir -p /workspace/out && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><RootNamespace>Solution</RootNamespace></PropertyGroup></Project>' > /workspace/out/solution.vbproj && cp /workspace/solution.vb /workspace/out/Program.vb && cd /workspace/out && DOTNET_NOLOGO=1 dotnet build -c Release -o /workspace/bin --nologo -v q 2>&1",
+      "mkdir -p /tmp/.nuget /tmp/.dotnet && mkdir -p /workspace/out && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><RootNamespace>Solution</RootNamespace></PropertyGroup></Project>' > /workspace/out/solution.vbproj && cp /workspace/solution.vb /workspace/out/Program.vb && cd /workspace/out && HOME=/tmp DOTNET_CLI_HOME=/tmp DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 DOTNET_NOLOGO=1 dotnet build -c Release -o /workspace/bin --nologo -v q 2>&1",
     ],
     runCommand: ["/workspace/bin/solution"],
   },
@@ -1229,7 +1229,10 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".kk",
     dockerImage: "judge-koka:latest",
     compiler: `Koka ${JUDGE_TOOLCHAIN_VERSIONS.koka}`,
-    compileCommand: ["sh", "-c", "HOME=/tmp KOKA_HOME=/usr/local koka -O2 --outputdir=/tmp/koka-out -o /workspace/solution /workspace/solution.kk"],
+    compileCommand: [
+      "sh", "-c",
+      "HOME=/tmp KOKA_HOME=/usr/local koka -O2 --outputdir=/tmp/koka-out -o /workspace/solution /workspace/solution.kk && chmod +x /workspace/solution",
+    ],
     runCommand: ["/workspace/solution"],
   },
   lean: {
@@ -1270,7 +1273,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-wat:latest",
     compiler: `wabt ${JUDGE_TOOLCHAIN_VERSIONS.wabt} / wasmtime ${JUDGE_TOOLCHAIN_VERSIONS.wasmtime}`,
     compileCommand: ["wat2wasm", "/workspace/solution.wat", "-o", "/workspace/solution.wasm"],
-    runCommand: ["wasmtime", "/workspace/solution.wasm"],
+    runCommand: ["sh", "-c", "HOME=/tmp wasmtime /workspace/solution.wasm"],
   },
   purescript: {
     language: "purescript",
@@ -1289,7 +1292,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".mod",
     dockerImage: "judge-modula2:latest",
     compiler: `GCC gm2 ${JUDGE_TOOLCHAIN_VERSIONS.fortran}`,
-    compileCommand: ["gm2", "-O2", "-o", "/workspace/solution", "/workspace/solution.mod"],
+    compileCommand: ["gm2", "-fm2-log", "-O2", "-o", "/workspace/solution", "/workspace/solution.mod"],
     runCommand: ["/workspace/solution"],
   },
   factor: {
@@ -1359,7 +1362,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".carp",
     dockerImage: "judge-carp:latest",
     compiler: `Carp ${JUDGE_TOOLCHAIN_VERSIONS.carp}`,
-    compileCommand: ["sh", "-c", "export HOME=/tmp && cd /workspace && carp -b solution.carp 2>&1"],
+    compileCommand: ["sh", "-c", "export HOME=/tmp CARP_DIR=/opt/carp && cd /workspace && carp -b solution.carp 2>&1"],
     runCommand: ["/workspace/out/solution"],
   },
   grain: {
