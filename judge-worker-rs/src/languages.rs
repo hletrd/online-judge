@@ -680,15 +680,19 @@ static DELPHI_CONFIG: LanguageConfig = LanguageConfig {
     needs_exec_tmp: false,
 };
 
-// F# (script mode via dotnet fsi)
-static FSHARP_RUN: &[&str] = &["dotnet", "fsi", "/workspace/solution.fsx"];
+// F# (compiled via dotnet publish)
+static FSHARP_COMPILE: &[&str] = &[
+    "sh", "-c",
+    "cd /workspace && mkdir -p proj && cp solution.fsx proj/Program.fs && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>' > proj/proj.fsproj && cd proj && dotnet publish -c Release -o /workspace/bin --nologo -v q 2>&1",
+];
+static FSHARP_RUN: &[&str] = &["/workspace/bin/proj"];
 
 static FSHARP_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".fsx",
     docker_image: "judge-fsharp:latest",
-    compile_command: None,
+    compile_command: Some(FSHARP_COMPILE),
     run_command: FSHARP_RUN,
-    needs_exec_tmp: true,
+    needs_exec_tmp: false,
 };
 
 // APL (GNU APL)
@@ -784,7 +788,7 @@ static LLVM_IR_CONFIG: LanguageConfig = LanguageConfig {
 // Visual Basic .NET (reuses judge-fsharp)
 static VBNET_COMPILE: &[&str] = &[
     "sh", "-c",
-    "mkdir -p /workspace/out && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><RootNamespace>Solution</RootNamespace></PropertyGroup></Project>' > /workspace/out/solution.vbproj && cp /workspace/solution.vb /workspace/out/Program.vb && cd /workspace/out && dotnet build -c Release -o /workspace/bin --nologo -v q",
+    "mkdir -p /workspace/out && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><RootNamespace>Solution</RootNamespace></PropertyGroup></Project>' > /workspace/out/solution.vbproj && cp /workspace/solution.vb /workspace/out/Program.vb && cd /workspace/out && dotnet build -c Release -o /workspace/bin --nologo -v q 2>&1",
 ];
 static VBNET_RUN: &[&str] = &["/workspace/bin/solution"];
 
@@ -793,7 +797,7 @@ static VBNET_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-fsharp:latest",
     compile_command: Some(VBNET_COMPILE),
     run_command: VBNET_RUN,
-    needs_exec_tmp: true,
+    needs_exec_tmp: false,
 };
 
 // Assembly (NASM on x86-64, GNU as on AArch64)
