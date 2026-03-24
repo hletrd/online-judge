@@ -480,7 +480,7 @@ describe("proxy", () => {
     it("sets Strict-Transport-Security in production", async () => {
       vi.stubEnv("NODE_ENV", "production");
 
-      const response = await proxy(makeRequest("/login"));
+      const response = await proxy(makeRequest("/login", { headers: { "x-forwarded-proto": "https" } }));
 
       expect(response.headers.get("Strict-Transport-Security")).toBe(
         "max-age=31536000; includeSubDomains"

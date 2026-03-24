@@ -27,6 +27,9 @@ vi.mock("@/lib/db", () => ({
       problems: {
         findFirst: problemsFindFirstMock,
       },
+      languageConfigs: {
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
     },
     select: selectMock,
   },

@@ -197,7 +197,7 @@ describe("clearAuthToken", () => {
 // ---------------------------------------------------------------------------
 
 describe("AUTH_SESSION_MAX_AGE_SECONDS", () => {
-  it("equals 8 hours in seconds", () => {
-    expect(AUTH_SESSION_MAX_AGE_SECONDS).toBe(8 * 60 * 60);
+  it("equals 14 days in seconds", () => {
+    expect(AUTH_SESSION_MAX_AGE_SECONDS).toBe(14 * 24 * 60 * 60);
   });
 });
