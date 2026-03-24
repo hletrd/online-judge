@@ -789,12 +789,9 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     standard: ".NET 10",
     extension: ".fsx",
     dockerImage: "judge-fsharp:latest",
-    compiler: "dotnet publish (.NET)",
-    compileCommand: [
-      "sh", "-c",
-      "mkdir -p /tmp/.nuget /tmp/.dotnet && cd /workspace && mkdir -p proj && cp solution.fsx proj/Program.fs && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>' > proj/proj.fsproj && cd proj && HOME=/tmp DOTNET_CLI_HOME=/tmp DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=true DOTNET_NOLOGO=1 dotnet publish -c Release -o /workspace/bin --nologo -v q 2>&1",
-    ],
-    runCommand: ["/workspace/bin/proj"],
+    compiler: "dotnet fsi (.NET)",
+    compileCommand: ["sh", "-c", "mkdir -p /tmp/.nuget /tmp/.dotnet && echo ok"],
+    runCommand: ["sh", "-c", "HOME=/tmp DOTNET_CLI_HOME=/tmp DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=true DOTNET_NOLOGO=1 dotnet fsi /workspace/solution.fsx"],
   },
   apl: {
     language: "apl",
@@ -1292,7 +1289,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".mod",
     dockerImage: "judge-modula2:latest",
     compiler: `GCC gm2 ${JUDGE_TOOLCHAIN_VERSIONS.fortran}`,
-    compileCommand: ["gm2", "-fm2-log", "-O2", "-o", "/workspace/solution", "/workspace/solution.mod"],
+    compileCommand: ["sh", "-c", "M2LOG=$(find /usr/lib/gcc -path '*/m2log' -type d 2>/dev/null | head -1) && gm2 -O2 ${M2LOG:+-I$M2LOG} -o /workspace/solution /workspace/solution.mod"],
     runCommand: ["/workspace/solution"],
   },
   factor: {

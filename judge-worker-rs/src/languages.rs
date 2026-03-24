@@ -680,19 +680,16 @@ static DELPHI_CONFIG: LanguageConfig = LanguageConfig {
     needs_exec_tmp: false,
 };
 
-// F# (compiled via dotnet publish – wrap user code with [<EntryPoint>])
-static FSHARP_COMPILE: &[&str] = &[
-    "sh", "-c",
-    "mkdir -p /tmp/.nuget /tmp/.dotnet && cd /workspace && mkdir -p proj && cp solution.fsx proj/Program.fs && echo '<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>' > proj/proj.fsproj && cd proj && HOME=/tmp DOTNET_CLI_HOME=/tmp DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=true DOTNET_NOLOGO=1 dotnet publish -c Release -o /workspace/bin --nologo -v q 2>&1",
-];
-static FSHARP_RUN: &[&str] = &["/workspace/bin/proj"];
+// F# (interpreted via dotnet fsi)
+static FSHARP_COMPILE: &[&str] = &["sh", "-c", "mkdir -p /tmp/.nuget /tmp/.dotnet && echo ok"];
+static FSHARP_RUN: &[&str] = &["sh", "-c", "HOME=/tmp DOTNET_CLI_HOME=/tmp DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=true DOTNET_NOLOGO=1 dotnet fsi /workspace/solution.fsx"];
 
 static FSHARP_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".fsx",
     docker_image: "judge-fsharp:latest",
     compile_command: Some(FSHARP_COMPILE),
     run_command: FSHARP_RUN,
-    needs_exec_tmp: false,
+    needs_exec_tmp: true,
 };
 
 // APL (GNU APL)
@@ -1244,7 +1241,7 @@ static PURESCRIPT_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Modula-2
-static MODULA2_COMPILE: &[&str] = &["gm2", "-fm2-log", "-O2", "-o", "/workspace/solution", "/workspace/solution.mod"];
+static MODULA2_COMPILE: &[&str] = &["sh", "-c", "M2LOG=$(find /usr/lib/gcc -path '*/m2log' -type d 2>/dev/null | head -1) && gm2 -O2 ${M2LOG:+-I$M2LOG} -o /workspace/solution /workspace/solution.mod"];
 static MODULA2_RUN: &[&str] = &["/workspace/solution"];
 
 static MODULA2_CONFIG: LanguageConfig = LanguageConfig {
