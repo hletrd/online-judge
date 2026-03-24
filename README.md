@@ -202,7 +202,7 @@ Monitor workers at `/dashboard/admin/workers`.
 
 - [Deployment Guide](docs/deployment.md) — provisioning, deploy scripts, nginx, post-deploy checks
 - [Authentication](docs/authentication.md) — sign-in flow, cookie architecture, API smoke test
-- [Languages](docs/languages.md) — all 88 variants, Docker image presets, admin management
+- [Languages](docs/languages.md) — all 114 variants, Docker image presets, admin management
 - [Judge Workers](docs/judge-workers.md) — multi-worker architecture, registration, deployment
 
 ## License
