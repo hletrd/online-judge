@@ -68,7 +68,7 @@
 | 62 | `whitespace` | Whitespace | `judge-esoteric` | ✅ | ✅ | ✅ | ✅ |
 | 63 | `b` | B (BCause) | `judge-b` | ✅ | ❌ x86 asm | ✅ | ❌ x86-64 inline assembly |
 | 64 | `flix` | Flix (JVM) | `judge-jvm` | ✅ | ✅ | ✅ | ✅ |
-| 65 | `apl` | APL (GNU APL) | `judge-apl` | ✅ | ❌ make fails | ❌ output format | ❌ build fails on ARM64 |
+| 65 | `apl` | APL (GNU APL) | `judge-apl` | ✅ | ✅ | ❌ output format | ❌ output format |
 | 66 | `freebasic` | FreeBASIC | `judge-freebasic` | ✅ | ✅ | ✅ | ✅ |
 | 67 | `smalltalk` | Smalltalk (GNU Smalltalk) | `judge-smalltalk` | ✅ | ✅ | ✅ | ✅ |
 | 68 | `nasm` | Assembly (NASM x86-64 / GNU as AArch64) | `judge-nasm` | ✅ | ✅ | ✅ | ✅ |
@@ -98,7 +98,7 @@
 | 92 | `hy` | Hy (Lisp on Python) | `judge-hy` | ✅ | ✅ | ✅ | ✅ |
 | 93 | `arturo` | Arturo | `judge-arturo` | ✅ | ✅ | ✅ | ✅ |
 | 94 | `janet` | Janet | `judge-janet` | ✅ | ✅ | ✅ | ✅ |
-| 95 | `c3` | C3 | `judge-c3` | ✅ | ❌ amd64 only | ✅ | ❌ amd64 only binary |
+| 95 | `c3` | C3 | `judge-c3` | ✅ | ✅ | ✅ | ✅ |
 | 96 | `vala` | Vala | `judge-vala` | ✅ | ✅ | ✅ | ✅ |
 | 97 | `nelua` | Nelua | `judge-nelua` | ✅ | ✅ | ✅ | ✅ |
 | 98 | `hare` | Hare | `judge-hare` | ✅ | ✅ | ✅ | ✅ |
@@ -111,7 +111,7 @@
 | 105 | `modula2` | Modula-2 (GCC gm2) | `judge-modula2` | ✅ | ✅ | ✅ | ✅ |
 | 106 | `factor` | Factor 0.101 | `judge-factor` | ✅ | ❌ x64 only | ✅ | ❌ x64 only binary |
 | 107 | `spark` | SPARK (Ada/SPARK 2014, GNAT) | `judge-ada` | ✅ | ✅ | ✅ | ✅ |
-| 108 | `minizinc` | MiniZinc 2.9.5 | `judge-minizinc` | ✅ | ❌ amd64 only | ✅ | ❌ amd64 only binary |
+| 108 | `minizinc` | MiniZinc 2.9.5 | `judge-minizinc` | ✅ | ✅ | ✅ | ✅ |
 | 109 | `curry` | Curry (PAKCS 3.9.0) | `judge-curry` | ✅ | ✅ | ✅ | ✅ |
 | 110 | `clean` | Clean 3.1 | `judge-clean` | ✅ | ✅ | ✅ | ✅ |
 | 111 | `roc` | Roc (alpha4) | `judge-roc` | ✅ | ✅ | ✅ | ✅ |
@@ -121,9 +121,8 @@
 
 ### ARM64 Build Summary
 
-**93 of 95 images build on ARM64** (production, Ampere Altra). 2 cannot build on ARM64:
+**94 of 95 images build on ARM64** (production, Ampere Altra). 1 cannot build on ARM64:
 - **B (BCause)**: uses x86-64 inline assembly (`syscall` instruction), fundamentally incompatible with ARM64
-- **APL (GNU APL)**: `make` fails on ARM64 due to old C++ code with portability issues
 
 ### amd64 E2E Summary (2026-03-24)
 
@@ -133,13 +132,11 @@
 
 ### arm64 E2E Summary (2026-03-24)
 
-**107 of 114 languages pass** on arm64. 7 failures (architecture limits):
+**109 of 114 languages pass** on arm64. 5 failures:
 - **b**: x86-64 inline assembly
-- **apl**: GNU APL build fails on ARM64
-- **c3**: amd64 only binary
+- **apl**: output format issues
 - **grain**: x64 only binary
 - **factor**: x64 only binary
-- **minizinc**: x86_64 only binary (no ARM64 release)
 - **carp**: Core library API incompatibility
 
 ## Docker Image Presets
