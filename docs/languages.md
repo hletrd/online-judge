@@ -115,7 +115,7 @@
 | 109 | `curry` | Curry (PAKCS 3.9.0) | `judge-curry` | ✅ | ✅ | ✅ | ✅ |
 | 110 | `clean` | Clean 3.1 | `judge-clean` | ✅ | ✅ | ✅ | ✅ |
 | 111 | `roc` | Roc (alpha4) | `judge-roc` | ✅ | ✅ | ✅ | ✅ |
-| 112 | `carp` | Carp 0.5.5 | `judge-carp` | ✅ | ✅ | ❌ | ❌ |
+| 112 | `carp` | Carp 0.5.5 | `judge-carp` | ✅ | ✅ | ✅ | ✅ |
 | 113 | `grain` | Grain 0.7.2 | `judge-grain` | ✅ | ✅ | ✅ | ✅ |
 | 114 | `pony` | Pony 0.61.1 | `judge-pony` | ✅ | ✅ | ✅ | ✅ |
 
@@ -124,19 +124,15 @@
 **94 of 95 images build on ARM64** (production, Ampere Altra). 1 cannot build on ARM64:
 - **B (BCause)**: uses x86-64 inline assembly (`syscall` instruction), fundamentally incompatible with ARM64
 
-### amd64 E2E Summary (2026-03-24)
+### amd64 E2E Summary (2026-03-25)
 
-**112 of 114 languages pass** on amd64. 2 failures:
+**113 of 114 languages pass** on amd64. 1 failure:
 - **apl**: GNU APL output format issue
-- **carp**: Core library API incompatibility (Carp 0.5.5)
 
-### arm64 E2E Summary (2026-03-24)
+### arm64 E2E Summary (2026-03-25)
 
-**110 of 114 languages pass** on arm64. 4 failures:
-- **b**: x86-64 inline assembly
-- **apl**: output format issues
-- **carp**: Core library API incompatibility
-- **clean**: clm hangs
+**113 of 114 languages pass** on arm64. 1 failure:
+- **b**: x86-64 inline assembly, fundamentally incompatible with ARM64
 
 ## Docker Image Presets
 
