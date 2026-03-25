@@ -854,7 +854,7 @@ static ALGOL68_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Umjunsik
-static UMJUNSIK_RUN: &[&str] = &["umjunsik", "/workspace/solution.umm"];
+static UMJUNSIK_RUN: &[&str] = &["sh", "-c", "tr ' ' '\\n' | umjunsik /workspace/solution.umm"];
 
 static UMJUNSIK_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".umm",
@@ -926,7 +926,7 @@ static ICON_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Uiua
-static UIUA_RUN: &[&str] = &["uiua", "run", "/workspace/solution.ua"];
+static UIUA_RUN: &[&str] = &["uiua", "run", "--no-format", "/workspace/solution.ua"];
 
 static UIUA_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".ua",
@@ -1010,7 +1010,7 @@ static BUN_TS_CONFIG: LanguageConfig = LanguageConfig {
 // Gleam
 static GLEAM_COMPILE: &[&str] = &[
     "sh", "-c",
-    "cp -r /opt/gleam-template /workspace/gleam-project && cp /workspace/solution.gleam /workspace/gleam-project/src/solution.gleam && cd /workspace/gleam-project && gleam build --target erlang 2>&1",
+    "cp -r /opt/gleam-template /workspace/gleam-project && cp /workspace/solution.gleam /workspace/gleam-project/src/solution.gleam && rm -rf /workspace/gleam-project/test && cd /workspace/gleam-project && gleam build --target erlang 2>&1",
 ];
 static GLEAM_RUN: &[&str] = &["sh", "-c", "cd /workspace/gleam-project && gleam run --target erlang"];
 
@@ -1046,7 +1046,7 @@ static FENNEL_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Flix (JVM)
-static FLIX_RUN: &[&str] = &["sh", "-c", "cd /workspace && java -jar /opt/flix.jar run /workspace/solution.flix"];
+static FLIX_RUN: &[&str] = &["sh", "-c", "cat > /tmp/in && cd /workspace && cp -r /opt/flix-template/* . 2>/dev/null; cp /workspace/solution.flix src/Main.flix && java -jar /opt/flix.jar run"];
 
 static FLIX_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".flix",

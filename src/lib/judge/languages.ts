@@ -944,7 +944,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-umjunsik:latest",
     compiler: null,
     compileCommand: null,
-    runCommand: ["umjunsik", "/workspace/solution.umm"],
+    runCommand: ["sh", "-c", "tr ' ' '\\n' | umjunsik /workspace/solution.umm"],
   },
   haxe: {
     language: "haxe",
@@ -1009,7 +1009,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-uiua:latest",
     compiler: null,
     compileCommand: null,
-    runCommand: ["uiua", "run", "/workspace/solution.ua"],
+    runCommand: ["uiua", "run", "--no-format", "/workspace/solution.ua"],
   },
   odin: {
     language: "odin",
@@ -1085,7 +1085,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     compileCommand: [
       "sh",
       "-c",
-      "cp -r /opt/gleam-template /workspace/gleam-project && cp /workspace/solution.gleam /workspace/gleam-project/src/solution.gleam && cd /workspace/gleam-project && gleam build --target erlang 2>&1",
+      "cp -r /opt/gleam-template /workspace/gleam-project && cp /workspace/solution.gleam /workspace/gleam-project/src/solution.gleam && rm -rf /workspace/gleam-project/test && cd /workspace/gleam-project && gleam build --target erlang 2>&1",
     ],
     runCommand: ["sh", "-c", "cd /workspace/gleam-project && gleam run --target erlang"],
   },
@@ -1117,7 +1117,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-jvm:latest",
     compiler: "Flix (JVM)",
     compileCommand: null,
-    runCommand: ["sh", "-c", "cd /workspace && java -jar /opt/flix.jar run /workspace/solution.flix"],
+    runCommand: ["sh", "-c", "cat > /tmp/in && cd /workspace && cp -r /opt/flix-template/* . 2>/dev/null; cp /workspace/solution.flix src/Main.flix && java -jar /opt/flix.jar run"],
   },
   micropython: {
     language: "micropython",
