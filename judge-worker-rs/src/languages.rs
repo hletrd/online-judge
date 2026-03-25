@@ -704,7 +704,7 @@ static APL_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // FreeBASIC
-static FREEBASIC_COMPILE: &[&str] = &["fbc", "-O", "2", "-o", "/workspace/solution", "/workspace/solution.bas"];
+static FREEBASIC_COMPILE: &[&str] = &["sh", "-c", "fbc -O 2 -o /tmp/solution /workspace/solution.bas && cp /tmp/solution /workspace/solution"];
 static FREEBASIC_RUN: &[&str] = &["/workspace/solution"];
 
 static FREEBASIC_CONFIG: LanguageConfig = LanguageConfig {
@@ -1050,7 +1050,7 @@ static FLIX_RUN: &[&str] = &["sh", "-c", "cat > /tmp/in && cd /workspace && cp -
 
 static FLIX_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".flix",
-    docker_image: "judge-jvm:latest",
+    docker_image: "judge-flix:latest",
     compile_command: None,
     run_command: FLIX_RUN,
     needs_exec_tmp: false,

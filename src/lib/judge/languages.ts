@@ -810,7 +810,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".bas",
     dockerImage: "judge-freebasic:latest",
     compiler: "fbc",
-    compileCommand: ["fbc", "-O", "2", "-o", "/workspace/solution", "/workspace/solution.bas"],
+    compileCommand: ["sh", "-c", "fbc -O 2 -o /tmp/solution /workspace/solution.bas && cp /tmp/solution /workspace/solution"],
     runCommand: ["/workspace/solution"],
   },
   smalltalk: {
@@ -1114,7 +1114,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     displayName: "Flix",
     standard: null,
     extension: ".flix",
-    dockerImage: "judge-jvm:latest",
+    dockerImage: "judge-flix:latest",
     compiler: "Flix (JVM)",
     compileCommand: null,
     runCommand: ["sh", "-c", "cat > /tmp/in && cd /workspace && cp -r /opt/flix-template/* . 2>/dev/null; cp /workspace/solution.flix src/Main.flix && java -jar /opt/flix.jar run"],
