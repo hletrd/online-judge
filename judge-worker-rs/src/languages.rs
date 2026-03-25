@@ -168,7 +168,7 @@ static CLANG_CPP23_RUN: &[&str] = &["/workspace/solution"];
 
 // Scala
 static SCALA_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp && mkdir -p /workspace/out && scalac -d /workspace/out /workspace/solution.scala"];
-static SCALA_RUN: &[&str] = &["sh", "-c", "export HOME=/tmp && scala -classpath /workspace/out Main"];
+static SCALA_RUN: &[&str] = &["sh", "-c", "export HOME=/tmp && java -classpath \"/workspace/out:/opt/scala3/lib/*\" Main"];
 
 // Erlang
 static ERLANG_COMPILE: &[&str] = &["sh", "-c", "HOME=/tmp erlc -o /workspace /workspace/solution.erl"];
@@ -704,7 +704,7 @@ static APL_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // FreeBASIC
-static FREEBASIC_COMPILE: &[&str] = &["sh", "-c", "fbc -O 2 -o /tmp/solution /workspace/solution.bas && cp /tmp/solution /workspace/solution"];
+static FREEBASIC_COMPILE: &[&str] = &["sh", "-c", "cp /workspace/solution.bas /tmp/sol.bas && fbc -O 2 /tmp/sol.bas && cp /tmp/sol /workspace/solution"];
 static FREEBASIC_RUN: &[&str] = &["/workspace/solution"];
 
 static FREEBASIC_CONFIG: LanguageConfig = LanguageConfig {

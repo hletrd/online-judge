@@ -591,7 +591,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-scala:latest",
     compiler: `Scala ${JUDGE_TOOLCHAIN_VERSIONS.scala}`,
     compileCommand: ["sh", "-c", "export HOME=/tmp && mkdir -p /workspace/out && /usr/local/bin/scalac -d /workspace/out /workspace/solution.scala"],
-    runCommand: ["sh", "-c", "export HOME=/tmp && java -classpath /workspace/out:/opt/scala3/lib/scala.jar Main"],
+    runCommand: ["sh", "-c", "export HOME=/tmp && java -classpath \"/workspace/out:/opt/scala3/lib/*\" Main"],
   },
   erlang: {
     language: "erlang",
@@ -810,7 +810,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".bas",
     dockerImage: "judge-freebasic:latest",
     compiler: "fbc",
-    compileCommand: ["sh", "-c", "fbc -O 2 -o /tmp/solution /workspace/solution.bas && cp /tmp/solution /workspace/solution"],
+    compileCommand: ["sh", "-c", "cp /workspace/solution.bas /tmp/sol.bas && fbc -O 2 /tmp/sol.bas && cp /tmp/sol /workspace/solution"],
     runCommand: ["/workspace/solution"],
   },
   smalltalk: {
