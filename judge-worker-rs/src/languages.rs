@@ -132,7 +132,7 @@ static D_RUN: &[&str] = &["/workspace/solution"];
 static RACKET_RUN: &[&str] = &["racket", "/workspace/solution.rkt"];
 
 // V
-static V_COMPILE: &[&str] = &["v", "-prod", "-o", "/workspace/solution", "/workspace/solution.v"];
+static V_COMPILE: &[&str] = &["sh", "-c", "HOME=/tmp v -prod -o /workspace/solution /workspace/solution.v"];
 static V_RUN: &[&str] = &["/workspace/solution"];
 
 // C99

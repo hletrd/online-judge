@@ -500,7 +500,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".v",
     dockerImage: "judge-v:latest",
     compiler: `V ${JUDGE_TOOLCHAIN_VERSIONS.vlang}`,
-    compileCommand: ["v", "-prod", "-o", "/workspace/solution", "/workspace/solution.v"],
+    compileCommand: ["sh", "-c", "HOME=/tmp v -prod -o /workspace/solution /workspace/solution.v"],
     runCommand: ["/workspace/solution"],
   },
   c99: {
