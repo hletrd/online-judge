@@ -523,7 +523,7 @@ static AHEUI_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Hyeong
-static HYEONG_RUN: &[&str] = &["hyeong", "run", "/workspace/solution.hyeong"];
+static HYEONG_RUN: &[&str] = &["sh", "-c", "hyeong run --color never /workspace/solution.hyeong 2>&1 | grep -v '^==>'"];
 
 static HYEONG_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".hyeong",
@@ -647,7 +647,7 @@ static CRYSTAL_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // PowerShell
-static POWERSHELL_RUN: &[&str] = &["pwsh", "-NoProfile", "-NonInteractive", "-File", "/workspace/solution.ps1"];
+static POWERSHELL_RUN: &[&str] = &["sh", "-c", "HOME=/tmp pwsh -NoProfile -NonInteractive -File /workspace/solution.ps1"];
 
 static POWERSHELL_CONFIG: LanguageConfig = LanguageConfig {
     extension: ".ps1",
@@ -1023,7 +1023,7 @@ static GLEAM_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Standard ML (Poly/ML)
-static SML_COMPILE: &[&str] = &["sh", "-c", "polyc -o /workspace/solution /workspace/solution.sml"];
+static SML_COMPILE: &[&str] = &["sh", "-c", "TMPDIR=/workspace polyc -o /workspace/solution /workspace/solution.sml"];
 static SML_RUN: &[&str] = &["/workspace/solution"];
 
 static SML_CONFIG: LanguageConfig = LanguageConfig {
@@ -1287,7 +1287,7 @@ static MINIZINC_CONFIG: LanguageConfig = LanguageConfig {
 };
 
 // Curry (PAKCS)
-static CURRY_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp && cd /workspace && printf ':load solution\\n:save\\n:quit\\n' | pakcs 2>&1"];
+static CURRY_COMPILE: &[&str] = &["sh", "-c", "export HOME=/tmp && cd /workspace && printf ':load solution.curry\\n:save\\n:quit\\n' | pakcs 2>&1"];
 static CURRY_RUN: &[&str] = &["/workspace/solution"];
 
 static CURRY_CONFIG: LanguageConfig = LanguageConfig {

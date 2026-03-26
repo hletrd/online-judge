@@ -761,7 +761,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     dockerImage: "judge-powershell:latest",
     compiler: `PowerShell ${JUDGE_TOOLCHAIN_VERSIONS.powershell}`,
     compileCommand: null,
-    runCommand: ["pwsh", "-NoProfile", "-NonInteractive", "-File", "/workspace/solution.ps1"],
+    runCommand: ["sh", "-c", "HOME=/tmp pwsh -NoProfile -NonInteractive -File /workspace/solution.ps1"],
   },
   postscript: {
     language: "postscript",

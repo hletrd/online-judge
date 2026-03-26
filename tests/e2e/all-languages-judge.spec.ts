@@ -148,8 +148,7 @@ begin
    New_Line;
 end Solution;`,
   clojure: `(let [line (read-line) nums (map #(Integer/parseInt %) (.split (.trim line) "\\\\s+"))] (println (apply + nums)))`,
-  prolog: `main :- read_line_to_string(user_input, Line), split_string(Line, " ", "", Parts), maplist(number_string, Nums, Parts), sumlist(Nums, S), write(S), nl.
-:- initialization(main, main).`,
+  prolog: `main :- read_line_to_string(user_input, Line), split_string(Line, " ", "", Parts), maplist(number_string, Nums, Parts), sumlist(Nums, S), write(S), nl.`,
   tcl: `gets stdin line
 lassign [split $line " "] a b
 puts [expr {$a + $b}]`,
@@ -558,7 +557,7 @@ in print (Int.toString sum ^ "\\n") end;`,
 import java.nio.file.Path
 
 def main(): Unit \\ IO =
-    let content = Files.readString(Path.of("/tmp/in"));
+    let content = Files.readString(Path.of("/workspace/in"));
     let parts = String.split({regex = " "}, String.trim(content));
     let a = List.head(parts) |> Option.flatMap(Int32.fromString) |> Option.getWithDefault(0);
     let b = List.drop(1, parts) |> List.head |> Option.flatMap(Int32.fromString) |> Option.getWithDefault(0);
@@ -567,9 +566,13 @@ def main(): Unit \\ IO =
 line = sys.stdin.readline()
 a, b = map(int, line.split())
 print(a + b)`,
-  squirrel: `local f = file("/dev/stdin", "r")
-local line = f.readn('l')
-f.close()
+  squirrel: `local line = ""
+local c
+while((c = stdin.readn('c')) != null) {
+  local ch = c.tochar()
+  if (ch == "\\n") break
+  line += ch
+}
 local sp = line.find(" ")
 local a = line.slice(0, sp).tointeger()
 local b = line.slice(sp + 1).tointeger()
@@ -634,11 +637,11 @@ fun main()
   println( (a + b).show )`,
   lean: `def main : IO Unit := do
   let line ← (← IO.getStdin).getLine
-  let parts := String.splitOn (String.trimRight line) " "
+  let parts := (line.trim).splitOn " "
   match parts with
   | [a, b] =>
-    let x := String.toNat! a
-    let y := String.toNat! b
+    let x := a.toInt!
+    let y := b.toInt!
     IO.println (toString (x + y))
   | _ => return ()`,
   picat: `main =>
@@ -803,8 +806,9 @@ main! = |_args|
 
 (defn main []
   (let-do [a 0
-           b 0]
-    (MyIO.scanf "%d %d" (address a) (address b))
+           b 0
+           n 0]
+    (set! n (MyIO.scanf "%d %d" (Pointer.address &a) (Pointer.address &b)))
     (IO.println &(str (+ a b)))))`,
   grain: `module Main
 
@@ -833,9 +837,10 @@ actor Main
       let path = FilePath(FileAuth(env.root), "/dev/stdin")
       match OpenFile(path)
       | let file: File =>
-        let line = file.read_string(1024)
-        let stripped: String val = line.clone().>strip()
-        let parts = stripped.split(" ")
+        let data = file.read_string(1024)
+        let line = data.clone()
+        line.strip()
+        let parts = line.split(" ")
         let a = parts(0)?.i64()?
         let b = parts(1)?.i64()?
         env.out.print((a + b).string())

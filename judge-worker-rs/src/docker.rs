@@ -198,7 +198,7 @@ async fn run_docker_once(
         "--ulimit".into(),
         "fsize=104857600:104857600".into(),
         "--ulimit".into(),
-        "nofile=256:256".into(),
+        "nofile=1024:1024".into(),
         "-v".into(),
         workspace_volume,
         "-w".into(),
