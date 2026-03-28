@@ -106,9 +106,7 @@ export default function ProfileForm({
         <Label htmlFor="preferredLanguage">{t("preferredLanguage")}</Label>
         <Select value={preferredLanguage} onValueChange={(v) => setPreferredLanguage(v ?? "")}>
           <SelectTrigger id="preferredLanguage">
-            <SelectValue placeholder={t("preferredLanguagePlaceholder")}>
-              {languageLabelMap[preferredLanguage] ?? preferredLanguage || t("preferredLanguagePlaceholder")}
-            </SelectValue>
+            <SelectValue placeholder={t("preferredLanguagePlaceholder")} />
           </SelectTrigger>
           <SelectContent>
             {languages.map((lang) => (
@@ -123,14 +121,12 @@ export default function ProfileForm({
         <Label htmlFor="preferredTheme">{t("preferredTheme")}</Label>
         <Select value={preferredTheme} onValueChange={(v) => setPreferredTheme(v ?? "")}>
           <SelectTrigger id="preferredTheme">
-            <SelectValue placeholder={t("preferredThemePlaceholder")}>
-              {{ light: t("themeLight"), dark: t("themeDark"), system: t("themeSystem") }[preferredTheme] ?? preferredTheme}
-            </SelectValue>
+            <SelectValue placeholder={t("preferredThemePlaceholder")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="light">{t("themeLight")}</SelectItem>
-            <SelectItem value="dark">{t("themeDark")}</SelectItem>
-            <SelectItem value="system">{t("themeSystem")}</SelectItem>
+            <SelectItem value="light" label={t("themeLight")}>{t("themeLight")}</SelectItem>
+            <SelectItem value="dark" label={t("themeDark")}>{t("themeDark")}</SelectItem>
+            <SelectItem value="system" label={t("themeSystem")}>{t("themeSystem")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -153,13 +149,11 @@ export default function ProfileForm({
         <Label htmlFor="editorFontFamily">{t("editorFontFamily")}</Label>
         <Select value={editorFontFamily} onValueChange={(v) => setEditorFontFamily(v ?? DEFAULT_EDITOR_FONT_FAMILY)}>
           <SelectTrigger id="editorFontFamily">
-            <SelectValue placeholder={t("editorFontFamilyPlaceholder")}>
-              {EDITOR_FONT_FAMILIES.find((f) => f.id === editorFontFamily)?.name ?? t("editorFontDefault")}
-            </SelectValue>
+            <SelectValue placeholder={t("editorFontFamilyPlaceholder")} />
           </SelectTrigger>
           <SelectContent>
             {EDITOR_FONT_FAMILIES.map((font) => (
-              <SelectItem key={font.id} value={font.id}>
+              <SelectItem key={font.id} value={font.id} label={font.id === "system" ? t("editorFontDefault") : font.name}>
                 {font.id === "system" ? t("editorFontDefault") : font.name}
               </SelectItem>
             ))}
