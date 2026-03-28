@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { languageConfigs, problems, submissions } from "@/lib/db/schema";
 import { isJudgeLanguage } from "@/lib/judge/languages";
-import { and, desc, eq, gt, lt, sql } from "drizzle-orm";
+import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { getApiUser, unauthorized, isAdmin, csrfForbidden } from "@/lib/api/auth";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { recordAuditEvent } from "@/lib/audit/events";
@@ -163,18 +163,20 @@ export async function POST(request: NextRequest) {
       return apiError("languageNotSupported", 400);
     }
 
-    // Submission rate limiting: per-user recent submissions
-    const oneMinuteAgo = new Date(Date.now() - 60_000);
-    const recentSubmissions = await db
-      .select({ count: sql<number>`count(*)` })
+    // Combined submission rate limiting: recent, pending, and global counts in one query
+    const oneMinuteAgoSec = Math.floor((Date.now() - 60_000) / 1000);
+    const countsRow = await db
+      .select({
+        recentCount: sql<number>`sum(case when ${submissions.userId} = ${user.id} and ${submissions.submittedAt} > ${new Date(Date.now() - 60_000)} then 1 else 0 end)`,
+        pendingCount: sql<number>`sum(case when ${submissions.userId} = ${user.id} and ${submissions.status} in ('pending', 'judging', 'queued') then 1 else 0 end)`,
+        globalPending: sql<number>`sum(case when ${submissions.status} in ('pending', 'queued') then 1 else 0 end)`,
+      })
       .from(submissions)
-      .where(
-        and(
-          eq(submissions.userId, user.id),
-          gt(submissions.submittedAt, oneMinuteAgo)
-        )
-      )
-      .then((rows) => Number(rows[0]?.count ?? 0));
+      .then((rows) => rows[0]);
+
+    const recentSubmissions = Number(countsRow?.recentCount ?? 0);
+    const pendingCount = Number(countsRow?.pendingCount ?? 0);
+    const globalPendingCount = Number(countsRow?.globalPending ?? 0);
 
     if (recentSubmissions >= getSubmissionRateLimitMaxPerMinute()) {
       return apiError("submissionRateLimited", 429, undefined, {
@@ -182,30 +184,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Per-user concurrency limit: max pending/judging submissions
-    const pendingCount = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(submissions)
-      .where(
-        and(
-          eq(submissions.userId, user.id),
-          sql`${submissions.status} IN ('pending', 'judging', 'queued')`
-        )
-      )
-      .then((rows) => Number(rows[0]?.count ?? 0));
-
     if (pendingCount >= getSubmissionMaxPending()) {
       return apiError("tooManyPendingSubmissions", 429, undefined, {
         headers: { "Retry-After": "10" },
       });
     }
-
-    // Global queue depth limit
-    const globalPendingCount = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(submissions)
-      .where(sql`${submissions.status} IN ('pending', 'queued')`)
-      .then((rows) => Number(rows[0]?.count ?? 0));
 
     if (globalPendingCount >= getSubmissionGlobalQueueLimit()) {
       return apiError("judgeQueueFull", 503, undefined, {
@@ -217,13 +200,27 @@ export async function POST(request: NextRequest) {
       return apiError("sourceCodeTooLarge", 413);
     }
 
-    const problem = await db.query.problems.findFirst({
-      where: eq(problems.id, problemId),
-      columns: { id: true, title: true },
-    });
+    // Fetch problem and language config in parallel
+    const [problem, languageConfig] = await Promise.all([
+      db.query.problems.findFirst({
+        where: eq(problems.id, problemId),
+        columns: { id: true, title: true },
+      }),
+      db.query.languageConfigs.findFirst({
+        where: and(
+          eq(languageConfigs.language, language),
+          eq(languageConfigs.isEnabled, true)
+        ),
+        columns: { id: true },
+      }),
+    ]);
 
     if (!problem) {
       return apiError("problemNotFound", 404);
+    }
+
+    if (!languageConfig) {
+      return apiError("languageNotSupported", 400);
     }
 
     if (!normalizedAssignmentId && user.role === "student") {
@@ -251,20 +248,6 @@ export async function POST(request: NextRequest) {
 
     if (!hasAccess) {
       return apiError("forbidden", 403);
-    }
-
-    const languageConfig = await db.query.languageConfigs.findFirst({
-      where: and(
-        eq(languageConfigs.language, language),
-        eq(languageConfigs.isEnabled, true)
-      ),
-      columns: {
-        id: true,
-      },
-    });
-
-    if (!languageConfig) {
-      return apiError("languageNotSupported", 400);
     }
 
     const id = generateSubmissionId();

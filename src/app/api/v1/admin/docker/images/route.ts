@@ -9,6 +9,10 @@ export const GET = createApiHandler({
   auth: { roles: ["admin", "super_admin"] },
   handler: async (req: NextRequest) => {
     const filter = req.nextUrl.searchParams.get("filter") ?? "judge-*";
+    // Validate filter to prevent unexpected Docker CLI behavior
+    if (!/^[a-zA-Z0-9*][a-zA-Z0-9._\-/*:]*$/.test(filter)) {
+      return NextResponse.json({ error: "invalidFilter" }, { status: 400 });
+    }
     const [images, disk] = await Promise.all([
       listDockerImages(filter),
       getDiskUsage(),

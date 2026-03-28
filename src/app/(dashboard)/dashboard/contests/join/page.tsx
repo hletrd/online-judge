@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -16,6 +16,15 @@ export default function ContestJoinPage() {
   const searchParams = useSearchParams();
   const t = useTranslations("contests.accessCode");
   const [code, setCode] = useState(searchParams.get("code") ?? "");
+
+  // Clear access code from URL to prevent leakage via browser history/Referer
+  useEffect(() => {
+    if (searchParams.get("code")) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("code");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [searchParams]);
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [shaking, setShaking] = useState(false);
