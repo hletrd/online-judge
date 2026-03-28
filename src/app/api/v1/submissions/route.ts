@@ -286,8 +286,6 @@ export async function POST(request: NextRequest) {
       assignmentId: submissions.assignmentId,
       language: submissions.language,
       status: submissions.status,
-      judgeClaimToken: submissions.judgeClaimToken,
-      judgeClaimedAt: submissions.judgeClaimedAt,
       compileOutput: submissions.compileOutput,
       executionTimeMs: submissions.executionTimeMs,
       memoryUsedKb: submissions.memoryUsedKb,

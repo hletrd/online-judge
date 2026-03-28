@@ -3,7 +3,7 @@ import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { judgeWorkers, submissions } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
-import { getApiUser, unauthorized, forbidden } from "@/lib/api/auth";
+import { getApiUser, unauthorized, forbidden, csrfForbidden } from "@/lib/api/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { logger } from "@/lib/logger";
@@ -18,6 +18,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 
@@ -47,9 +50,24 @@ export async function PATCH(
       db.update(judgeWorkers).set(updates).where(eq(judgeWorkers.id, id)).run();
     }
 
-    const updated = await db.query.judgeWorkers.findFirst({
-      where: eq(judgeWorkers.id, id),
-    });
+    const updated = await db
+      .select({
+        id: judgeWorkers.id,
+        hostname: judgeWorkers.hostname,
+        alias: judgeWorkers.alias,
+        ipAddress: judgeWorkers.ipAddress,
+        concurrency: judgeWorkers.concurrency,
+        activeTasks: judgeWorkers.activeTasks,
+        version: judgeWorkers.version,
+        labels: judgeWorkers.labels,
+        status: judgeWorkers.status,
+        registeredAt: judgeWorkers.registeredAt,
+        lastHeartbeatAt: judgeWorkers.lastHeartbeatAt,
+        deregisteredAt: judgeWorkers.deregisteredAt,
+      })
+      .from(judgeWorkers)
+      .where(eq(judgeWorkers.id, id))
+      .then((rows) => rows[0] ?? null);
 
     return apiSuccess(updated);
   } catch (error) {
@@ -63,6 +81,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
     const user = await getApiUser(request);
     if (!user) return unauthorized();
 

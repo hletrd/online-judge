@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
-import { apiSuccess } from "@/lib/api/responses";
+import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { judgeWorkers, submissions } from "@/lib/db/schema";
 import { eq, sql, inArray } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden } from "@/lib/api/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,13 +54,7 @@ export async function GET(request: NextRequest) {
       totalConcurrency,
     });
   } catch (error) {
-    return apiSuccess({
-      workersOnline: 0,
-      workersStale: 0,
-      workersOffline: 0,
-      queueDepth: 0,
-      activeJudging: 0,
-      totalConcurrency: 0,
-    });
+    logger.error({ err: error }, "GET /api/v1/admin/workers/stats error");
+    return apiError("internalServerError", 500);
   }
 }
