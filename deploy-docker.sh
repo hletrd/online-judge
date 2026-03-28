@@ -386,6 +386,10 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_set_header X-Forwarded-Host \$host;
         proxy_cache_bypass \$http_upgrade;
+
+        # Disable gzip for RSC streaming responses to prevent payload corruption
+        proxy_buffering off;
+        gzip off;
     }
 }
 NGINX_EOF
