@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { getApiUser, unauthorized, forbidden, notFound, isAdmin, csrfForbidden } from "@/lib/api/auth";
+import { forbidden, notFound, isAdmin, createApiHandler } from "@/lib/api/handler";
+import type { AuthUser } from "@/lib/api/handler";
 import { recordAuditEvent } from "@/lib/audit/events";
 import {
   canManageRole,
@@ -12,14 +13,12 @@ import {
 } from "@/lib/security/constants";
 import { safeUserSelect } from "@/lib/db/selects";
 import { updateProfileSchema, adminUpdateUserSchema } from "@/lib/validators/profile";
-import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { withUpdatedAt } from "@/lib/db/helpers";
 import {
   isUsernameTaken,
   isEmailTaken,
   validateAndHashPassword,
 } from "@/lib/users/core";
-import { logger } from "@/lib/logger";
 
 const adminPatchUserSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -31,7 +30,6 @@ const adminPatchUserSchema = z.object({
   password: z.string().min(1).optional(),
 }).strict();
 
-type ApiUser = NonNullable<Awaited<ReturnType<typeof getApiUser>>>;
 type UserUpdates = Record<string, unknown>;
 
 function normalizeOptionalText(value: unknown) {
@@ -144,7 +142,7 @@ function applyActiveStatusUpdate(
 function applyRoleUpdate(
   updates: UserUpdates,
   body: Record<string, unknown>,
-  actor: ApiUser,
+  actor: AuthUser,
   found: ExistingUserRecord,
   isAdminActor: boolean
 ) {
@@ -216,15 +214,9 @@ async function applyPasswordUpdate(
   return null;
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const { id } = await params;
+export const GET = createApiHandler({
+  handler: async (req: NextRequest, { user, params }) => {
+    const { id } = params;
     const isAdminActor = isAdmin(user.role);
     const isSelf = user.id === id;
 
@@ -235,27 +227,13 @@ export async function GET(
     if (!found) return notFound("User");
 
     return apiSuccess(found);
-  } catch (error) {
-    logger.error({ err: error }, "GET /api/v1/users/[id] error");
-    return apiError("internalServerError", 500);
-  }
-}
+  },
+});
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitResponse = consumeApiRateLimit(request, "users:update");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const { id } = await params;
+export const PATCH = createApiHandler({
+  rateLimit: "users:update",
+  handler: async (req: NextRequest, { user, params }) => {
+    const { id } = params;
     const isAdminActor = isAdmin(user.role);
     const isSelf = user.id === id;
 
@@ -265,7 +243,7 @@ export async function PATCH(
 
     if (!found) return notFound("User");
 
-    const rawBody = await request.json();
+    const rawBody = await req.json();
     const parsed = adminPatchUserSchema.safeParse(rawBody);
     if (!parsed.success) {
       return apiError(parsed.error.issues[0]?.message ?? "invalidInput", 400);
@@ -330,34 +308,21 @@ export async function PATCH(
           isActive: updated.isActive,
           invalidatedExistingSessions: Boolean(updates.tokenInvalidatedAt),
         },
-        request,
+        request: req,
       });
     }
 
     return apiSuccess(updated);
-  } catch (error) {
-    logger.error({ err: error }, "PATCH /api/v1/users/[id] error");
-    return apiError("internalServerError", 500);
-  }
-}
+  },
+});
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitResponse = consumeApiRateLimit(request, "users:delete");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
+export const DELETE = createApiHandler({
+  rateLimit: "users:delete",
+  handler: async (req: NextRequest, { user, params }) => {
     if (!isAdmin(user.role)) return forbidden();
 
-    const { id } = await params;
-    const permanent = request.nextUrl.searchParams.get("permanent") === "true";
+    const { id } = params;
+    const permanent = req.nextUrl.searchParams.get("permanent") === "true";
 
     const found = await db
       .select(safeUserSelect)
@@ -379,7 +344,7 @@ export async function DELETE(
       // Require username confirmation for permanent deletion
       let body: { confirmUsername?: string } = {};
       try {
-        body = await request.json();
+        body = await req.json();
       } catch {
         return apiError("confirmUsernameRequired", 400);
       }
@@ -400,7 +365,7 @@ export async function DELETE(
         details: {
           role: found.role,
         },
-        request,
+        request: req,
       });
 
       await db.delete(users).where(eq(users.id, id));
@@ -421,12 +386,9 @@ export async function DELETE(
       details: {
         role: found.role,
       },
-      request,
+      request: req,
     });
 
     return apiSuccess({ id, isActive: false });
-  } catch (error) {
-    logger.error({ err: error }, "DELETE /api/v1/users/[id] error");
-    return apiError("internalServerError", 500);
-  }
-}
+  },
+});

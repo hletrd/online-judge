@@ -3,7 +3,7 @@ import { apiSuccess, apiError, apiPaginated } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
-import { getApiUser, unauthorized, forbidden, isAdmin, csrfForbidden } from "@/lib/api/auth";
+import { forbidden, isAdmin } from "@/lib/api/handler";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { nanoid } from "nanoid";
 import { hashPassword } from "@/lib/security/password-hash";
@@ -11,7 +11,6 @@ import { generateSecurePassword } from "@/lib/auth/generated-password";
 import { safeUserSelect } from "@/lib/db/selects";
 import { assertUserRole, isUserRole } from "@/lib/security/constants";
 import { userCreateSchema } from "@/lib/validators/profile";
-import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { parsePagination } from "@/lib/api/pagination";
 import {
   isUsernameTaken,
@@ -19,15 +18,13 @@ import {
   validateAndHashPassword,
   validateRoleChange,
 } from "@/lib/users/core";
-import { logger } from "@/lib/logger";
+import { createApiHandler } from "@/lib/api/handler";
 
-export async function GET(request: NextRequest) {
-  try {
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
+export const GET = createApiHandler({
+  handler: async (req: NextRequest, { user }) => {
     if (!isAdmin(user.role)) return forbidden();
 
-    const searchParams = request.nextUrl.searchParams;
+    const searchParams = req.nextUrl.searchParams;
     const { page, limit, offset } = parsePagination(searchParams);
     const role = searchParams.get("role");
 
@@ -51,25 +48,15 @@ export async function GET(request: NextRequest) {
       .offset(offset);
 
     return apiPaginated(results, page, limit, Number(totalRow?.count ?? 0));
-  } catch (error) {
-    logger.error({ err: error }, "GET /api/v1/users error");
-    return apiError("internalServerError", 500);
-  }
-}
+  },
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitResponse = consumeApiRateLimit(request, "users:create");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
+export const POST = createApiHandler({
+  rateLimit: "users:create",
+  handler: async (req: NextRequest, { user }) => {
     if (!isAdmin(user.role)) return forbidden();
 
-    const parsed = userCreateSchema.safeParse(await request.json());
+    const parsed = userCreateSchema.safeParse(await req.json());
 
     if (!parsed.success) {
       return apiError(parsed.error.issues[0]?.message ?? "createUserFailed", 400);
@@ -135,15 +122,12 @@ export async function POST(request: NextRequest) {
           role: created.role,
           usedGeneratedPassword: !password,
         },
-        request,
+        request: req,
       });
     }
 
     const response = apiSuccess({ user: created, passwordGenerated: password === undefined }, { status: 201 });
     response.headers.set("Cache-Control", "no-store, no-cache");
     return response;
-  } catch (error) {
-    logger.error({ err: error }, "POST /api/v1/users error");
-    return apiError("internalServerError", 500);
-  }
-}
+  },
+});

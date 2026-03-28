@@ -3,30 +3,21 @@ import { apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { inArray } from "drizzle-orm";
-import { getApiUser, unauthorized, forbidden, isAdmin, isInstructor, csrfForbidden } from "@/lib/api/auth";
+import { forbidden, isAdmin, isInstructor, createApiHandler } from "@/lib/api/handler";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { nanoid } from "nanoid";
 import { hashPassword } from "@/lib/security/password-hash";
 import { generateSecurePassword } from "@/lib/auth/generated-password";
 import { bulkUserCreateSchema } from "@/lib/validators/bulk-users";
-import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { validateRoleChange } from "@/lib/users/core";
-import { logger } from "@/lib/logger";
 import pLimit from "p-limit";
 
-export async function POST(request: NextRequest) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitResponse = consumeApiRateLimit(request, "users:bulk-create");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
+export const POST = createApiHandler({
+  rateLimit: "users:bulk-create",
+  handler: async (req: NextRequest, { user }) => {
     if (!isAdmin(user.role) && !isInstructor(user.role)) return forbidden();
 
-    const body = await request.json();
+    const body = await req.json();
     const parsed = bulkUserCreateSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -163,7 +154,7 @@ export async function POST(request: NextRequest) {
         failedCount: failed.length,
         failedUsernames: failed.map((f) => f.username),
       },
-      request,
+      request: req,
     });
 
     const response = NextResponse.json(
@@ -178,8 +169,5 @@ export async function POST(request: NextRequest) {
     response.headers.set("Cache-Control", "no-store, no-cache");
     response.headers.set("Pragma", "no-cache");
     return response;
-  } catch (error) {
-    logger.error({ err: error }, "POST /api/v1/users/bulk error");
-    return apiError("internalServerError", 500);
-  }
-}
+  },
+});

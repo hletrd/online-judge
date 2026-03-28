@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { csrfForbidden } from "@/lib/api/auth";
+import { createApiHandler } from "@/lib/api/handler";
 import { isPluginEnabled, getPluginState } from "@/lib/plugins/data";
 import { getProvider, type ChatMessage } from "@/lib/plugins/chat-widget/providers";
 import { AGENT_TOOLS, executeTool, type AgentContext } from "@/lib/plugins/chat-widget/tools";
@@ -98,11 +98,9 @@ ${config.knowledgeBase}`;
   return prompt;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
+export const POST = createApiHandler({
+  auth: false,
+  handler: async (req: NextRequest) => {
     const session = await auth();
     if (!session?.user) {
       logger.warn("Chat API: no session/user");
@@ -147,7 +145,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse and validate request body
-    const body = await request.json();
+    const body = await req.json();
     const parsed = requestSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: "invalidRequest" }, { status: 400 });
@@ -242,9 +240,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Detect locale from cookie (set by next-intl), fallback to Accept-Language
-    const cookieHeader = request.headers.get("cookie") ?? "";
+    const cookieHeader = req.headers.get("cookie") ?? "";
     const localeMatch = cookieHeader.match(/(?:^|;\s*)locale=(\w+)/);
-    const acceptLang = request.headers.get("accept-language")?.split(",")[0]?.split("-")[0]?.trim();
+    const acceptLang = req.headers.get("accept-language")?.split(",")[0]?.split("-")[0]?.trim();
     const locale = localeMatch?.[1] ?? (acceptLang === "ko" ? "ko" : "en");
     const siteName = config.assistantName || "AI Assistant";
 
@@ -291,7 +289,7 @@ export async function POST(request: NextRequest) {
           "Transfer-Encoding": "chunked",
           "X-Chat-Session-Id": sessionId,
         },
-      });
+      }) as unknown as NextResponse;
     }
 
     // Tool-calling agent loop
@@ -325,7 +323,7 @@ export async function POST(request: NextRequest) {
             "Cache-Control": "no-cache",
             "X-Chat-Session-Id": sessionId,
           },
-        });
+        }) as unknown as NextResponse;
       }
 
       // Tool calls — execute and continue loop
@@ -353,9 +351,6 @@ export async function POST(request: NextRequest) {
         "Transfer-Encoding": "chunked",
         "X-Chat-Session-Id": sessionId,
       },
-    });
-  } catch (error) {
-    logger.error({ err: error }, "Chat widget API error");
-    return NextResponse.json({ error: "internalError" }, { status: 500 });
-  }
-}
+    }) as unknown as NextResponse;
+  },
+});

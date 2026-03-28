@@ -1,22 +1,17 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { problems, problemGroupAccess, enrollments, tags, problemTags } from "@/lib/db/schema";
-import { eq, desc, sql, and, or, inArray } from "drizzle-orm";
-import { getApiUser, unauthorized, forbidden, isInstructor, isAdmin, csrfForbidden } from "@/lib/api/auth";
+import { problems, problemGroupAccess, enrollments } from "@/lib/db/schema";
+import { eq, desc, sql, and, or } from "drizzle-orm";
+import { forbidden, isAdmin, isInstructor, createApiHandler } from "@/lib/api/handler";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { parsePagination } from "@/lib/api/pagination";
 import { apiError, apiPaginated, apiSuccess } from "@/lib/api/responses";
 import { createProblemWithTestCases } from "@/lib/problem-management";
 import { problemMutationSchema, problemVisibilityValues } from "@/lib/validators/problem-management";
-import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
-import { logger } from "@/lib/logger";
 
-export async function GET(request: NextRequest) {
-  try {
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const searchParams = request.nextUrl.searchParams;
+export const GET = createApiHandler({
+  handler: async (req: NextRequest, { user }) => {
+    const searchParams = req.nextUrl.searchParams;
     const { page, limit, offset } = parsePagination(searchParams);
     const visibility = searchParams.get("visibility");
 
@@ -73,25 +68,15 @@ export async function GET(request: NextRequest) {
     const total = Number(totalRow?.count ?? 0);
 
     return apiPaginated(paginatedProblems, page, limit, total);
-  } catch (error) {
-    logger.error({ err: error }, "GET /api/v1/problems error");
-    return apiError("internalServerError", 500);
-  }
-}
+  },
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitResponse = consumeApiRateLimit(request, "problems:create");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
+export const POST = createApiHandler({
+  rateLimit: "problems:create",
+  handler: async (req: NextRequest, { user }) => {
     if (!isInstructor(user.role)) return forbidden();
 
-    const body = await request.json();
+    const body = await req.json();
     const parsedInput = problemMutationSchema.safeParse({
       title: body.title,
       description: body.description ?? "",
@@ -141,13 +126,10 @@ export async function POST(request: NextRequest) {
           memoryLimitMb: problem.memoryLimitMb,
           testCaseCount: problem.testCases.length,
         },
-        request,
+        request: req,
       });
     }
 
     return apiSuccess(problem, { status: 201 });
-  } catch (error) {
-    logger.error({ err: error }, "POST /api/v1/problems error");
-    return apiError("createError", 500);
-  }
-}
+  },
+});

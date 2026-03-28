@@ -1,30 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { and, eq } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { db } from "@/lib/db";
 import { assignments, enrollments, submissions } from "@/lib/db/schema";
 import { canManageGroupResources } from "@/lib/assignments/management";
-import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
+import { forbidden, notFound, createApiHandler } from "@/lib/api/handler";
 import { assertUserRole } from "@/lib/security/constants";
-import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
-import { logger } from "@/lib/logger";
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; userId: string }> }
-) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitResponse = consumeApiRateLimit(request, "members:remove");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const { id, userId } = await params;
+export const DELETE = createApiHandler({
+  rateLimit: "members:remove",
+  handler: async (req: NextRequest, { user, params }) => {
+    const { id, userId } = params;
     const group = await db.query.groups.findFirst({
       where: (groups, { eq: equals }) => equals(groups.id, id),
       columns: { id: true, instructorId: true },
@@ -79,12 +66,9 @@ export async function DELETE(
         groupId: id,
         username: member?.username ?? null,
       },
-      request,
+      request: req,
     });
 
     return apiSuccess({ userId });
-  } catch (error) {
-    logger.error({ err: error }, "DELETE /api/v1/groups/[id]/members/[userId] error");
-    return apiError("memberRemoveFailed", 500);
-  }
-}
+  },
+});

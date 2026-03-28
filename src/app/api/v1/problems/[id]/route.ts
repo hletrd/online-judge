@@ -1,16 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db, sqlite } from "@/lib/db";
 import { assignmentProblems, problems, submissions, testCases, problemTags, tags } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { getApiUser, unauthorized, forbidden, notFound, isAdmin, csrfForbidden } from "@/lib/api/auth";
+import { forbidden, notFound, isAdmin, createApiHandler } from "@/lib/api/handler";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { canAccessProblem } from "@/lib/auth/permissions";
 import { updateProblemWithTestCases } from "@/lib/problem-management";
 import { problemMutationSchema } from "@/lib/validators/problem-management";
-import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
-import { logger } from "@/lib/logger";
 
 const problemPatchSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -36,15 +34,9 @@ const problemPatchSchema = z.object({
   allowLockedTestCases: z.boolean().optional(),
 }).strict();
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const { id } = await params;
+export const GET = createApiHandler({
+  handler: async (req: NextRequest, { user, params }) => {
+    const { id } = params;
     const problem = await db.query.problems.findFirst({ where: eq(problems.id, id) });
     if (!problem) return notFound("Problem");
 
@@ -63,34 +55,20 @@ export async function GET(
     });
 
     return apiSuccess({ ...problem, testCases: problemTestCases });
-  } catch (error) {
-    logger.error({ err: error }, "GET /api/v1/problems/[id] error");
-    return apiError("internalServerError", 500);
-  }
-}
+  },
+});
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitResponse = consumeApiRateLimit(request, "problems:update");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const { id } = await params;
+export const PATCH = createApiHandler({
+  rateLimit: "problems:update",
+  handler: async (req: NextRequest, { user, params }) => {
+    const { id } = params;
     const problem = await db.query.problems.findFirst({ where: eq(problems.id, id) });
     if (!problem) return notFound("Problem");
 
     const isAuthor = problem.authorId === user.id;
     if (!isAuthor && !isAdmin(user.role)) return forbidden();
 
-    const rawBody = await request.json();
+    const rawBody = await req.json();
     const parsedBody = problemPatchSchema.safeParse(rawBody);
     if (!parsedBody.success) {
       return apiError(parsedBody.error.issues[0]?.message ?? "invalidInput", 400);
@@ -178,32 +156,18 @@ export async function PATCH(
           testCaseOverrideUsed: allowLockedTestCases && isAdmin(user.role),
           testCaseCount: updated.testCases.length,
         },
-        request,
+        request: req,
       });
     }
 
     return apiSuccess(updated);
-  } catch (error) {
-    logger.error({ err: error }, "PATCH /api/v1/problems/[id] error");
-    return apiError("updateError", 500);
-  }
-}
+  },
+});
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitError = consumeApiRateLimit(request, "problems:delete");
-    if (rateLimitError) return rateLimitError;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const { id } = await params;
+export const DELETE = createApiHandler({
+  rateLimit: "problems:delete",
+  handler: async (req: NextRequest, { user, params }) => {
+    const { id } = params;
     const problem = await db.query.problems.findFirst({ where: eq(problems.id, id) });
     if (!problem) return notFound("Problem");
 
@@ -250,12 +214,9 @@ export async function DELETE(
       details: {
         visibility: problem.visibility,
       },
-      request,
+      request: req,
     });
 
     return apiSuccess({ id });
-  } catch (error) {
-    logger.error({ err: error }, "DELETE /api/v1/problems/[id] error");
-    return apiError("problemDeleteFailed", 500);
-  }
-}
+  },
+});

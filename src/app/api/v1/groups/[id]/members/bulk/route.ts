@@ -1,31 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { db } from "@/lib/db";
 import { enrollments } from "@/lib/db/schema";
 import { canManageGroupResources } from "@/lib/assignments/management";
 import { bulkEnrollmentSchema } from "@/lib/validators/groups";
-import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
+import { forbidden, notFound, createApiHandler } from "@/lib/api/handler";
 import { isUserRole } from "@/lib/security/constants";
-import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { apiSuccess, apiError } from "@/lib/api/responses";
-import { logger } from "@/lib/logger";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
-    const rateLimitResponse = consumeApiRateLimit(request, "members:bulk-add");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
-
-    const { id } = await params;
+export const POST = createApiHandler({
+  rateLimit: "members:bulk-add",
+  handler: async (req: NextRequest, { user, params }) => {
+    const { id } = params;
     const group = await db.query.groups.findFirst({
       where: (groups, { eq: equals }) => equals(groups.id, id),
       columns: { id: true, instructorId: true },
@@ -42,7 +29,7 @@ export async function POST(
 
     if (!canManage) return forbidden();
 
-    const body = await request.json();
+    const body = await req.json();
     const parsedInput = bulkEnrollmentSchema.safeParse(body);
 
     if (!parsedInput.success) {
@@ -117,12 +104,9 @@ export async function POST(
         enrolled,
         skipped,
       },
-      request,
+      request: req,
     });
 
     return apiSuccess({ enrolled, skipped });
-  } catch (error) {
-    logger.error({ err: error }, "POST /api/v1/groups/[id]/members/bulk error");
-    return apiError("bulkEnrollFailed", 500);
-  }
-}
+  },
+});

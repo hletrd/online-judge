@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { csrfForbidden } from "@/lib/api/auth";
+import { createApiHandler } from "@/lib/api/handler";
 import { logger } from "@/lib/logger";
 
 const requestSchema = z.object({
@@ -10,17 +10,15 @@ const requestSchema = z.object({
   model: z.string().min(1),
 });
 
-export async function POST(request: NextRequest) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
+export const POST = createApiHandler({
+  auth: false,
+  handler: async (req: NextRequest) => {
     const session = await auth();
     if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await req.json();
     const parsed = requestSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: "invalidRequest" }, { status: 400 });
@@ -87,8 +85,5 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.error({ err: error }, "Test connection error");
-    return NextResponse.json({ success: false, error: "connectionFailed" });
-  }
-}
+  },
+});
