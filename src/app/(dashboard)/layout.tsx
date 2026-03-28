@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LectureModeProvider } from "@/components/lecture/lecture-mode-provider";
 import { LectureModeToggle } from "@/components/layout/lecture-mode-toggle";
 import { LectureToolbar } from "@/components/lecture/lecture-toolbar";
+import { updatePreferences } from "@/lib/actions/update-preferences";
 
 import { Toaster } from "@/components/ui/sonner";
 import { getResolvedSystemSettings, isAiAssistantEnabled } from "@/lib/system-settings";
@@ -43,6 +44,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       initialActive={canUseLectureMode && session.user.lectureMode === "on"}
       initialFontScale={session.user.lectureFontScale ?? "1.5"}
       initialColorScheme={session.user.lectureColorScheme ?? "dark"}
+      persistAction={updatePreferences}
     >
       <SidebarProvider>
         <a

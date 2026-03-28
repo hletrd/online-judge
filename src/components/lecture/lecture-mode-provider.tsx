@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { updatePreferences } from "@/lib/actions/update-preferences";
 
 type LectureColorScheme = "dark" | "light" | "solarized";
 type LectureFontScale = "1.25" | "1.5" | "1.75" | "2.0" | "2.5" | "3.0" | "3.5" | "4.0";
@@ -36,20 +35,18 @@ export function useLectureMode() {
   return ctx;
 }
 
-function persistPreference(key: string, value: string | null) {
-  updatePreferences({ [key]: value }).catch(() => {});
-}
-
 export function LectureModeProvider({
   children,
   initialActive = false,
   initialFontScale = "1.5",
   initialColorScheme = "dark",
+  persistAction,
 }: {
   children: React.ReactNode;
   initialActive?: boolean;
   initialFontScale?: string;
   initialColorScheme?: string;
+  persistAction?: (input: Record<string, string | null>) => Promise<unknown>;
 }) {
   const [active, setActive] = useState(initialActive);
   const [fontScale, setFontScaleState] = useState<LectureFontScale>(
@@ -77,20 +74,20 @@ export function LectureModeProvider({
   const toggle = useCallback(() => {
     setActive((prev) => {
       const next = !prev;
-      persistPreference("lectureMode", next ? "on" : null);
+      persistAction?.({ lectureMode: next ? "on" : null }).catch(() => {});
       return next;
     });
-  }, []);
+  }, [persistAction]);
 
   const setFontScale = useCallback((scale: LectureFontScale) => {
     setFontScaleState(scale);
-    persistPreference("lectureFontScale", scale);
-  }, []);
+    persistAction?.({ lectureFontScale: scale }).catch(() => {});
+  }, [persistAction]);
 
   const setColorScheme = useCallback((scheme: LectureColorScheme) => {
     setColorSchemeState(scheme);
-    persistPreference("lectureColorScheme", scheme);
-  }, []);
+    persistAction?.({ lectureColorScheme: scheme }).catch(() => {});
+  }, [persistAction]);
 
   return (
     <LectureModeContext.Provider
