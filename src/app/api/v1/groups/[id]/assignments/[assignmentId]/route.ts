@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { assignments, submissions } from "@/lib/db/schema";
 import { recordAuditEvent } from "@/lib/audit/events";
@@ -224,19 +224,14 @@ export const DELETE = createApiHandler({
       return notFound("Assignment");
     }
 
-    const submissionCountRow = await db
-      .select({ total: sql<number>`count(${submissions.id})` })
-      .from(submissions)
-      .where(eq(submissions.assignmentId, assignmentId))
-      .then((rows) => rows[0] ?? { total: 0 });
-
-    const submissionCount = Number(submissionCountRow.total ?? 0);
-
-    if (submissionCount > 0) {
-      return apiError("assignmentDeleteBlocked", 409);
+    try {
+      deleteAssignmentWithProblems(assignmentId);
+    } catch (error) {
+      if (error instanceof Error && error.message === "assignmentDeleteBlocked") {
+        return apiError("assignmentDeleteBlocked", 409);
+      }
+      throw error;
     }
-
-    deleteAssignmentWithProblems(assignmentId);
 
     recordAuditEvent({
       actorId: user.id,
