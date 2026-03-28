@@ -82,7 +82,7 @@ export async function POST(
     }
 
     const { eventType, details: rawDetails } = parsed.data;
-    const details = rawDetails ?? null;
+    const details: Record<string, unknown> | null = rawDetails ? { message: rawDetails } : null;
 
     // Heartbeat events: only insert a DB row once per 60 seconds to reduce churn
     if (eventType === "heartbeat") {

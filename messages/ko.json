@@ -45,7 +45,13 @@
       "instructor": "강사",
       "admin": "관리자",
       "super_admin": "최고 관리자"
-    }
+    },
+    "lectureMode": "강의 모드",
+    "lectureColorScheme": "색상 테마",
+    "lectureFontScale": "글자 크기",
+    "lectureDark": "다크",
+    "lectureLight": "라이트",
+    "lectureSolarized": "솔라라이즈드"
   },
   "auth": {
     "signIn": "로그인",

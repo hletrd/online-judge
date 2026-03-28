@@ -33,14 +33,13 @@ const fontScaleOptions = [
 ] as const;
 
 export function LectureModeToggle({ className }: { className?: string }) {
-  // Use "common" translations - keys may not exist yet, fall back to hardcoded strings
   const t = useTranslations("common");
   const { active, toggle, fontScale, setFontScale, colorScheme, setColorScheme } = useLectureMode();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label="Lecture Mode"
+        aria-label={t("lectureMode")}
         className={cn(
           "inline-flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
           active && "bg-primary text-primary-foreground hover:bg-primary/90",
@@ -48,12 +47,12 @@ export function LectureModeToggle({ className }: { className?: string }) {
         )}
       >
         <Presentation className="size-4" />
-        <span className="sr-only">Lecture Mode</span>
+        <span className="sr-only">{t("lectureMode")}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="flex items-center justify-between">
-            <span>Lecture Mode</span>
+            <span>{t("lectureMode")}</span>
             <button
               onClick={(e) => { e.preventDefault(); toggle(); }}
               className={cn(
@@ -75,12 +74,12 @@ export function LectureModeToggle({ className }: { className?: string }) {
           <>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-xs text-muted-foreground">Color Scheme</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">{t("lectureColorScheme")}</DropdownMenuLabel>
               <DropdownMenuRadioGroup value={colorScheme} onValueChange={(v) => setColorScheme(v as any)}>
                 {colorSchemeOptions.map(({ value, labelKey }) => (
                   <DropdownMenuRadioItem key={value} value={value} className="gap-2">
                     <Palette className="size-3.5 text-muted-foreground" />
-                    {labelKey === "lectureDark" ? "Dark" : labelKey === "lectureLight" ? "Light" : "Solarized"}
+                    {t(labelKey)}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>
@@ -88,7 +87,7 @@ export function LectureModeToggle({ className }: { className?: string }) {
 
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-xs text-muted-foreground">Font Scale</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">{t("lectureFontScale")}</DropdownMenuLabel>
               <DropdownMenuRadioGroup value={fontScale} onValueChange={(v) => setFontScale(v as any)}>
                 {fontScaleOptions.map(({ value, label }) => (
                   <DropdownMenuRadioItem key={value} value={value}>

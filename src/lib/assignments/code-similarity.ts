@@ -171,11 +171,11 @@ export async function runAndStoreSimilarityCheck(
           assignmentId,
           userId,
           eventType: "code_similarity",
-          details: JSON.stringify({
+          details: {
             pairedWith: otherUserId,
             problemId: pair.problemId,
             similarity: pair.similarity,
-          }),
+          },
           createdAt: now,
         })
         .run();

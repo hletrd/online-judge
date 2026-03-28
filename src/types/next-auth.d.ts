@@ -62,3 +62,14 @@ declare module "next-auth/jwt" {
     lectureColorScheme?: string | null;
   }
 }
+
+/**
+ * Validated JWT with required fields for post-authentication use.
+ * Use after verifying the token is fully populated (e.g., after getApiUser).
+ */
+export type ValidatedJWT = Required<
+  Pick<
+    import("next-auth/jwt").JWT,
+    "id" | "role" | "username" | "authenticatedAt"
+  >
+>;

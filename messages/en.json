@@ -45,7 +45,13 @@
       "instructor": "Instructor",
       "admin": "Admin",
       "super_admin": "Super Admin"
-    }
+    },
+    "lectureMode": "Lecture Mode",
+    "lectureColorScheme": "Color Scheme",
+    "lectureFontScale": "Font Scale",
+    "lectureDark": "Dark",
+    "lectureLight": "Light",
+    "lectureSolarized": "Solarized"
   },
   "auth": {
     "signIn": "Sign in",

@@ -753,7 +753,7 @@ export const antiCheatEvents = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     eventType: text("event_type").notNull(),
-    details: text("details"),
+    details: text("details", { mode: "json" }).$type<Record<string, unknown> | null>(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
     createdAt: integer("created_at", { mode: "timestamp" })
