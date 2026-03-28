@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { csrfForbidden } from "@/lib/api/auth";
 import { isPluginEnabled, getPluginState } from "@/lib/plugins/data";
 import { getProvider, type ChatMessage } from "@/lib/plugins/chat-widget/providers";
 import { AGENT_TOOLS, executeTool, type AgentContext } from "@/lib/plugins/chat-widget/tools";
@@ -97,8 +98,11 @@ ${config.knowledgeBase}`;
   return prompt;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
     const session = await auth();
     if (!session?.user) {
       logger.warn("Chat API: no session/user");

@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { csrfForbidden } from "@/lib/api/auth";
 import { logger } from "@/lib/logger";
 
 const requestSchema = z.object({
@@ -9,8 +10,11 @@ const requestSchema = z.object({
   model: z.string().min(1),
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const csrfError = csrfForbidden(request);
+    if (csrfError) return csrfError;
+
     const session = await auth();
     if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -60,10 +64,10 @@ export async function POST(request: Request) {
         break;
 
       case "gemini": {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         response = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: "Hi" }] }],
             generationConfig: { maxOutputTokens: 1 },
@@ -78,12 +82,13 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const text = await response.text();
-      return NextResponse.json({ success: false, error: `${response.status}: ${text.slice(0, 200)}` });
+      logger.warn({ status: response.status, body: text.slice(0, 500) }, "Test connection failed");
+      return NextResponse.json({ success: false, error: `connectionFailed_${response.status}` });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     logger.error({ err: error }, "Test connection error");
-    return NextResponse.json({ success: false, error: String(error) });
+    return NextResponse.json({ success: false, error: "connectionFailed" });
   }
 }
