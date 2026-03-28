@@ -206,8 +206,8 @@ export function useSourceDraft({ userId, problemId, languages, initialLanguage }
     [initialLanguage, languages],
   );
   const fallbackLanguage = useMemo(() => {
-    if (typeof window === "undefined") return availableLanguages[0] ?? initialLanguage;
-    return getPreferredLanguage(userId, availableLanguages) ?? availableLanguages[0] ?? initialLanguage;
+    if (typeof window === "undefined") return initialLanguage ?? availableLanguages[0];
+    return getPreferredLanguage(userId, availableLanguages) ?? initialLanguage ?? availableLanguages[0];
   }, [availableLanguages, initialLanguage, userId]);
   const storageKey = useMemo(() => getStorageKey(userId, problemId), [problemId, userId]);
   const draftStore = useMemo(
