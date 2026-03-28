@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { apiSuccess, apiError } from "@/lib/api/responses";
-import { db } from "@/lib/db";
+import { db, sqlite } from "@/lib/db";
 import { assignmentProblems, problems, submissions, testCases, problemTags, tags } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { getApiUser, unauthorized, forbidden, notFound, isAdmin, csrfForbidden } from "@/lib/api/auth";
@@ -210,27 +210,34 @@ export async function DELETE(
     const isAuthor = problem.authorId === user.id;
     if (!isAuthor && !isAdmin(user.role)) return forbidden();
 
-    const [submissionCountRow, assignmentLinkCountRow] = await Promise.all([
-      db
+    let blocked = false;
+    sqlite.transaction(() => {
+      const submissionCountRow = db
         .select({ total: sql<number>`count(${submissions.id})` })
         .from(submissions)
         .where(eq(submissions.problemId, id))
-        .then((rows) => rows[0] ?? { total: 0 }),
-      db
+        .get() ?? { total: 0 };
+
+      const assignmentLinkCountRow = db
         .select({ total: sql<number>`count(${assignmentProblems.id})` })
         .from(assignmentProblems)
         .where(eq(assignmentProblems.problemId, id))
-        .then((rows) => rows[0] ?? { total: 0 }),
-    ]);
+        .get() ?? { total: 0 };
 
-    const submissionCount = Number(submissionCountRow.total ?? 0);
-    const assignmentLinkCount = Number(assignmentLinkCountRow.total ?? 0);
+      const submissionCount = Number(submissionCountRow.total ?? 0);
+      const assignmentLinkCount = Number(assignmentLinkCountRow.total ?? 0);
 
-    if (submissionCount > 0 || assignmentLinkCount > 0) {
+      if (submissionCount > 0 || assignmentLinkCount > 0) {
+        blocked = true;
+        return;
+      }
+
+      db.delete(problems).where(eq(problems.id, id)).run();
+    })();
+
+    if (blocked) {
       return apiError("problemDeleteBlocked", 409);
     }
-
-    await db.delete(problems).where(eq(problems.id, id));
 
     recordAuditEvent({
       actorId: user.id,
