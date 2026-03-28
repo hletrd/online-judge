@@ -50,24 +50,30 @@ export const sessions = sqliteTable("sessions", {
   expires: integer("expires", { mode: "timestamp" }).notNull(),
 });
 
-export const accounts = sqliteTable("accounts", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => nanoid()),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  type: text("type").notNull(),
-  provider: text("provider").notNull(),
-  providerAccountId: text("provider_account_id").notNull(),
-  refresh_token: text("refresh_token"),
-  access_token: text("access_token"),
-  expires_at: integer("expires_at"),
-  token_type: text("token_type"),
-  scope: text("scope"),
-  id_token: text("id_token"),
-  session_state: text("session_state"),
-});
+export const accounts = sqliteTable(
+  "accounts",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (table) => [
+    uniqueIndex("accounts_provider_account_idx").on(table.provider, table.providerAccountId),
+  ]
+);
 
 export const loginEvents = sqliteTable(
   "login_events",
@@ -123,24 +129,30 @@ export const auditEvents = sqliteTable(
   ]
 );
 
-export const groups = sqliteTable("groups", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => nanoid()),
-  name: text("name").notNull(),
-  description: text("description"),
-  instructorId: text("instructor_id").references(() => users.id, {
-    onDelete: "set null",
-  }),
-  isArchived: integer("is_archived", { mode: "boolean" }).default(false),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date(Date.now())),
-  // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date(Date.now())),
-});
+export const groups = sqliteTable(
+  "groups",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    name: text("name").notNull(),
+    description: text("description"),
+    instructorId: text("instructor_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    isArchived: integer("is_archived", { mode: "boolean" }).default(false),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("groups_instructor_idx").on(table.instructorId),
+  ]
+);
 
 export const enrollments = sqliteTable(
   "enrollments",
@@ -359,7 +371,9 @@ export const submissions = sqliteTable(
     status: text("status").default("pending"),
     judgeClaimToken: text("judge_claim_token"),
     judgeClaimedAt: integer("judge_claimed_at", { mode: "timestamp" }),
-    judgeWorkerId: text("judge_worker_id"),
+    judgeWorkerId: text("judge_worker_id").references(() => judgeWorkers.id, {
+      onDelete: "set null",
+    }),
     compileOutput: text("compile_output"),
     executionTimeMs: integer("execution_time_ms"),
     memoryUsedKb: integer("memory_used_kb"),
@@ -378,6 +392,9 @@ export const submissions = sqliteTable(
     index("submissions_problem_idx").on(table.problemId),
     index("submissions_assignment_idx").on(table.assignmentId),
     index("submissions_judge_worker_idx").on(table.judgeWorkerId),
+    index("submissions_status_submitted_idx").on(table.status, table.submittedAt),
+    index("submissions_user_submitted_idx").on(table.userId, table.submittedAt),
+    index("submissions_assignment_submitted_idx").on(table.assignmentId, table.submittedAt),
   ]
 );
 
@@ -454,6 +471,7 @@ export const rateLimits = sqliteTable(
   },
   (table) => [
     uniqueIndex("rate_limits_key_idx").on(table.key),
+    index("rate_limits_last_attempt_idx").on(table.lastAttempt),
   ]
 );
 
@@ -596,6 +614,7 @@ export const submissionResults = sqliteTable(
   (table) => [
     index("sr_submission_idx").on(table.submissionId),
     index("sr_test_case_idx").on(table.testCaseId),
+    uniqueIndex("sr_submission_test_case_idx").on(table.submissionId, table.testCaseId),
   ]
 );
 
@@ -608,21 +627,29 @@ export const plugins = sqliteTable("plugins", {
     .$defaultFn(() => new Date(Date.now())),
 });
 
-export const chatMessages = sqliteTable("chat_messages", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => nanoid()),
-  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
-  sessionId: text("session_id").notNull(),
-  role: text("role").notNull(), // "user" | "assistant" | "system"
-  content: text("content").notNull(),
-  problemId: text("problem_id"),
-  model: text("model"),
-  provider: text("provider"),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date(Date.now())),
-});
+export const chatMessages = sqliteTable(
+  "chat_messages",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    sessionId: text("session_id").notNull(),
+    role: text("role").notNull(), // "user" | "assistant" | "system"
+    content: text("content").notNull(),
+    problemId: text("problem_id").references(() => problems.id, { onDelete: "set null" }),
+    model: text("model"),
+    provider: text("provider"),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("chat_messages_user_idx").on(table.userId),
+    index("chat_messages_session_idx").on(table.sessionId),
+    index("chat_messages_problem_idx").on(table.problemId),
+  ]
+);
 
 export const contestAccessTokens = sqliteTable(
   "contest_access_tokens",
@@ -735,5 +762,6 @@ export const antiCheatEvents = sqliteTable(
     index("ace_assignment_user_idx").on(table.assignmentId, table.userId),
     index("ace_assignment_type_idx").on(table.assignmentId, table.eventType),
     index("ace_assignment_created_idx").on(table.assignmentId, table.createdAt),
+    index("ace_user_idx").on(table.userId),
   ]
 );
