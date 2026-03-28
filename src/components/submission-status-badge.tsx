@@ -63,7 +63,7 @@ function TooltipBody({
   return (
     <div className="flex items-center gap-3 text-xs">
       {status === "wrong_answer" && score !== null && score !== undefined && (
-        <span className="font-medium">Score: {score}</span>
+        <span className="font-medium">Score: {Math.round(score * 100) / 100}</span>
       )}
       {executionTimeMs !== null && executionTimeMs !== undefined && (
         <span className="inline-flex items-center gap-1 text-muted-foreground">

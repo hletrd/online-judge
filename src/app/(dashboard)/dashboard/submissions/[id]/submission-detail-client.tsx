@@ -161,7 +161,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
               {t("submitted")}: {submission.submittedAt ? formatDateTimeInTimeZone(submission.submittedAt, locale, props.timeZone) : "-"}
             </p>
             <p>
-              {t("score")}: {submission.score !== null ? submission.score : "-"}
+              {t("score")}: {submission.score !== null ? Math.round(submission.score * 100) / 100 : "-"}
             </p>
             <p>
               {t("time")}: {submission.executionTimeMs !== null ? t("timeValue", { value: submission.executionTimeMs }) : "-"}

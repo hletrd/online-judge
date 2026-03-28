@@ -228,7 +228,7 @@ export default async function SubmissionsPage({
                       score={sub.score}
                     />
                   </TableCell>
-                  <TableCell>{sub.score !== null ? sub.score : "-"}</TableCell>
+                  <TableCell>{sub.score !== null ? Math.round(sub.score * 100) / 100 : "-"}</TableCell>
                   <TableCell>
                     {sub.submittedAt
                       ? formatDateTimeInTimeZone(sub.submittedAt, locale, timeZone)
