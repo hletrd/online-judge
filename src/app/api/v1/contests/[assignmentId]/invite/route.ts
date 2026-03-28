@@ -3,15 +3,12 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 import { getApiUser, unauthorized, csrfForbidden, isAdmin, isInstructor } from "@/lib/api/auth";
 import { apiSuccess, apiError } from "@/lib/api/responses";
-import { getContestAssignment, type ContestAssignmentRow } from "@/lib/assignments/contests";
+import { getContestAssignment, canManageContest, type ContestAssignmentRow } from "@/lib/assignments/contests";
 import { db, sqlite } from "@/lib/db";
 import { users, enrollments, contestAccessTokens } from "@/lib/db/schema";
 import { and, eq, inArray, like, or, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
-function canManage(user: { id: string; role: string }, assignment: ContestAssignmentRow): boolean {
-  return isAdmin(user.role) || (isInstructor(user.role) && assignment.instructorId === user.id);
-}
 
 const inviteSchema = z.object({
   username: z.string().min(1).max(255),
@@ -35,7 +32,7 @@ export async function GET(
 
     const assignment = getContestAssignment(assignmentId);
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
-    if (!canManage(user, assignment)) return apiError("forbidden", 403);
+    if (!canManageContest(user, assignment)) return apiError("forbidden", 403);
 
     const query = request.nextUrl.searchParams.get("q")?.trim() ?? "";
     if (!query) return apiSuccess([]);
@@ -106,7 +103,7 @@ export async function POST(
 
     const assignment = getContestAssignment(assignmentId);
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
-    if (!canManage(apiUser, assignment)) return apiError("forbidden", 403);
+    if (!canManageContest(apiUser, assignment)) return apiError("forbidden", 403);
 
     const body = await request.json();
     const parsed = inviteSchema.safeParse(body);

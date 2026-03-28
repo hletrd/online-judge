@@ -34,7 +34,7 @@ const adminPatchUserSchema = z.object({
 type ApiUser = NonNullable<Awaited<ReturnType<typeof getApiUser>>>;
 type UserUpdates = Record<string, unknown>;
 
-function jsonError(error: string, status: number) {
+function apiError(error: string, status: number) {
   return apiError(error, status);
 }
 
@@ -64,7 +64,7 @@ function validateProfileFields(body: Record<string, unknown>, isAdminActor: bool
   const parsed = profileSchema.partial().safeParse(profileFields);
 
   if (!parsed.success) {
-    return jsonError(parsed.error.issues[0]?.message ?? "validationError", 400);
+    return apiError(parsed.error.issues[0]?.message ?? "validationError", 400);
   }
 
   return null;
@@ -78,13 +78,13 @@ async function ensureUniqueIdentityFields(
 ) {
   if (typeof username === "string" && isAdminActor) {
     if (await isUsernameTaken(username, userId)) {
-      return jsonError("usernameInUse", 409);
+      return apiError("usernameInUse", 409);
     }
   }
 
   if (isAdminActor && normalizedEmail) {
     if (await isEmailTaken(normalizedEmail, userId)) {
-      return jsonError("emailInUse", 409);
+      return apiError("emailInUse", 409);
     }
   }
 
@@ -129,11 +129,11 @@ function applyActiveStatusUpdate(
   }
 
   if (body.isActive === false && found.id === actorId) {
-    return jsonError("cannotDeactivateSelf", 403);
+    return apiError("cannotDeactivateSelf", 403);
   }
 
   if (body.isActive === false && found.role === "super_admin") {
-    return jsonError("cannotDeactivateSuperAdmin", 403);
+    return apiError("cannotDeactivateSuperAdmin", 403);
   }
 
   updates.isActive = body.isActive;
@@ -161,15 +161,15 @@ function applyRoleUpdate(
   }
 
   if (typeof body.role !== "string" || !isUserRole(body.role)) {
-    return jsonError("invalidRole", 400);
+    return apiError("invalidRole", 400);
   }
 
   if (!canManageRole(actor.role, body.role)) {
-    return jsonError("superAdminRoleRestricted", 403);
+    return apiError("superAdminRoleRestricted", 403);
   }
 
   if (found.role === "super_admin" && body.role !== "super_admin") {
-    return jsonError("superAdminRoleRestricted", 403);
+    return apiError("superAdminRoleRestricted", 403);
   }
 
   updates.role = body.role;
@@ -195,22 +195,22 @@ async function applyPasswordUpdate(
   const isAdminActor = actorRole === "admin" || actorRole === "super_admin";
 
   if (!isAdminActor || isSelf) {
-    return jsonError("passwordChangeRequiresCurrentPassword", 403);
+    return apiError("passwordChangeRequiresCurrentPassword", 403);
   }
 
   // Only super_admin can reset another admin's password
   if ((targetRole === "admin" || targetRole === "super_admin") && actorRole !== "super_admin") {
-    return jsonError("cannotResetAdminPassword", 403);
+    return apiError("cannotResetAdminPassword", 403);
   }
 
   if (typeof password !== "string") {
-    return jsonError("passwordTooShort", 400);
+    return apiError("passwordTooShort", 400);
   }
 
   const passwordResult = await validateAndHashPassword(password);
 
   if (passwordResult.error) {
-    return jsonError(passwordResult.error, 400);
+    return apiError(passwordResult.error, 400);
   }
 
   updates.passwordHash = passwordResult.hash;
@@ -279,11 +279,11 @@ export async function PATCH(
     if (profileValidationError) return profileValidationError;
 
     if (!isAdminActor && body.username !== undefined) {
-      return jsonError("usernameChangeNotAllowed", 403);
+      return apiError("usernameChangeNotAllowed", 403);
     }
 
     if (!isAdminActor && body.email !== undefined) {
-      return jsonError("emailChangeNotAllowed", 403);
+      return apiError("emailChangeNotAllowed", 403);
     }
 
     const updates: Record<string, unknown> = {};
@@ -385,11 +385,11 @@ export async function DELETE(
       try {
         body = await request.json();
       } catch {
-        return jsonError("confirmUsernameRequired", 400);
+        return apiError("confirmUsernameRequired", 400);
       }
 
       if (!body.confirmUsername || body.confirmUsername.toLowerCase() !== found.username.toLowerCase()) {
-        return jsonError("confirmUsernameRequired", 400);
+        return apiError("confirmUsernameRequired", 400);
       }
 
       // Record audit BEFORE deletion since actorId FK gets set-null on cascade

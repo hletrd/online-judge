@@ -1,4 +1,5 @@
 import { sqlite } from "@/lib/db";
+import { isAdmin, isInstructor } from "@/lib/api/auth";
 import type { UserRole, ExamMode, ScoringModel } from "@/types";
 
 export type ContestEntry = {
@@ -175,6 +176,13 @@ export type ContestAssignmentRow = {
   examMode: string;
   enableAntiCheat: boolean;
 };
+
+/**
+ * Check if a user can manage a contest (admin or owning instructor).
+ */
+export function canManageContest(user: { id: string; role: string }, assignment: ContestAssignmentRow): boolean {
+  return isAdmin(user.role) || (isInstructor(user.role) && assignment.instructorId === user.id);
+}
 
 export function getContestAssignment(assignmentId: string): ContestAssignmentRow | undefined {
   return sqlite
