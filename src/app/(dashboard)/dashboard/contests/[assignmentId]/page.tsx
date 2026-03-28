@@ -27,6 +27,7 @@ import { FilterForm } from "../../groups/[id]/assignments/[assignmentId]/filter-
 import { StatusBoard } from "../../groups/[id]/assignments/[assignmentId]/status-board";
 import { LeaderboardTable } from "@/components/contest/leaderboard-table";
 import { AccessCodeManager } from "@/components/contest/access-code-manager";
+import { InviteParticipants } from "@/components/contest/invite-participants";
 import { AntiCheatMonitor } from "@/components/exam/anti-cheat-monitor";
 import { AntiCheatDashboard } from "@/components/contest/anti-cheat-dashboard";
 import { AnalyticsCharts } from "@/components/contest/analytics-charts";
@@ -472,7 +473,10 @@ export default async function ContestDetailPage({
             timeZone={timeZone}
             labels={overviewLabels}
           />
-          <AccessCodeManager assignmentId={assignmentId} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <AccessCodeManager assignmentId={assignmentId} />
+            <InviteParticipants assignmentId={assignmentId} />
+          </div>
         </TabsContent>
 
         {/* Submissions Tab */}

@@ -371,3 +371,195 @@
   --problem-code-string: oklch(0.82 0.11 158);
   --problem-code-title: oklch(0.82 0.09 242);
 }
+
+/* ── Lecture Mode ─────────────────────────────────────────────────────────── */
+
+.lecture-mode {
+  --lecture-font-scale: 1.5;
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+/* High-contrast dark theme (default) — deep navy, vivid accents */
+.lecture-mode.lecture-theme-dark {
+  --background: oklch(0.13 0.03 260);
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.16 0.025 260);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.16 0.025 260);
+  --popover-foreground: oklch(0.97 0 0);
+  --primary: oklch(0.70 0.18 250);
+  --primary-foreground: oklch(0.97 0 0);
+  --secondary: oklch(0.22 0.03 260);
+  --secondary-foreground: oklch(0.95 0 0);
+  --muted: oklch(0.22 0.02 260);
+  --muted-foreground: oklch(0.72 0 0);
+  --accent: oklch(0.28 0.04 260);
+  --accent-foreground: oklch(0.95 0 0);
+  --destructive: oklch(0.65 0.25 25);
+  --border: oklch(0.30 0.04 260);
+  --input: oklch(0.25 0.03 260);
+  --ring: oklch(0.65 0.18 250);
+  --sidebar: oklch(0.11 0.025 260);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-primary: oklch(0.70 0.18 250);
+  --sidebar-primary-foreground: oklch(0.97 0 0);
+  --sidebar-accent: oklch(0.20 0.03 260);
+  --sidebar-accent-foreground: oklch(0.95 0 0);
+  --sidebar-border: oklch(0.28 0.03 260);
+  --problem-code-background: oklch(0.11 0.025 260);
+  --problem-code-foreground: oklch(0.96 0.01 255);
+  --problem-code-keyword: oklch(0.80 0.16 300);
+  --problem-code-string: oklch(0.82 0.15 155);
+  --problem-code-number: oklch(0.85 0.14 68);
+  --problem-code-comment: oklch(0.60 0.04 235);
+  --problem-code-border: oklch(0.30 0.04 260);
+}
+
+/* High-contrast light theme — pure white, saturated accents */
+.lecture-mode.lecture-theme-light {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.10 0 0);
+  --card: oklch(0.98 0 0);
+  --card-foreground: oklch(0.10 0 0);
+  --popover: oklch(0.98 0 0);
+  --popover-foreground: oklch(0.10 0 0);
+  --primary: oklch(0.45 0.25 260);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.95 0.01 260);
+  --secondary-foreground: oklch(0.15 0 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.40 0 0);
+  --accent: oklch(0.93 0.02 260);
+  --accent-foreground: oklch(0.15 0 0);
+  --destructive: oklch(0.55 0.25 27);
+  --border: oklch(0.85 0 0);
+  --input: oklch(0.90 0 0);
+  --ring: oklch(0.50 0.20 260);
+  --sidebar: oklch(0.97 0 0);
+  --sidebar-foreground: oklch(0.10 0 0);
+  --sidebar-border: oklch(0.88 0 0);
+  --problem-code-background: oklch(0.15 0.02 260);
+  --problem-code-foreground: oklch(0.96 0.01 255);
+  --problem-code-keyword: oklch(0.78 0.14 300);
+  --problem-code-string: oklch(0.80 0.13 155);
+  --problem-code-number: oklch(0.84 0.12 68);
+  --problem-code-comment: oklch(0.65 0.04 235);
+  --problem-code-border: oklch(0.30 0.04 260);
+}
+
+/* Solarized dark — warm tones, projector-optimized */
+.lecture-mode.lecture-theme-solarized {
+  --background: oklch(0.15 0.02 200);
+  --foreground: oklch(0.83 0.04 90);
+  --card: oklch(0.18 0.02 200);
+  --card-foreground: oklch(0.83 0.04 90);
+  --popover: oklch(0.18 0.02 200);
+  --popover-foreground: oklch(0.83 0.04 90);
+  --primary: oklch(0.65 0.18 220);
+  --primary-foreground: oklch(0.15 0.02 200);
+  --secondary: oklch(0.22 0.02 200);
+  --secondary-foreground: oklch(0.80 0.04 90);
+  --muted: oklch(0.22 0.02 200);
+  --muted-foreground: oklch(0.65 0.04 90);
+  --accent: oklch(0.25 0.03 200);
+  --accent-foreground: oklch(0.83 0.04 90);
+  --destructive: oklch(0.60 0.22 30);
+  --border: oklch(0.28 0.03 200);
+  --input: oklch(0.22 0.02 200);
+  --ring: oklch(0.65 0.18 220);
+  --sidebar: oklch(0.12 0.02 200);
+  --sidebar-foreground: oklch(0.80 0.04 90);
+  --sidebar-border: oklch(0.25 0.02 200);
+  --problem-code-background: oklch(0.12 0.02 200);
+  --problem-code-foreground: oklch(0.83 0.04 90);
+  --problem-code-keyword: oklch(0.72 0.15 60);
+  --problem-code-string: oklch(0.70 0.14 180);
+  --problem-code-number: oklch(0.75 0.14 310);
+  --problem-code-comment: oklch(0.55 0.06 200);
+  --problem-code-border: oklch(0.28 0.03 200);
+}
+
+/* Lecture mode typography & layout */
+@layer components {
+  .lecture-mode main#dashboard-main-content {
+    padding: 1rem;
+    font-size: calc(1rem * var(--lecture-font-scale));
+    line-height: 1.7;
+  }
+
+  /* Scale all text within the lecture content area */
+  .lecture-mode main#dashboard-main-content p,
+  .lecture-mode main#dashboard-main-content span,
+  .lecture-mode main#dashboard-main-content li,
+  .lecture-mode main#dashboard-main-content td,
+  .lecture-mode main#dashboard-main-content th,
+  .lecture-mode main#dashboard-main-content label,
+  .lecture-mode main#dashboard-main-content div {
+    font-size: inherit;
+  }
+
+  .lecture-mode main#dashboard-main-content h1 {
+    font-size: calc(2rem * var(--lecture-font-scale));
+  }
+
+  .lecture-mode main#dashboard-main-content h2 {
+    font-size: calc(1.75rem * var(--lecture-font-scale));
+  }
+
+  .lecture-mode main#dashboard-main-content h3 {
+    font-size: calc(1.4rem * var(--lecture-font-scale));
+  }
+
+  .lecture-mode .problem-description {
+    font-size: calc(1.125rem * var(--lecture-font-scale));
+    line-height: 1.8;
+  }
+
+  .lecture-mode .problem-description h1,
+  .lecture-mode .problem-description h2,
+  .lecture-mode .problem-description h3 {
+    font-size: calc(1.6rem * var(--lecture-font-scale));
+    font-weight: 700;
+    margin-top: 1em;
+  }
+
+  .lecture-mode .problem-description pre,
+  .lecture-mode .problem-description code {
+    font-size: calc(1rem * var(--lecture-font-scale));
+  }
+
+  .lecture-mode .problem-description table {
+    font-size: calc(1rem * var(--lecture-font-scale));
+  }
+
+  /* Scale badges, buttons, and card titles */
+  .lecture-mode main#dashboard-main-content .badge,
+  .lecture-mode main#dashboard-main-content [data-slot="badge"] {
+    font-size: calc(0.85rem * var(--lecture-font-scale));
+    padding: 0.25em 0.6em;
+  }
+
+  .lecture-mode main#dashboard-main-content button,
+  .lecture-mode main#dashboard-main-content [data-slot="button"] {
+    font-size: calc(0.9rem * var(--lecture-font-scale));
+  }
+
+  .lecture-mode .cm-editor {
+    font-size: calc(0.95rem * var(--lecture-font-scale)) !important;
+  }
+
+  .lecture-mode .cm-editor .cm-line {
+    line-height: 1.7;
+  }
+
+  .lecture-mode .lecture-panel-header {
+    font-size: calc(1rem * var(--lecture-font-scale));
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--card);
+  }
+}

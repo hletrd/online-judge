@@ -1377,6 +1377,17 @@
       "joining": "참가 중...",
       "successRedirect": "대회로 이동 중..."
     },
+    "invite": {
+      "title": "참가자 초대",
+      "searchPlaceholder": "사용자명 또는 이름으로 검색...",
+      "invite": "초대",
+      "invited": "초대됨",
+      "alreadyEnrolled": "이미 등록됨",
+      "inviteSuccess": "사용자를 성공적으로 초대했습니다",
+      "inviteFailed": "사용자 초대에 실패했습니다",
+      "userNotFound": "사용자를 찾을 수 없습니다",
+      "noResults": "사용자를 찾을 수 없습니다"
+    },
     "antiCheat": {
       "title": "부정행위 방지 모니터",
       "dashboard": "부정행위 방지 대시보드",

@@ -1385,6 +1385,17 @@
       "joining": "Joining...",
       "successRedirect": "Redirecting to contest..."
     },
+    "invite": {
+      "title": "Invite Participants",
+      "searchPlaceholder": "Search by username or name...",
+      "invite": "Invite",
+      "invited": "Invited",
+      "alreadyEnrolled": "Already enrolled",
+      "inviteSuccess": "User invited successfully",
+      "inviteFailed": "Failed to invite user",
+      "userNotFound": "User not found",
+      "noResults": "No users found"
+    },
     "antiCheat": {
       "title": "Anti-Cheat Monitor",
       "dashboard": "Anti-Cheat Dashboard",

@@ -17,6 +17,7 @@ import { ProblemDescription } from "@/components/problem-description";
 import { getTrustedLegacySeededDescription } from "@/lib/problems/legacy-seeded";
 import { CountdownTimer } from "@/components/exam/countdown-timer";
 import { ProblemSubmissionForm } from "./problem-submission-form";
+import { ProblemLectureWrapper } from "./problem-lecture-wrapper";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ProblemDeleteButton } from "./problem-delete-button";
@@ -172,133 +173,151 @@ export default async function ProblemDetailPage({
     authorEmail: problem.author?.email,
   });
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="space-y-6">
-        <div>
-          <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <Link href="/dashboard/problems" className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-                <ArrowLeft className="size-4" />
-                {tCommon("back")}
-              </Link>
-              <h2 className="text-3xl font-bold">{problem.title}</h2>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Link href={`/dashboard/problems/${problem.id}/rankings`}>
-                <Button variant="outline" size="sm">
-                  <Trophy className="size-4 mr-1" />
-                  {tRankings("viewRankings")}
-                </Button>
-              </Link>
-              {canEdit && (
-                <>
-                  <Link href={`/dashboard/problems/${problem.id}/edit`}>
-                    <Button variant="outline" size="sm">{tCommon("edit")}</Button>
-                  </Link>
-                  <ProblemDeleteButton problemId={problem.id} problemTitle={problem.title} />
-                </>
-              )}
-            </div>
+  const problemPanel = (
+    <div className="space-y-6">
+      <div>
+        <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <Link
+              href={assignmentContext ? `/dashboard/contests/${assignmentContext.id}` : "/dashboard/problems"}
+              className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="size-4" />
+              {assignmentContext ? assignmentContext.title : tCommon("back")}
+            </Link>
+            <h2 className="text-3xl font-bold">{problem.title}</h2>
           </div>
-          <div className="mb-4 flex flex-wrap gap-2 text-sm text-muted-foreground">
-            <Badge variant="outline">{t("badges.timeLimit", { value: problem.timeLimitMs ?? 2000 })}</Badge>
-            <Badge variant="outline">{t("badges.memoryLimit", { value: problem.memoryLimitMb ?? 256 })}</Badge>
-            <Badge variant="secondary">{t("badges.author", { name: problem.author?.name || tCommon("system") })}</Badge>
-            {assignmentContext && <Badge>{assignmentContext.title}</Badge>}
-            {assignmentContext?.deadline && (
-              <Badge variant="secondary">
-                {t("assignmentDeadlineNotice")}: {formatRelativeTimeFromNow(assignmentContext.deadline)}
-              </Badge>
-            )}
-            {assignmentContext?.lateDeadline && (
-              <Badge variant="outline">
-                {t("assignmentLateDeadlineNotice")}: {formatRelativeTimeFromNow(assignmentContext.lateDeadline)}
-              </Badge>
-            )}
-            {assignmentContext?.examMode === "windowed" && assignmentContext?.personalDeadline && (
-              <CountdownTimer
-                deadline={new Date(assignmentContext.personalDeadline).getTime()}
-                label={t("assignmentDeadlineNotice")}
-              />
-            )}
-            {assignmentContext?.examMode === "scheduled" && assignmentContext?.deadline && (
-              <CountdownTimer
-                deadline={new Date(assignmentContext.deadline).getTime()}
-                label={t("assignmentDeadlineNotice")}
-              />
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/dashboard/problems/${problem.id}/rankings`}>
+              <Button variant="outline" size="sm">
+                <Trophy className="size-4 mr-1" />
+                {tRankings("viewRankings")}
+              </Button>
+            </Link>
+            {canEdit && (
+              <>
+                <Link href={`/dashboard/problems/${problem.id}/edit`}>
+                  <Button variant="outline" size="sm">{tCommon("edit")}</Button>
+                </Link>
+                <ProblemDeleteButton problemId={problem.id} problemTitle={problem.title} />
+              </>
             )}
           </div>
         </div>
+        <div className="mb-4 flex flex-wrap gap-2 text-sm text-muted-foreground">
+          <Badge variant="outline">{t("badges.timeLimit", { value: problem.timeLimitMs ?? 2000 })}</Badge>
+          <Badge variant="outline">{t("badges.memoryLimit", { value: problem.memoryLimitMb ?? 256 })}</Badge>
+          <Badge variant="secondary">{t("badges.author", { name: problem.author?.name || tCommon("system") })}</Badge>
+          {assignmentContext && <Badge>{assignmentContext.title}</Badge>}
+          {assignmentContext?.deadline && (
+            <Badge variant="secondary">
+              {t("assignmentDeadlineNotice")}: {formatRelativeTimeFromNow(assignmentContext.deadline)}
+            </Badge>
+          )}
+          {assignmentContext?.lateDeadline && (
+            <Badge variant="outline">
+              {t("assignmentLateDeadlineNotice")}: {formatRelativeTimeFromNow(assignmentContext.lateDeadline)}
+            </Badge>
+          )}
+          {assignmentContext?.examMode === "windowed" && assignmentContext?.personalDeadline && (
+            <CountdownTimer
+              deadline={new Date(assignmentContext.personalDeadline).getTime()}
+              label={t("assignmentDeadlineNotice")}
+            />
+          )}
+          {assignmentContext?.examMode === "scheduled" && assignmentContext?.deadline && (
+            <CountdownTimer
+              deadline={new Date(assignmentContext.deadline).getTime()}
+              label={t("assignmentDeadlineNotice")}
+            />
+          )}
+        </div>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("descriptionTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {problem.description ? (
+            <ProblemDescription
+              className="text-sm sm:text-base"
+              description={problem.description}
+              legacyHtmlDescription={legacyHtmlDescription}
+            />
+          ) : (
+            <p>{t("noDescription")}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {assignmentChoices.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>{t("descriptionTitle")}</CardTitle>
+            <CardTitle>{t("assignmentSelectionTitle")}</CardTitle>
           </CardHeader>
-          <CardContent>
-            {problem.description ? (
-              <ProblemDescription
-                className="text-sm sm:text-base"
-                description={problem.description}
-                legacyHtmlDescription={legacyHtmlDescription}
-              />
-            ) : (
-              <p>{t("noDescription")}</p>
-            )}
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {t("assignmentSelectionDescription")}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {assignmentChoices.map((assignment) => (
+                <Link
+                  key={assignment.assignmentId}
+                  href={`/dashboard/groups/${assignment.groupId}/assignments/${assignment.assignmentId}`}
+                >
+                  <Button variant="outline">
+                    {t("assignmentSelectionOpenAssignment", {
+                      title: assignment.title,
+                      group: assignment.groupName,
+                    })}
+                  </Button>
+                </Link>
+              ))}
+            </div>
           </CardContent>
         </Card>
-
-        {assignmentChoices.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("assignmentSelectionTitle")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {t("assignmentSelectionDescription")}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {assignmentChoices.map((assignment) => (
-                  <Link
-                    key={assignment.assignmentId}
-                    href={`/dashboard/groups/${assignment.groupId}/assignments/${assignment.assignmentId}`}
-                  >
-                    <Button variant="outline">
-                      {t("assignmentSelectionOpenAssignment", {
-                        title: assignment.title,
-                        group: assignment.groupName,
-                      })}
-                    </Button>
-                  </Link>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      <div>
-        <Card className="sticky top-6">
-          <CardHeader>
-            <CardTitle>{t("submitSolution")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {assignmentChoices.length > 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {t("assignmentSelectionSubmitHint")}
-              </p>
-            ) : (
-              <ProblemSubmissionForm
-                userId={session.user.id}
-                problemId={problem.id}
-                languages={enabledLanguages}
-                assignmentId={assignmentContext?.id ?? null}
-                preferredLanguage={session.user.preferredLanguage ?? null}
-                editorTheme={session.user.editorTheme ?? null}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      )}
     </div>
+  );
+
+  const codePanel = (
+    <Card className="sticky top-6">
+      <CardHeader>
+        <CardTitle>{t("submitSolution")}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {assignmentChoices.length > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {t("assignmentSelectionSubmitHint")}
+          </p>
+        ) : (
+          <ProblemSubmissionForm
+            userId={session.user.id}
+            problemId={problem.id}
+            languages={enabledLanguages}
+            assignmentId={assignmentContext?.id ?? null}
+            preferredLanguage={session.user.preferredLanguage ?? null}
+            editorTheme={session.user.editorTheme ?? null}
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const defaultView = (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div>{problemPanel}</div>
+      <div>{codePanel}</div>
+    </div>
+  );
+
+  return (
+    <ProblemLectureWrapper
+      problemId={problem.id}
+      problemTitle={problem.title}
+      problemPanel={problemPanel}
+      codePanel={codePanel}
+      defaultView={defaultView}
+    />
   );
 }
