@@ -49,6 +49,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV AUTH_TRUST_HOST=true
 
 # better-sqlite3 requires libstdc++ at runtime; Docker CLI for admin image management
 RUN apk add --no-cache libstdc++ docker-cli
