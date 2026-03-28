@@ -40,7 +40,8 @@ export function getContestStatus(
 
   // windowed
   if (contest.startsAt && nowMs < contest.startsAt.getTime()) return "upcoming";
-  if (contest.deadline && nowMs >= contest.deadline.getTime()) return "closed";
+  const effectiveClose = contest.deadline?.getTime();
+  if (effectiveClose && nowMs >= effectiveClose) return "closed";
   if (contest.personalDeadline && nowMs >= contest.personalDeadline.getTime()) return "expired";
   if (contest.startedAt) return "in_progress";
   return "open";

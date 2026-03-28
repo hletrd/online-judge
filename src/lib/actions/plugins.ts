@@ -101,10 +101,11 @@ export async function updatePluginConfig(pluginId: string, rawConfig: unknown): 
       set: withUpdatedAt({ config: validatedConfig }),
     });
 
-    // Redact sensitive keys (any key containing "Key" or "key") for audit log
+    // Redact sensitive keys for audit log
+    const SENSITIVE_KEY_PATTERN = /key|secret|token|password|credential/i;
     const redactedConfig: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(validatedConfig)) {
-      if (key.includes("Key") || key.includes("key")) {
+      if (SENSITIVE_KEY_PATTERN.test(key)) {
         redactedConfig[key] = "[REDACTED]";
       } else {
         redactedConfig[key] = value;

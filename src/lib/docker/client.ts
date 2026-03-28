@@ -81,6 +81,10 @@ export async function buildDockerImage(
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._\-/:]+$/.test(imageName)) {
     return { success: false, error: "Invalid image name" };
   }
+  // Prevent path traversal in dockerfile path
+  if (/\.\.|[/\\]/.test(dockerfilePath.replace(/^docker\/Dockerfile\./, ""))) {
+    return { success: false, error: "Invalid dockerfile path" };
+  }
 
   try {
     const { stdout, stderr } = await exec(
