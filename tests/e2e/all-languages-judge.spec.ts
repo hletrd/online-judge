@@ -543,11 +543,15 @@ Scene I: Read the first number.
 
 Juliet: Listen to your heart!
 
-Scene II: Read the second number.
+Scene II: Skip the separator.
+
+Romeo: Open your mind!
+
+Scene III: Read the second number.
 
 Romeo: Listen to your heart!
 
-Scene III: The sum.
+Scene IV: The sum.
 
 Juliet: You are the sum of yourself and me.
 Juliet: Open your heart!
