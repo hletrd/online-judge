@@ -146,8 +146,10 @@ async function pruneOldAuditEvents() {
 let pruneTimer: ReturnType<typeof setInterval> | null = null;
 
 export function startAuditEventPruning() {
-  if (pruneTimer) return;
-  pruneTimer = setInterval(pruneOldAuditEvents, 24 * 60 * 60 * 1000);
+  const PRUNE_KEY = '__auditPruneTimer' as const;
+  if ((globalThis as any)[PRUNE_KEY]) clearInterval((globalThis as any)[PRUNE_KEY]);
+  (globalThis as any)[PRUNE_KEY] = setInterval(pruneOldAuditEvents, 24 * 60 * 60 * 1000);
+  pruneTimer = (globalThis as any)[PRUNE_KEY];
 }
 
 export function stopAuditEventPruning() {

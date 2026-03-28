@@ -15,11 +15,16 @@ import { getConfiguredSettings } from "@/lib/system-settings-config";
 const activeConnections = new Map<string, number>();
 const connectionLastActivity = new Map<string, number>();
 
+let globalConnectionCount = 0;
+const MAX_GLOBAL_SSE_CONNECTIONS = 500;
+
 const AUTH_RECHECK_INTERVAL_MS = 30_000;
 
 // Periodic cleanup of stale connection tracking entries
 const CLEANUP_INTERVAL_MS = 60_000;
-setInterval(() => {
+const CLEANUP_KEY = '__sseCleanupTimer' as const;
+if ((globalThis as any)[CLEANUP_KEY]) clearInterval((globalThis as any)[CLEANUP_KEY]);
+(globalThis as any)[CLEANUP_KEY] = setInterval(() => {
   const now = Date.now();
   const staleThreshold = getConfiguredSettings().sseTimeoutMs + 30_000; // timeout + 30s buffer
   for (const [userId, lastActive] of connectionLastActivity) {
@@ -41,14 +46,16 @@ export async function GET(
     const rateLimitResponse = consumeApiRateLimit(request, "submissions:events");
     if (rateLimitResponse) return rateLimitResponse;
 
+    if (globalConnectionCount >= MAX_GLOBAL_SSE_CONNECTIONS) {
+      return apiError("serverBusy", 503);
+    }
+
     // Enforce per-user SSE connection cap
     const sseConfig = getConfiguredSettings();
     const currentCount = activeConnections.get(user.id) ?? 0;
     if (currentCount >= sseConfig.maxSseConnectionsPerUser) {
       return apiError("tooManyConnections", 429);
     }
-    activeConnections.set(user.id, currentCount + 1);
-    connectionLastActivity.set(user.id, Date.now());
 
     const userId = user.id;
 
@@ -69,6 +76,11 @@ export async function GET(
     const hasAccess = await canAccessSubmission(submission, user.id, user.role);
     if (!hasAccess) return forbidden();
 
+    // Increment counters after all fallible checks pass
+    activeConnections.set(userId, currentCount + 1);
+    connectionLastActivity.set(userId, Date.now());
+    globalConnectionCount += 1;
+
     const isOwner = submission.userId === user.id;
     const caps = await resolveCapabilities(user.role);
     const canViewSource = caps.has("submissions.view_source");
@@ -87,6 +99,7 @@ export async function GET(
       } else {
         activeConnections.set(userId, count - 1);
       }
+      globalConnectionCount = Math.max(0, globalConnectionCount - 1);
       return new Response(body, {
         headers: sseHeaders(),
       });
@@ -110,6 +123,7 @@ export async function GET(
           } else {
             activeConnections.set(userId, count - 1);
           }
+          globalConnectionCount = Math.max(0, globalConnectionCount - 1);
           try {
             controller.close();
           } catch {
