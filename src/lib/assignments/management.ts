@@ -1,4 +1,4 @@
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, sqlite } from "@/lib/db";
 import {
@@ -7,6 +7,7 @@ import {
   examSessions,
   problemGroupAccess,
   problems,
+  submissions,
 } from "@/lib/db/schema";
 import { syncGroupAccessRows } from "@/lib/problem-sets/management";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
@@ -218,6 +219,16 @@ export function deleteAssignmentWithProblems(assignmentId: string) {
 
     if (!assignment) {
       return;
+    }
+
+    const submissionCountRow = db
+      .select({ total: sql<number>`count(${submissions.id})` })
+      .from(submissions)
+      .where(eq(submissions.assignmentId, assignmentId))
+      .get() ?? { total: 0 };
+
+    if (Number(submissionCountRow.total) > 0) {
+      throw new Error("assignmentDeleteBlocked");
     }
 
     db.delete(assignmentProblems).where(eq(assignmentProblems.assignmentId, assignmentId)).run();
