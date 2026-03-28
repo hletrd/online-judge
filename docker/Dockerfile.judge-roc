@@ -12,9 +12,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
     rm /tmp/roc.tar.gz && \
     apt-get install -y --no-install-recommends zstd && \
     mkdir -p /opt/roc-platform && \
-    curl -fsSL -o /opt/roc-platform/basic-cli-alpha-0.tar.zst \
+    curl -fsSL -o /tmp/basic-cli.tar.zst \
       "https://github.com/roc-lang/basic-cli/releases/download/alpha-0/HVZonS7HStbvGwhqvDZE1HreyDfqD6tayzFbi9rAUXYN.tar.zst" && \
-    chmod 644 /opt/roc-platform/basic-cli-alpha-0.tar.zst && \
+    mkdir -p /opt/roc-platform/basic-cli && \
+    tar --zstd -xf /tmp/basic-cli.tar.zst -C /opt/roc-platform/basic-cli && \
+    rm /tmp/basic-cli.tar.zst && \
+    chmod -R a+rX /opt/roc-platform && \
     apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* && \
     useradd --no-create-home --shell /usr/sbin/nologin judge && \
     mkdir -p /workspace && chown judge:judge /workspace
