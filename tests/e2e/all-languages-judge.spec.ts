@@ -860,7 +860,7 @@ Start w
   # io = io <<< (a + b) <<< "\\n"
   # (ok, w) = fclose io w
   = w`,
-  roc: `app [main!] { pf: platform "/opt/roc-platform/basic-cli/" }
+  roc: `app [main!] { pf: platform "/opt/roc-platform/basic-cli-0.18.0.tar.br" }
 
 import pf.Stdout
 import pf.Stdin
