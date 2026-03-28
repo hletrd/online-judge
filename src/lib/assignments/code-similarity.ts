@@ -1,5 +1,4 @@
 import { nanoid } from "nanoid";
-import { Worker } from "worker_threads";
 import { db, sqlite } from "@/lib/db";
 import { antiCheatEvents, submissions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -67,33 +66,57 @@ type SubmissionRow = {
 };
 
 /**
- * Run code similarity check using the TypeScript implementation in a worker thread.
- * This is the fallback path when the Rust sidecar is unavailable.
- * Offloads the O(n^2) n-gram comparison to a worker thread to avoid blocking the main thread.
+ * Yield the event loop to prevent blocking during heavy computation.
  */
-function runSimilarityCheckTS(
+function yieldEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+/**
+ * Run code similarity check using the TypeScript implementation.
+ * Uses chunked async processing to yield the event loop every ~100 comparisons,
+ * preventing long blocking during O(n^2) pair-wise n-gram comparison.
+ */
+async function runSimilarityCheckTS(
   rows: SubmissionRow[],
   threshold: number,
   ngramSize: number
 ): Promise<SimilarityPair[]> {
-  return new Promise((resolve, reject) => {
-    const worker = new Worker(
-      new URL("./similarity-worker.ts", import.meta.url),
-      { workerData: { submissions: rows, threshold, ngramSize } }
-    );
-    const timeout = setTimeout(() => {
-      worker.terminate();
-      reject(new Error("Similarity check timed out"));
-    }, 30_000);
-    worker.on("message", (result: SimilarityPair[]) => {
-      clearTimeout(timeout);
-      resolve(result);
-    });
-    worker.on("error", (err) => {
-      clearTimeout(timeout);
-      reject(err);
-    });
-  });
+  // Group by problemId
+  const byProblem = new Map<string, { userId: string; ngrams: Set<string> }[]>();
+  for (const row of rows) {
+    const normalized = normalizeSource(row.sourceCode);
+    const ngrams = generateNgrams(normalized, ngramSize);
+    const arr = byProblem.get(row.problemId) ?? [];
+    arr.push({ userId: row.userId, ngrams });
+    byProblem.set(row.problemId, arr);
+  }
+
+  const pairs: SimilarityPair[] = [];
+  let comparisons = 0;
+
+  for (const [problemId, entries] of byProblem) {
+    for (let i = 0; i < entries.length; i++) {
+      for (let j = i + 1; j < entries.length; j++) {
+        const sim = jaccardSimilarity(entries[i].ngrams, entries[j].ngrams);
+        if (sim >= threshold) {
+          pairs.push({
+            userId1: entries[i].userId,
+            userId2: entries[j].userId,
+            problemId,
+            similarity: sim,
+          });
+        }
+        comparisons++;
+        // Yield every 100 comparisons to keep the event loop responsive
+        if (comparisons % 100 === 0) {
+          await yieldEventLoop();
+        }
+      }
+    }
+  }
+
+  return pairs;
 }
 
 /**
