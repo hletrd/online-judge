@@ -129,21 +129,16 @@
 
 | Failing | Status | Root Cause |
 |---------|--------|------------|
-| `roc` | compile_error | Upstream Roc compiler panic (`Arc references to module_ids`) triggered by systemd 255.4-1ubuntu8.14 update. Affects all available Roc releases (alpha1, alpha3-rolling, alpha4-rolling). Requires upstream fix. |
+| `roc` | compile_error | Upstream Roc compiler panic (`Arc references to module_ids`) when loading any platform. Affects all available releases (alpha1 through alpha4-rolling) on all architectures. Requires upstream fix. |
 
 ### arm64 E2E Summary (2026-03-29)
 
-**107 of 114 languages pass** on arm64.
+**112 of 114 languages pass** on arm64.
 
 | Failing | Status | Root Cause |
 |---------|--------|------------|
 | `roc` | compile_error | Same upstream compiler panic as amd64 |
-| `carp` | compile_error | Missing `/opt/carp/core/Core.carp` — arm64 Haskell Stack build incomplete |
-| `curry` | compile_error | `pakcs: not found` — arm64 build OOM killed during qemu emulation |
-| `flix` | compile_error | Compilation timeout (JVM + Scala on arm64 exceeds 120s limit) |
-| `freebasic` | compile_error | gcc `-m64` flag incompatible with arm64 qemu cross-compilation |
-| `shakespeare` | runtime_error | DB language config override stale (needs manual reset) |
-| `grain` | compile_error | Needs compile tmpfs exec flag + correct run command (DB config) |
+| `curry` | compile_error | pakcs-frontend under qemu exceeds 3.8GB server memory during compilation. Needs server with more RAM or native arm64 pakcs build. |
 
 ## Docker Image Presets
 
