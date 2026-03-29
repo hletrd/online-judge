@@ -8,7 +8,7 @@ use serde::Serialize;
 use tokio::fs;
 use tracing::Instrument;
 
-const COMPILATION_MEMORY_LIMIT_MB: u32 = 1024;
+const COMPILATION_MEMORY_LIMIT_MB: u32 = 2048;
 const COMPILATION_TIMEOUT_MS: u64 = 120_000;
 const MAX_COMPILATION_TIMEOUT_MS: u64 = 300_000;
 const MIN_TIMEOUT_MS: u64 = 100;

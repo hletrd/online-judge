@@ -185,7 +185,11 @@ async fn run_docker_once(
         "--memory".into(),
         format!("{}m", mem_limit),
         "--memory-swap".into(),
-        format!("{}m", mem_limit),
+        if options.phase == Phase::Compile {
+            format!("{}m", mem_limit * 2) // allow swap during compilation for heavy languages
+        } else {
+            format!("{}m", mem_limit) // strict limit during execution
+        },
         "--cpus".into(),
         EXECUTION_CPU_LIMIT.into(),
         "--pids-limit".into(),
