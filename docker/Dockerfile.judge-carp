@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       git clone --depth 1 --branch v0.5.5 https://github.com/carp-lang/Carp.git /tmp/carp-src && \
       cd /tmp/carp-src && \
       stack install --local-bin-path /opt/carp/bin && \
+      cp -r /tmp/carp-src/core /opt/carp/core && \
       rm -rf /tmp/carp-src ~/.stack && \
       apt-get purge -y curl git; \
     fi && \
