@@ -3,7 +3,7 @@ FROM debian:bookworm-slim
 # Install Chez Scheme from Debian packages (9.5.8, supports amd64+arm64)
 # and build dependencies for Idris 2
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    chezscheme gcc make curl ca-certificates git libgmp-dev \
+    chezscheme gcc libc6-dev make curl ca-certificates git libgmp-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Build Idris 2 v0.8.0 from source
