@@ -13,14 +13,10 @@ RUN git clone --depth 1 --branch v10.1.0 \
     cd /tmp/chez && \
     ./configure --disable-x11 && \
     make && make install && \
-    CHEZ_BIN=$(find /usr/local/bin -name 'scheme*' -o -name 'chez*' -o -name 'petite*' | head -1) && \
-    if [ -z "$CHEZ_BIN" ]; then \
-      echo "Chez Scheme binary names:" && ls /usr/local/bin/ && \
-      echo "FATAL: Cannot find Chez Scheme binary" && exit 1; \
-    fi && \
+    CHEZ_BIN=$(find /usr -type f -name 'scheme' | head -1) && \
     echo "Found Chez Scheme at: $CHEZ_BIN" && \
     ln -sf "$CHEZ_BIN" /usr/local/bin/chez && \
-    chez --version && \
+    ln -sf "$CHEZ_BIN" /usr/local/bin/scheme && \
     rm -rf /tmp/chez
 
 # Build Idris 2 v0.8.0 from source
