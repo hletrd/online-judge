@@ -907,8 +907,8 @@ print(toString(na + nb))`,
   moonbit: `fn main {
   let line = read_line()
   let parts = line.split(" ").collect()
-  let a = @strconv.parse_int!(parts[0])
-  let b = @strconv.parse_int!(parts[1])
+  let a = @strconv.parse_int(parts[0]).unwrap()
+  let b = @strconv.parse_int(parts[1]).unwrap()
   println(a + b)
 }`,
   chapel: `use IO;
