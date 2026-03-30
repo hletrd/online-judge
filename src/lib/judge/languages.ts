@@ -1390,7 +1390,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".mbt",
     dockerImage: "judge-moonbit:latest",
     compiler: `moon ${JUDGE_TOOLCHAIN_VERSIONS.moonbit}`,
-    compileCommand: ["sh", "-c", "export HOME=/tmp && cp -r /opt/moonbit-project /tmp/moonbit-project && cp /workspace/solution.mbt /tmp/moonbit-project/main/main.mbt && cd /tmp/moonbit-project && moon build --target native 2>&1 && cp target/native/release/build/main/main /workspace/solution"],
+    compileCommand: ["sh", "-c", "export HOME=/tmp MOON_HOME=/root/.moon && cp -r /opt/moonbit-project /tmp/moonbit-project && cp /workspace/solution.mbt /tmp/moonbit-project/main/main.mbt && cd /tmp/moonbit-project && moon build --target native 2>&1 && cp target/native/release/build/main/main /workspace/solution"],
     runCommand: ["/workspace/solution"],
   },
   chapel: {
@@ -1430,7 +1430,7 @@ export const JUDGE_LANGUAGE_CONFIGS: Record<Language, JudgeLanguageDefinition> =
     extension: ".elm",
     dockerImage: "judge-elm:latest",
     compiler: `Elm ${JUDGE_TOOLCHAIN_VERSIONS.elm}`,
-    compileCommand: ["sh", "-c", "export HOME=/tmp ELM_HOME=/root/.elm && cp -r /opt/elm-project /tmp/elm-project && cp /workspace/solution.elm /tmp/elm-project/src/Main.elm && cd /tmp/elm-project && elm make src/Main.elm --optimize --output=/workspace/solution.js 2>&1 && cp /opt/elm-project/driver.js /workspace/driver.js"],
+    compileCommand: ["sh", "-c", "export HOME=/tmp && cp -r /root/.elm /tmp/.elm && export ELM_HOME=/tmp/.elm && cp -r /opt/elm-project /tmp/elm-project && cp /workspace/solution.elm /tmp/elm-project/src/Main.elm && cd /tmp/elm-project && elm make src/Main.elm --optimize --output=/workspace/solution.js 2>&1 && cp /opt/elm-project/driver.js /workspace/driver.js"],
     runCommand: ["node", "/workspace/driver.js"],
   },
 };
