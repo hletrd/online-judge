@@ -1,6 +1,6 @@
-# Supported Languages (118 variants)
+# Supported Languages (120 variants)
 
-100 Docker images covering 118 language variants. Deployed on both AMD64 (test) and ARM64 (production).
+100 Docker images covering 120 language variants. Deployed on both AMD64 (test) and ARM64 (production).
 
 | # | Language ID | Description | Docker Image | amd64 | arm64 | amd64 E2E | arm64 E2E |
 |---|-------------|-------------|--------------|-------|-------|-----------|-----------|
@@ -10,118 +10,120 @@
 | 4 | `c23` | C (C23, GCC) | `judge-cpp` | ✅ | ✅ | ✅ | ✅ |
 | 5 | `cpp20` | C++ (C++20, GCC) | `judge-cpp` | ✅ | ✅ | ✅ | ✅ |
 | 6 | `cpp23` | C++ (C++23, GCC) | `judge-cpp` | ✅ | ✅ | ✅ | ✅ |
-| 7 | `clang_c23` | C (C23, Clang) | `judge-clang` | ✅ | ✅ | ✅ | ✅ |
-| 8 | `clang_cpp23` | C++ (C++23, Clang) | `judge-clang` | ✅ | ✅ | ✅ | ✅ |
-| 9 | `llvm_ir` | LLVM IR (compiled with clang) | `judge-clang` | ✅ | ✅ | ✅ | ✅ |
-| 10 | `java` | Java 25 | `judge-jvm` | ✅ | ✅ | ✅ | ✅ |
-| 11 | `kotlin` | Kotlin 2.3 | `judge-jvm` | ✅ | ✅ | ✅ | ✅ |
-| 12 | `python` | Python 3.14 | `judge-python` | ✅ | ✅ | ✅ | ✅ |
-| 13 | `javascript` | Node.js 24 | `judge-node` | ✅ | ✅ | ✅ | ✅ |
-| 14 | `typescript` | TypeScript 6.0 (Node.js 24) | `judge-node` | ✅ | ✅ | ✅ | ✅ |
-| 15 | `coffeescript` | CoffeeScript 2.7 (Node.js 24) | `judge-node` | ✅ | ✅ | ✅ | ✅ |
-| 16 | `rust` | Rust 1.94 | `judge-rust` | ✅ | ✅ | ✅ | ✅ |
-| 17 | `go` | Go 1.26 | `judge-go` | ✅ | ✅ | ✅ | ✅ |
-| 18 | `swift` | Swift 6.2 | `judge-swift` | ✅ | ✅ | ✅ | ✅ |
-| 19 | `csharp` | C# (Mono 6.12) | `judge-csharp` | ✅ | ✅ | ✅ | ✅ |
-| 20 | `fsharp` | F# (.NET 10) | `judge-fsharp` | ✅ | ✅ | ✅ | ✅ |
-| 21 | `vbnet` | Visual Basic .NET (.NET 10) | `judge-fsharp` | ✅ | ✅ | ✅ | ✅ |
-| 22 | `r` | R 4.5 | `judge-r` | ✅ | ✅ | ✅ | ✅ |
-| 23 | `perl` | Perl 5.40 | `judge-perl` | ✅ | ✅ | ✅ | ✅ |
-| 24 | `php` | PHP 8.4 | `judge-php` | ✅ | ✅ | ✅ | ✅ |
-| 25 | `ruby` | Ruby 3.4 | `judge-ruby` | ✅ | ✅ | ✅ | ✅ |
-| 26 | `lua` | Lua 5.4 | `judge-lua` | ✅ | ✅ | ✅ | ✅ |
-| 27 | `haskell` | Haskell (GHC 9.4) | `judge-haskell` | ✅ | ✅ | ✅ | ✅ |
-| 28 | `dart` | Dart 3.8 | `judge-dart` | ✅ | ✅ | ✅ | ✅ |
-| 29 | `zig` | Zig 0.13 | `judge-zig` | ✅ | ✅ | ✅ | ✅ |
-| 30 | `nim` | Nim 2.2 | `judge-nim` | ✅ | ✅ | ✅ | ✅ |
-| 31 | `ocaml` | OCaml 4.14 | `judge-ocaml` | ✅ | ✅ | ✅ | ✅ |
-| 32 | `elixir` | Elixir 1.18 | `judge-elixir` | ✅ | ✅ | ✅ | ✅ |
-| 33 | `julia` | Julia 1.12 | `judge-julia` | ✅ | ✅ | ✅ | ✅ |
-| 34 | `d` | D (LDC 1.39) | `judge-d` | ✅ | ✅ | ✅ | ✅ |
-| 35 | `racket` | Racket 8.10 | `judge-racket` | ✅ | ✅ | ✅ | ✅ |
-| 36 | `vlang` | V 0.5 | `judge-v` | ✅ | ✅ | ✅ | ✅ |
-| 37 | `fortran` | Fortran (GFortran 14) | `judge-fortran` | ✅ | ✅ | ✅ | ✅ |
-| 38 | `pascal` | Pascal (FPC 3.2) | `judge-pascal` | ✅ | ✅ | ✅ | ✅ |
-| 39 | `delphi` | Delphi (FPC, Delphi mode) | `judge-pascal` | ✅ | ✅ | ✅ | ✅ |
-| 40 | `cobol` | COBOL (GnuCOBOL 3.2) | `judge-cobol` | ✅ | ✅ | ✅ | ✅ |
-| 41 | `scala` | Scala 3.5 | `judge-scala` | ✅ | ✅ | ✅ | ✅ |
-| 42 | `erlang` | Erlang 27 | `judge-erlang` | ✅ | ✅ | ✅ | ✅ |
-| 43 | `commonlisp` | Common Lisp (SBCL 2.5) | `judge-commonlisp` | ✅ | ✅ | ✅ | ✅ |
-| 44 | `bash` | Bash 5.2 | `judge-bash` | ✅ | ✅ | ✅ | ✅ |
-| 45 | `sed` | Sed | `judge-bash` | ✅ | ✅ | ✅ | ✅ |
-| 46 | `dc` | dc (desk calculator) | `judge-bash` | ✅ | ✅ | ✅ | ✅ |
-| 47 | `ada` | Ada (GNAT 14) | `judge-ada` | ✅ | ✅ | ✅ | ✅ |
-| 48 | `clojure` | Clojure 1.12 | `judge-clojure` | ✅ | ✅ | ✅ | ✅ |
-| 49 | `prolog` | Prolog (SWI-Prolog 9) | `judge-prolog` | ✅ | ✅ | ✅ | ✅ |
-| 50 | `tcl` | Tcl 8.6 | `judge-tcl` | ✅ | ✅ | ✅ | ✅ |
-| 51 | `awk` | AWK (GAWK 5) | `judge-awk` | ✅ | ✅ | ✅ | ✅ |
-| 52 | `scheme` | Scheme (Chicken 5) | `judge-scheme` | ✅ | ✅ | ✅ | ✅ |
-| 53 | `groovy` | Groovy 4.0 | `judge-groovy` | ✅ | ✅ | ✅ | ✅ |
-| 54 | `octave` | GNU Octave 9 | `judge-octave` | ✅ | ✅ | ✅ | ✅ |
-| 55 | `crystal` | Crystal 1.14 | `judge-crystal` | ✅ | ✅ | ✅ | ✅ |
-| 56 | `powershell` | PowerShell 7.5 | `judge-powershell` | ✅ | ✅ | ✅ | ✅ |
-| 57 | `postscript` | PostScript (Ghostscript 10) | `judge-postscript` | ✅ | ✅ | ✅ | ✅ |
-| 58 | `brainfuck` | Brainfuck | `judge-brainfuck` | ✅ | ✅ | ✅ | ✅ |
-| 59 | `befunge` | Befunge-93 | `judge-esoteric` | ✅ | ✅ | ✅ | ✅ |
-| 60 | `aheui` | Aheui | `judge-esoteric` | ✅ | ✅ | ✅ | ✅ |
-| 61 | `hyeong` | Hyeong | `judge-esoteric` | ✅ | ✅ | ✅ | ✅ |
-| 62 | `whitespace` | Whitespace | `judge-esoteric` | ✅ | ✅ | ✅ | ✅ |
-| 63 | `b` | B (BCause / bext-lang) | `judge-b` | ✅ | ✅ | ✅ | ✅ |
-| 64 | `flix` | Flix (JVM) | `judge-jvm` | ✅ | ✅ | ✅ | ✅ |
-| 65 | `apl` | APL (GNU APL) | `judge-apl` | ✅ | ✅ | ✅ | ✅ |
-| 66 | `freebasic` | FreeBASIC | `judge-freebasic` | ✅ | ✅ | ✅ | ✅ |
-| 67 | `smalltalk` | Smalltalk (GNU Smalltalk) | `judge-smalltalk` | ✅ | ✅ | ✅ | ✅ |
-| 68 | `nasm` | Assembly (NASM x86-64 / GNU as AArch64) | `judge-nasm` | ✅ | ✅ | ✅ | ✅ |
-| 69 | `objective_c` | Objective-C (GCC gobjc) | `judge-objective-c` | ✅ | ✅ | ✅ | ✅ |
-| 70 | `forth` | Forth (Gforth) | `judge-forth` | ✅ | ✅ | ✅ | ✅ |
-| 71 | `raku` | Raku (Rakudo) | `judge-raku` | ✅ | ✅ | ✅ | ✅ |
-| 72 | `haxe` | Haxe 4.3 (Python backend) | `judge-haxe` | ✅ | ✅ | ✅ | ✅ |
-| 73 | `odin` | Odin | `judge-odin` | ✅ | ✅ | ✅ | ✅ |
-| 74 | `uiua` | Uiua | `judge-uiua` | ✅ | ✅ | ✅ | ✅ |
-| 75 | `bqn` | BQN (CBQN) | `judge-bqn` | ✅ | ✅ | ✅ | ✅ |
-| 76 | `icon` | Icon | `judge-icon` | ✅ | ✅ | ✅ | ✅ |
-| 77 | `algol68` | Algol 68 (a68g) | `judge-algol68` | ✅ | ✅ | ✅ | ✅ |
-| 78 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` | ✅ | ✅ | ✅ | ✅ |
-| 79 | `lolcode` | LOLCODE (lci) | `judge-lolcode` | ✅ | ✅ | ✅ | ✅ |
-| 80 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` | ✅ | ✅ | ✅ | ✅ |
-| 81 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` | ✅ | ✅ | ✅ | ✅ |
-| 82 | `deno_js` | JavaScript (Deno) | `judge-deno` | ✅ | ✅ | ✅ | ✅ |
-| 83 | `deno_ts` | TypeScript (Deno) | `judge-deno` | ✅ | ✅ | ✅ | ✅ |
-| 84 | `bun_js` | JavaScript (Bun) | `judge-bun` | ✅ | ✅ | ✅ | ✅ |
-| 85 | `bun_ts` | TypeScript (Bun) | `judge-bun` | ✅ | ✅ | ✅ | ✅ |
-| 86 | `gleam` | Gleam (Erlang target) | `judge-gleam` | ✅ | ✅ | ✅ | ✅ |
-| 87 | `sml` | Standard ML (Poly/ML) | `judge-sml` | ✅ | ✅ | ✅ | ✅ |
-| 88 | `fennel` | Fennel (Lua VM) | `judge-lua` | ✅ | ✅ | ✅ | ✅ |
-| 89 | `micropython` | MicroPython | `judge-micropython` | ✅ | ✅ | ✅ | ✅ |
-| 90 | `squirrel` | Squirrel 3.2 | `judge-squirrel` | ✅ | ✅ | ✅ | ✅ |
-| 91 | `rexx` | Rexx (Regina) | `judge-rexx` | ✅ | ✅ | ✅ | ✅ |
-| 92 | `hy` | Hy (Lisp on Python) | `judge-hy` | ✅ | ✅ | ✅ | ✅ |
-| 93 | `arturo` | Arturo | `judge-arturo` | ✅ | ✅ | ✅ | ✅ |
-| 94 | `janet` | Janet | `judge-janet` | ✅ | ✅ | ✅ | ✅ |
-| 95 | `c3` | C3 | `judge-c3` | ✅ | ✅ | ✅ | ✅ |
-| 96 | `vala` | Vala | `judge-vala` | ✅ | ✅ | ✅ | ✅ |
-| 97 | `nelua` | Nelua | `judge-nelua` | ✅ | ✅ | ✅ | ✅ |
-| 98 | `hare` | Hare | `judge-hare` | ✅ | ✅ | ✅ | ✅ |
-| 99 | `koka` | Koka | `judge-koka` | ✅ | ✅ | ✅ | ✅ |
-| 100 | `lean` | Lean 4 | `judge-lean` | ✅ | ✅ | ✅ | ✅ |
-| 101 | `picat` | Picat 3.9 | `judge-picat` | ✅ | ✅ | ✅ | ✅ |
-| 102 | `mercury` | Mercury 22.01.8 | `judge-mercury` | ✅ | ✅ | ✅ | ✅ |
-| 103 | `wat` | WebAssembly (WAT, wabt+wasmtime) | `judge-wat` | ✅ | ✅ | ✅ | ✅ |
-| 104 | `purescript` | PureScript 0.15.16 | `judge-purescript` | ✅ | ✅ | ✅ | ✅ |
-| 105 | `modula2` | Modula-2 (GCC gm2) | `judge-modula2` | ✅ | ✅ | ✅ | ✅ |
-| 106 | `factor` | Factor 0.101 | `judge-factor` | ✅ | ✅ | ✅ | ✅ |
-| 107 | `spark` | SPARK (Ada/SPARK 2014, GNAT) | `judge-ada` | ✅ | ✅ | ✅ | ✅ |
-| 108 | `minizinc` | MiniZinc 2.9.5 | `judge-minizinc` | ✅ | ✅ | ✅ | ✅ |
-| 109 | `curry` | Curry (PAKCS 3.9.0) | `judge-curry` | ✅ | ✅ | ✅ | ✅ |
-| 110 | `clean` | Clean 3.1 | `judge-clean` | ✅ | ✅ | ✅ | ✅ |
-| 111 | `carp` | Carp 0.5.5 | `judge-carp` | ✅ | ✅ | ✅ | ✅ |
-| 112 | `grain` | Grain 0.7.2 | `judge-grain` | ✅ | ✅ | ✅ | ✅ |
-| 113 | `pony` | Pony 0.61.1 | `judge-pony` | ✅ | ✅ | ✅ | ✅ |
-| 114 | `moonbit` | MoonBit 0.8 (native) | `judge-moonbit` | ✅ | ❌ | ✅ | — |
-| 115 | `chapel` | Chapel 2.8 | `judge-chapel` | ✅ | ✅ | ✅ | ✅ |
-| 116 | `idris2` | Idris 2 0.8.0 (Chez Scheme) | `judge-idris2` | ✅ | ❌ | ✅ | — |
-| 117 | `rescript` | ReScript 12.2 (Node.js) | `judge-rescript` | ✅ | ✅ | ✅ | ✅ |
-| 118 | `elm` | Elm 0.19.1 (Node.js) | `judge-elm` | ✅ | ✅ | ✅ | ✅ |
+| 7 | `cpp26` | C++ (C++26, GCC) | `judge-cpp` | ✅ | ✅ | — | — |
+| 8 | `clang_c23` | C (C23, Clang) | `judge-clang` | ✅ | ✅ | ✅ | ✅ |
+| 9 | `clang_cpp23` | C++ (C++23, Clang) | `judge-clang` | ✅ | ✅ | ✅ | ✅ |
+| 10 | `clang_cpp26` | C++ (C++26, Clang) | `judge-clang` | ✅ | ✅ | — | — |
+| 11 | `llvm_ir` | LLVM IR (compiled with clang) | `judge-clang` | ✅ | ✅ | ✅ | ✅ |
+| 12 | `java` | Java 25 | `judge-jvm` | ✅ | ✅ | ✅ | ✅ |
+| 13 | `kotlin` | Kotlin 2.3 | `judge-jvm` | ✅ | ✅ | ✅ | ✅ |
+| 14 | `python` | Python 3.14 | `judge-python` | ✅ | ✅ | ✅ | ✅ |
+| 15 | `javascript` | Node.js 24 | `judge-node` | ✅ | ✅ | ✅ | ✅ |
+| 16 | `typescript` | TypeScript 6.0 (Node.js 24) | `judge-node` | ✅ | ✅ | ✅ | ✅ |
+| 17 | `coffeescript` | CoffeeScript 2.7 (Node.js 24) | `judge-node` | ✅ | ✅ | ✅ | ✅ |
+| 18 | `rust` | Rust 1.94 | `judge-rust` | ✅ | ✅ | ✅ | ✅ |
+| 19 | `go` | Go 1.26 | `judge-go` | ✅ | ✅ | ✅ | ✅ |
+| 20 | `swift` | Swift 6.2 | `judge-swift` | ✅ | ✅ | ✅ | ✅ |
+| 21 | `csharp` | C# (Mono 6.12) | `judge-csharp` | ✅ | ✅ | ✅ | ✅ |
+| 22 | `fsharp` | F# (.NET 10) | `judge-fsharp` | ✅ | ✅ | ✅ | ✅ |
+| 23 | `vbnet` | Visual Basic .NET (.NET 10) | `judge-fsharp` | ✅ | ✅ | ✅ | ✅ |
+| 24 | `r` | R 4.5 | `judge-r` | ✅ | ✅ | ✅ | ✅ |
+| 25 | `perl` | Perl 5.40 | `judge-perl` | ✅ | ✅ | ✅ | ✅ |
+| 26 | `php` | PHP 8.4 | `judge-php` | ✅ | ✅ | ✅ | ✅ |
+| 27 | `ruby` | Ruby 3.4 | `judge-ruby` | ✅ | ✅ | ✅ | ✅ |
+| 28 | `lua` | Lua 5.4 | `judge-lua` | ✅ | ✅ | ✅ | ✅ |
+| 29 | `haskell` | Haskell (GHC 9.4) | `judge-haskell` | ✅ | ✅ | ✅ | ✅ |
+| 30 | `dart` | Dart 3.8 | `judge-dart` | ✅ | ✅ | ✅ | ✅ |
+| 31 | `zig` | Zig 0.13 | `judge-zig` | ✅ | ✅ | ✅ | ✅ |
+| 32 | `nim` | Nim 2.2 | `judge-nim` | ✅ | ✅ | ✅ | ✅ |
+| 33 | `ocaml` | OCaml 4.14 | `judge-ocaml` | ✅ | ✅ | ✅ | ✅ |
+| 34 | `elixir` | Elixir 1.18 | `judge-elixir` | ✅ | ✅ | ✅ | ✅ |
+| 35 | `julia` | Julia 1.12 | `judge-julia` | ✅ | ✅ | ✅ | ✅ |
+| 36 | `d` | D (LDC 1.39) | `judge-d` | ✅ | ✅ | ✅ | ✅ |
+| 37 | `racket` | Racket 8.10 | `judge-racket` | ✅ | ✅ | ✅ | ✅ |
+| 38 | `vlang` | V 0.5 | `judge-v` | ✅ | ✅ | ✅ | ✅ |
+| 39 | `fortran` | Fortran (GFortran 14) | `judge-fortran` | ✅ | ✅ | ✅ | ✅ |
+| 40 | `pascal` | Pascal (FPC 3.2) | `judge-pascal` | ✅ | ✅ | ✅ | ✅ |
+| 41 | `delphi` | Delphi (FPC, Delphi mode) | `judge-pascal` | ✅ | ✅ | ✅ | ✅ |
+| 42 | `cobol` | COBOL (GnuCOBOL 3.2) | `judge-cobol` | ✅ | ✅ | ✅ | ✅ |
+| 43 | `scala` | Scala 3.5 | `judge-scala` | ✅ | ✅ | ✅ | ✅ |
+| 44 | `erlang` | Erlang 27 | `judge-erlang` | ✅ | ✅ | ✅ | ✅ |
+| 45 | `commonlisp` | Common Lisp (SBCL 2.5) | `judge-commonlisp` | ✅ | ✅ | ✅ | ✅ |
+| 46 | `bash` | Bash 5.2 | `judge-bash` | ✅ | ✅ | ✅ | ✅ |
+| 47 | `sed` | Sed | `judge-bash` | ✅ | ✅ | ✅ | ✅ |
+| 48 | `dc` | dc (desk calculator) | `judge-bash` | ✅ | ✅ | ✅ | ✅ |
+| 49 | `ada` | Ada (GNAT 14) | `judge-ada` | ✅ | ✅ | ✅ | ✅ |
+| 50 | `clojure` | Clojure 1.12 | `judge-clojure` | ✅ | ✅ | ✅ | ✅ |
+| 51 | `prolog` | Prolog (SWI-Prolog 9) | `judge-prolog` | ✅ | ✅ | ✅ | ✅ |
+| 52 | `tcl` | Tcl 8.6 | `judge-tcl` | ✅ | ✅ | ✅ | ✅ |
+| 53 | `awk` | AWK (GAWK 5) | `judge-awk` | ✅ | ✅ | ✅ | ✅ |
+| 54 | `scheme` | Scheme (Chicken 5) | `judge-scheme` | ✅ | ✅ | ✅ | ✅ |
+| 55 | `groovy` | Groovy 4.0 | `judge-groovy` | ✅ | ✅ | ✅ | ✅ |
+| 56 | `octave` | GNU Octave 9 | `judge-octave` | ✅ | ✅ | ✅ | ✅ |
+| 57 | `crystal` | Crystal 1.14 | `judge-crystal` | ✅ | ✅ | ✅ | ✅ |
+| 58 | `powershell` | PowerShell 7.5 | `judge-powershell` | ✅ | ✅ | ✅ | ✅ |
+| 59 | `postscript` | PostScript (Ghostscript 10) | `judge-postscript` | ✅ | ✅ | ✅ | ✅ |
+| 60 | `brainfuck` | Brainfuck | `judge-brainfuck` | ✅ | ✅ | ✅ | ✅ |
+| 61 | `befunge` | Befunge-93 | `judge-esoteric` | ✅ | ✅ | ✅ | ✅ |
+| 62 | `aheui` | Aheui | `judge-esoteric` | ✅ | ✅ | ✅ | ✅ |
+| 63 | `hyeong` | Hyeong | `judge-esoteric` | ✅ | ✅ | ✅ | ✅ |
+| 64 | `whitespace` | Whitespace | `judge-esoteric` | ✅ | ✅ | ✅ | ✅ |
+| 65 | `b` | B (BCause / bext-lang) | `judge-b` | ✅ | ✅ | ✅ | ✅ |
+| 66 | `flix` | Flix (JVM) | `judge-jvm` | ✅ | ✅ | ✅ | ✅ |
+| 67 | `apl` | APL (GNU APL) | `judge-apl` | ✅ | ✅ | ✅ | ✅ |
+| 68 | `freebasic` | FreeBASIC | `judge-freebasic` | ✅ | ✅ | ✅ | ✅ |
+| 69 | `smalltalk` | Smalltalk (GNU Smalltalk) | `judge-smalltalk` | ✅ | ✅ | ✅ | ✅ |
+| 70 | `nasm` | Assembly (NASM x86-64 / GNU as AArch64) | `judge-nasm` | ✅ | ✅ | ✅ | ✅ |
+| 71 | `objective_c` | Objective-C (GCC gobjc) | `judge-objective-c` | ✅ | ✅ | ✅ | ✅ |
+| 72 | `forth` | Forth (Gforth) | `judge-forth` | ✅ | ✅ | ✅ | ✅ |
+| 73 | `raku` | Raku (Rakudo) | `judge-raku` | ✅ | ✅ | ✅ | ✅ |
+| 74 | `haxe` | Haxe 4.3 (Python backend) | `judge-haxe` | ✅ | ✅ | ✅ | ✅ |
+| 75 | `odin` | Odin | `judge-odin` | ✅ | ✅ | ✅ | ✅ |
+| 76 | `uiua` | Uiua | `judge-uiua` | ✅ | ✅ | ✅ | ✅ |
+| 77 | `bqn` | BQN (CBQN) | `judge-bqn` | ✅ | ✅ | ✅ | ✅ |
+| 78 | `icon` | Icon | `judge-icon` | ✅ | ✅ | ✅ | ✅ |
+| 79 | `algol68` | Algol 68 (a68g) | `judge-algol68` | ✅ | ✅ | ✅ | ✅ |
+| 80 | `snobol4` | SNOBOL4 (CSNOBOL4) | `judge-snobol4` | ✅ | ✅ | ✅ | ✅ |
+| 81 | `lolcode` | LOLCODE (lci) | `judge-lolcode` | ✅ | ✅ | ✅ | ✅ |
+| 82 | `shakespeare` | Shakespeare (shakespearelang) | `judge-shakespeare` | ✅ | ✅ | ✅ | ✅ |
+| 83 | `umjunsik` | 엄준식 (Umjunsik) | `judge-umjunsik` | ✅ | ✅ | ✅ | ✅ |
+| 84 | `deno_js` | JavaScript (Deno) | `judge-deno` | ✅ | ✅ | ✅ | ✅ |
+| 85 | `deno_ts` | TypeScript (Deno) | `judge-deno` | ✅ | ✅ | ✅ | ✅ |
+| 86 | `bun_js` | JavaScript (Bun) | `judge-bun` | ✅ | ✅ | ✅ | ✅ |
+| 87 | `bun_ts` | TypeScript (Bun) | `judge-bun` | ✅ | ✅ | ✅ | ✅ |
+| 88 | `gleam` | Gleam (Erlang target) | `judge-gleam` | ✅ | ✅ | ✅ | ✅ |
+| 89 | `sml` | Standard ML (Poly/ML) | `judge-sml` | ✅ | ✅ | ✅ | ✅ |
+| 90 | `fennel` | Fennel (Lua VM) | `judge-lua` | ✅ | ✅ | ✅ | ✅ |
+| 91 | `micropython` | MicroPython | `judge-micropython` | ✅ | ✅ | ✅ | ✅ |
+| 92 | `squirrel` | Squirrel 3.2 | `judge-squirrel` | ✅ | ✅ | ✅ | ✅ |
+| 93 | `rexx` | Rexx (Regina) | `judge-rexx` | ✅ | ✅ | ✅ | ✅ |
+| 94 | `hy` | Hy (Lisp on Python) | `judge-hy` | ✅ | ✅ | ✅ | ✅ |
+| 95 | `arturo` | Arturo | `judge-arturo` | ✅ | ✅ | ✅ | ✅ |
+| 96 | `janet` | Janet | `judge-janet` | ✅ | ✅ | ✅ | ✅ |
+| 97 | `c3` | C3 | `judge-c3` | ✅ | ✅ | ✅ | ✅ |
+| 98 | `vala` | Vala | `judge-vala` | ✅ | ✅ | ✅ | ✅ |
+| 99 | `nelua` | Nelua | `judge-nelua` | ✅ | ✅ | ✅ | ✅ |
+| 100 | `hare` | Hare | `judge-hare` | ✅ | ✅ | ✅ | ✅ |
+| 101 | `koka` | Koka | `judge-koka` | ✅ | ✅ | ✅ | ✅ |
+| 102 | `lean` | Lean 4 | `judge-lean` | ✅ | ✅ | ✅ | ✅ |
+| 103 | `picat` | Picat 3.9 | `judge-picat` | ✅ | ✅ | ✅ | ✅ |
+| 104 | `mercury` | Mercury 22.01.8 | `judge-mercury` | ✅ | ✅ | ✅ | ✅ |
+| 105 | `wat` | WebAssembly (WAT, wabt+wasmtime) | `judge-wat` | ✅ | ✅ | ✅ | ✅ |
+| 106 | `purescript` | PureScript 0.15.16 | `judge-purescript` | ✅ | ✅ | ✅ | ✅ |
+| 107 | `modula2` | Modula-2 (GCC gm2) | `judge-modula2` | ✅ | ✅ | ✅ | ✅ |
+| 108 | `factor` | Factor 0.101 | `judge-factor` | ✅ | ✅ | ✅ | ✅ |
+| 109 | `spark` | SPARK (Ada/SPARK 2014, GNAT) | `judge-ada` | ✅ | ✅ | ✅ | ✅ |
+| 110 | `minizinc` | MiniZinc 2.9.5 | `judge-minizinc` | ✅ | ✅ | ✅ | ✅ |
+| 111 | `curry` | Curry (PAKCS 3.9.0) | `judge-curry` | ✅ | ✅ | ✅ | ✅ |
+| 112 | `clean` | Clean 3.1 | `judge-clean` | ✅ | ✅ | ✅ | ✅ |
+| 113 | `carp` | Carp 0.5.5 | `judge-carp` | ✅ | ✅ | ✅ | ✅ |
+| 114 | `grain` | Grain 0.7.2 | `judge-grain` | ✅ | ✅ | ✅ | ✅ |
+| 115 | `pony` | Pony 0.61.1 | `judge-pony` | ✅ | ✅ | ✅ | ✅ |
+| 116 | `moonbit` | MoonBit 0.8 (native) | `judge-moonbit` | ✅ | ❌ | ✅ | — |
+| 117 | `chapel` | Chapel 2.8 | `judge-chapel` | ✅ | ✅ | ✅ | ✅ |
+| 118 | `idris2` | Idris 2 0.8.0 (Chez Scheme) | `judge-idris2` | ✅ | ❌ | ✅ | — |
+| 119 | `rescript` | ReScript 12.2 (Node.js) | `judge-rescript` | ✅ | ✅ | ✅ | ✅ |
+| 120 | `elm` | Elm 0.19.1 (Node.js) | `judge-elm` | ✅ | ✅ | ✅ | ✅ |
 
 ### ARM64 Build Summary
 
