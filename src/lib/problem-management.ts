@@ -73,6 +73,7 @@ export function createProblemWithTestCases(input: ProblemMutationInput, authorId
         comparisonMode: input.comparisonMode,
         floatAbsoluteError: input.floatAbsoluteError ?? null,
         floatRelativeError: input.floatRelativeError ?? null,
+        difficulty: input.difficulty ?? null,
         authorId,
         createdAt: now,
         updatedAt: now,
@@ -114,6 +115,7 @@ export function updateProblemWithTestCases(problemId: string, input: ProblemMuta
         comparisonMode: input.comparisonMode,
         floatAbsoluteError: input.floatAbsoluteError ?? null,
         floatRelativeError: input.floatRelativeError ?? null,
+        difficulty: input.difficulty ?? null,
         updatedAt: now,
       })
       .where(eq(problems.id, problemId))

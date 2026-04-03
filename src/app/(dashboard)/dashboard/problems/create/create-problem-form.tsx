@@ -4,7 +4,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { nanoid } from "nanoid";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2, X, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,7 @@ export type ProblemFormInitialData = {
   comparisonMode: "exact" | "float";
   floatAbsoluteError: number | null;
   floatRelativeError: number | null;
+  difficulty: number | null;
   testCases: ProblemTestCaseDraft[];
   tags: string[];
 };
@@ -50,6 +51,7 @@ type CreateProblemFormProps = {
   initialProblem?: ProblemFormInitialData;
   testCasesLocked?: boolean;
   allowTestCaseOverride?: boolean;
+  canUploadFiles?: boolean;
 };
 
 function createEmptyTestCase(): ProblemTestCaseDraft {
@@ -66,6 +68,7 @@ export default function CreateProblemForm({
   initialProblem,
   testCasesLocked = false,
   allowTestCaseOverride = false,
+  canUploadFiles = false,
 }: CreateProblemFormProps) {
   const t = useTranslations("problems");
   const tCommon = useTranslations("common");
@@ -93,6 +96,7 @@ export default function CreateProblemForm({
   const [comparisonMode, setComparisonMode] = useState<"exact" | "float">(initialProblem?.comparisonMode ?? "exact");
   const [floatAbsoluteError, setFloatAbsoluteError] = useState<string>(initialProblem?.floatAbsoluteError?.toString() ?? "1e-6");
   const [floatRelativeError, setFloatRelativeError] = useState<string>(initialProblem?.floatRelativeError?.toString() ?? "1e-6");
+  const [difficulty, setDifficulty] = useState<string>(initialProblem?.difficulty?.toString() ?? "");
   const [testCaseOverrideEnabled, setTestCaseOverrideEnabled] = useState(false);
   const [testCases, setTestCases] = useState<ProblemTestCaseDraft[]>(
     initialProblem?.testCases.length
@@ -108,6 +112,10 @@ export default function CreateProblemForm({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const testCaseInputFileRefs = useRef<HTMLInputElement[]>([]);
   const testCaseOutputFileRefs = useRef<HTMLInputElement[]>([]);
@@ -189,6 +197,8 @@ export default function CreateProblemForm({
         return t("invalidTimeLimit");
       case "invalidMemoryLimit":
         return t("invalidMemoryLimit");
+      case "invalidDifficulty":
+        return t("invalidDifficulty");
       case "testCaseInputRequired":
         return t("testCaseInputRequired");
       case "testCaseOutputRequired":
@@ -203,6 +213,42 @@ export default function CreateProblemForm({
         return t("createError");
       default:
         return error.message || tCommon("error");
+    }
+  }
+
+  async function handleImageUpload(file: File) {
+    if (!canUploadFiles) return;
+    setIsUploadingImage(true);
+
+    const placeholder = `![${t("imageUploading")}]()`;
+    const textarea = descriptionRef.current;
+    const cursorPos = textarea?.selectionStart ?? description.length;
+    const before = description.slice(0, cursorPos);
+    const after = description.slice(cursorPos);
+    setDescription(before + placeholder + after);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await apiFetch("/api/v1/files", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "uploadFailed");
+      }
+
+      const { data } = await res.json();
+      const markdown = `![${data.originalName}](${data.url})`;
+      setDescription((prev) => prev.replace(placeholder, markdown));
+      toast.success(t("imageUploadSuccess"));
+    } catch {
+      setDescription((prev) => prev.replace(placeholder, ""));
+      toast.error(t("imageUploadError"));
+    } finally {
+      setIsUploadingImage(false);
     }
   }
 
@@ -268,6 +314,7 @@ export default function CreateProblemForm({
           comparisonMode,
           floatAbsoluteError: comparisonMode === "float" ? parseFloat(floatAbsoluteError) || null : null,
           floatRelativeError: comparisonMode === "float" ? parseFloat(floatRelativeError) || null : null,
+          difficulty: difficulty !== "" && Number.isFinite(parseFloat(difficulty)) ? parseFloat(difficulty) : null,
           tags: currentTags,
           ...(areTestCasesEditable
             ? { testCases: testCases.map(({ _key: _, ...rest }) => rest) }
@@ -296,7 +343,7 @@ export default function CreateProblemForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_200px]">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_200px_160px]">
         <div className="space-y-2">
           <Label htmlFor="title">{t("titleLabel")}</Label>
           <Input
@@ -318,6 +365,21 @@ export default function CreateProblemForm({
           />
           <p className="text-xs text-muted-foreground">{t("sequenceNumberHint")}</p>
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="difficulty">{t("difficultyLabel")}</Label>
+          <Input
+            id="difficulty"
+            type="number"
+            min={0}
+            max={10}
+            step={0.01}
+            value={difficulty}
+            onChange={(e) => setDifficulty(e.target.value)}
+            placeholder={t("difficultyPlaceholder")}
+            disabled={isLoading}
+          />
+          <p className="text-xs text-muted-foreground">{t("difficultyHint")}</p>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -328,11 +390,61 @@ export default function CreateProblemForm({
             <TabsTrigger value="preview">{t("previewTab")}</TabsTrigger>
           </TabsList>
           <TabsContent value="write">
+            {canUploadFiles && (
+              <div className="flex items-center gap-1 rounded-t-md border border-b-0 px-2 py-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={isUploadingImage}
+                >
+                  <ImageIcon className="size-4 mr-1" />
+                  {t("insertImage")}
+                </Button>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageUpload(file);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+            )}
             <Textarea
+              ref={descriptionRef}
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="min-h-[200px]"
+              className={`min-h-[200px] ${canUploadFiles ? "rounded-t-none" : ""}`}
+              onPaste={canUploadFiles ? (e) => {
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                for (const item of items) {
+                  if (item.type.startsWith("image/")) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    if (file) handleImageUpload(file);
+                    return;
+                  }
+                }
+              } : undefined}
+              onDrop={canUploadFiles ? (e) => {
+                const droppedFiles = e.dataTransfer?.files;
+                if (!droppedFiles) return;
+                for (const file of droppedFiles) {
+                  if (file.type.startsWith("image/")) {
+                    e.preventDefault();
+                    handleImageUpload(file);
+                    return;
+                  }
+                }
+              } : undefined}
+              onDragOver={canUploadFiles ? (e) => e.preventDefault() : undefined}
             />
           </TabsContent>
           <TabsContent value="preview">

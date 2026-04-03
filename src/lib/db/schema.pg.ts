@@ -186,6 +186,7 @@ export const problems = pgTable("problems", {
   comparisonMode: text("comparison_mode").notNull().default("exact"),
   floatAbsoluteError: doublePrecision("float_absolute_error"),
   floatRelativeError: doublePrecision("float_relative_error"),
+  difficulty: doublePrecision("difficulty"),
   authorId: text("author_id").references(() => users.id, {
     onDelete: "set null",
   }),
@@ -437,6 +438,10 @@ export const systemSettings = pgTable("system_settings", {
   maxSseConnectionsPerUser: integer("max_sse_connections_per_user"),
   ssePollIntervalMs: integer("sse_poll_interval_ms"),
   sseTimeoutMs: integer("sse_timeout_ms"),
+  // File Uploads
+  uploadMaxImageSizeBytes: integer("upload_max_image_size_bytes"),
+  uploadMaxFileSizeBytes: integer("upload_max_file_size_bytes"),
+  uploadMaxImageDimension: integer("upload_max_image_dimension"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .$defaultFn(() => new Date(Date.now())),
@@ -739,5 +744,31 @@ export const antiCheatEvents = pgTable(
     index("ace_assignment_user_idx").on(table.assignmentId, table.userId),
     index("ace_assignment_type_idx").on(table.assignmentId, table.eventType),
     index("ace_assignment_created_idx").on(table.assignmentId, table.createdAt),
+  ]
+);
+
+export const files = pgTable(
+  "files",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    originalName: text("original_name").notNull(),
+    storedName: text("stored_name").notNull(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    category: text("category").notNull().default("attachment"),
+    width: integer("width"),
+    height: integer("height"),
+    uploadedBy: text("uploaded_by")
+      .references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("files_uploaded_by_idx").on(table.uploadedBy),
+    index("files_category_idx").on(table.category),
+    index("files_created_at_idx").on(table.createdAt),
   ]
 );

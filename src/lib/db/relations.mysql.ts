@@ -25,6 +25,7 @@ import {
   antiCheatEvents,
   roles,
   judgeWorkers,
+  files,
 } from "./schema.mysql";
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -42,6 +43,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   examSessions: many(examSessions),
   contestAccessTokens: many(contestAccessTokens),
   antiCheatEvents: many(antiCheatEvents),
+  uploadedFiles: many(files),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -314,3 +316,10 @@ export const antiCheatEventsRelations = relations(
     }),
   })
 );
+
+export const filesRelations = relations(files, ({ one }) => ({
+  uploader: one(users, {
+    fields: [files.uploadedBy],
+    references: [users.id],
+  }),
+}));

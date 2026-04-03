@@ -7,6 +7,7 @@ import { problems, submissions, problemTags, tags } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import CreateProblemForm from "@/app/(dashboard)/dashboard/problems/create/create-problem-form";
 import { ProblemDeleteButton } from "../problem-delete-button";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 export default async function EditProblemPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -71,6 +72,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
         <CardContent>
           <CreateProblemForm
             mode="edit"
+            canUploadFiles={(await resolveCapabilities(session.user.role)).has("files.upload")}
             initialProblem={{
               id: problem.id,
               title: problem.title,
@@ -86,6 +88,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
               comparisonMode: (problem.comparisonMode ?? "exact") as "exact" | "float",
               floatAbsoluteError: problem.floatAbsoluteError ?? null,
               floatRelativeError: problem.floatRelativeError ?? null,
+              difficulty: problem.difficulty ?? null,
               testCases: sortedTestCases.map((testCase) => ({
                 input: testCase.input,
                 expectedOutput: testCase.expectedOutput,

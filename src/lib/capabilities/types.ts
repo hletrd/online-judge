@@ -64,6 +64,10 @@ export const ALL_CAPABILITIES = [
   "system.plugins",
   "system.chat_logs",
 
+  // Files
+  "files.upload",
+  "files.manage",
+
   // Content (default student capabilities)
   "content.submit_solutions",
   "content.view_own_submissions",
@@ -153,6 +157,10 @@ export const CAPABILITY_GROUPS = {
       "system.plugins",
       "system.chat_logs",
     ],
+  },
+  files: {
+    labelKey: "capabilities.groups.files",
+    capabilities: ["files.upload", "files.manage"],
   },
   content: {
     labelKey: "capabilities.groups.content",

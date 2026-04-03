@@ -24,6 +24,12 @@ export type ConfiguredSettings = {
   maxSseConnectionsPerUser: number;
   ssePollIntervalMs: number;
   sseTimeoutMs: number;
+  // Compiler
+  compilerTimeLimitMs: number;
+  // File Uploads
+  uploadMaxImageSizeBytes: number;
+  uploadMaxFileSizeBytes: number;
+  uploadMaxImageDimension: number;
 };
 
 const DEFAULTS: ConfiguredSettings = {
@@ -45,6 +51,11 @@ const DEFAULTS: ConfiguredSettings = {
   maxSseConnectionsPerUser: 5,
   ssePollIntervalMs: 2_000,
   sseTimeoutMs: 300_000,
+  compilerTimeLimitMs: 10_000,
+  // File Uploads
+  uploadMaxImageSizeBytes: 10 * 1024 * 1024,
+  uploadMaxFileSizeBytes: 50 * 1024 * 1024,
+  uploadMaxImageDimension: 4096,
 };
 
 /** Environment variable overrides — maps setting key to env var name */
@@ -58,6 +69,10 @@ const ENV_OVERRIDES: Partial<Record<keyof ConfiguredSettings, string>> = {
   submissionMaxPending: "SUBMISSION_MAX_PENDING",
   submissionGlobalQueueLimit: "SUBMISSION_GLOBAL_QUEUE_LIMIT",
   staleClaimTimeoutMs: "JUDGE_STALE_CLAIM_TIMEOUT_MS",
+  compilerTimeLimitMs: "COMPILER_TIME_LIMIT_MS",
+  uploadMaxImageSizeBytes: "UPLOAD_MAX_IMAGE_SIZE_BYTES",
+  uploadMaxFileSizeBytes: "UPLOAD_MAX_FILE_SIZE_BYTES",
+  uploadMaxImageDimension: "UPLOAD_MAX_IMAGE_DIMENSION",
 };
 
 let cached: ConfiguredSettings | null = null;

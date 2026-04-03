@@ -50,6 +50,8 @@ const INSTRUCTOR_CAPABILITIES: readonly Capability[] = [
   "anti_cheat.run_similarity",
   // Users (limited)
   "users.view",
+  // Files
+  "files.upload",
 ];
 
 const ADMIN_CAPABILITIES: readonly Capability[] = [
@@ -61,6 +63,9 @@ const ADMIN_CAPABILITIES: readonly Capability[] = [
   // Groups (full)
   "groups.delete",
   "groups.view_all",
+  // Files
+  "files.upload",
+  "files.manage",
   // System
   "system.settings",
   "system.backup",

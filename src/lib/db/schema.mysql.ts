@@ -187,6 +187,7 @@ export const problems = mysqlTable("problems", {
   comparisonMode: varchar("comparison_mode", { length: 255 }).notNull().default("exact"),
   floatAbsoluteError: double("float_absolute_error"),
   floatRelativeError: double("float_relative_error"),
+  difficulty: double("difficulty"),
   authorId: varchar("author_id", { length: 36 }).references(() => users.id, {
     onDelete: "set null",
   }),
@@ -438,6 +439,10 @@ export const systemSettings = mysqlTable("system_settings", {
   maxSseConnectionsPerUser: int("max_sse_connections_per_user"),
   ssePollIntervalMs: int("sse_poll_interval_ms"),
   sseTimeoutMs: int("sse_timeout_ms"),
+  // File Uploads
+  uploadMaxImageSizeBytes: int("upload_max_image_size_bytes"),
+  uploadMaxFileSizeBytes: int("upload_max_file_size_bytes"),
+  uploadMaxImageDimension: int("upload_max_image_dimension"),
   updatedAt: timestamp("updated_at")
     .notNull()
     .$defaultFn(() => new Date(Date.now())),
@@ -740,5 +745,31 @@ export const antiCheatEvents = mysqlTable(
     index("ace_assignment_user_idx").on(table.assignmentId, table.userId),
     index("ace_assignment_type_idx").on(table.assignmentId, table.eventType),
     index("ace_assignment_created_idx").on(table.assignmentId, table.createdAt),
+  ]
+);
+
+export const files = mysqlTable(
+  "files",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    originalName: varchar("original_name", { length: 500 }).notNull(),
+    storedName: varchar("stored_name", { length: 255 }).notNull(),
+    mimeType: varchar("mime_type", { length: 255 }).notNull(),
+    sizeBytes: int("size_bytes").notNull(),
+    category: varchar("category", { length: 50 }).notNull().default("attachment"),
+    width: int("width"),
+    height: int("height"),
+    uploadedBy: varchar("uploaded_by", { length: 36 })
+      .references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    index("files_uploaded_by_idx").on(table.uploadedBy),
+    index("files_category_idx").on(table.category),
+    index("files_created_at_idx").on(table.createdAt),
   ]
 );

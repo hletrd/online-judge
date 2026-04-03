@@ -24,6 +24,7 @@ const problemPatchSchema = z.object({
   comparisonMode: z.enum(["exact", "float"]).optional(),
   floatAbsoluteError: z.number().min(0).max(1).nullable().optional(),
   floatRelativeError: z.number().min(0).max(1).nullable().optional(),
+  difficulty: z.number().min(0).max(10).nullable().optional(),
   testCases: z.array(z.object({
     id: z.string().optional(),
     input: z.string(),
@@ -114,6 +115,7 @@ export const PATCH = createApiHandler({
       comparisonMode: body.comparisonMode ?? problem.comparisonMode ?? "exact",
       floatAbsoluteError: body.floatAbsoluteError !== undefined ? body.floatAbsoluteError : problem.floatAbsoluteError ?? null,
       floatRelativeError: body.floatRelativeError !== undefined ? body.floatRelativeError : problem.floatRelativeError ?? null,
+      difficulty: body.difficulty !== undefined ? body.difficulty : problem.difficulty ?? null,
       testCases:
         body.testCases ??
         existingTestCases

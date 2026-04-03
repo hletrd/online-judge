@@ -50,6 +50,27 @@
       "when": 1774915200000,
       "tag": "0006_add_tags_and_sequence_number",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1775001600000,
+      "tag": "0007_add_lecture_mode",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1775088000000,
+      "tag": "0008_add_difficulty",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1775174400000,
+      "tag": "0009_add_files_and_upload_settings",
+      "breakpoints": true
     }
   ]
 }

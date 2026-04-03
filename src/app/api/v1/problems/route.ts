@@ -91,6 +91,7 @@ export const POST = createApiHandler({
       comparisonMode: body.comparisonMode,
       floatAbsoluteError: body.floatAbsoluteError,
       floatRelativeError: body.floatRelativeError,
+      difficulty: body.difficulty ?? null,
       testCases: body.testCases ?? [],
       tags: body.tags ?? [],
     });

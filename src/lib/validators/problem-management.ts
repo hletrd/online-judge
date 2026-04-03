@@ -23,6 +23,8 @@ export const problemMutationSchema = z.object({
   comparisonMode: z.enum(["exact", "float"]).optional().default("exact"),
   floatAbsoluteError: z.number().min(0).max(1).optional().nullable(),
   floatRelativeError: z.number().min(0).max(1).optional().nullable(),
+  difficulty: z.number().min(0, "invalidDifficulty").max(10, "invalidDifficulty").nullable().optional()
+    .transform((v) => v != null ? Math.round(v * 100) / 100 : v),
   testCases: z.array(problemTestCaseSchema).max(100, "tooManyTestCases").default([]),
   tags: z.array(z.string().min(1).max(50)).max(20, "tooManyTags").default([]),
 });

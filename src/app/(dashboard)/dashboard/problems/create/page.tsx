@@ -25,7 +25,7 @@ export default async function CreateProblemPage() {
           <CardTitle>{t("createDescription")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <CreateProblemForm />
+          <CreateProblemForm canUploadFiles={caps.has("files.upload")} />
         </CardContent>
       </Card>
     </div>

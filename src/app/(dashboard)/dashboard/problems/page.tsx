@@ -183,6 +183,7 @@ export default async function ProblemsPage({
     title: string;
     timeLimitMs: number | null;
     memoryLimitMb: number | null;
+    difficulty: number | null;
     visibility: string | null;
     authorId: string | null;
     createdAt: Date | null;
@@ -214,6 +215,7 @@ export default async function ProblemsPage({
         title: problems.title,
         timeLimitMs: problems.timeLimitMs,
         memoryLimitMb: problems.memoryLimitMb,
+        difficulty: problems.difficulty,
         visibility: problems.visibility,
         authorId: problems.authorId,
         createdAt: problems.createdAt,
@@ -338,6 +340,7 @@ export default async function ProblemsPage({
           title: problems.title,
           timeLimitMs: problems.timeLimitMs,
           memoryLimitMb: problems.memoryLimitMb,
+          difficulty: problems.difficulty,
           visibility: problems.visibility,
           authorId: problems.authorId,
           createdAt: problems.createdAt,
@@ -553,6 +556,7 @@ export default async function ProblemsPage({
                 <TableHead>{t("table.author")}</TableHead>
                 <TableHead>{t("table.timeLimit")}</TableHead>
                 <TableHead>{t("table.memoryLimit")}</TableHead>
+                <TableHead>{t("table.difficulty")}</TableHead>
                 <TableHead>{t("table.visibility")}</TableHead>
                 <TableHead>{t("table.action")}</TableHead>
               </TableRow>
@@ -591,6 +595,9 @@ export default async function ProblemsPage({
                   <TableCell>{t("timeLimitValue", { value: problem.timeLimitMs ?? 2000 })}</TableCell>
                   <TableCell>{t("memoryLimitValue", { value: problem.memoryLimitMb ?? 256 })}</TableCell>
                   <TableCell>
+                    {problem.difficulty != null ? t("difficultyValue", { value: problem.difficulty }) : <span className="text-muted-foreground">-</span>}
+                  </TableCell>
+                  <TableCell>
                     <Badge variant={problem.visibility === "public" ? "default" : "secondary"}>
                       {visibilityLabels[problem.visibility as keyof typeof visibilityLabels] ?? problem.visibility}
                     </Badge>
@@ -613,7 +620,7 @@ export default async function ProblemsPage({
               ))}
               {filteredProblems.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground">
                     {t("noProblems")}
                   </TableCell>
                 </TableRow>

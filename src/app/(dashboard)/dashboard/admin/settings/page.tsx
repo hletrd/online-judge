@@ -52,6 +52,12 @@ const ADVANCED_FIELDS: { key: keyof ConfiguredSettings }[] = [
   { key: "sseTimeoutMs" },
 ];
 
+const UPLOAD_FIELDS: { key: keyof ConfiguredSettings }[] = [
+  { key: "uploadMaxImageSizeBytes" },
+  { key: "uploadMaxFileSizeBytes" },
+  { key: "uploadMaxImageDimension" },
+];
+
 function extractInitialValues(
   storedSettings: Record<string, unknown> | undefined,
   fields: { key: keyof ConfiguredSettings }[]
@@ -242,6 +248,25 @@ export default async function AdminSettingsPage() {
             <ConfigSettingsForm
               fields={ADVANCED_FIELDS}
               initialValues={extractInitialValues(stored, ADVANCED_FIELDS)}
+              defaults={SETTING_DEFAULTS}
+            />
+          </CardContent>
+        </Card>
+      ),
+    },
+    {
+      value: "uploads",
+      label: t("tabUploads"),
+      content: (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("uploadsCardTitle")}</CardTitle>
+            <CardDescription>{t("uploadsCardDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ConfigSettingsForm
+              fields={UPLOAD_FIELDS}
+              initialValues={extractInitialValues(stored, UPLOAD_FIELDS)}
               defaults={SETTING_DEFAULTS}
             />
           </CardContent>

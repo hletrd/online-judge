@@ -51,8 +51,8 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV AUTH_TRUST_HOST=true
 
-# better-sqlite3 requires libstdc++ at runtime; Docker CLI for admin image management
-RUN apk add --no-cache libstdc++ docker-cli
+# better-sqlite3 requires libstdc++ at runtime; Docker CLI for admin image management; vips for sharp image processing
+RUN apk add --no-cache libstdc++ docker-cli vips
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs && \
@@ -72,6 +72,10 @@ COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 COPY --from=builder /app/node_modules/bindings ./node_modules/bindings
 COPY --from=builder /app/node_modules/file-uri-to-path ./node_modules/file-uri-to-path
+
+# sharp native module for image processing
+COPY --from=builder /app/node_modules/sharp ./node_modules/sharp
+COPY --from=builder /app/node_modules/@img ./node_modules/@img
 
 # Data directory for SQLite (mount a volume here)
 RUN mkdir -p /app/data && chown nextjs:nodejs /app/data

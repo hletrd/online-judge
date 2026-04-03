@@ -55,6 +55,9 @@ data/*.db
 data/*.db-wal
 data/*.db-shm
 
+# uploaded files
+data/uploads/
+
 # rust
 judge-worker-rs/target/
 rate-limiter-rs/target/
