@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     if (!user) return unauthorized();
     if (user.role !== "super_admin") return forbidden();
 
-    const rateLimitResponse = consumeApiRateLimit(request, "admin:migrate-export");
+    const rateLimitResponse = await consumeApiRateLimit(request, "admin:migrate-export");
     if (rateLimitResponse) return rateLimitResponse;
 
     const data = await exportDatabase();

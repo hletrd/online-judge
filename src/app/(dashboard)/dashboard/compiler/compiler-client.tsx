@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { CodeEditor } from "@/components/code/code-editor";
@@ -224,11 +224,14 @@ export function CompilerClient({ languages, title, description, preferredLanguag
     }
   }, [result]);
 
-  const activeTab = useMemo(() => {
-    if (!result) return "stdout";
-    if (result.compileOutput) return "compileOutput";
-    if (result.stderr) return "stderr";
-    return "stdout";
+  const [activeTab, setActiveTab] = useState("stdout");
+
+  // Auto-select the most relevant tab when a new result arrives
+  useEffect(() => {
+    if (!result) return;
+    if (result.compileOutput) setActiveTab("compileOutput");
+    else if (result.stderr) setActiveTab("stderr");
+    else setActiveTab("stdout");
   }, [result]);
 
   // MEDIUM FIX: Show loading state when languages are empty
@@ -357,7 +360,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
               </div>
 
               {/* Output tabs */}
-              <Tabs value={activeTab} className="flex flex-1 flex-col overflow-hidden">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
                 <TabsList>
                   <TabsTrigger value="stdout">{t("stdout", { defaultValue: "Output" })}</TabsTrigger>
                   <TabsTrigger value="stderr">{t("stderr", { defaultValue: "Error Output" })}</TabsTrigger>
