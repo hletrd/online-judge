@@ -4,7 +4,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { assignments, groups, submissions, users } from "@/lib/db/schema";
+import { assignments, groupInstructors, groups, submissions, users } from "@/lib/db/schema";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { redirect, notFound } from "next/navigation";
@@ -16,6 +16,7 @@ import { assertUserRole } from "@/lib/security/constants";
 import AssignmentFormDialog, { type AssignmentEditorValue } from "./assignment-form-dialog";
 import { AssignmentDeleteButton } from "./assignment-delete-button";
 import { GroupMembersManager } from "./group-members-manager";
+import { GroupInstructorsManager } from "./group-instructors-manager";
 import { GroupArchiveButton } from "./group-archive-button";
 
 function sortAssignmentsBySchedule(
@@ -160,6 +161,30 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
       ])
     : [[], []];
 
+  // Fetch group co-instructors and TAs
+  const groupInstructorRows = canManageGroup
+    ? await db
+        .select({
+          id: groupInstructors.id,
+          userId: groupInstructors.userId,
+          role: groupInstructors.role,
+          username: users.username,
+          name: users.name,
+        })
+        .from(groupInstructors)
+        .innerJoin(users, eq(groupInstructors.userId, users.id))
+        .where(eq(groupInstructors.groupId, groupId))
+    : [];
+
+  const availableInstructorUsers = canManageGroup
+    ? (await db.query.users.findMany({
+        where: and(eq(users.isActive, true)),
+        columns: { id: true, username: true, name: true, role: true },
+      }))
+        .filter((u) => u.role !== "student" && u.id !== group.instructorId)
+        .map((u) => ({ id: u.id, username: u.username, name: u.name }))
+    : [];
+
   const enrolledUserIds = new Set(group.enrollments.map((enrollment) => enrollment.userId));
   const availableStudentOptions = availableStudents
     .filter((student) => !enrolledUserIds.has(student.id))
@@ -218,6 +243,15 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
         members={memberRows}
         availableStudents={availableStudentOptions}
       />
+
+      {canManageGroup && (
+        <GroupInstructorsManager
+          groupId={groupId}
+          canManage={canManageGroup}
+          instructors={groupInstructorRows}
+          availableUsers={availableInstructorUsers}
+        />
+      )}
 
       <Card>
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

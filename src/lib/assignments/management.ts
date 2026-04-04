@@ -6,6 +6,7 @@ import {
   assignmentProblems,
   assignments,
   examSessions,
+  groupInstructors,
   problemGroupAccess,
   problems,
   submissions,
@@ -33,16 +34,55 @@ export function canManageGroupResources(
 }
 
 /**
- * Async version that supports custom roles via capability check.
+ * Async version that supports custom roles via capability check
+ * and co-instructor / TA group roles.
  */
 export async function canManageGroupResourcesAsync(
   groupInstructorId: string | null,
   userId: string,
-  role: string
+  role: string,
+  groupId?: string
 ): Promise<boolean> {
   if (canManageGroupResources(groupInstructorId, userId, role)) return true;
   const caps = await resolveCapabilities(role);
-  return caps.has("assignments.edit");
+  if (caps.has("assignments.edit")) return true;
+  if (groupId) {
+    const gi = await db
+      .select({ role: groupInstructors.role })
+      .from(groupInstructors)
+      .where(and(eq(groupInstructors.groupId, groupId), eq(groupInstructors.userId, userId)))
+      .limit(1);
+    if (gi.length > 0) return true;
+  }
+  return false;
+}
+
+/**
+ * Check if a user is a TA (not co-instructor) for a group.
+ * TAs have limited permissions (view submissions, add comments) but
+ * cannot delete problems or modify system settings.
+ */
+export async function isGroupTA(groupId: string, userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ role: groupInstructors.role })
+    .from(groupInstructors)
+    .where(and(eq(groupInstructors.groupId, groupId), eq(groupInstructors.userId, userId)))
+    .limit(1);
+  return row?.role === "ta";
+}
+
+/**
+ * Check if a user has any instructor-level role in a group
+ * (owner, co-instructor, or TA).
+ */
+export async function hasGroupInstructorRole(groupId: string, userId: string, groupOwnerId: string | null): Promise<boolean> {
+  if (groupOwnerId === userId) return true;
+  const [row] = await db
+    .select({ role: groupInstructors.role })
+    .from(groupInstructors)
+    .where(and(eq(groupInstructors.groupId, groupId), eq(groupInstructors.userId, userId)))
+    .limit(1);
+  return !!row;
 }
 
 export async function getManageableProblemsForGroup(

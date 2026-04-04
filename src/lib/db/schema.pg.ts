@@ -210,6 +210,30 @@ export const enrollments = pgTable(
   ]
 );
 
+export const groupInstructors = pgTable(
+  "group_instructors",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // "co_instructor" | "ta"
+    assignedAt: timestamp("assigned_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    uniqueIndex("group_instructors_group_user_idx").on(table.groupId, table.userId),
+    index("group_instructors_user_idx").on(table.userId),
+    index("group_instructors_group_idx").on(table.groupId),
+  ]
+);
+
 export const problems = pgTable(
   "problems",
   {
