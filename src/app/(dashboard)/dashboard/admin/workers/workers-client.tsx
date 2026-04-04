@@ -92,6 +92,7 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 function AliasCell({ worker, onUpdate }: { worker: Worker; onUpdate: () => void }) {
+  const t = useTranslations("admin.workers");
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(worker.alias ?? "");
 
@@ -114,7 +115,7 @@ function AliasCell({ worker, onUpdate }: { worker: Worker; onUpdate: () => void 
           value={value}
           onChange={(e) => setValue(e.target.value)}
           className="h-7 w-32 text-sm"
-          placeholder="Alias..."
+          placeholder={t("aliasPlaceholder")}
           autoFocus
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSave();

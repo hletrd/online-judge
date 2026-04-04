@@ -78,7 +78,7 @@ export default async function ParticipantAuditPage({
     notFound();
   }
 
-  const auditData = getParticipantAuditData(assignmentId, userId);
+  const auditData = await getParticipantAuditData(assignmentId, userId);
 
   const student = await db.query.users.findFirst({
     where: eq(users.id, userId),

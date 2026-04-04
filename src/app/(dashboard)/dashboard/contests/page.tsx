@@ -82,7 +82,7 @@ export default async function ContestsPage({
 
   const role = assertUserRole(session.user.role as string);
   const caps = await resolveCapabilities(session.user.role);
-  const contests = getContestsForUser(session.user.id, role);
+  const contests = await getContestsForUser(session.user.id, role);
   const now = new Date();
   const filter = normalizeFilter(resolvedSearchParams?.filter);
   const PAGE_SIZE = 25;

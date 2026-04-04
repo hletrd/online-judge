@@ -80,19 +80,34 @@ export async function StudentDashboard({ userId }: StudentDashboardProps) {
           <CardHeader>
             <CardTitle>{t("myGroups")}</CardTitle>
           </CardHeader>
-          <CardContent className="text-3xl font-semibold">{new Set(studentAssignments.map((assignment) => assignment.groupId)).size}</CardContent>
+          <CardContent>
+            <div className="text-3xl font-semibold">{new Set(studentAssignments.map((assignment) => assignment.groupId)).size}</div>
+            <Link href="/dashboard/groups" className="mt-2 inline-block text-xs text-muted-foreground hover:text-foreground">
+              {tCommon("viewAll")}
+            </Link>
+          </CardContent>
         </Card>
         <Card>
           <CardHeader>
             <CardTitle>{t("openAssignments")}</CardTitle>
           </CardHeader>
-          <CardContent className="text-3xl font-semibold">{openAssignments}</CardContent>
+          <CardContent>
+            <div className="text-3xl font-semibold">{openAssignments}</div>
+            <Link href="/dashboard/groups" className="mt-2 inline-block text-xs text-muted-foreground hover:text-foreground">
+              {tCommon("viewAll")}
+            </Link>
+          </CardContent>
         </Card>
         <Card>
           <CardHeader>
             <CardTitle>{t("completedAssignments")}</CardTitle>
           </CardHeader>
-          <CardContent className="text-3xl font-semibold">{completedAssignments}</CardContent>
+          <CardContent>
+            <div className="text-3xl font-semibold">{completedAssignments}</div>
+            <Link href="/dashboard/submissions" className="mt-2 inline-block text-xs text-muted-foreground hover:text-foreground">
+              {tCommon("viewAll")}
+            </Link>
+          </CardContent>
         </Card>
       </div>
 
@@ -121,7 +136,10 @@ export async function StudentDashboard({ userId }: StudentDashboardProps) {
                     </div>
                   )}
                   <div className="mt-3">
-                    <Link href={`/dashboard/groups/${assignment.groupId}/assignments/${assignment.id}`}>
+                    <Link
+                      href={`/dashboard/groups/${assignment.groupId}/assignments/${assignment.id}`}
+                      aria-label={t("viewAssignmentLabel", { title: assignment.title })}
+                    >
                       <Badge variant="secondary">{t("viewAssignment")}</Badge>
                     </Link>
                   </div>

@@ -72,25 +72,34 @@ export interface AssignmentOverviewProps {
 function ProgressIcon({ progress, labels }: { progress: StudentProblemProgress; labels: AssignmentOverviewLabels }) {
   if (progress === "solved") {
     return (
-      <CheckCircle2
-        className="size-4 shrink-0 text-green-500"
-        aria-label={labels.solved ?? "Solved"}
-      />
+      <>
+        <CheckCircle2
+          className="size-4 shrink-0 text-green-700 dark:text-green-400"
+          aria-hidden="true"
+        />
+        <span className="sr-only">{labels.solved ?? "Solved"}</span>
+      </>
     );
   }
   if (progress === "attempted") {
     return (
-      <Circle
-        className="size-4 shrink-0 text-amber-500"
-        aria-label={labels.attempted ?? "Attempted"}
-      />
+      <>
+        <Circle
+          className="size-4 shrink-0 text-amber-600 dark:text-amber-400"
+          aria-hidden="true"
+        />
+        <span className="sr-only">{labels.attempted ?? "Attempted"}</span>
+      </>
     );
   }
   return (
-    <MinusCircle
-      className="size-4 shrink-0 text-muted-foreground"
-      aria-label={labels.untried ?? "Untried"}
-    />
+    <>
+      <MinusCircle
+        className="size-4 shrink-0 text-muted-foreground"
+        aria-hidden="true"
+      />
+      <span className="sr-only">{labels.untried ?? "Untried"}</span>
+    </>
   );
 }
 
@@ -117,10 +126,10 @@ export function AssignmentOverview({
             <Badge variant="outline">{labels.assignments}</Badge>
             <Badge variant="secondary">{labels.problemCount}</Badge>
             {assignment.examMode === "scheduled" && (
-              <Badge className="bg-blue-500 text-white">{labels.examBadgeScheduled}</Badge>
+              <Badge variant="default">{labels.examBadgeScheduled}</Badge>
             )}
             {assignment.examMode === "windowed" && (
-              <Badge className="bg-purple-500 text-white">
+              <Badge variant="secondary">
                 {labels.examBadgeWindowed}
               </Badge>
             )}
@@ -147,7 +156,7 @@ export function AssignmentOverview({
             ) : isPast ? (
               <Badge variant="outline">{labels.statusClosed}</Badge>
             ) : (
-              <Badge className="bg-green-500">{labels.statusOpen}</Badge>
+              <Badge variant="success">{labels.statusOpen}</Badge>
             )}
             <Badge variant="outline">{labels.points}: {totalPoints}</Badge>
           </div>

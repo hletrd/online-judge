@@ -481,21 +481,22 @@
 
 /* Lecture mode typography — only scale problem body and code editor */
 @layer components {
-  /* Problem description body — full content scaling */
+  /* Problem description body — full content scaling via CSS custom property cascade */
   .lecture-mode .problem-description {
-    font-size: calc(1.125rem * var(--lecture-font-scale)) !important;
+    --lecture-base-size: calc(1.125rem * var(--lecture-font-scale));
+    font-size: var(--lecture-base-size);
     line-height: 1.8;
   }
 
-  .lecture-mode .problem-description * {
-    font-size: inherit !important;
+  .lecture-mode .problem-description :is(p, span, li, a, strong, em, b, i, u, s, sub, sup, small, mark, abbr, cite, q, dfn, del, ins, blockquote) {
+    font-size: inherit;
     line-height: inherit;
   }
 
   .lecture-mode .problem-description h1,
   .lecture-mode .problem-description h2,
   .lecture-mode .problem-description h3 {
-    font-size: calc(1.6rem * var(--lecture-font-scale)) !important;
+    font-size: calc(1.6rem * var(--lecture-font-scale));
     font-weight: 700;
     margin-top: 1em;
   }
@@ -503,23 +504,23 @@
   .lecture-mode .problem-description h4,
   .lecture-mode .problem-description h5,
   .lecture-mode .problem-description h6 {
-    font-size: calc(1.25rem * var(--lecture-font-scale)) !important;
+    font-size: calc(1.25rem * var(--lecture-font-scale));
     font-weight: 600;
     margin-top: 0.8em;
   }
 
   .lecture-mode .problem-description pre,
   .lecture-mode .problem-description code {
-    font-size: calc(0.95rem * var(--lecture-font-scale)) !important;
+    font-size: calc(0.95rem * var(--lecture-font-scale));
   }
 
   .lecture-mode .problem-description table {
-    font-size: calc(1rem * var(--lecture-font-scale)) !important;
+    font-size: calc(1rem * var(--lecture-font-scale));
   }
 
   .lecture-mode .problem-description table td,
   .lecture-mode .problem-description table th {
-    font-size: calc(1rem * var(--lecture-font-scale)) !important;
+    font-size: calc(1rem * var(--lecture-font-scale));
     padding: 0.5em 0.75em;
   }
 
@@ -530,7 +531,7 @@
 
   /* Code editor scaling */
   .lecture-mode .cm-editor {
-    font-size: calc(0.95rem * var(--lecture-font-scale)) !important;
+    font-size: calc(0.95rem * var(--lecture-font-scale));
   }
 
   .lecture-mode .cm-editor .cm-line {
@@ -538,7 +539,7 @@
   }
 
   .lecture-mode .lecture-panel-header {
-    font-size: calc(1rem * var(--lecture-font-scale)) !important;
+    font-size: calc(1rem * var(--lecture-font-scale));
     font-weight: 600;
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--border);

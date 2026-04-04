@@ -76,6 +76,7 @@ export async function AdminDashboard() {
           <CardDescription>{runtimeSystemInfo.architecture}</CardDescription>
         </CardHeader>
         <CardContent className="min-w-0">
+          <div className="overflow-x-auto">
           <Table className="min-w-max">
             <TableHeader>
               <TableRow>
@@ -104,6 +105,7 @@ export async function AdminDashboard() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </>

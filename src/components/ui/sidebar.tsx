@@ -164,7 +164,8 @@ function Sidebar({
 
   if (collapsible === "none") {
     return (
-      <div
+      <nav
+        aria-label={tCommon("mainNavigation")}
         data-slot="sidebar"
         className={cn(
           "flex h-full w-(--sidebar-width) flex-col bg-sidebar text-sidebar-foreground",
@@ -173,7 +174,7 @@ function Sidebar({
         {...props}
       >
         {children}
-      </div>
+      </nav>
     )
   }
 
@@ -192,7 +193,7 @@ function Sidebar({
             <SheetTitle>{tCommon("sidebarTitle")}</SheetTitle>
             <SheetDescription>{tCommon("sidebarDescription")}</SheetDescription>
           </SheetHeader>
-          <div className="flex h-full w-full flex-col">{children}</div>
+          <nav aria-label={tCommon("mainNavigation")} className="flex h-full w-full flex-col">{children}</nav>
         </SheetContent>
       </Sheet>
     )
@@ -232,13 +233,14 @@ function Sidebar({
         )}
         {...props}
       >
-        <div
+        <nav
+          aria-label={tCommon("mainNavigation")}
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
           className="flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border"
         >
           {children}
-        </div>
+        </nav>
       </div>
     </div>
   )
@@ -259,7 +261,7 @@ function SidebarTrigger({
       variant="ghost"
       size="icon-sm"
       aria-label={tCommon("toggleSidebar")}
-      className={cn(className)}
+      className={cn("relative min-h-[44px] min-w-[44px]", className)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()

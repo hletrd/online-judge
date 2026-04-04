@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -44,9 +44,22 @@ export function SystemSettingsForm({
   const [timeZone, setTimeZone] = useState(initialTimeZone);
   const [aiAssistantEnabled, setAiAssistantEnabled] = useState(initialAiAssistantEnabled);
   const [isLoading, setIsLoading] = useState(false);
+  const ianaTimeZones = useMemo(() => {
+    try {
+      return Intl.supportedValuesOf("timeZone");
+    } catch {
+      return [];
+    }
+  }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (timeZone && ianaTimeZones.length > 0 && !ianaTimeZones.includes(timeZone)) {
+      toast.error(t("invalidTimeZone"));
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -99,19 +112,28 @@ export function SystemSettingsForm({
         <Label htmlFor="time-zone">{t("timeZone")}</Label>
         <Input
           id="time-zone"
+          list="iana-timezones"
           value={timeZone}
           onChange={(event) => setTimeZone(event.target.value)}
           placeholder={defaultTimeZone}
         />
+        {ianaTimeZones.length > 0 && (
+          <datalist id="iana-timezones">
+            {ianaTimeZones.map((tz) => (
+              <option key={tz} value={tz} />
+            ))}
+          </datalist>
+        )}
         <p className="text-xs text-muted-foreground">
           {t("timeZoneHint", { current: currentTimeZone })}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label>{t("aiAssistantTitle")}</Label>
+        <Label htmlFor="ai-assistant-enabled">{t("aiAssistantTitle")}</Label>
         <label className="flex items-center gap-2 text-sm">
           <Checkbox
+            id="ai-assistant-enabled"
             checked={aiAssistantEnabled}
             onCheckedChange={(checked) => setAiAssistantEnabled(checked === true)}
           />

@@ -13,6 +13,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 type ThemeOption = "light" | "dark" | "system";
@@ -65,17 +66,20 @@ export function ThemeToggle({ className, dbTheme }: { className?: string; dbThem
     }
   }, [mounted, dbTheme, theme, setTheme]);
 
+  if (!mounted) {
+    return <Skeleton className={cn("h-9 w-9 rounded-md", className)} />;
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={t("theme")}
         className={cn(
-          "inline-flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
           className,
         )}
-        disabled={!mounted}
       >
-        <ThemeTriggerIcon className="size-4" theme={mounted ? selectedTheme : undefined} />
+        <ThemeTriggerIcon className="size-4" theme={selectedTheme} />
         <span className="sr-only">{t("theme")}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">

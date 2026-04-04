@@ -109,7 +109,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div className="space-y-3">
           <div>
             <Link href={props.backHref} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -147,9 +147,28 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
             <div className="space-y-1 text-sm text-muted-foreground">
               <p>{t("liveUpdatesActive")}</p>
               {pollingError && (
-                <p aria-live="polite" className="text-amber-600 dark:text-amber-400">
-                  {t("liveUpdatesDelayed")}
-                </p>
+                <div aria-live="polite" className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                  <p>{t("liveUpdatesDelayed")}</p>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={() => {
+                      apiFetch(`/api/v1/submissions/${submission.id}`)
+                        .then((res) => res.json())
+                        .then((payload: { data?: Record<string, unknown> }) => {
+                          if (payload.data) {
+                            const updated = normalizeSubmission(payload.data);
+                            setSubmission((prev) => ({ ...updated, sourceCode: updated.sourceCode || prev.sourceCode }));
+                          }
+                        })
+                        .catch(() => {
+                          toast.error(tCommon("error"));
+                        });
+                    }}
+                  >
+                    {tCommon("retry")}
+                  </Button>
+                </div>
               )}
             </div>
           )}

@@ -4,36 +4,29 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 interface DbInfo {
+  dialect: "postgresql";
   path: string;
   sizeBytes: number;
-  walSizeBytes: number;
-  journalMode: string;
-  foreignKeys: boolean;
-  busyTimeout: number;
+  version: string;
   tableCount: number;
-  pageSize: number;
-  pageCount: number;
 }
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
 export function DatabaseInfo({ dbInfo }: { dbInfo: DbInfo }) {
   const t = useTranslations("admin.settings");
 
   const rows = [
+    { label: t("dbDialect"), value: "PostgreSQL" },
     { label: t("dbPath"), value: dbInfo.path },
     { label: t("dbSize"), value: formatBytes(dbInfo.sizeBytes) },
-    { label: t("dbWalSize"), value: formatBytes(dbInfo.walSizeBytes) },
-    { label: t("dbJournalMode"), value: dbInfo.journalMode.toUpperCase() },
-    { label: t("dbPageSize"), value: `${dbInfo.pageSize} B` },
-    { label: t("dbPageCount"), value: dbInfo.pageCount.toLocaleString() },
+    { label: t("dbVersion"), value: dbInfo.version },
     { label: t("dbTableCount"), value: dbInfo.tableCount.toString() },
-    { label: t("dbBusyTimeout"), value: `${dbInfo.busyTimeout} ms` },
-    { label: t("dbForeignKeys"), value: dbInfo.foreignKeys ? "ON" : "OFF" },
   ];
 
   return (

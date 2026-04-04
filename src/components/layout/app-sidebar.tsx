@@ -17,7 +17,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy, MessageCircle, Timer, KeyRound, Code, Settings, Server, Play, Upload, Tags } from "lucide-react";
+import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy, MessageCircle, Timer, KeyRound, Code, Settings, Server, Play, Upload, Tags, Loader2 } from "lucide-react";
 
 interface AppSidebarProps {
   user: {
@@ -217,8 +217,8 @@ export function AppSidebar({ user, siteTitle, capabilities = [] }: AppSidebarPro
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton onClick={() => void handleSignOut()} disabled={isSigningOut}>
-                <LogOut className="size-4" aria-hidden="true" />
-                <span>{isSigningOut ? tCommon("loading") : tAuth("signOut")}</span>
+                {isSigningOut ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <LogOut className="size-4" aria-hidden="true" />}
+                <span>{isSigningOut ? tCommon("signingOut") : tAuth("signOut")}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

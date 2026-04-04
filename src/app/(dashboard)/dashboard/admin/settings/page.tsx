@@ -17,9 +17,8 @@ import { DatabaseBackupRestore } from "./database-backup-restore";
 import { DatabaseInfo } from "./database-info";
 import { SettingsTabs } from "./settings-tabs";
 import { getAuthUrlObject, normalizeHostForComparison } from "@/lib/security/env";
-import { sqlite } from "@/lib/db";
-import fs from "fs";
-import path from "path";
+import { pool } from "@/lib/db";
+import { countTablesQuery } from "@/lib/db/queries";
 
 const SECURITY_FIELDS: { key: keyof ConfiguredSettings }[] = [
   { key: "loginRateLimitMaxAttempts" },
@@ -74,37 +73,29 @@ function extractInitialValues(
   return result;
 }
 
-function getDbInfo() {
-  const dbPath = process.env.DATABASE_PATH
-    ? path.resolve(process.env.DATABASE_PATH)
-    : path.join(process.cwd(), "data", "judge.db");
+async function getDbInfo() {
+  if (!pool) throw new Error("PostgreSQL pool not available");
 
-  let sizeBytes = 0;
-  let walSizeBytes = 0;
-  try {
-    sizeBytes = fs.statSync(dbPath).size;
-  } catch { /* */ }
-  try {
-    walSizeBytes = fs.statSync(dbPath + "-wal").size;
-  } catch { /* */ }
+  const [tableCountResult, sizeResult, versionResult] = await Promise.all([
+    pool.query(countTablesQuery()),
+    pool.query("SELECT pg_database_size(current_database()) AS size"),
+    pool.query("SELECT version() AS version"),
+  ]);
 
-  const journalMode = (sqlite.pragma("journal_mode", { simple: true }) as string) ?? "unknown";
-  const foreignKeys = (sqlite.pragma("foreign_keys", { simple: true }) as number) === 1;
-  const busyTimeout = (sqlite.pragma("busy_timeout", { simple: true }) as number) ?? 0;
-  const pageSize = (sqlite.pragma("page_size", { simple: true }) as number) ?? 0;
-  const pageCount = (sqlite.pragma("page_count", { simple: true }) as number) ?? 0;
-  const tableCount = (sqlite.prepare("SELECT count(*) as c FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").get() as { c: number })?.c ?? 0;
+  const tableCount = Number(tableCountResult.rows[0]?.count ?? 0);
+  const sizeBytes = Number(sizeResult.rows[0]?.size ?? 0);
+  const fullVersion = (versionResult.rows[0]?.version as string) ?? "unknown";
+  const version = fullVersion.split(" ").slice(0, 2).join(" ");
+
+  const dbUrl = process.env.DATABASE_URL ?? "";
+  const maskedUrl = dbUrl.replace(/:([^:@]+)@/, ':***@');
 
   return {
-    path: dbPath,
+    dialect: "postgresql" as const,
+    path: maskedUrl,
     sizeBytes,
-    walSizeBytes,
-    journalMode,
-    foreignKeys,
-    busyTimeout,
+    version,
     tableCount,
-    pageSize,
-    pageCount,
   };
 }
 
@@ -122,7 +113,7 @@ export default async function AdminSettingsPage() {
   });
   const storedSettings = await getSystemSettings();
   const stored = storedSettings as Record<string, unknown> | undefined;
-  const dbInfo = getDbInfo();
+  const dbInfo = await getDbInfo();
 
   const authUrlObj = getAuthUrlObject();
   const authUrlHost = authUrlObj ? normalizeHostForComparison(authUrlObj.host) : null;

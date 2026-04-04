@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
-import { sqlite } from "@/lib/db";
+import { rawQueryOne, rawQueryAll } from "@/lib/db/queries";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -36,9 +36,8 @@ export default async function RankingsPage({
   const t = await getTranslations("rankings");
   const locale = await getLocale();
 
-  const countRow = sqlite
-    .prepare(
-      `
+  const countRow = await rawQueryOne<{ total: number }>(
+    `
     WITH first_accepts AS (
       SELECT
         user_id,
@@ -48,21 +47,26 @@ export default async function RankingsPage({
       WHERE status = 'accepted'
       GROUP BY user_id, problem_id
     )
-    SELECT COUNT(DISTINCT fa.user_id) as total
+    SELECT COUNT(DISTINCT fa.user_id)::int as total
     FROM first_accepts fa
     INNER JOIN users u ON u.id = fa.user_id
-    WHERE u.is_active = 1
-  `
-    )
-    .get() as { total: number };
+    WHERE u.is_active = true
+    `
+  );
   const totalCount = countRow?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const clampedPage = Math.min(currentPage, totalPages);
   const clampedOffset = (clampedPage - 1) * PAGE_SIZE;
 
-  const rankingRows = sqlite
-    .prepare(
-      `
+  const rankingRows = await rawQueryAll<{
+    userId: string;
+    username: string;
+    name: string;
+    className: string | null;
+    solvedCount: number;
+    lastSolveTime: Date;
+  }>(
+    `
     WITH first_accepts AS (
       SELECT
         user_id,
@@ -73,28 +77,21 @@ export default async function RankingsPage({
       GROUP BY user_id, problem_id
     )
     SELECT
-      u.id as userId,
+      u.id as "userId",
       u.username as username,
       u.name as name,
-      u.class_name as className,
-      COUNT(fa.problem_id) as solvedCount,
-      MAX(fa.first_accepted_at) as lastSolveTime
+      u.class_name as "className",
+      COUNT(fa.problem_id)::int as "solvedCount",
+      MAX(fa.first_accepted_at) as "lastSolveTime"
     FROM users u
     INNER JOIN first_accepts fa ON fa.user_id = u.id
-    WHERE u.is_active = 1
-    GROUP BY u.id
-    ORDER BY solvedCount DESC, lastSolveTime ASC
-    LIMIT ? OFFSET ?
-  `
-    )
-    .all(PAGE_SIZE, clampedOffset) as Array<{
-    userId: string;
-    username: string;
-    name: string;
-    className: string | null;
-    solvedCount: number;
-    lastSolveTime: number;
-  }>;
+    WHERE u.is_active = true
+    GROUP BY u.id, u.username, u.name, u.class_name
+    ORDER BY "solvedCount" DESC, "lastSolveTime" ASC
+    LIMIT @limit OFFSET @offset
+    `,
+    { limit: PAGE_SIZE, offset: clampedOffset }
+  );
 
   return (
     <div className="space-y-6">
@@ -144,7 +141,7 @@ export default async function RankingsPage({
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {formatRelativeTimeFromNow(
-                          new Date(row.lastSolveTime * 1000),
+                          new Date(row.lastSolveTime),
                           locale
                         )}
                       </TableCell>

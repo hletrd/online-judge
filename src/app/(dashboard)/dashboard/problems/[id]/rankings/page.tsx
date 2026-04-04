@@ -2,7 +2,8 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
-import { db, sqlite } from "@/lib/db";
+import { db } from "@/lib/db";
+import { rawQueryAll } from "@/lib/db/queries";
 import { problems } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { canAccessProblem } from "@/lib/auth/permissions";
@@ -46,9 +47,16 @@ export default async function ProblemRankingsPage({
   const t = await getTranslations("rankings");
 
   // For each user, get their best accepted submission (lowest exec time, then memory, then code length)
-  const rankingRows = sqlite
-    .prepare(
-      `
+  const rankingRows = await rawQueryAll<{
+    username: string;
+    name: string;
+    language: string;
+    executionTimeMs: number | null;
+    memoryUsedKb: number | null;
+    codeLength: number;
+    submittedAt: Date;
+  }>(
+    `
     WITH ranked AS (
       SELECT
         s.user_id,
@@ -62,31 +70,23 @@ export default async function ProblemRankingsPage({
           ORDER BY s.execution_time_ms ASC, s.memory_used_kb ASC, LENGTH(s.source_code) ASC
         ) as rn
       FROM submissions s
-      WHERE s.problem_id = ? AND s.status = 'accepted'
+      WHERE s.problem_id = @id AND s.status = 'accepted'
     )
     SELECT
       u.username,
       u.name,
       r.language,
-      r.execution_time_ms as executionTimeMs,
-      r.memory_used_kb as memoryUsedKb,
-      r.code_length as codeLength,
-      r.submitted_at as submittedAt
+      r.execution_time_ms as "executionTimeMs",
+      r.memory_used_kb as "memoryUsedKb",
+      r.code_length as "codeLength",
+      r.submitted_at as "submittedAt"
     FROM ranked r
     INNER JOIN users u ON u.id = r.user_id
     WHERE r.rn = 1
     ORDER BY r.execution_time_ms ASC, r.memory_used_kb ASC, r.code_length ASC
-  `
-    )
-    .all(id) as Array<{
-    username: string;
-    name: string;
-    language: string;
-    executionTimeMs: number | null;
-    memoryUsedKb: number | null;
-    codeLength: number;
-    submittedAt: number;
-  }>;
+    `,
+    { id }
+  );
 
   return (
     <div className="space-y-6">

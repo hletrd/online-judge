@@ -243,6 +243,7 @@ export default function BulkCreateDialog() {
                   <p className="text-sm font-medium mb-2">{t("bulkCreatedUsersTitle", { count: results.created.length })}</p>
                   <div className="max-h-64 overflow-y-auto border rounded">
                     <Table>
+                      <caption className="sr-only">{t("bulkCreatedUsersTitle", { count: results.created.length })}</caption>
                       <TableHeader>
                         <TableRow>
                           <TableHead>{t("table.username")}</TableHead>
@@ -268,6 +269,7 @@ export default function BulkCreateDialog() {
                   <p className="text-sm font-medium mb-2 text-destructive" role="alert">{t("bulkFailedTitle", { count: results.failed.length })}</p>
                   <div className="max-h-32 overflow-y-auto border rounded border-destructive/30">
                     <Table>
+                      <caption className="sr-only">{t("bulkFailedTitle", { count: results.failed.length })}</caption>
                       <TableHeader>
                         <TableRow>
                           <TableHead>{t("table.username")}</TableHead>
@@ -328,9 +330,10 @@ export default function BulkCreateDialog() {
               )}
               {parsedRows.length > 0 && (
                 <div>
-                  <p className="text-sm font-medium mb-2">{t("csvPreview")} ({parsedRows.length} rows)</p>
+                  <p className="text-sm font-medium mb-2">{t("csvPreview")} {t("csvPreviewCount", { count: parsedRows.length })}</p>
                   <div className="max-h-64 overflow-y-auto border rounded">
                     <Table>
+                      <caption className="sr-only">{t("csvPreview")}</caption>
                       <TableHeader>
                         <TableRow>
                           <TableHead>{t("table.username")}</TableHead>

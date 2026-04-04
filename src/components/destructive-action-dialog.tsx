@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -86,8 +87,10 @@ export function DestructiveActionDialog({
             disabled={isPending}
             data-testid={confirmTestId}
           >
+            {isPending && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
             {confirmLabel}
           </Button>
+          {isPending && <span className="sr-only" role="status" aria-live="polite">Processing...</span>}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -59,7 +59,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <SidebarInset>
           <header className="flex h-14 items-center gap-2 px-4">
             <SidebarTrigger />
-            <h1 className="text-sm font-semibold">{settings.siteTitle}</h1>
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold">{settings.siteTitle}</span>
             <div className="ml-auto flex items-center gap-1">
               {canUseLectureMode && <LectureModeToggle />}
               <ThemeToggle dbTheme={session.user.preferredTheme} />

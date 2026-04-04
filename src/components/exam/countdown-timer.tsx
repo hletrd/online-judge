@@ -22,19 +22,30 @@ function formatCountdown(ms: number): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function getTimerColor(ms: number): string {
-  if (!Number.isFinite(ms) || ms <= 0) return "bg-red-600 text-white";
-  if (ms < 5 * 60 * 1000) return "bg-red-500 text-white";
-  if (ms < 30 * 60 * 1000) return "bg-yellow-500 text-white";
-  return "bg-green-500 text-white";
+function getTimerVariant(ms: number): "destructive" | "secondary" | "success" {
+  if (!Number.isFinite(ms) || ms <= 0) return "destructive";
+  if (ms < 5 * 60 * 1000) return "destructive";
+  if (ms < 30 * 60 * 1000) return "secondary";
+  return "success";
 }
 
 function getTextColor(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return "";
-  if (ms < 1 * 60 * 1000) return "text-red-500 dark:text-red-400 animate-pulse";
-  if (ms < 5 * 60 * 1000) return "text-orange-500 dark:text-orange-400";
-  if (ms < 15 * 60 * 1000) return "text-yellow-500 dark:text-yellow-400";
+  if (ms < 1 * 60 * 1000) return "text-destructive animate-pulse";
+  if (ms < 5 * 60 * 1000) return "text-destructive";
+  if (ms < 15 * 60 * 1000) return "text-muted-foreground";
   return "";
+}
+
+/** Pre-populate thresholds already passed at mount time to avoid spurious warnings. */
+function prePopulateThresholds(remaining: number): Set<number> {
+  const set = new Set<number>();
+  for (const threshold of THRESHOLDS_MS) {
+    if (remaining <= threshold) {
+      set.add(threshold);
+    }
+  }
+  return set;
 }
 
 export function CountdownTimer({ deadline, label, onExpired }: CountdownTimerProps) {
@@ -42,7 +53,8 @@ export function CountdownTimer({ deadline, label, onExpired }: CountdownTimerPro
   const [remaining, setRemaining] = useState(() => deadline - Date.now());
   const [expired, setExpired] = useState(() => deadline - Date.now() <= 0);
   const expiredRef = useRef(expired);
-  const firedThresholds = useRef<Set<number>>(new Set());
+  const firedThresholds = useRef<Set<number>>(prePopulateThresholds(deadline - Date.now()));
+  const [thresholdAnnouncement, setThresholdAnnouncement] = useState("");
   const t = useTranslations("groups");
 
   const handleExpired = useCallback(() => {
@@ -85,6 +97,7 @@ export function CountdownTimer({ deadline, label, onExpired }: CountdownTimerPro
                 ? "examWarning5Min"
                 : "examWarning1Min";
           toast.warning(t(messageKey));
+          setThresholdAnnouncement(t(messageKey));
         }
       }
 
@@ -99,11 +112,16 @@ export function CountdownTimer({ deadline, label, onExpired }: CountdownTimerPro
   const textColor = getTextColor(remaining);
 
   return (
-    <Badge className={`${getTimerColor(remaining)} font-mono text-sm`}>
-      {label && <span className="mr-1">{label}:</span>}
-      <span className={textColor || undefined}>
-        {expired ? "00:00:00" : formatCountdown(remaining)}
+    <>
+      <Badge role="timer" className={`font-mono text-sm`} variant={getTimerVariant(remaining)}>
+        {label && <span className="mr-1">{label}:</span>}
+        <span className={textColor || undefined}>
+          {expired ? "00:00:00" : formatCountdown(remaining)}
+        </span>
+      </Badge>
+      <span aria-live="assertive" className="sr-only">
+        {thresholdAnnouncement}
       </span>
-    </Badge>
+    </>
   );
 }
