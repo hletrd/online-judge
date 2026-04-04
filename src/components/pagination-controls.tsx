@@ -5,7 +5,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { getTranslations } from "next-intl/server";
 
 interface PaginationControlsProps {
   currentPage: number;
@@ -13,10 +13,10 @@ interface PaginationControlsProps {
   buildHref: (page: number) => string;
 }
 
-const navBtn = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground size-8";
+const navBtn = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground size-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const navBtnDisabled = "inline-flex items-center justify-center rounded-md text-sm font-medium size-8 pointer-events-none opacity-40";
-const pageBtn = "inline-flex items-center justify-center rounded-md font-medium transition-colors hover:bg-accent hover:text-accent-foreground size-8 text-xs";
-const pageBtnActive = "inline-flex items-center justify-center rounded-md font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 size-8 text-xs";
+const pageBtn = "inline-flex items-center justify-center rounded-md font-medium transition-colors hover:bg-accent hover:text-accent-foreground size-8 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const pageBtnActive = "inline-flex items-center justify-center rounded-md font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 size-8 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function getPageNumbers(current: number, total: number): (number | "...")[] {
   if (total <= 7) {
@@ -45,37 +45,39 @@ function getPageNumbers(current: number, total: number): (number | "...")[] {
   return pages;
 }
 
-export function PaginationControls({
+export async function PaginationControls({
   currentPage,
   totalPages,
   buildHref,
 }: PaginationControlsProps) {
+  const t = await getTranslations("common");
+
   if (totalPages <= 1) return null;
 
   const pages = getPageNumbers(currentPage, totalPages);
 
   return (
-    <div className="flex items-center justify-center gap-1 mt-4">
+    <nav role="navigation" aria-label={t("paginationNav")} className="flex items-center justify-center gap-1 mt-4">
       {/* First */}
       {currentPage > 1 ? (
-        <Link href={buildHref(1)} aria-label="First page" className={navBtn}>
+        <Link href={buildHref(1)} aria-label={t("paginationFirst")} className={navBtn}>
           <ChevronsLeft className="size-4" aria-hidden="true" />
         </Link>
       ) : (
-        <span aria-hidden="true" className={navBtnDisabled}>
-          <ChevronsLeft className="size-4" />
-        </span>
+        <button disabled aria-disabled="true" aria-label={t("paginationFirst")} className={navBtnDisabled}>
+          <ChevronsLeft className="size-4" aria-hidden="true" />
+        </button>
       )}
 
       {/* Prev */}
       {currentPage > 1 ? (
-        <Link href={buildHref(currentPage - 1)} aria-label="Previous page" className={navBtn}>
+        <Link href={buildHref(currentPage - 1)} aria-label={t("paginationPrevious")} className={navBtn}>
           <ChevronLeft className="size-4" aria-hidden="true" />
         </Link>
       ) : (
-        <span aria-hidden="true" className={navBtnDisabled}>
-          <ChevronLeft className="size-4" />
-        </span>
+        <button disabled aria-disabled="true" aria-label={t("paginationPrevious")} className={navBtnDisabled}>
+          <ChevronLeft className="size-4" aria-hidden="true" />
+        </button>
       )}
 
       {/* Page numbers */}
@@ -91,7 +93,7 @@ export function PaginationControls({
           <Link
             key={p}
             href={buildHref(p)}
-            aria-label={`Page ${p}`}
+            aria-label={t("paginationPage", { page: p })}
             aria-current={p === currentPage ? "page" : undefined}
             className={p === currentPage ? pageBtnActive : pageBtn}
           >
@@ -102,25 +104,25 @@ export function PaginationControls({
 
       {/* Next */}
       {currentPage < totalPages ? (
-        <Link href={buildHref(currentPage + 1)} aria-label="Next page" className={navBtn}>
+        <Link href={buildHref(currentPage + 1)} aria-label={t("paginationNext")} className={navBtn}>
           <ChevronRight className="size-4" aria-hidden="true" />
         </Link>
       ) : (
-        <span aria-hidden="true" className={navBtnDisabled}>
-          <ChevronRight className="size-4" />
-        </span>
+        <button disabled aria-disabled="true" aria-label={t("paginationNext")} className={navBtnDisabled}>
+          <ChevronRight className="size-4" aria-hidden="true" />
+        </button>
       )}
 
       {/* Last */}
       {currentPage < totalPages ? (
-        <Link href={buildHref(totalPages)} aria-label="Last page" className={navBtn}>
+        <Link href={buildHref(totalPages)} aria-label={t("paginationLast")} className={navBtn}>
           <ChevronsRight className="size-4" aria-hidden="true" />
         </Link>
       ) : (
-        <span aria-hidden="true" className={navBtnDisabled}>
-          <ChevronsRight className="size-4" />
-        </span>
+        <button disabled aria-disabled="true" aria-label={t("paginationLast")} className={navBtnDisabled}>
+          <ChevronsRight className="size-4" aria-hidden="true" />
+        </button>
       )}
-    </div>
+    </nav>
   );
 }
