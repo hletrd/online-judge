@@ -12,8 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toggleLanguage, updateLanguageConfig, resetLanguageToDefaults, resetAllLanguagesToDefaults, addLanguageConfig } from "@/lib/actions/language-configs";
-import { RotateCcw, Pencil, Hammer, Trash2, Loader2, Plus } from "lucide-react";
+import { RotateCcw, Pencil, Hammer, Trash2, Loader2, Plus, MoreHorizontal, Eraser } from "lucide-react";
 
 // Recommended Docker images for the combobox dropdown
 const RECOMMENDED_IMAGES = [
@@ -52,7 +53,7 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
   const [editingLang, setEditingLang] = useState<LanguageConfig | null>(null);
   const [editForm, setEditForm] = useState({ dockerImage: "", compileCommand: "", runCommand: "", dockerfile: "" });
   const [search, setSearch] = useState("");
-  const [imageInfo, setImageInfo] = useState<Map<string, string>>(new Map());
+  const [imageInfo, setImageInfo] = useState<Map<string, { size: string; created: string; stale: boolean }>>(new Map());
   const [diskUsage, setDiskUsage] = useState<{ total: string; used: string; available: string; usePercent: string } | null>(null);
   const [buildingLangs, setBuildingLangs] = useState<Set<string>>(new Set());
   const [addOpen, setAddOpen] = useState(false);
@@ -61,6 +62,8 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
     dockerImage: "", compiler: "", compileCommand: "", runCommand: "",
     dockerfile: "",
   });
+  const [isPruning, setIsPruning] = useState(false);
+  const [staleCount, setStaleCount] = useState(0);
 
   const fetchImageStatus = useCallback(async () => {
     try {
@@ -69,11 +72,18 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
         const json = await res.json();
         const data = json.data ?? {};
         const images = data.images ?? data ?? [];
-        const info = new Map<string, string>();
+        const staleSet = new Set<string>(data.staleImages ?? []);
+        const info = new Map<string, { size: string; created: string; stale: boolean }>();
         for (const img of Array.isArray(images) ? images : []) {
-          info.set(`${img.repository}:${img.tag}`, img.size ?? "");
+          const tag = `${img.repository}:${img.tag}`;
+          info.set(tag, {
+            size: img.size ?? "",
+            created: img.created ?? "",
+            stale: staleSet.has(tag),
+          });
         }
         setImageInfo(info);
+        setStaleCount(staleSet.size);
         if (data.disk) setDiskUsage(data.disk);
       }
     } catch { /* ignore */ }
@@ -118,6 +128,31 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
         }
       })
       .catch(() => toast.error(t("toast.removeError")));
+  }
+
+  function handlePrune() {
+    if (!confirm(t("actions.pruneConfirm"))) return;
+    setIsPruning(true);
+    fetch("/api/v1/admin/docker/images/prune", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          const count = data.data?.removedCount ?? 0;
+          if (count > 0) {
+            toast.success(t("toast.pruneSuccess", { count }));
+          } else {
+            toast.info(t("toast.pruneNone"));
+          }
+          fetchImageStatus();
+        } else {
+          toast.error(data.error ?? t("toast.pruneError"));
+        }
+      })
+      .catch(() => toast.error(t("toast.pruneError")))
+      .finally(() => setIsPruning(false));
   }
 
   function openEdit(lang: LanguageConfig) {
@@ -256,10 +291,22 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
             <Plus className="size-4 mr-1.5" />
             {t("add.button")}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleResetAll} disabled={isPending}>
-            <RotateCcw className="size-4 mr-1.5" />
-            {t("actions.resetAll")}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-input bg-background px-3 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground h-8 cursor-pointer">
+              <MoreHorizontal className="size-4" />
+              {t("actions.more")}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handlePrune} disabled={isPruning || staleCount === 0}>
+                {isPruning ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Eraser className="size-4 mr-2" />}
+                {t("actions.pruneStale")}{staleCount > 0 ? ` (${staleCount})` : ""}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleResetAll} disabled={isPending}>
+                <RotateCcw className="size-4 mr-2" />
+                {t("actions.resetAll")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -310,7 +357,15 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
                     <span className="text-xs text-muted-foreground">{lang.runtimeInfo}</span>
                     {imageInfo.size > 0 && (
                       imageInfo.has(lang.dockerImage)
-                        ? <Badge variant="outline" className="w-fit text-xs text-green-600 border-green-300">{t("imageStatus.available")}{imageInfo.get(lang.dockerImage) ? ` (${imageInfo.get(lang.dockerImage)})` : ""}</Badge>
+                        ? <div className="flex flex-col gap-0.5">
+                            {imageInfo.get(lang.dockerImage)?.stale
+                              ? <Badge variant="outline" className="w-fit text-xs text-yellow-600 border-yellow-300">{t("imageStatus.stale")}{imageInfo.get(lang.dockerImage)?.size ? ` (${imageInfo.get(lang.dockerImage)?.size})` : ""}</Badge>
+                              : <Badge variant="outline" className="w-fit text-xs text-green-600 border-green-300">{t("imageStatus.available")}{imageInfo.get(lang.dockerImage)?.size ? ` (${imageInfo.get(lang.dockerImage)?.size})` : ""}</Badge>
+                            }
+                            {imageInfo.get(lang.dockerImage)?.created && (
+                              <span className="text-xs text-muted-foreground">{imageInfo.get(lang.dockerImage)?.created}</span>
+                            )}
+                          </div>
                         : <Badge variant="outline" className="w-fit text-xs text-muted-foreground">{t("imageStatus.notBuilt")}</Badge>
                     )}
                   </div>
