@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { assignments, enrollments, groups, problems, submissions } from "@/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql, countDistinct } from "drizzle-orm";
 import { formatDateTimeInTimeZone, formatRelativeTimeFromNow } from "@/lib/datetime";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { getTranslations, getLocale } from "next-intl/server";
@@ -22,6 +22,39 @@ export async function StudentDashboard({ userId }: StudentDashboardProps) {
   });
   const locale = await getLocale();
   const now = new Date();
+
+  // Progress stats
+  const [progressStats] = await db
+    .select({
+      totalSubmissions: sql<number>`count(*)`.as("totalSubmissions"),
+      acceptedSubmissions: sql<number>`count(*) filter (where ${submissions.status} = 'accepted')`.as("acceptedSubmissions"),
+      solvedProblems: countDistinct(
+        sql`case when ${submissions.status} = 'accepted' then ${submissions.problemId} end`
+      ).as("solvedProblems"),
+      attemptedProblems: countDistinct(submissions.problemId).as("attemptedProblems"),
+    })
+    .from(submissions)
+    .where(eq(submissions.userId, userId));
+
+  const totalSubmissionCount = Number(progressStats?.totalSubmissions ?? 0);
+  const acceptedCount = Number(progressStats?.acceptedSubmissions ?? 0);
+  const solvedCount = Number(progressStats?.solvedProblems ?? 0);
+  const attemptedCount = Number(progressStats?.attemptedProblems ?? 0);
+  const acceptanceRate = totalSubmissionCount > 0
+    ? Math.round((acceptedCount / totalSubmissionCount) * 100)
+    : 0;
+
+  // Language distribution (top 5)
+  const languageStats = await db
+    .select({
+      language: submissions.language,
+      count: sql<number>`count(*)`.as("count"),
+    })
+    .from(submissions)
+    .where(eq(submissions.userId, userId))
+    .groupBy(submissions.language)
+    .orderBy(desc(sql`count(*)`))
+    .limit(5);
 
   const [recentSubmissions, studentAssignments] = await Promise.all([
     db
@@ -75,6 +108,42 @@ export async function StudentDashboard({ userId }: StudentDashboardProps) {
 
   return (
     <>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("progressTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border p-3 text-center">
+              <div className="text-2xl font-semibold">{solvedCount}/{attemptedCount}</div>
+              <div className="text-xs text-muted-foreground">{t("solvedProblems")}</div>
+            </div>
+            <div className="rounded-lg border p-3 text-center">
+              <div className="text-2xl font-semibold">{acceptanceRate}%</div>
+              <div className="text-xs text-muted-foreground">{t("acceptanceRate")}</div>
+            </div>
+            <div className="rounded-lg border p-3 text-center">
+              <div className="text-2xl font-semibold">{totalSubmissionCount}</div>
+              <div className="text-xs text-muted-foreground">{t("totalSubmissions")}</div>
+            </div>
+            <div className="rounded-lg border p-3">
+              <div className="text-xs text-muted-foreground mb-2">{t("topLanguages")}</div>
+              {languageStats.length === 0 ? (
+                <div className="text-sm text-muted-foreground">-</div>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {languageStats.map((lang) => (
+                    <Badge key={lang.language} variant="secondary" className="text-xs">
+                      {lang.language} ({lang.count})
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
