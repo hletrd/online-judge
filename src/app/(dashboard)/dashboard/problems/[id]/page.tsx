@@ -227,7 +227,7 @@ export default async function ProblemDetailPage({
           <Badge variant="outline">{t("badges.timeLimit", { value: problem.timeLimitMs ?? 2000 })}</Badge>
           <Badge variant="outline">{t("badges.memoryLimit", { value: problem.memoryLimitMb ?? 256 })}</Badge>
           {problem.difficulty != null && (
-            <Badge variant="outline">{t("badges.difficulty", { value: problem.difficulty })}</Badge>
+            <Badge variant="outline">{t("badges.difficulty", { value: problem.difficulty.toFixed(1) })}</Badge>
           )}
           <Badge variant="secondary">{t("badges.author", { name: problem.author?.name || tCommon("system") })}</Badge>
           {assignmentContext && <Badge>{assignmentContext.title}</Badge>}
