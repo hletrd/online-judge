@@ -252,16 +252,21 @@ test.describe.serial("Problem Difficulty & Tags", () => {
 
     await adminPage.locator("#title").fill(`[E2E] UI Difficulty ${suffix}`);
     await adminPage.locator("#difficulty").fill("6.28");
-    await adminPage.locator("#timeLimit").fill("2000");
-    await adminPage.locator("#memoryLimit").fill("256");
 
-    // Submit the form
-    await adminPage.getByRole("button", { name: /create|생성/i }).click();
+    // Add a test case (required for submission)
+    await adminPage.getByRole("button", { name: /Add Test Case|테스트 케이스 추가/i }).click();
+    // Fill the test case textareas (input and expected output)
+    const testCaseTextareas = adminPage.locator('[id^="test-case-"]');
+    await testCaseTextareas.first().fill("1 2");
+    await testCaseTextareas.nth(1).fill("3");
 
-    // Wait for navigation to problem detail or success toast
-    await adminPage.waitForURL("**/dashboard/problems/**", { timeout: 15_000 });
+    // Submit the form - use the submit button at the bottom
+    const createUrl = adminPage.url();
+    await adminPage.locator('form button[type="submit"]').click();
+
+    // Wait for navigation away from the create page
+    await adminPage.waitForURL((url) => url.toString() !== createUrl, { timeout: 15_000 });
     const content = await adminPage.textContent("body");
-    // Difficulty badge should show on the redirected detail page
     expect(content).toMatch(/6\.28/);
   });
 
