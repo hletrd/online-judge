@@ -54,6 +54,11 @@ ENV.md
 data/*.db
 data/*.db-wal
 data/*.db-shm
+data/*.sqlite
+data/.admin-password
+data/backups/
+*.sqlite
+._db.sqlite
 
 # uploaded files
 data/uploads/
