@@ -22,7 +22,7 @@ services:
     container_name: judgekit-db-postgres
     restart: unless-stopped
     volumes:
-      - judgekit-pgdata:/var/lib/postgresql/data
+      - judgekit-pgdata:/var/lib/postgresql
     environment:
       POSTGRES_DB: judgekit
       POSTGRES_USER: judgekit
