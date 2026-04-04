@@ -82,7 +82,7 @@ export const POST = createApiHandler({
       const matching = db
         .select({ id: problems.id, title: problems.title })
         .from(problems)
-        .where(sql`title GLOB '[P[0-9]] *'`)
+        .where(sql`title LIKE '[P_] %'`)
         .all();
 
       for (const row of matching) {
