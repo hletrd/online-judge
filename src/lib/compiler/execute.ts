@@ -20,6 +20,15 @@ const SECCOMP_PROFILE_PATH = join(
   "docker/seccomp-profile.json"
 );
 
+/**
+ * Base directory for compiler workspaces.
+ * In Docker-in-Docker setups, this must be a host-mounted path so sibling
+ * containers can access the workspace via `-v`.  Set COMPILER_WORKSPACE_DIR
+ * to a bind-mounted directory (e.g. /compiler-workspaces).
+ * Falls back to os.tmpdir() for local development.
+ */
+const WORKSPACE_BASE = process.env.COMPILER_WORKSPACE_DIR || tmpdir();
+
 export interface CompilerRunOptions {
   /** Source code to compile/run */
   sourceCode: string;
@@ -412,7 +421,7 @@ export async function executeCompilerRun(
   }
 
   // Create temp workspace with permissions 0700 (owner only)
-  const workspaceDir = join(tmpdir(), `compiler-${randomUUID()}`);
+  const workspaceDir = join(WORKSPACE_BASE, `compiler-${randomUUID()}`);
   await mkdir(workspaceDir, { recursive: true, mode: 0o700 });
 
   try {
