@@ -73,8 +73,8 @@ info "Building judge worker image..."
 docker build -t judgekit-judge-worker:latest -f "${SCRIPT_DIR}/Dockerfile.judge-worker" "${SCRIPT_DIR}"
 success "Judge worker image built"
 
-info "Building judge language images (cpp, python, node, jvm)..."
-docker compose -f "${SCRIPT_DIR}/docker-compose.yml" build judge-cpp judge-python judge-node judge-jvm
+info "Building core judge language images (cpp, python, node, jvm, rust, go)..."
+docker compose -f "${SCRIPT_DIR}/docker-compose.yml" build judge-cpp judge-python judge-node judge-jvm judge-rust judge-go
 success "Judge language images built"
 
 # ---- Step 3: Save and transfer images ----
@@ -89,6 +89,8 @@ docker save \
   judge-python:latest \
   judge-node:latest \
   judge-jvm:latest \
+  judge-rust:latest \
+  judge-go:latest \
   | gzip > "$TMPFILE"
 success "Images saved ($(du -h "$TMPFILE" | cut -f1))"
 

@@ -26,13 +26,29 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Source deployment env vars from .env.deploy
+# Save caller-provided overrides before sourcing defaults
+_CALLER_REMOTE_HOST="${REMOTE_HOST:-}"
+_CALLER_REMOTE_USER="${REMOTE_USER:-}"
+_CALLER_DOMAIN="${DOMAIN:-}"
+_CALLER_SSH_PASSWORD="${SSH_PASSWORD:-}"
+_CALLER_SSH_KEY="${SSH_KEY:-}"
+_CALLER_AUTH_URL_OVERRIDE="${AUTH_URL_OVERRIDE:-}"
+
+# Source deployment env vars from .env.deploy (defaults)
 if [[ -f "${SCRIPT_DIR}/.env.deploy" ]]; then
     set -a
     # shellcheck disable=SC1091
     source "${SCRIPT_DIR}/.env.deploy"
     set +a
 fi
+
+# Restore caller overrides (explicit env vars take precedence)
+[[ -n "$_CALLER_REMOTE_HOST" ]] && REMOTE_HOST="$_CALLER_REMOTE_HOST"
+[[ -n "$_CALLER_REMOTE_USER" ]] && REMOTE_USER="$_CALLER_REMOTE_USER"
+[[ -n "$_CALLER_DOMAIN" ]] && DOMAIN="$_CALLER_DOMAIN"
+[[ -n "$_CALLER_SSH_PASSWORD" ]] && SSH_PASSWORD="$_CALLER_SSH_PASSWORD"
+[[ -n "$_CALLER_SSH_KEY" ]] && SSH_KEY="$_CALLER_SSH_KEY"
+[[ -n "$_CALLER_AUTH_URL_OVERRIDE" ]] && AUTH_URL_OVERRIDE="$_CALLER_AUTH_URL_OVERRIDE"
 
 REMOTE_HOST="${REMOTE_HOST:?REMOTE_HOST is required (see .env)}"
 REMOTE_USER="${REMOTE_USER:?REMOTE_USER is required (see .env)}"

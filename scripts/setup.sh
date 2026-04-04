@@ -59,16 +59,20 @@ EXTENDED_LANGS="$POPULAR_LANGS ruby lua bash csharp php perl swift r haskell dar
 ALL_LANGS="cpp clang python node jvm rust go swift csharp r perl php ruby lua
   haskell dart zig nim ocaml elixir julia d racket v fortran pascal cobol
   brainfuck scala erlang commonlisp bash esoteric ada clojure prolog tcl awk
-  scheme groovy octave crystal powershell postscript"
+  scheme groovy octave crystal powershell postscript fsharp apl freebasic
+  smalltalk b nasm bqn lolcode forth algol68 umjunsik haxe raku shakespeare
+  snobol4 icon uiua odin objective-c deno bun gleam sml micropython squirrel
+  rexx hy arturo janet c3 vala nelua hare koka lean picat mercury wat
+  purescript modula2 factor minizinc curry clean roc carp grain pony"
 # Normalize whitespace
 ALL_LANGS=$(echo $ALL_LANGS | tr -s ' ')
 
 preset_description() {
   case "$1" in
-    core)     echo "C/C++, Python, Java/Kotlin (~0.8 GB)" ;;
-    popular)  echo "Core + Node.js, Rust, Go (~2.5 GB)" ;;
-    extended) echo "Popular + Ruby, Lua, Bash, C#, PHP, Perl, Swift, R, Haskell, Dart, Zig (~8 GB)" ;;
-    all)      echo "All 44 language images (~14 GB)" ;;
+    core)     echo "C/C++, Python, Java/Kotlin (~1.2 GB)" ;;
+    popular)  echo "Core + Node.js, Rust, Go (~4 GB)" ;;
+    extended) echo "Popular + Ruby, Lua, Bash, C#, PHP, Perl, Swift, R, Haskell, Dart, Zig (~12 GB)" ;;
+    all)      echo "All 100+ language images (~30 GB)" ;;
     none)     echo "No Docker images (web app only)" ;;
   esac
 }

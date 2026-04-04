@@ -39,7 +39,8 @@ ENV AUTH_TRUST_HOST=true
 ARG DISABLE_MINIFY=0
 ENV DISABLE_MINIFY=${DISABLE_MINIFY}
 
-RUN npm run build
+# Ensure public/ exists even if the repo has no static assets
+RUN mkdir -p public && npm run build
 
 # ---------------------------------------------------------------------------
 # Stage 3: Production runner (minimal image)
