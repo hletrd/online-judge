@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sqlite } from "@/lib/db";
+import { rawQueryOne } from "@/lib/db/queries";
 import { getAuditEventHealthSnapshot } from "@/lib/audit/events";
 import { getApiUser, isAdmin } from "@/lib/api/auth";
 import { logger } from "@/lib/logger";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    sqlite.prepare("select 1").get();
+    await rawQueryOne("select 1");
     const auditEvents = getAuditEventHealthSnapshot();
     const overallStatus = auditEvents.status === "ok" ? "ok" : "degraded";
 

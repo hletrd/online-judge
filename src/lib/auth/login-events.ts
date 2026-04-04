@@ -97,7 +97,7 @@ export function recordLoginEventWithContext({
   context,
 }: RecordLoginEventWithContextInput) {
   try {
-    db.insert(loginEvents)
+    void db.insert(loginEvents)
       .values({
         outcome,
         attemptedIdentifier: context.attemptedIdentifier,
@@ -106,8 +106,7 @@ export function recordLoginEventWithContext({
         userAgent: context.userAgent,
         requestMethod: context.requestMethod,
         requestPath: context.requestPath,
-      })
-      .run();
+      });
   } catch (error) {
     logger.warn({ outcome, userId: normalizeText(userId, 64), err: error }, "Failed to persist login event");
   }

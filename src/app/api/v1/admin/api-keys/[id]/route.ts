@@ -49,7 +49,7 @@ export const PATCH = createApiHandler({
       updates.role = body.role;
     }
 
-    await db.update(apiKeys).set(updates).where(eq(apiKeys.id, id)).run();
+    await db.update(apiKeys).set(updates).where(eq(apiKeys.id, id));
 
     recordAuditEvent({
       actorId: user.id,
@@ -75,7 +75,7 @@ export const DELETE = createApiHandler({
     const existing = await db.query.apiKeys.findFirst({ where: eq(apiKeys.id, id) });
     if (!existing) return apiError("notFound", 404, "ApiKey");
 
-    await db.delete(apiKeys).where(eq(apiKeys.id, id)).run();
+    await db.delete(apiKeys).where(eq(apiKeys.id, id));
 
     recordAuditEvent({
       actorId: user.id,

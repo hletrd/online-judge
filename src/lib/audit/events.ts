@@ -95,7 +95,7 @@ export function recordAuditEvent({
   const resolvedContext = request ? buildAuditRequestContext(request) : context;
 
   try {
-    db.insert(auditEvents)
+    void db.insert(auditEvents)
       .values({
         actorId: normalizeText(actorId, 64),
         actorRole: normalizeText(actorRole, 32),
@@ -109,8 +109,7 @@ export function recordAuditEvent({
         userAgent: normalizeText(resolvedContext?.userAgent, MAX_TEXT_LENGTH),
         requestMethod: normalizeText(resolvedContext?.requestMethod, 32),
         requestPath: normalizeText(resolvedContext?.requestPath, MAX_PATH_LENGTH),
-      })
-      .run();
+      });
     consecutiveAuditFailures = 0;
   } catch (error) {
     auditEventWriteFailures += 1;

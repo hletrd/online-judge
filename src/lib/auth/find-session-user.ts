@@ -20,11 +20,11 @@ export async function findSessionUser(session: Session | null) {
   }
 
   if (sessionUser?.id) {
-    return db.select(authUserSelect).from(users).where(eq(users.id, sessionUser.id)).get();
+    return (await db.select(authUserSelect).from(users).where(eq(users.id, sessionUser.id)).limit(1))[0];
   }
 
   if (sessionUser?.username) {
-    return db.select(authUserSelect).from(users).where(sql`lower(${users.username}) = lower(${sessionUser.username})`).get();
+    return (await db.select(authUserSelect).from(users).where(sql`lower(${users.username}) = lower(${sessionUser.username})`).limit(1))[0];
   }
 
   return null;

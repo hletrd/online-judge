@@ -1,6 +1,6 @@
 import { spawn, execFile } from "child_process";
 import { promisify } from "util";
-import { mkdir, writeFile, rm } from "fs/promises";
+import { chmod, mkdir, writeFile, rm } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 import { randomUUID } from "crypto";
@@ -420,16 +420,18 @@ export async function executeCompilerRun(
     };
   }
 
-  // Create temp workspace with permissions 0700 (owner only)
+  // Create temp workspace — world-writable so sibling Docker containers
+  // (which may run as a different uid) can write compiled output.
+  // chmod after mkdir to bypass process umask.
   const workspaceDir = join(WORKSPACE_BASE, `compiler-${randomUUID()}`);
-  await mkdir(workspaceDir, { recursive: true, mode: 0o700 });
+  await mkdir(workspaceDir, { recursive: true });
+  await chmod(workspaceDir, 0o777);
 
   try {
-    // Write source file with restricted permissions
-    const sourceFileName = `Main${options.language.extension}`;
+    // Write source file (world-readable for sibling container access)
+    const sourceFileName = `solution${options.language.extension}`;
     await writeFile(join(workspaceDir, sourceFileName), options.sourceCode, {
       encoding: "utf8",
-      mode: 0o600,
     });
 
     let compileOutput: string | null = null;

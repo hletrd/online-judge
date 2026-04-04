@@ -141,7 +141,7 @@ export const authConfig: NextAuthConfig = {
 
         const rateLimitKeys = [ipRateLimitKey, ...(usernameRateLimitKey ? [usernameRateLimitKey] : [])];
 
-        if (isAnyKeyRateLimited(...rateLimitKeys)) {
+        if (await isAnyKeyRateLimited(...rateLimitKeys)) {
           recordLoginEvent({
             outcome: "rate_limited",
             attemptedIdentifier,
@@ -169,7 +169,7 @@ export const authConfig: NextAuthConfig = {
 
         if (!user || !user.passwordHash || !user.isActive) {
           await verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
-          recordRateLimitFailureMulti(...rateLimitKeys);
+          void recordRateLimitFailureMulti(...rateLimitKeys);
           recordLoginEvent({
             outcome: "invalid_credentials",
             attemptedIdentifier: identifier,
@@ -181,7 +181,7 @@ export const authConfig: NextAuthConfig = {
 
         const { valid: isValid, needsRehash } = await verifyPassword(password, user.passwordHash);
         if (!isValid) {
-          recordRateLimitFailureMulti(...rateLimitKeys);
+          void recordRateLimitFailureMulti(...rateLimitKeys);
           recordLoginEvent({
             outcome: "invalid_credentials",
             attemptedIdentifier: identifier,
@@ -204,7 +204,7 @@ export const authConfig: NextAuthConfig = {
             .catch(() => {});
         }
 
-        clearRateLimitMulti(...rateLimitKeys);
+        void clearRateLimitMulti(...rateLimitKeys);
 
         return createSuccessfulLoginResponse(
           {

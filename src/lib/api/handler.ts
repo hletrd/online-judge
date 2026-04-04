@@ -97,7 +97,7 @@ export function createApiHandler<T = unknown>(config: HandlerConfig<T>) {
     try {
       // --- Rate limiting ---
       if (rateLimit) {
-        const rateLimitResponse = consumeApiRateLimit(req, rateLimit);
+        const rateLimitResponse = await consumeApiRateLimit(req, rateLimit);
         if (rateLimitResponse) return rateLimitResponse;
       }
 

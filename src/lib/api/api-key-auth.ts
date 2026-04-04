@@ -51,10 +51,9 @@ export async function authenticateApiKey(authHeader: string | null) {
   if (!user?.isActive) return null;
 
   // Update lastUsedAt (fire-and-forget)
-  db.update(apiKeys)
+  void db.update(apiKeys)
     .set({ lastUsedAt: new Date() })
-    .where(eq(apiKeys.id, candidate.id))
-    .run();
+    .where(eq(apiKeys.id, candidate.id));
 
   return {
     id: user.id,

@@ -42,15 +42,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const result = db
+    const result = await db
       .update(judgeWorkers)
       .set({
         status: "offline",
         deregisteredAt: new Date(),
         activeTasks: 0,
       })
-      .where(eq(judgeWorkers.id, workerId))
-      .run();
+      .where(eq(judgeWorkers.id, workerId));
 
     if (result.changes === 0) {
       return apiError("workerNotFound", 404);

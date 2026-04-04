@@ -39,13 +39,13 @@ export async function changePassword(
 
   const rateLimitKey = getChangePasswordRateLimitKey(user.id);
 
-  if (isRateLimited(rateLimitKey)) {
+  if (await isRateLimited(rateLimitKey)) {
     return { success: false, error: "changePasswordRateLimited" };
   }
 
   const { valid: isValid } = await verifyPassword(currentPassword, user.passwordHash);
   if (!isValid) {
-    recordRateLimitFailure(rateLimitKey);
+    void recordRateLimitFailure(rateLimitKey);
     return { success: false, error: "currentPasswordIncorrect" };
   }
 
@@ -61,20 +61,19 @@ export async function changePassword(
   const newHash = await hashPassword(newPassword);
 
   try {
-    db.update(users)
+    await db.update(users)
       .set(withUpdatedAt({
         passwordHash: newHash,
         mustChangePassword: false,
         tokenInvalidatedAt: new Date(),
       }))
-      .where(eq(users.id, user.id))
-      .run();
+      .where(eq(users.id, user.id));
   } catch (error) {
     logger.error({ err: error }, "Failed to change password");
     return { success: false, error: "error" };
   }
 
-  clearRateLimit(rateLimitKey);
+  void clearRateLimit(rateLimitKey);
 
   const auditContext = await buildServerActionAuditContext("/change-password");
   recordAuditEvent({

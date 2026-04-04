@@ -60,7 +60,7 @@ export async function updatePreferences(
     return { success: false, error: "notAuthenticated" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "updatePreferences", 30, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "updatePreferences", 30, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   const parsed = updatePreferencesSchema.safeParse(input);
@@ -99,10 +99,9 @@ export async function updatePreferences(
   }
 
   try {
-    db.update(users)
+    await db.update(users)
       .set(withUpdatedAt(updates))
-      .where(eq(users.id, session.user.id))
-      .run();
+      .where(eq(users.id, session.user.id));
   } catch (error) {
     logger.error({ err: error }, "Failed to update preferences");
     return { success: false, error: "updateError" };

@@ -1,6 +1,8 @@
+"use server";
+
 import { NextRequest, NextResponse } from "next/server";
 import { getRateLimitKey, isRateLimited } from "./rate-limit";
-import { db, sqlite } from "@/lib/db";
+import { db } from "@/lib/db";
 import { rateLimits } from "@/lib/db/schema";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
 import { eq } from "drizzle-orm";
@@ -33,15 +35,15 @@ function hasConsumedRequestKey(request: NextRequest, key: string) {
  * Unlike recordRateLimitFailure, this simply increments the counter
  * without applying exponential blocking on threshold breach.
  */
-function recordApiAttempt(key: string) {
-  sqlite.transaction(() => {
+async function recordApiAttempt(key: string) {
+  await db.transaction(async (tx) => {
     const now = Date.now();
-    const existing = db.select().from(rateLimits).where(eq(rateLimits.key, key)).get();
+    const [existing] = await tx.select().from(rateLimits).where(eq(rateLimits.key, key)).limit(1);
 
     const { max: apiMax, windowMs } = getApiRateLimitConfig();
 
     if (!existing) {
-      db.insert(rateLimits)
+      await tx.insert(rateLimits)
         .values({
           id: nanoid(),
           key,
@@ -50,17 +52,15 @@ function recordApiAttempt(key: string) {
           blockedUntil: null,
           consecutiveBlocks: 0,
           lastAttempt: now,
-        })
-        .run();
+        });
       return;
     }
 
     if (existing.windowStartedAt + windowMs <= now) {
       // Window expired, reset
-      db.update(rateLimits)
+      await tx.update(rateLimits)
         .set({ attempts: 1, windowStartedAt: now, lastAttempt: now })
-        .where(eq(rateLimits.key, key))
-        .run();
+        .where(eq(rateLimits.key, key));
       return;
     }
 
@@ -69,15 +69,14 @@ function recordApiAttempt(key: string) {
       ? now + windowMs
       : null;
 
-    db.update(rateLimits)
+    await tx.update(rateLimits)
       .set({
         attempts: existing.attempts + 1,
         lastAttempt: now,
         blockedUntil: blocked,
       })
-      .where(eq(rateLimits.key, key))
-      .run();
-  })();
+      .where(eq(rateLimits.key, key));
+  });
 }
 
 function rateLimitedResponse() {
@@ -91,21 +90,21 @@ function rateLimitedResponse() {
  * Consume one rate limit token for a mutation endpoint.
  * Returns a 429 response if rate limited, or null if allowed.
  */
-export function consumeApiRateLimit(
+export async function consumeApiRateLimit(
   request: NextRequest,
   endpoint: string
-): NextResponse | null {
+): Promise<NextResponse | null> {
   const key = getRateLimitKey(`api:${endpoint}`, request.headers);
 
   if (hasConsumedRequestKey(request, key)) {
     return null;
   }
 
-  if (isRateLimited(key)) {
+  if (await isRateLimited(key)) {
     return rateLimitedResponse();
   }
 
-  recordApiAttempt(key);
+  void recordApiAttempt(key);
   rememberRequestKey(request, key);
 
   return null;
@@ -116,22 +115,22 @@ export function consumeApiRateLimit(
  * Use for authenticated API endpoints where IP-based limiting is insufficient
  * (shared IPs, VPNs). Returns a 429 response if rate limited, or null if allowed.
  */
-export function consumeUserApiRateLimit(
+export async function consumeUserApiRateLimit(
   request: NextRequest,
   userId: string,
   endpoint: string,
-): NextResponse | null {
+): Promise<NextResponse | null> {
   const key = `api:${endpoint}:user:${userId}`;
 
   if (hasConsumedRequestKey(request, key)) {
     return null;
   }
 
-  if (isRateLimited(key)) {
+  if (await isRateLimited(key)) {
     return rateLimitedResponse();
   }
 
-  recordApiAttempt(key);
+  void recordApiAttempt(key);
   rememberRequestKey(request, key);
 
   return null;
@@ -142,18 +141,18 @@ export function consumeUserApiRateLimit(
  * Keyed on userId + actionName so each user has their own counter.
  * Returns { error: "rateLimited" } if the limit is exceeded, or null if allowed.
  */
-export function checkServerActionRateLimit(
+export async function checkServerActionRateLimit(
   userId: string,
   actionName: string,
   maxRequests: number = 20,
   windowSeconds: number = 60,
-): { error: string } | null {
+): Promise<{ error: string } | null> {
   const key = `sa:${userId}:${actionName}`;
   const windowMs = windowSeconds * 1000;
 
-  return sqlite.transaction(() => {
+  return db.transaction(async (tx) => {
     const now = Date.now();
-    const existing = db.select().from(rateLimits).where(eq(rateLimits.key, key)).get();
+    const [existing] = await tx.select().from(rateLimits).where(eq(rateLimits.key, key)).limit(1);
 
     let attempts: number;
     let windowStartedAt: number;
@@ -181,12 +180,11 @@ export function checkServerActionRateLimit(
     const newAttempts = attempts + 1;
 
     if (exists) {
-      db.update(rateLimits)
+      await tx.update(rateLimits)
         .set({ attempts: newAttempts, windowStartedAt, lastAttempt: now })
-        .where(eq(rateLimits.key, key))
-        .run();
+        .where(eq(rateLimits.key, key));
     } else {
-      db.insert(rateLimits)
+      await tx.insert(rateLimits)
         .values({
           id: nanoid(),
           key,
@@ -195,10 +193,9 @@ export function checkServerActionRateLimit(
           blockedUntil: null,
           consecutiveBlocks: 0,
           lastAttempt: now,
-        })
-        .run();
+        });
     }
 
     return null;
-  })();
+  });
 }

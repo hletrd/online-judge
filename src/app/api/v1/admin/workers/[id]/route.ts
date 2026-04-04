@@ -36,7 +36,7 @@ export const PATCH = createApiHandler({
     }
 
     if (Object.keys(updates).length > 0) {
-      db.update(judgeWorkers).set(updates).where(eq(judgeWorkers.id, id)).run();
+      await db.update(judgeWorkers).set(updates).where(eq(judgeWorkers.id, id));
     }
 
     const updated = await db
@@ -78,7 +78,7 @@ export const DELETE = createApiHandler({
     }
 
     // Reclaim any in-flight submissions from this worker
-    db.update(submissions)
+    await db.update(submissions)
       .set({
         status: "pending",
         judgeClaimToken: null,
@@ -90,11 +90,10 @@ export const DELETE = createApiHandler({
           eq(submissions.judgeWorkerId, id),
           inArray(submissions.status, ["queued", "judging"])
         )
-      )
-      .run();
+      );
 
     // Remove the worker record
-    db.delete(judgeWorkers).where(eq(judgeWorkers.id, id)).run();
+    await db.delete(judgeWorkers).where(eq(judgeWorkers.id, id));
 
     recordAuditEvent({
       action: "judge_worker.force_removed",

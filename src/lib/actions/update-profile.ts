@@ -26,7 +26,7 @@ export async function updateProfile(
     return { success: false, error: "notAuthenticated" };
   }
 
-  const rateLimit = checkServerActionRateLimit(session.user.id, "updateProfile", 20, 60);
+  const rateLimit = await checkServerActionRateLimit(session.user.id, "updateProfile", 20, 60);
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   const parsedInput = updateProfileSchema.safeParse(input);
@@ -74,7 +74,7 @@ export async function updateProfile(
   ].flatMap((value) => (value ? [value] : []));
 
   try {
-    db.update(users)
+    await db.update(users)
       .set(withUpdatedAt({
         name,
         className: normalizedClassName,
@@ -84,8 +84,7 @@ export async function updateProfile(
         editorFontSize: normalizedEditorFontSize,
         editorFontFamily: normalizedEditorFontFamily,
       }))
-      .where(eq(users.id, session.user.id))
-      .run();
+      .where(eq(users.id, session.user.id));
   } catch (error) {
     logger.error({ err: error }, "Failed to update profile");
     return { success: false, error: "updateError" };

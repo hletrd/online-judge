@@ -49,15 +49,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const result = db
+    const result = await db
       .update(judgeWorkers)
       .set({
         lastHeartbeatAt: now,
         activeTasks,
         status: "online",
       })
-      .where(eq(judgeWorkers.id, workerId))
-      .run();
+      .where(eq(judgeWorkers.id, workerId));
 
     if (result.changes === 0) {
       return apiError("workerNotFound", 404);
@@ -67,15 +66,14 @@ export async function POST(request: NextRequest) {
     const staleThreshold = new Date(
       Date.now() - HEARTBEAT_INTERVAL_MS * STALE_MULTIPLIER
     );
-    db.update(judgeWorkers)
+    void db.update(judgeWorkers)
       .set({ status: "stale" })
       .where(
         and(
           eq(judgeWorkers.status, "online"),
           lt(judgeWorkers.lastHeartbeatAt, staleThreshold)
         )
-      )
-      .run();
+      );
 
     return apiSuccess({ ok: true });
   } catch (error) {

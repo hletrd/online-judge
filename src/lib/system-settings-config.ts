@@ -99,13 +99,13 @@ function resolveValue(
   return DEFAULTS[key];
 }
 
-function loadFromDb(): ConfiguredSettings {
+async function loadFromDb(): Promise<ConfiguredSettings> {
   try {
-    const row = db
+    const row = (await db
       .select()
       .from(systemSettings)
       .where(eq(systemSettings.id, GLOBAL_SETTINGS_ID))
-      .get();
+      .limit(1))[0];
 
     const settings = {} as ConfiguredSettings;
     for (const key of Object.keys(DEFAULTS) as (keyof ConfiguredSettings)[]) {
@@ -132,10 +132,27 @@ export function getConfiguredSettings(): ConfiguredSettings {
   if (cached && now - cachedAt < CACHE_TTL_MS) {
     return cached;
   }
-  cached = loadFromDb();
-  cachedAt = now;
-  return cached;
+  // Trigger async reload in background; return cached or defaults until ready
+  if (!_refreshing) {
+    _refreshing = true;
+    loadFromDb()
+      .then((settings) => {
+        cached = settings;
+        cachedAt = Date.now();
+      })
+      .catch(() => {
+        // On error, use defaults
+        if (!cached) cached = { ...DEFAULTS } as ConfiguredSettings;
+      })
+      .finally(() => {
+        _refreshing = false;
+      });
+  }
+  // Return current cache or defaults while async load is in progress
+  return cached ?? ({ ...DEFAULTS } as ConfiguredSettings);
 }
+
+let _refreshing = false;
 
 /** Call after admin updates settings to force immediate reload. */
 export function invalidateSettingsCache(): void {

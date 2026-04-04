@@ -1,4 +1,4 @@
-import { db, sqlite } from "@/lib/db";
+import { db } from "@/lib/db";
 import { rateLimits } from "@/lib/db/schema";
 import { extractClientIp } from "@/lib/security/ip";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
@@ -31,24 +31,24 @@ export function getUsernameRateLimitKey(action: string, username: string) {
   return `${action}:user:${username.toLowerCase()}`;
 }
 
-function evictStaleEntries() {
+async function evictStaleEntries() {
   const cutoff = Date.now() - RATE_LIMIT_EVICTION_AGE_MS;
   try {
-    db.delete(rateLimits).where(lt(rateLimits.lastAttempt, cutoff)).run();
+    await db.delete(rateLimits).where(lt(rateLimits.lastAttempt, cutoff));
   } catch {
     // Eviction is best-effort
   }
 }
 
 // Run eviction periodically instead of on every rate limit check
-// to reduce SQLite write contention under load
+// to reduce write contention under load
 const EVICTION_INTERVAL_MS = 60_000; // 1 minute
 let evictionTimer: ReturnType<typeof setInterval> | null = null;
 
 export function startRateLimitEviction() {
   if (evictionTimer) return;
   evictionTimer = setInterval(() => {
-    evictStaleEntries();
+    void evictStaleEntries();
   }, EVICTION_INTERVAL_MS);
 }
 
@@ -59,9 +59,9 @@ export function stopRateLimitEviction() {
   }
 }
 
-function getEntry(key: string) {
+async function getEntry(key: string) {
   const now = Date.now();
-  const existing = db.select().from(rateLimits).where(eq(rateLimits.key, key)).get();
+  const [existing] = await db.select().from(rateLimits).where(eq(rateLimits.key, key)).limit(1);
 
   if (!existing) {
     return {
@@ -96,8 +96,8 @@ function getEntry(key: string) {
   };
 }
 
-export function isRateLimited(key: string) {
-  const { now, entry } = getEntry(key);
+export async function isRateLimited(key: string) {
+  const { now, entry } = await getEntry(key);
 
   if (entry.blockedUntil > now) {
     return true;
@@ -106,13 +106,14 @@ export function isRateLimited(key: string) {
   return false;
 }
 
-export function isAnyKeyRateLimited(...keys: string[]) {
-  return keys.some((key) => isRateLimited(key));
+export async function isAnyKeyRateLimited(...keys: string[]) {
+  const results = await Promise.all(keys.map((key) => isRateLimited(key)));
+  return results.some(Boolean);
 }
 
-export function recordRateLimitFailure(key: string) {
-  sqlite.transaction(() => {
-    const { now, entry, exists } = getEntry(key);
+export async function recordRateLimitFailure(key: string) {
+  await db.transaction(async (tx) => {
+    const { now, entry, exists } = await getEntry(key);
     const attempts = entry.attempts + 1;
 
     let blockedUntil = entry.blockedUntil;
@@ -127,7 +128,7 @@ export function recordRateLimitFailure(key: string) {
     }
 
     if (exists) {
-      db.update(rateLimits)
+      await tx.update(rateLimits)
         .set({
           attempts,
           windowStartedAt: entry.windowStartedAt,
@@ -135,10 +136,9 @@ export function recordRateLimitFailure(key: string) {
           consecutiveBlocks,
           lastAttempt: now,
         })
-        .where(eq(rateLimits.key, key))
-        .run();
+        .where(eq(rateLimits.key, key));
     } else {
-      db.insert(rateLimits)
+      await tx.insert(rateLimits)
         .values({
           id: nanoid(),
           key,
@@ -147,24 +147,23 @@ export function recordRateLimitFailure(key: string) {
           blockedUntil: blockedUntil || null,
           consecutiveBlocks,
           lastAttempt: now,
-        })
-        .run();
+        });
     }
-  })();
+  });
 }
 
-export function recordRateLimitFailureMulti(...keys: string[]) {
+export async function recordRateLimitFailureMulti(...keys: string[]) {
   for (const key of keys) {
-    recordRateLimitFailure(key);
+    await recordRateLimitFailure(key);
   }
 }
 
-export function clearRateLimit(key: string) {
-  db.delete(rateLimits).where(eq(rateLimits.key, key)).run();
+export async function clearRateLimit(key: string) {
+  await db.delete(rateLimits).where(eq(rateLimits.key, key));
 }
 
-export function clearRateLimitMulti(...keys: string[]) {
+export async function clearRateLimitMulti(...keys: string[]) {
   for (const key of keys) {
-    clearRateLimit(key);
+    await clearRateLimit(key);
   }
 }
