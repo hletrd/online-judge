@@ -481,6 +481,8 @@
     "compileOutputHidden": "이 제출에 대한 컴파일 오류 상세 정보는 제공되지 않습니다.",
     "detailedResultsHidden": "이 제출에 대한 테스트 케이스 상세 결과는 제공되지 않습니다.",
     "runtimeErrorOutput": "런타임 오류 출력",
+    "expectedOutput": "예상 출력",
+    "actualOutput": "실제 출력",
     "rejudge": "재채점",
     "rejudgeSuccess": "재채점 대기열에 추가되었습니다.",
     "rejudgeFailed": "재채점 요청에 실패했습니다.",

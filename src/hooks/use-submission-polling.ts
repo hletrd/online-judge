@@ -12,6 +12,8 @@ type SubmissionResultView = {
   actualOutput: string | null;
   testCase: {
     sortOrder: number | null;
+    isVisible?: boolean;
+    expectedOutput?: string | null;
   } | null;
 };
 
@@ -55,6 +57,8 @@ function normalizeSubmission(data: Record<string, unknown>): SubmissionDetailVie
             ? {
                 sortOrder:
                   typeof testCase.sortOrder === "number" ? testCase.sortOrder : null,
+                isVisible: typeof testCase.isVisible === "boolean" ? testCase.isVisible : undefined,
+                expectedOutput: typeof testCase.expectedOutput === "string" ? testCase.expectedOutput : null,
               }
             : null,
         };

@@ -481,6 +481,8 @@
     "compileOutputHidden": "Compile error details are not available for this submission.",
     "detailedResultsHidden": "Detailed test case results are not available for this submission.",
     "runtimeErrorOutput": "Runtime error output",
+    "expectedOutput": "Expected Output",
+    "actualOutput": "Actual Output",
     "rejudge": "Rejudge",
     "rejudgeSuccess": "Submission queued for rejudging.",
     "rejudgeFailed": "Failed to rejudge submission.",

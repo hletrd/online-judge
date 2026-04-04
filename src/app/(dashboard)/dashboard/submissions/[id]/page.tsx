@@ -36,7 +36,7 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
       results: {
         with: {
           testCase: {
-            columns: { sortOrder: true },
+            columns: { sortOrder: true, expectedOutput: true, isVisible: true },
           },
         },
       },
@@ -84,6 +84,12 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
       actualOutput = null;
     }
 
+    const isVisible = result.testCase?.isVisible ?? false;
+    const expectedOutput =
+      showDetailedResults && isVisible && result.status === "wrong_answer"
+        ? (result.testCase?.expectedOutput ?? null)
+        : null;
+
     return {
       id: result.id,
       status: result.status,
@@ -93,6 +99,8 @@ export default async function SubmissionDetailPage({ params, searchParams }: { p
       testCase: result.testCase
         ? {
             sortOrder: result.testCase.sortOrder ?? null,
+            isVisible,
+            expectedOutput,
           }
         : null,
     };
