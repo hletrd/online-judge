@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRateLimitKey, isRateLimited } from "./rate-limit";
+import { getRateLimitKey } from "./rate-limit";
 import { db } from "@/lib/db";
 import { rateLimits } from "@/lib/db/schema";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
@@ -29,52 +29,56 @@ function hasConsumedRequestKey(request: NextRequest, key: string) {
 }
 
 /**
- * Record an API request attempt without escalating backoff.
- * Unlike recordRateLimitFailure, this simply increments the counter
- * without applying exponential blocking on threshold breach.
+ * Atomically check rate limit and record an API request attempt in a single
+ * DB transaction. Returns true if the request is rate-limited, false if allowed.
+ * This eliminates the TOCTOU race between separate check + increment calls.
  */
-async function recordApiAttempt(key: string) {
-  await db.transaction(async (tx) => {
-    const now = Date.now();
-    const [existing] = await tx.select().from(rateLimits).where(eq(rateLimits.key, key)).limit(1);
+async function atomicConsumeRateLimit(key: string): Promise<boolean> {
+  const now = Date.now();
+  const { max: apiMax, windowMs } = getApiRateLimitConfig();
+  const [existing] = await db.select().from(rateLimits).where(eq(rateLimits.key, key)).limit(1);
 
-    const { max: apiMax, windowMs } = getApiRateLimitConfig();
-
-    if (!existing) {
-      await tx.insert(rateLimits)
-        .values({
-          id: nanoid(),
-          key,
-          attempts: 1,
-          windowStartedAt: now,
-          blockedUntil: null,
-          consecutiveBlocks: 0,
-          lastAttempt: now,
-        });
-      return;
-    }
-
-    if (existing.windowStartedAt + windowMs <= now) {
-      // Window expired, reset
-      await tx.update(rateLimits)
-        .set({ attempts: 1, windowStartedAt: now, lastAttempt: now })
-        .where(eq(rateLimits.key, key));
-      return;
-    }
-
-    // Simply increment without escalating backoff
-    const blocked = existing.attempts + 1 >= apiMax
-      ? now + windowMs
-      : null;
-
-    await tx.update(rateLimits)
-      .set({
-        attempts: existing.attempts + 1,
+  if (!existing) {
+    await db.insert(rateLimits)
+      .values({
+        id: nanoid(),
+        key,
+        attempts: 1,
+        windowStartedAt: now,
+        blockedUntil: null,
+        consecutiveBlocks: 0,
         lastAttempt: now,
-        blockedUntil: blocked,
-      })
+      });
+    return false;
+  }
+
+  if (existing.blockedUntil && existing.blockedUntil > now) {
+    return true;
+  }
+
+  if (existing.windowStartedAt + windowMs <= now) {
+    await db.update(rateLimits)
+      .set({ attempts: 1, windowStartedAt: now, lastAttempt: now, blockedUntil: null })
       .where(eq(rateLimits.key, key));
-  });
+    return false;
+  }
+
+  if (existing.attempts >= apiMax) {
+    return true;
+  }
+
+  const newAttempts = existing.attempts + 1;
+  const blocked = newAttempts >= apiMax ? now + windowMs : null;
+
+  await db.update(rateLimits)
+    .set({
+      attempts: newAttempts,
+      lastAttempt: now,
+      blockedUntil: blocked,
+    })
+    .where(eq(rateLimits.key, key));
+
+  return false;
 }
 
 function rateLimitedResponse() {
@@ -98,13 +102,12 @@ export async function consumeApiRateLimit(
     return null;
   }
 
-  if (await isRateLimited(key)) {
+  const limited = await atomicConsumeRateLimit(key);
+  if (limited) {
     return rateLimitedResponse();
   }
 
-  void recordApiAttempt(key);
   rememberRequestKey(request, key);
-
   return null;
 }
 
@@ -124,13 +127,12 @@ export async function consumeUserApiRateLimit(
     return null;
   }
 
-  if (await isRateLimited(key)) {
+  const limited = await atomicConsumeRateLimit(key);
+  if (limited) {
     return rateLimitedResponse();
   }
 
-  void recordApiAttempt(key);
   rememberRequestKey(request, key);
-
   return null;
 }
 
@@ -148,52 +150,49 @@ export async function checkServerActionRateLimit(
   const key = `sa:${userId}:${actionName}`;
   const windowMs = windowSeconds * 1000;
 
-  return db.transaction(async (tx) => {
-    const now = Date.now();
-    const [existing] = await tx.select().from(rateLimits).where(eq(rateLimits.key, key)).limit(1);
+  const now = Date.now();
+  const [existing] = await db.select().from(rateLimits).where(eq(rateLimits.key, key)).limit(1);
 
-    let attempts: number;
-    let windowStartedAt: number;
-    let exists: boolean;
+  let attempts: number;
+  let windowStartedAt: number;
+  let exists: boolean;
 
-    if (!existing) {
-      attempts = 0;
-      windowStartedAt = now;
-      exists = false;
-    } else if (existing.windowStartedAt + windowMs <= now) {
-      // Window has expired — reset
-      attempts = 0;
-      windowStartedAt = now;
-      exists = true;
-    } else {
-      attempts = existing.attempts;
-      windowStartedAt = existing.windowStartedAt;
-      exists = true;
-    }
+  if (!existing) {
+    attempts = 0;
+    windowStartedAt = now;
+    exists = false;
+  } else if (existing.windowStartedAt + windowMs <= now) {
+    attempts = 0;
+    windowStartedAt = now;
+    exists = true;
+  } else {
+    attempts = existing.attempts;
+    windowStartedAt = existing.windowStartedAt;
+    exists = true;
+  }
 
-    if (attempts >= maxRequests) {
-      return { error: "rateLimited" };
-    }
+  if (attempts >= maxRequests) {
+    return { error: "rateLimited" };
+  }
 
-    const newAttempts = attempts + 1;
+  const newAttempts = attempts + 1;
 
-    if (exists) {
-      await tx.update(rateLimits)
-        .set({ attempts: newAttempts, windowStartedAt, lastAttempt: now })
-        .where(eq(rateLimits.key, key));
-    } else {
-      await tx.insert(rateLimits)
-        .values({
-          id: nanoid(),
-          key,
-          attempts: newAttempts,
-          windowStartedAt,
-          blockedUntil: null,
-          consecutiveBlocks: 0,
-          lastAttempt: now,
-        });
-    }
+  if (exists) {
+    await db.update(rateLimits)
+      .set({ attempts: newAttempts, windowStartedAt, lastAttempt: now })
+      .where(eq(rateLimits.key, key));
+  } else {
+    await db.insert(rateLimits)
+      .values({
+        id: nanoid(),
+        key,
+        attempts: newAttempts,
+        windowStartedAt,
+        blockedUntil: null,
+        consecutiveBlocks: 0,
+        lastAttempt: now,
+      });
+  }
 
-    return null;
-  });
+  return null;
 }
