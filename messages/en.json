@@ -94,6 +94,8 @@
     "adminUsers": "Users & Roles",
     "adminMonitoring": "Monitoring",
     "adminSystem": "System",
+    "usersAndLogs": "Users & Logs",
+    "system": "System",
     "dashboard": "Dashboard",
     "problems": "Problems",
     "submissions": "Submissions",

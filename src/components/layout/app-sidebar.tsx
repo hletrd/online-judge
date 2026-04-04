@@ -51,7 +51,7 @@ type NavGroup = {
 
 const navGroups: NavGroup[] = [
   {
-    labelKey: "navigation",
+    labelKey: "",
     items: [
       { titleKey: "dashboard", href: "/dashboard", icon: LayoutDashboard },
     ],
@@ -102,11 +102,6 @@ const navGroups: NavGroup[] = [
         capability: "problem_sets.create",
         hiddenInModes: ["recruiting"],
       },
-    ],
-  },
-  {
-    labelKey: "account",
-    items: [
       { titleKey: "profile", href: "/dashboard/profile", icon: User },
     ],
   },
@@ -114,29 +109,24 @@ const navGroups: NavGroup[] = [
 
 const adminGroups: NavGroup[] = [
   {
-    labelKey: "adminUsers",
+    labelKey: "usersAndLogs",
     items: [
       { titleKey: "userManagement", href: "/dashboard/admin/users", icon: Shield, capability: "users.view" },
       { titleKey: "roleManagement", href: "/dashboard/admin/roles", icon: KeyRound, capability: "users.manage_roles" },
-    ],
-  },
-  {
-    labelKey: "adminMonitoring",
-    items: [
       { titleKey: "allSubmissions", href: "/dashboard/admin/submissions", icon: FileCode, capability: "submissions.view_all" },
-      { titleKey: "judgeWorkers", href: "/dashboard/admin/workers", icon: Server, capability: "system.settings" },
       { titleKey: "auditLogs", href: "/dashboard/admin/audit-logs", icon: History, capability: "system.audit_logs" },
       { titleKey: "loginLogs", href: "/dashboard/admin/login-logs", icon: LogIn, capability: "system.login_logs" },
       { titleKey: "chatLogs", href: "/dashboard/admin/plugins/chat-logs", icon: MessageCircle, capability: "system.chat_logs" },
     ],
   },
   {
-    labelKey: "adminSystem",
+    labelKey: "system",
     items: [
+      { titleKey: "judgeWorkers", href: "/dashboard/admin/workers", icon: Server, capability: "system.settings" },
+      { titleKey: "languages", href: "/dashboard/admin/languages", icon: Code, capability: "system.settings" },
+      { titleKey: "systemSettings", href: "/dashboard/admin/settings", icon: Settings, capability: "system.settings" },
       { titleKey: "fileManagement", href: "/dashboard/admin/files", icon: Upload, capability: "files.manage" },
       { titleKey: "apiKeys", href: "/dashboard/admin/api-keys", icon: KeyRound, capability: "system.settings" },
-      { titleKey: "systemSettings", href: "/dashboard/admin/settings", icon: Settings, capability: "system.settings" },
-      { titleKey: "languages", href: "/dashboard/admin/languages", icon: Code, capability: "system.settings" },
       { titleKey: "tagManagement", href: "/dashboard/admin/tags", icon: Tags, capability: "system.settings" },
       { titleKey: "plugins", href: "/dashboard/admin/plugins", icon: Blocks, capability: "system.plugins" },
     ],
@@ -231,8 +221,8 @@ export function AppSidebar({ user, siteTitle, platformMode, capabilities = [] }:
           const filtered = filterItems(group.items);
           if (filtered.length === 0) return null;
           return (
-            <SidebarGroup key={group.labelKey}>
-              <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>
+            <SidebarGroup key={group.labelKey || filtered[0]?.href}>
+              {group.labelKey && <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>}
               <SidebarGroupContent>
                 <SidebarMenu>
                   <NavItems items={filtered} pathname={pathname} t={t} platformMode={platformMode} />

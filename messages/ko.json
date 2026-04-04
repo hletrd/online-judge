@@ -94,6 +94,8 @@
     "adminUsers": "사용자 및 역할",
     "adminMonitoring": "모니터링",
     "adminSystem": "시스템",
+    "usersAndLogs": "사용자 및 로그",
+    "system": "시스템",
     "dashboard": "대시보드",
     "problems": "문제",
     "submissions": "제출 내역",
