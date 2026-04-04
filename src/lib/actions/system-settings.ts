@@ -14,7 +14,7 @@ import {
   systemSettingsSchema,
 } from "@/lib/validators/system-settings";
 
-/** Keys for the 18 configurable integer settings */
+/** Keys for configurable integer settings */
 const CONFIG_KEYS = [
   "loginRateLimitMaxAttempts",
   "loginRateLimitWindowMs",
@@ -34,6 +34,10 @@ const CONFIG_KEYS = [
   "maxSseConnectionsPerUser",
   "ssePollIntervalMs",
   "sseTimeoutMs",
+  "compilerTimeLimitMs",
+  "uploadMaxImageSizeBytes",
+  "uploadMaxFileSizeBytes",
+  "uploadMaxImageDimension",
 ] as const;
 
 type UpdateSystemSettingsResult = {
