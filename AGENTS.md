@@ -447,7 +447,7 @@ All deployment credentials, SSH access, target hosts, and runtime secrets are do
 
 ## Deployment
 
-**RULE: Always read `.env` before any deployment, SSH, or E2E testing task.** Never guess credentials or host addresses — they are all documented in `.env`. Failing to read it first leads to failed deploys and wasted time.
+**RULE: Always read `.env` before any deployment, SSH, or E2E testing task.** Never guess credentials or host addresses — they are all documented in `.env`. Failing to read it first leads to failed deploys and wasted time. This includes reading deployment target variables (`TEST_HOST`, `TEST_SSH_USER`, `TEST_SSH_PASSWORD`, `TEST_DOMAIN`, `PROD_DOMAIN`, `PROD_SSH_USER`, `PROD_SSH_KEY`, etc.) and passing them correctly to the deploy script.
 
 The primary deploy script is `deploy-docker.sh`. Pass environment variables from `.env`:
 - `SSH_PASSWORD` — for password-based SSH auth (Target 1)
