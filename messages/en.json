@@ -958,6 +958,8 @@
       "defaultTimeLimitMsHint": "Default execution time limit for new problems in milliseconds. Default: {default}",
       "defaultMemoryLimitMb": "Default Memory Limit (MB)",
       "defaultMemoryLimitMbHint": "Default memory limit for new problems in megabytes. Default: {default}",
+      "compilerTimeLimitMs": "Compiler Time Limit (ms)",
+      "compilerTimeLimitMsHint": "Maximum time allowed for source code compilation in milliseconds. Default: {default}",
       "staleClaimTimeoutMs": "Stale Claim Timeout (ms)",
       "staleClaimTimeoutMsHint": "Time before a judge claim is considered stale and can be reclaimed. Default: {default}",
       "sessionMaxAgeSeconds": "Session Max Age (seconds)",
@@ -1234,6 +1236,30 @@
       "deleteSuccess": "API key deleted",
       "deleteFailed": "Failed to delete API key",
       "toggleFailed": "Failed to update API key"
+    },
+    "tags": {
+      "title": "Tag Management",
+      "tableTitle": "All Tags",
+      "addTag": "Add Tag",
+      "editTag": "Edit Tag",
+      "color": "Color",
+      "noColor": "No color",
+      "noTags": "No tags found.",
+      "createSuccess": "Tag created successfully",
+      "updateSuccess": "Tag updated successfully",
+      "deleteSuccess": "Tag deleted successfully",
+      "deleteConfirmTitle": "Delete this tag?",
+      "deleteConfirmDescription": "Tag \"{name}\" will be permanently deleted.",
+      "deleteConfirmWithProblems": "Tag \"{name}\" is used by {count} problem(s). It will be removed from all of them.",
+      "duplicateName": "A tag with this name already exists",
+      "deleteFailed": "Failed to delete tag",
+      "createFailed": "Failed to create tag",
+      "updateFailed": "Failed to update tag",
+      "table": {
+        "name": "Name",
+        "problemCount": "Problems",
+        "created": "Created"
+      }
     }
   },
   "profile": {

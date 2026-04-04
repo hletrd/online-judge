@@ -958,6 +958,8 @@
       "defaultTimeLimitMsHint": "새 문제의 기본 실행 시간 제한 (밀리초). 기본값: {default}",
       "defaultMemoryLimitMb": "기본 메모리 제한 (MB)",
       "defaultMemoryLimitMbHint": "새 문제의 기본 메모리 제한 (MB). 기본값: {default}",
+      "compilerTimeLimitMs": "컴파일 시간 제한 (ms)",
+      "compilerTimeLimitMsHint": "소스 코드 컴파일 최대 시간 (밀리초). 기본값: {default}",
       "staleClaimTimeoutMs": "만료된 클레임 시간 초과 (ms)",
       "staleClaimTimeoutMsHint": "채점 클레임이 만료되어 재할당 가능해지는 시간. 기본값: {default}",
       "sessionMaxAgeSeconds": "세션 최대 유지 시간 (초)",
@@ -1234,6 +1236,30 @@
       "deleteSuccess": "API 키가 삭제되었습니다",
       "deleteFailed": "API 키 삭제에 실패했습니다",
       "toggleFailed": "API 키 업데이트에 실패했습니다"
+    },
+    "tags": {
+      "title": "태그 관리",
+      "tableTitle": "전체 태그",
+      "addTag": "태그 추가",
+      "editTag": "태그 수정",
+      "color": "색상",
+      "noColor": "색상 없음",
+      "noTags": "태그가 없습니다.",
+      "createSuccess": "태그가 생성되었습니다",
+      "updateSuccess": "태그가 수정되었습니다",
+      "deleteSuccess": "태그가 삭제되었습니다",
+      "deleteConfirmTitle": "이 태그를 삭제할까요?",
+      "deleteConfirmDescription": "태그 \"{name}\"이(가) 영구 삭제됩니다.",
+      "deleteConfirmWithProblems": "태그 \"{name}\"이(가) {count}개 문제에서 사용 중입니다. 모든 문제에서 제거됩니다.",
+      "duplicateName": "같은 이름의 태그가 이미 있습니다",
+      "deleteFailed": "태그 삭제에 실패했습니다",
+      "createFailed": "태그 생성에 실패했습니다",
+      "updateFailed": "태그 수정에 실패했습니다",
+      "table": {
+        "name": "이름",
+        "problemCount": "문제 수",
+        "created": "생성일"
+      }
     }
   },
   "profile": {
