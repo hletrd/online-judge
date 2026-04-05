@@ -116,7 +116,7 @@ See [Language presets](docs/languages.md#docker-image-presets) for preset option
 | `judge-zig` | 598 MB | 395 MB | `judge-groovy` | 613 MB | 400 MB |
 | `judge-vala` | 619 MB | 452 MB | `judge-koka` | 641 MB | 470 MB |
 | `judge-jvm` | 656 MB | 436 MB | `judge-flix` | 657 MB | 665 MB |
-| `judge-idris2` | 660 MB | 780 MB | `judge-nim` | 727 MB | 523 MB |
+| `judge-idris2` | 660 MB | 721 MB | `judge-nim` | 727 MB | 523 MB |
 | `judge-racket` | 730 MB | 507 MB | `judge-minizinc` | 747 MB | 326 MB |
 | `judge-scala` | 780 MB | 523 MB | `judge-factor` | 781 MB | 584 MB |
 | `judge-octave` | 830 MB | 538 MB | `judge-moonbit` | 833 MB | 890 MB |
