@@ -1,0 +1,19 @@
+FROM debian:bookworm-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libc6-dev git ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN git clone --depth 1 https://github.com/TryItOnline/malbolge.git /tmp/malbolge && \
+    gcc -O2 -o /usr/local/bin/malbolge /tmp/malbolge/malbolge.c && \
+    rm -rf /tmp/malbolge
+
+FROM debian:bookworm-slim
+
+COPY --from=builder /usr/local/bin/malbolge /usr/local/bin/malbolge
+
+RUN useradd --no-create-home --shell /usr/sbin/nologin judge && \
+    mkdir -p /workspace && chown judge:judge /workspace
+
+WORKDIR /workspace
+USER judge

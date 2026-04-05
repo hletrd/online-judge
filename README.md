@@ -82,7 +82,7 @@ See [Language presets](docs/languages.md#docker-image-presets) for preset option
 | `judge-tcl` | 20 MB | 13 MB | `judge-janet` | 27 MB | 19 MB |
 | `judge-nasm` | 34 MB | 26 MB | `judge-perl` | 64 MB | 48 MB |
 | `judge-python` | 71 MB | 51 MB | `judge-commonlisp` | 80 MB | 50 MB |
-| `judge-hy` | 84 MB | 59 MB | `judge-malbolge` | 114 MB | — |
+| `judge-hy` | 84 MB | 59 MB | `judge-malbolge` | 114 MB | 136 MB |
 | `judge-rexx` | 114 MB | 99 MB | `judge-algol68` | 115 MB | 100 MB |
 | `judge-squirrel` | 115 MB | 100 MB | `judge-forth` | 116 MB | 101 MB |
 | `judge-snobol4` | 116 MB | 101 MB | `judge-lolcode` | 117 MB | 101 MB |
@@ -92,10 +92,10 @@ See [Language presets](docs/languages.md#docker-image-presets) for preset option
 | `judge-picat` | 141 MB | 118 MB | `judge-erlang` | 147 MB | 88 MB |
 | `judge-j` | 150 MB | 507 MB | `judge-bun` | 153 MB | 107 MB |
 | `judge-php` | 155 MB | 105 MB | `judge-bqn` | 157 MB | 125 MB |
-| `judge-elixir` | 173 MB | 102 MB | `judge-b` | 177 MB | — |
+| `judge-elixir` | 173 MB | 102 MB | `judge-b` | 177 MB | 385 MB |
 | `judge-gleam` | 187 MB | 113 MB | `judge-deno` | 194 MB | 124 MB |
 | `judge-shakespeare` | 199 MB | 160 MB | `judge-umjunsik` | 200 MB | 98 MB |
-| `judge-esoteric` | 201 MB | 161 MB | `judge-apl` | 206 MB | — |
+| `judge-esoteric` | 201 MB | 161 MB | `judge-apl` | 206 MB | 147 MB |
 | `judge-pascal` | 219 MB | 185 MB | `judge-uiua` | 230 MB | 178 MB |
 | `judge-wat` | 235 MB | 97 MB | `judge-prolog` | 245 MB | 192 MB |
 | `judge-raku` | 258 MB | 212 MB | `judge-node` | 260 MB | 188 MB |
@@ -112,11 +112,11 @@ See [Language presets](docs/languages.md#docker-image-presets) for preset option
 | `judge-sml` | 493 MB | 356 MB | `judge-modula2` | 512 MB | 364 MB |
 | `judge-curry` | 520 MB | 302 MB | `judge-purescript` | 530 MB | 260 MB |
 | `judge-ocaml` | 554 MB | 406 MB | `judge-d` | 563 MB | 388 MB |
-| `judge-c3` | 580 MB | — | `judge-crystal` | 581 MB | 405 MB |
+| `judge-c3` | 580 MB | 610 MB | `judge-crystal` | 581 MB | 405 MB |
 | `judge-zig` | 598 MB | 395 MB | `judge-groovy` | 613 MB | 400 MB |
 | `judge-vala` | 619 MB | 452 MB | `judge-koka` | 641 MB | 470 MB |
-| `judge-jvm` | 656 MB | 436 MB | `judge-flix` | 657 MB | — |
-| `judge-idris2` | 660 MB | — | `judge-nim` | 727 MB | 523 MB |
+| `judge-jvm` | 656 MB | 436 MB | `judge-flix` | 657 MB | 665 MB |
+| `judge-idris2` | 660 MB | 780 MB | `judge-nim` | 727 MB | 523 MB |
 | `judge-racket` | 730 MB | 507 MB | `judge-minizinc` | 747 MB | 326 MB |
 | `judge-scala` | 780 MB | 523 MB | `judge-factor` | 781 MB | 584 MB |
 | `judge-octave` | 830 MB | 538 MB | `judge-moonbit` | 833 MB | 890 MB |

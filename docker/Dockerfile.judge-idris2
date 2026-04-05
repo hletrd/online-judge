@@ -1,7 +1,7 @@
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
-# Install Chez Scheme from Debian packages (9.5.8, supports amd64+arm64)
-# and build dependencies for Idris 2
+# Install Chez Scheme and build dependencies for Idris 2
+# trixie has chezscheme 10.0.0 for both amd64 and arm64
 RUN apt-get update && apt-get install -y --no-install-recommends \
     chezscheme gcc libc6-dev make curl ca-certificates git libgmp-dev \
     && rm -rf /var/lib/apt/lists/*
