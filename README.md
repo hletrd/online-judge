@@ -119,7 +119,7 @@ See [Language presets](docs/languages.md#docker-image-presets) for preset option
 | `judge-idris2` | 660 MB | — | `judge-nim` | 727 MB | 523 MB |
 | `judge-racket` | 730 MB | 507 MB | `judge-minizinc` | 747 MB | 326 MB |
 | `judge-scala` | 780 MB | 523 MB | `judge-factor` | 781 MB | 584 MB |
-| `judge-octave` | 830 MB | 538 MB | `judge-moonbit` | 833 MB | — |
+| `judge-octave` | 830 MB | 538 MB | `judge-moonbit` | 833 MB | 890 MB |
 | `judge-fsharp` | 985 MB | 687 MB | `judge-clang` | 1.02 GB | 670 MB |
 | `judge-csharp` | 1.07 GB | 693 MB | `judge-mercury` | 1.14 GB | — |
 | `judge-rust` | 1.21 GB | 810 MB | `judge-r` | 1.27 GB | 850 MB |
@@ -140,6 +140,7 @@ All 100 images build on both amd64 and arm64.
 | Auth | Auth.js v5 (Credentials) |
 | UI | Tailwind CSS v4, shadcn/ui |
 | Judge Worker | Rust binary with Docker-sandboxed execution (multi-worker) |
+| Code Runner | Rust axum HTTP endpoint in judge worker for interactive code execution |
 | Code Similarity | Rust axum sidecar (rayon + ahash) |
 
 ## Project Structure
@@ -168,6 +169,8 @@ judgekit/
 </p>
 
 Workers connect to the app server via HTTP(S) only. Each worker registers on startup, sends periodic heartbeats, and deregisters on graceful shutdown. The atomic `UPDATE...RETURNING` claim SQL prevents two workers from claiming the same submission. Stale workers are detected automatically and their submissions reclaimed.
+
+The judge worker also exposes an HTTP runner endpoint (default port 3001) for interactive "Run Code" requests. When `COMPILER_RUNNER_URL` is set in the app, the Next.js process delegates Docker execution to the Rust worker instead of spawning containers locally, freeing the Node.js event loop. Falls back to local execution if the runner is unreachable.
 
 ## Deployment
 
@@ -200,7 +203,29 @@ Monitor workers at `/dashboard/admin/workers`.
 
 - **Docker socket proxy**: The deployment uses a dedicated `docker-proxy` service (`tecnativa/docker-socket-proxy`) as the only container with direct `/var/run/docker.sock` access. The `app` and `judge-worker` containers talk to Docker through `DOCKER_HOST=tcp://docker-proxy:2375`, reducing direct socket exposure while still allowing sandbox execution and admin image management.
 - **`/judge-workspaces`**: Must exist on the host before starting the stack — used as the shared workspace volume between the judge worker and sibling judge containers.
+- **`COMPILER_RUNNER_URL`**: Set to `http://judge-worker:3001` in the app container to delegate interactive code execution to the Rust runner. The judge worker exposes this endpoint by default on port 3001 (configurable via `RUNNER_PORT`, `RUNNER_HOST`, `RUNNER_CONCURRENCY`, `RUNNER_ENABLED`).
 - The `deploy-docker.sh` script handles setup automatically (server-side builds, architecture detection, nginx config). See [Deployment Guide](docs/deployment.md).
+
+## Platform Modes
+
+Four platform modes control what users see and can access. Switch modes from **Settings > General**.
+
+| | Homework | Exam | Contest | Recruiting |
+|---|---|---|---|---|
+| **Use case** | Coursework, practice, low-stakes work | Proctored tests and exams | Competitive programming events | Candidate coding evaluations |
+| **AI code review** | Enabled by default | Disabled by default | Disabled by default | Disabled by default |
+| **Standalone compiler** | Available | Blocked | Available | Blocked |
+| **Contests page** | Visible | Visible | Visible | Hidden* |
+| **Rankings page** | Visible | Visible | Visible | Hidden* |
+| **Groups page** | Visible | Visible | Visible | Hidden* |
+| **Problem Sets page** | Visible | Visible | Visible | Hidden (all users) |
+| **Dashboard** | Student dashboard | Student dashboard | Student dashboard | Candidate dashboard |
+| **"Problems" label** | Problems | Problems | Problems | Challenges |
+| **"Submissions" label** | Submissions | Submissions | Submissions | Attempts |
+
+\* Hidden for non-admin/non-instructor users only.
+
+Default: `homework`. Change in admin settings or directly in the database (`system_settings.platform_mode`).
 
 ## Documentation
 
