@@ -13,13 +13,65 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 
+/// Map ARM CPU implementer + part to a human-readable name.
+fn lookup_arm_cpu_part(implementer: &str, part: &str) -> Option<&'static str> {
+    // ARM Ltd (0x41) parts
+    if implementer == "0x41" {
+        return match part {
+            "0xd03" => Some("Cortex-A53"),
+            "0xd04" => Some("Cortex-A35"),
+            "0xd05" => Some("Cortex-A55"),
+            "0xd07" => Some("Cortex-A57"),
+            "0xd08" => Some("Cortex-A72"),
+            "0xd09" => Some("Cortex-A73"),
+            "0xd0a" => Some("Cortex-A75"),
+            "0xd0b" => Some("Cortex-A76"),
+            "0xd0c" => Some("Neoverse-N1"),
+            "0xd0d" => Some("Cortex-A77"),
+            "0xd40" => Some("Neoverse-V1"),
+            "0xd41" => Some("Cortex-A78"),
+            "0xd44" => Some("Cortex-X1"),
+            "0xd46" => Some("Cortex-A510"),
+            "0xd47" => Some("Cortex-A710"),
+            "0xd48" => Some("Cortex-X2"),
+            "0xd49" => Some("Neoverse-N2"),
+            "0xd4a" => Some("Neoverse-E1"),
+            "0xd4f" => Some("Neoverse-V2"),
+            "0xd80" => Some("Cortex-A520"),
+            "0xd81" => Some("Cortex-A720"),
+            "0xd82" => Some("Cortex-X3"),
+            "0xd84" => Some("Neoverse-V3"),
+            "0xd85" => Some("Cortex-X4"),
+            _ => None,
+        };
+    }
+    // Apple (0x61) parts
+    if implementer == "0x61" {
+        return match part {
+            "0x022" => Some("Apple M1 Icestorm"),
+            "0x023" => Some("Apple M1 Firestorm"),
+            "0x024" => Some("Apple M1 Pro"),
+            "0x028" => Some("Apple M2 Blizzard"),
+            "0x029" => Some("Apple M2 Avalanche"),
+            "0x032" => Some("Apple M3"),
+            "0x036" => Some("Apple M4"),
+            _ => None,
+        };
+    }
+    None
+}
+
 /// Detect CPU model name from the system.
 fn detect_cpu_model() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
-        // Try /proc/cpuinfo first (works on x86)
+        let mut model_name: Option<String> = None;
+        let mut implementer: Option<String> = None;
+        let mut part: Option<String> = None;
+
         if let Ok(contents) = std::fs::read_to_string("/proc/cpuinfo") {
             for line in contents.lines() {
+                // x86: "model name : ..."
                 if let Some(value) = line.strip_prefix("model name") {
                     if let Some(name) = value.trim_start().strip_prefix(':') {
                         let name = name.trim();
@@ -28,21 +80,49 @@ fn detect_cpu_model() -> Option<String> {
                         }
                     }
                 }
-            }
-        }
-        // Fallback to lscpu (works on ARM64 where /proc/cpuinfo lacks model name)
-        if let Ok(output) = std::process::Command::new("lscpu").output() {
-            let text = String::from_utf8_lossy(&output.stdout);
-            for line in text.lines() {
-                if let Some(rest) = line.strip_prefix("Model name:") {
-                    let name = rest.trim();
-                    if !name.is_empty() {
-                        return Some(name.to_string());
+                // ARM64: "CPU implementer : 0x41"
+                if implementer.is_none() {
+                    if let Some(value) = line.strip_prefix("CPU implementer") {
+                        if let Some(v) = value.trim_start().strip_prefix(':') {
+                            implementer = Some(v.trim().to_string());
+                        }
+                    }
+                }
+                // ARM64: "CPU part : 0xd4f"
+                if part.is_none() {
+                    if let Some(value) = line.strip_prefix("CPU part") {
+                        if let Some(v) = value.trim_start().strip_prefix(':') {
+                            part = Some(v.trim().to_string());
+                        }
                     }
                 }
             }
         }
-        None
+
+        // Try ARM part lookup
+        if let (Some(imp), Some(prt)) = (&implementer, &part) {
+            if let Some(name) = lookup_arm_cpu_part(imp, prt) {
+                return Some(name.to_string());
+            }
+            model_name = Some(format!("ARM ({} / {})", imp, prt));
+        }
+
+        // Fallback to lscpu
+        if model_name.is_none() {
+            if let Ok(output) = std::process::Command::new("lscpu").output() {
+                let text = String::from_utf8_lossy(&output.stdout);
+                for line in text.lines() {
+                    if let Some(rest) = line.strip_prefix("Model name:") {
+                        let name = rest.trim();
+                        if !name.is_empty() {
+                            return Some(name.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        model_name
     }
     #[cfg(target_os = "macos")]
     {
