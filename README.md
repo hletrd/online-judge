@@ -174,15 +174,31 @@ The judge worker also exposes an HTTP runner endpoint (default port 3001) for in
 
 ## Deployment
 
-### Single-machine (default)
+### Single-machine with local worker (default)
 
 ```bash
+# Includes the local judge worker (co-located on the same machine)
+docker compose -f docker-compose.production.yml --profile worker --env-file .env.production up -d
+
+# Or via deploy script (includes local worker by default)
+./deploy-docker.sh
+```
+
+### App server only (remote workers)
+
+When judge workers run on separate machines, start the app server without a local worker:
+
+```bash
+# No --profile worker → judge-worker service is not started
 docker compose -f docker-compose.production.yml --env-file .env.production up -d
+
+# Or via deploy script
+./deploy-docker.sh --no-worker
 ```
 
 ### Dedicated workers (scale-out)
 
-Deploy additional workers to separate machines using `docker-compose.worker.yml`:
+Deploy workers to separate machines using `docker-compose.worker.yml`:
 
 ```bash
 JUDGE_BASE_URL=https://your-app-server/api/v1 \

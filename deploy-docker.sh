@@ -78,13 +78,18 @@ resolve_languages() {
 SKIP_BUILD=false
 SKIP_LANGUAGES=false
 LANGUAGE_FILTER=""
+INCLUDE_WORKER=true
 for arg in "$@"; do
   case "$arg" in
     --skip-build) SKIP_BUILD=true ;;
     --skip-languages) SKIP_LANGUAGES=true ;;
     --languages=*) LANGUAGE_FILTER="${arg#--languages=}" ;;
+    --no-worker) INCLUDE_WORKER=false ;;
     --help|-h)
-      echo "Usage: $0 [--skip-build] [--skip-languages] [--languages=<preset|lang,lang,...>]"
+      echo "Usage: $0 [--skip-build] [--skip-languages] [--languages=<preset|lang,lang,...>] [--no-worker]"
+      echo ""
+      echo "Options:"
+      echo "  --no-worker  — Do not start a local judge worker (use when workers run on separate machines)"
       echo ""
       echo "Language presets: core, popular, extended, all, none"
       echo "  core     — C/C++, Python, Java/Kotlin (~1.2 GB)"
@@ -353,8 +358,14 @@ remote "docker run --rm \
 success "Database statistics updated"
 
 # 6b. Now start all remaining containers
-info "Starting all containers..."
-remote "cd ${REMOTE_DIR} && (docker compose -f docker-compose.production.yml --env-file .env.production up -d 2>/dev/null || docker-compose -f docker-compose.production.yml --env-file .env.production up -d)"
+COMPOSE_PROFILE_FLAG=""
+if [[ "${INCLUDE_WORKER}" == "true" ]]; then
+    COMPOSE_PROFILE_FLAG="--profile worker"
+    info "Starting all containers (with local judge worker)..."
+else
+    info "Starting all containers (no local judge worker — use remote workers)..."
+fi
+remote "cd ${REMOTE_DIR} && (docker compose -f docker-compose.production.yml ${COMPOSE_PROFILE_FLAG} --env-file .env.production up -d 2>/dev/null || docker-compose -f docker-compose.production.yml ${COMPOSE_PROFILE_FLAG} --env-file .env.production up -d)"
 
 info "Waiting for app container to be healthy..."
 for i in $(seq 1 60); do
