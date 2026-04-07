@@ -1,0 +1,85 @@
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { nanoid } from "nanoid";
+import { db } from "@/lib/db";
+import { groups, assignments, assignmentProblems } from "@/lib/db/schema";
+import { createApiHandler, isAdmin } from "@/lib/api/handler";
+import { apiSuccess, apiError } from "@/lib/api/responses";
+import { recordAuditEvent } from "@/lib/audit/events";
+
+const quickCreateSchema = z.object({
+  title: z.string().min(1).max(255),
+  description: z.string().max(2000).optional(),
+  durationMinutes: z.number().int().min(1).max(1440),
+  problemIds: z.array(z.string()).min(1).max(50),
+  problemPoints: z.array(z.number().int().min(1)).optional(),
+  enableAntiCheat: z.boolean().default(true),
+  startsAt: z.string().datetime().optional(),
+  deadline: z.string().datetime().optional(),
+});
+
+export const POST = createApiHandler({
+  schema: quickCreateSchema,
+  handler: async (req: NextRequest, { user, body }) => {
+    if (!isAdmin(user.role)) return apiError("forbidden", 403);
+
+    const groupId = nanoid();
+    const assignmentId = nanoid();
+    const now = new Date();
+    const startsAt = body.startsAt ? new Date(body.startsAt) : now;
+    const deadline = body.deadline
+      ? new Date(body.deadline)
+      : new Date(now.getTime() + 30 * 24 * 3600000); // default 30 days
+
+    await db.transaction(async (tx) => {
+      // Auto-create a hidden group for this contest
+      await tx.insert(groups).values({
+        id: groupId,
+        name: body.title,
+        description: body.description ?? null,
+        instructorId: user.id,
+      });
+
+      // Create windowed assignment
+      await tx.insert(assignments).values({
+        id: assignmentId,
+        groupId,
+        title: body.title,
+        description: body.description ?? null,
+        startsAt,
+        deadline,
+        examMode: "windowed",
+        examDurationMinutes: body.durationMinutes,
+        scoringModel: "ioi",
+        enableAntiCheat: body.enableAntiCheat,
+        showResultsToCandidate: false,
+      });
+
+      // Add problems
+      const problemValues = body.problemIds.map((problemId, i) => ({
+        id: nanoid(),
+        assignmentId,
+        problemId,
+        sortOrder: i,
+        points: body.problemPoints?.[i] ?? 100,
+      }));
+      if (problemValues.length > 0) {
+        await tx.insert(assignmentProblems).values(problemValues);
+      }
+    });
+
+    recordAuditEvent({
+      actorId: user.id,
+      actorRole: user.role,
+      action: "contest.quick_created",
+      resourceType: "assignment",
+      resourceId: assignmentId,
+      resourceLabel: body.title,
+      summary: `Quick-created recruiting contest "${body.title}"`,
+      details: { groupId, durationMinutes: body.durationMinutes, problemCount: body.problemIds.length },
+      request: req,
+    });
+
+    return apiSuccess({ assignmentId, groupId }, { status: 201 });
+  },
+});

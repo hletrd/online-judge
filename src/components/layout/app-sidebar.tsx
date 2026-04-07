@@ -75,7 +75,6 @@ const navGroups: NavGroup[] = [
         titleKey: "contests",
         href: "/dashboard/contests",
         icon: Timer,
-        hiddenInModes: ["recruiting"],
       },
       { titleKey: "compiler", href: "/dashboard/compiler", icon: Play },
       {
@@ -93,7 +92,6 @@ const navGroups: NavGroup[] = [
         titleKey: "groups",
         href: "/dashboard/groups",
         icon: Users,
-        hiddenInModes: ["recruiting"],
       },
       {
         titleKey: "problemSets",

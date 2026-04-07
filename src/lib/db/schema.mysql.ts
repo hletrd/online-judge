@@ -290,6 +290,7 @@ export const assignments = mysqlTable(
     freezeLeaderboardAt: timestamp("freeze_leaderboard_at"),
     enableAntiCheat: boolean("enable_anti_cheat").notNull().default(false),
     anonymousLeaderboard: boolean("anonymous_leaderboard").default(false),
+    showResultsToCandidate: boolean("show_results_to_candidate").notNull().default(false),
     createdAt: timestamp("created_at")
       .notNull()
       .$defaultFn(() => new Date(Date.now())),
@@ -672,6 +673,44 @@ export const chatMessages = mysqlTable("chat_messages", {
     .notNull()
     .$defaultFn(() => new Date(Date.now())),
 });
+
+export const recruitingInvitations = mysqlTable(
+  "recruiting_invitations",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    assignmentId: varchar("assignment_id", { length: 36 })
+      .notNull()
+      .references(() => assignments.id, { onDelete: "cascade" }),
+    token: varchar("token", { length: 64 }).notNull(),
+    candidateName: text("candidate_name").notNull(),
+    candidateEmail: varchar("candidate_email", { length: 255 }),
+    metadata: json("metadata").$type<Record<string, string>>().default({}),
+    status: varchar("status", { length: 32 }).notNull().default("pending"),
+    userId: varchar("user_id", { length: 36 })
+      .references(() => users.id, { onDelete: "set null" }),
+    expiresAt: timestamp("expires_at"),
+    redeemedAt: timestamp("redeemed_at"),
+    ipAddress: varchar("ip_address", { length: 255 }),
+    createdBy: varchar("created_by", { length: 36 })
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    uniqueIndex("ri_token_idx").on(table.token),
+    index("ri_assignment_idx").on(table.assignmentId),
+    index("ri_status_idx").on(table.status),
+    index("ri_user_idx").on(table.userId),
+    index("ri_created_at_idx").on(table.createdAt),
+  ]
+);
 
 export const contestAccessTokens = mysqlTable(
   "contest_access_tokens",

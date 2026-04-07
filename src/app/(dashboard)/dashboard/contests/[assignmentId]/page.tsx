@@ -45,6 +45,7 @@ import { AntiCheatDashboard } from "@/components/contest/anti-cheat-dashboard";
 import { AnalyticsCharts } from "@/components/contest/analytics-charts";
 import { ExportButton } from "@/components/contest/export-button";
 import { RecruiterCandidatesPanel } from "@/components/contest/recruiter-candidates-panel";
+import { RecruitingInvitationsPanel } from "@/components/contest/recruiting-invitations-panel";
 import AssignmentFormDialog, { type AssignmentEditorValue } from "../../groups/[id]/assignment-form-dialog";
 
 const STATUS_FILTER_VALUES = [
@@ -177,6 +178,9 @@ export default async function ContestDetailPage({
   if (!hasAccess) {
     redirect("/dashboard/contests");
   }
+
+  const canManage = role === "super_admin" || role === "admin" ||
+    (role === "instructor" && assignment.group?.instructorId === session.user.id);
 
   const sortedProblems = [...assignment.assignmentProblems].sort(
     (left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0)
@@ -594,6 +598,9 @@ export default async function ContestDetailPage({
           {canManage && (
             <TabsTrigger value="candidates" className="gap-1.5">{t("tabs.candidates")}</TabsTrigger>
           )}
+          {canManage && (
+            <TabsTrigger value="invitations" className="gap-1.5">{t("tabs.invitations")}</TabsTrigger>
+          )}
         </TabsList>
 
         {/* Overview Tab */}
@@ -716,6 +723,13 @@ export default async function ContestDetailPage({
         {canManage && (
           <TabsContent value="candidates" className="mt-6">
             <RecruiterCandidatesPanel assignmentId={assignmentId} />
+          </TabsContent>
+        )}
+
+        {/* Invitations Tab (for instructors/admins) */}
+        {canManage && (
+          <TabsContent value="invitations" className="mt-6">
+            <RecruitingInvitationsPanel assignmentId={assignmentId} />
           </TabsContent>
         )}
       </HashTabs>

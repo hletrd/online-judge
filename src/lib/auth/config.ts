@@ -36,6 +36,7 @@ import {
   sanitizeLoginEventContext,
 } from "@/lib/auth/login-events";
 import { extractClientIp } from "@/lib/security/ip";
+import { authorizeRecruitingToken } from "@/lib/auth/recruiting-token";
 
 type AuthUserRecord = {
   id: string;
@@ -130,8 +131,14 @@ export const authConfig: NextAuthConfig = {
       credentials: {
         username: { label: "Username or Email", type: "text" },
         password: { label: "Password", type: "password" },
+        recruitToken: { label: "Recruiting Token", type: "text" },
       },
       async authorize(credentials, request) {
+        // Recruiting token auth — bypass password flow
+        if (typeof credentials?.recruitToken === "string" && credentials.recruitToken.length > 0) {
+          return authorizeRecruitingToken(credentials.recruitToken, request);
+        }
+
         const ipRateLimitKey = getRateLimitKey("login", request.headers);
         const attemptedIdentifier = typeof credentials?.username === "string" ? credentials.username : null;
         const usernameRateLimitKey = attemptedIdentifier

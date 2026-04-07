@@ -43,6 +43,13 @@
       "when": 1775464488599,
       "tag": "0005_powerful_surge",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775466960520,
+      "tag": "0006_secret_abomination",
+      "breakpoints": true
     }
   ]
 }

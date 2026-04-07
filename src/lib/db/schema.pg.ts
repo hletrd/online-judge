@@ -331,6 +331,7 @@ export const assignments = pgTable(
     freezeLeaderboardAt: timestamp("freeze_leaderboard_at", { withTimezone: true }),
     enableAntiCheat: boolean("enable_anti_cheat").notNull().default(false),
     anonymousLeaderboard: boolean("anonymous_leaderboard").default(false),
+    showResultsToCandidate: boolean("show_results_to_candidate").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date(Date.now())),
@@ -715,6 +716,44 @@ export const chatMessages = pgTable("chat_messages", {
     .notNull()
     .$defaultFn(() => new Date(Date.now())),
 });
+
+export const recruitingInvitations = pgTable(
+  "recruiting_invitations",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    assignmentId: text("assignment_id")
+      .notNull()
+      .references(() => assignments.id, { onDelete: "cascade" }),
+    token: text("token").notNull(),
+    candidateName: text("candidate_name").notNull(),
+    candidateEmail: text("candidate_email"),
+    metadata: jsonb("metadata").$type<Record<string, string>>().default({}),
+    status: text("status").notNull().default("pending"),
+    userId: text("user_id")
+      .references(() => users.id, { onDelete: "set null" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    redeemedAt: timestamp("redeemed_at", { withTimezone: true }),
+    ipAddress: text("ip_address"),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date(Date.now())),
+  },
+  (table) => [
+    uniqueIndex("ri_token_idx").on(table.token),
+    index("ri_assignment_idx").on(table.assignmentId),
+    index("ri_status_idx").on(table.status),
+    index("ri_user_idx").on(table.userId),
+    index("ri_created_at_idx").on(table.createdAt),
+  ]
+);
 
 export const contestAccessTokens = pgTable(
   "contest_access_tokens",

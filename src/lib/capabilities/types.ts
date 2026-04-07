@@ -52,6 +52,9 @@ export const ALL_CAPABILITIES = [
   "contests.view_leaderboard_full",
   "contests.export",
 
+  // Recruiting
+  "recruiting.manage_invitations",
+
   // Anti-Cheat
   "anti_cheat.view_events",
   "anti_cheat.run_similarity",
@@ -142,6 +145,10 @@ export const CAPABILITY_GROUPS = {
       "contests.view_leaderboard_full",
       "contests.export",
     ],
+  },
+  recruiting: {
+    labelKey: "capabilities.groups.recruiting",
+    capabilities: ["recruiting.manage_invitations"],
   },
   anti_cheat: {
     labelKey: "capabilities.groups.antiCheat",

@@ -1,0 +1,85 @@
+import { NextRequest } from "next/server";
+import { createApiHandler, isAdmin } from "@/lib/api/handler";
+import { apiSuccess, apiError } from "@/lib/api/responses";
+import {
+  getRecruitingInvitation,
+  updateRecruitingInvitation,
+  deleteRecruitingInvitation,
+} from "@/lib/assignments/recruiting-invitations";
+import { updateRecruitingInvitationSchema } from "@/lib/validators/recruiting-invitations";
+import { recordAuditEvent } from "@/lib/audit/events";
+
+export const GET = createApiHandler({
+  handler: async (req: NextRequest, { user, params }) => {
+    if (!isAdmin(user.role)) return apiError("forbidden", 403);
+
+    const invitation = await getRecruitingInvitation(params.invitationId);
+    if (!invitation) return apiError("notFound", 404, "RecruitingInvitation");
+
+    return apiSuccess(invitation);
+  },
+});
+
+export const PATCH = createApiHandler({
+  schema: updateRecruitingInvitationSchema,
+  handler: async (req: NextRequest, { user, params, body }) => {
+    if (!isAdmin(user.role)) return apiError("forbidden", 403);
+
+    const invitation = await getRecruitingInvitation(params.invitationId);
+    if (!invitation) return apiError("notFound", 404, "RecruitingInvitation");
+
+    await updateRecruitingInvitation(params.invitationId, {
+      expiresAt: body.expiresAt !== undefined
+        ? (body.expiresAt ? new Date(body.expiresAt) : null)
+        : undefined,
+      metadata: body.metadata,
+      status: body.status,
+    });
+
+    recordAuditEvent({
+      actorId: user.id,
+      actorRole: user.role,
+      action: body.status === "revoked"
+        ? "recruiting_invitation.revoked"
+        : "recruiting_invitation.updated",
+      resourceType: "recruiting_invitation",
+      resourceId: params.invitationId,
+      resourceLabel: invitation.candidateName,
+      summary: body.status === "revoked"
+        ? `Revoked recruiting invitation for "${invitation.candidateName}"`
+        : `Updated recruiting invitation for "${invitation.candidateName}"`,
+      details: body,
+      request: req,
+    });
+
+    return apiSuccess({ id: params.invitationId });
+  },
+});
+
+export const DELETE = createApiHandler({
+  handler: async (req: NextRequest, { user, params }) => {
+    if (!isAdmin(user.role)) return apiError("forbidden", 403);
+
+    const invitation = await getRecruitingInvitation(params.invitationId);
+    if (!invitation) return apiError("notFound", 404, "RecruitingInvitation");
+
+    if (invitation.status !== "pending") {
+      return apiError("cannotDeleteNonPending", 400);
+    }
+
+    await deleteRecruitingInvitation(params.invitationId);
+
+    recordAuditEvent({
+      actorId: user.id,
+      actorRole: user.role,
+      action: "recruiting_invitation.deleted",
+      resourceType: "recruiting_invitation",
+      resourceId: params.invitationId,
+      resourceLabel: invitation.candidateName,
+      summary: `Deleted recruiting invitation for "${invitation.candidateName}"`,
+      request: req,
+    });
+
+    return apiSuccess({ id: params.invitationId });
+  },
+});
