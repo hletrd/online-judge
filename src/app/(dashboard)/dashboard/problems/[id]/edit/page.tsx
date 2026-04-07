@@ -93,6 +93,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
               floatAbsoluteError: problem.floatAbsoluteError ?? null,
               floatRelativeError: problem.floatRelativeError ?? null,
               difficulty: problem.difficulty ?? null,
+              defaultLanguage: problem.defaultLanguage ?? null,
               testCases: sortedTestCases.map((testCase) => ({
                 input: testCase.input,
                 expectedOutput: testCase.expectedOutput,

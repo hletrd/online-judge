@@ -45,6 +45,7 @@ export type ProblemFormInitialData = {
   floatAbsoluteError: number | null;
   floatRelativeError: number | null;
   difficulty: number | null;
+  defaultLanguage: string | null;
   testCases: ProblemTestCaseDraft[];
   tags: string[];
 };
@@ -105,6 +106,7 @@ export default function CreateProblemForm({
   const [floatAbsoluteError, setFloatAbsoluteError] = useState<string>(initialProblem?.floatAbsoluteError?.toString() ?? "1e-6");
   const [floatRelativeError, setFloatRelativeError] = useState<string>(initialProblem?.floatRelativeError?.toString() ?? "1e-6");
   const [difficulty, setDifficulty] = useState<string>(initialProblem?.difficulty?.toString() ?? "");
+  const [defaultLanguage, setDefaultLanguage] = useState<string>(initialProblem?.defaultLanguage ?? "");
   const [testCaseOverrideEnabled, setTestCaseOverrideEnabled] = useState(false);
   const [testCases, setTestCases] = useState<ProblemTestCaseDraft[]>(
     initialProblem?.testCases.length
@@ -383,6 +385,7 @@ export default function CreateProblemForm({
           floatAbsoluteError: comparisonMode === "float" ? parseFloat(floatAbsoluteError) || null : null,
           floatRelativeError: comparisonMode === "float" ? parseFloat(floatRelativeError) || null : null,
           difficulty: difficulty !== "" && Number.isFinite(parseFloat(difficulty)) ? parseFloat(difficulty) : null,
+          defaultLanguage: defaultLanguage || null,
           tags: currentTags,
           ...(areTestCasesEditable
             ? { testCases: testCases.map(({ _key, ...rest }) => { void _key; return rest; }) }
@@ -727,6 +730,18 @@ export default function CreateProblemForm({
         )}
       </div>
 
+      <div className="space-y-2">
+        <Label htmlFor="default-language">{t("defaultLanguage")}</Label>
+        <Input
+          id="default-language"
+          value={defaultLanguage}
+          onChange={(e) => setDefaultLanguage(e.target.value)}
+          placeholder={t("defaultLanguagePlaceholder")}
+          disabled={isLoading}
+        />
+        <p className="text-xs text-muted-foreground">{t("defaultLanguageHint")}</p>
+      </div>
+
       {problemType === "auto" && <div className="space-y-4 rounded-lg border p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -827,7 +842,7 @@ export default function CreateProblemForm({
                       id={`test-case-input-${index}`}
                       value={testCase.input}
                       onChange={(event) => updateTestCase(index, { input: event.target.value })}
-                      className="min-h-[140px] font-mono text-sm"
+                      className="min-h-[140px] max-h-[400px] overflow-y-auto font-mono text-sm"
                       disabled={isLoading || !areTestCasesEditable}
                     />
                   </div>
@@ -861,7 +876,7 @@ export default function CreateProblemForm({
                       onChange={(event) =>
                         updateTestCase(index, { expectedOutput: event.target.value })
                       }
-                      className="min-h-[140px] font-mono text-sm"
+                      className="min-h-[140px] max-h-[400px] overflow-y-auto font-mono text-sm"
                       disabled={isLoading || !areTestCasesEditable}
                     />
                   </div>

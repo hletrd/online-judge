@@ -256,6 +256,7 @@ export const problems = pgTable(
     floatAbsoluteError: doublePrecision("float_absolute_error"),
     floatRelativeError: doublePrecision("float_relative_error"),
     difficulty: doublePrecision("difficulty"),
+    defaultLanguage: text("default_language"),
     authorId: text("author_id").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -523,6 +524,8 @@ export const systemSettings = pgTable("system_settings", {
   uploadMaxImageSizeBytes: integer("upload_max_image_size_bytes"),
   uploadMaxFileSizeBytes: integer("upload_max_file_size_bytes"),
   uploadMaxImageDimension: integer("upload_max_image_dimension"),
+  // Default Language
+  defaultLanguage: text("default_language"),
   // Allowed Hosts (JSON array of domain strings)
   allowedHosts: text("allowed_hosts"),
   updatedAt: timestamp("updated_at", { withTimezone: true })

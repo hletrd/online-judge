@@ -79,6 +79,7 @@ export async function createProblemWithTestCases(input: ProblemMutationInput, au
         floatAbsoluteError: input.floatAbsoluteError ?? null,
         floatRelativeError: input.floatRelativeError ?? null,
         difficulty: input.difficulty ?? null,
+        defaultLanguage: input.defaultLanguage ?? null,
         authorId,
         createdAt: now,
         updatedAt: now,
@@ -120,6 +121,7 @@ export async function updateProblemWithTestCases(problemId: string, input: Probl
         floatAbsoluteError: input.floatAbsoluteError ?? null,
         floatRelativeError: input.floatRelativeError ?? null,
         difficulty: input.difficulty ?? null,
+        defaultLanguage: input.defaultLanguage ?? null,
         updatedAt: now,
       })
       .where(eq(problems.id, problemId));

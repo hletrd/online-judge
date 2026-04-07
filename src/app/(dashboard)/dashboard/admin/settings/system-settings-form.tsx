@@ -25,6 +25,7 @@ type SystemSettingsFormProps = {
   initialSiteDescription: string;
   initialTimeZone: string;
   initialPlatformMode: PlatformMode;
+  initialDefaultLanguage: string;
   defaultSiteTitle: string;
   defaultSiteDescription: string;
   defaultTimeZone: string;
@@ -48,6 +49,7 @@ export function SystemSettingsForm({
   currentTimeZone,
   currentPlatformMode,
   initialAiAssistantEnabled,
+  initialDefaultLanguage,
 }: SystemSettingsFormProps) {
   const router = useRouter();
   const t = useTranslations("admin.settings");
@@ -57,6 +59,7 @@ export function SystemSettingsForm({
   const [timeZone, setTimeZone] = useState(initialTimeZone);
   const [platformMode, setPlatformMode] = useState<PlatformMode>(initialPlatformMode);
   const [aiAssistantEnabled, setAiAssistantEnabled] = useState(initialAiAssistantEnabled);
+  const [defaultLanguage, setDefaultLanguage] = useState(initialDefaultLanguage);
   const [isLoading, setIsLoading] = useState(false);
   const ianaTimeZones = useMemo(() => {
     try {
@@ -77,7 +80,7 @@ export function SystemSettingsForm({
     setIsLoading(true);
 
     try {
-      const result = await updateSystemSettings({ siteTitle, siteDescription, timeZone, platformMode, aiAssistantEnabled });
+      const result = await updateSystemSettings({ siteTitle, siteDescription, timeZone, platformMode, aiAssistantEnabled, defaultLanguage: defaultLanguage || undefined });
 
       if (!result.success) {
         toast.error(t(result.error ?? "updateError"));
@@ -176,6 +179,17 @@ export function SystemSettingsForm({
           <span>{t("aiAssistantEnabled")}</span>
         </label>
         <p className="text-xs text-muted-foreground">{t("aiAssistantEnabledHint")}</p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="default-language">{t("defaultLanguage")}</Label>
+        <Input
+          id="default-language"
+          value={defaultLanguage}
+          onChange={(e) => setDefaultLanguage(e.target.value)}
+          placeholder="python"
+        />
+        <p className="text-xs text-muted-foreground">{t("defaultLanguageHint")}</p>
       </div>
 
       <Button type="submit" disabled={isLoading}>

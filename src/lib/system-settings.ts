@@ -20,6 +20,7 @@ export type SystemSettingsRecord = {
   timeZone: string | null;
   platformMode?: PlatformMode | null;
   aiAssistantEnabled?: boolean | null;
+  defaultLanguage?: string | null;
   updatedAt: Date;
   allowedHosts?: string | null;
 };
@@ -60,6 +61,7 @@ export const getResolvedSystemSettings = cache(async (defaults: {
     timeZone: settings?.timeZone ?? defaults.timeZone ?? DEFAULT_SYSTEM_TIME_ZONE,
     platformMode: settings?.platformMode ?? DEFAULT_PLATFORM_MODE,
     aiAssistantEnabled: settings?.aiAssistantEnabled ?? true,
+    defaultLanguage: settings?.defaultLanguage ?? null,
   };
 });
 

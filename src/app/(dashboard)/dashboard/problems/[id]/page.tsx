@@ -15,6 +15,7 @@ import {
 import { formatRelativeTimeFromNow } from "@/lib/datetime";
 import { ProblemDescription } from "@/components/problem-description";
 import { getTrustedLegacySeededDescription } from "@/lib/problems/legacy-seeded";
+import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { CountdownTimer } from "@/components/exam/countdown-timer";
 import { ProblemSubmissionForm } from "./problem-submission-form";
 import { ProblemLectureWrapper } from "./problem-lecture-wrapper";
@@ -60,7 +61,11 @@ export default async function ProblemDetailPage({
   const locale = await getLocale();
   const recruitingAccess = await getRecruitingAccessContext(session.user.id);
   const effectivePlatformMode = recruitingAccess.effectivePlatformMode;
-  
+  const resolvedSettings = await getResolvedSystemSettings({
+    siteTitle: tCommon("appName"),
+    siteDescription: tCommon("appDescription"),
+  });
+
   const problem = await db.query.problems.findFirst({
     where: eq(problems.id, problemId),
     with: {
@@ -332,6 +337,8 @@ export default async function ProblemDetailPage({
             languages={enabledLanguages}
             assignmentId={assignmentContext?.id ?? null}
             preferredLanguage={session.user.preferredLanguage ?? null}
+            problemDefaultLanguage={problem.defaultLanguage ?? null}
+            siteDefaultLanguage={resolvedSettings.defaultLanguage ?? null}
             editorTheme={session.user.editorTheme ?? null}
           />
         )}

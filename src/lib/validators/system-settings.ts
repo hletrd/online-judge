@@ -42,6 +42,10 @@ export const systemSettingsSchema = z.object({
   ),
   platformMode: z.enum(platformModeValues).optional(),
   aiAssistantEnabled: z.boolean().optional(),
+  defaultLanguage: z.preprocess(
+    normalizeOptionalString,
+    z.string().max(50, "defaultLanguageTooLong").optional()
+  ),
   // Rate Limiting (Login)
   loginRateLimitMaxAttempts: optionalInt(1, 100),
   loginRateLimitWindowMs: optionalInt(1_000, 3_600_000),

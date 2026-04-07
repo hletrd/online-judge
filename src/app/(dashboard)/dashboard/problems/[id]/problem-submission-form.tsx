@@ -28,6 +28,8 @@ type ProblemSubmissionFormProps = {
   languages: SubmissionLanguage[];
   assignmentId?: string | null;
   preferredLanguage?: string | null;
+  problemDefaultLanguage?: string | null;
+  siteDefaultLanguage?: string | null;
   editorTheme?: string | null;
 };
 
@@ -37,6 +39,8 @@ export function ProblemSubmissionForm({
   languages,
   assignmentId = null,
   preferredLanguage = null,
+  problemDefaultLanguage = null,
+  siteDefaultLanguage = null,
   editorTheme = null,
 }: ProblemSubmissionFormProps) {
   const router = useRouter();
@@ -49,7 +53,11 @@ export function ProblemSubmissionForm({
     userId,
     problemId,
     languages: availableLanguages,
-    initialLanguage: (preferredLanguage && availableLanguages.includes(preferredLanguage) ? preferredLanguage : null) ?? (availableLanguages.includes("c") ? "c" : languages[0]?.language ?? "c"),
+    initialLanguage:
+      (problemDefaultLanguage && availableLanguages.includes(problemDefaultLanguage) ? problemDefaultLanguage : null)
+      ?? (preferredLanguage && availableLanguages.includes(preferredLanguage) ? preferredLanguage : null)
+      ?? (siteDefaultLanguage && availableLanguages.includes(siteDefaultLanguage) ? siteDefaultLanguage : null)
+      ?? (availableLanguages.includes("c") ? "c" : languages[0]?.language ?? "c"),
   });
 
   const { allowNextNavigation } = useUnsavedChangesGuard({ isDirty });
