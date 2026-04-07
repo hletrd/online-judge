@@ -5,9 +5,10 @@
  * handling type conversions between dialects.
  */
 
-import { db, pool } from "./index";
+import { sql } from "drizzle-orm";
+import { db } from "./index";
 import * as schema from "./schema";
-import { validateExport, getReversedTableOrder, type JudgeKitExport } from "./export";
+import { validateExport, getTableOrder, getReversedTableOrder, type JudgeKitExport } from "./export";
 import { logger } from "@/lib/logger";
 
 /** Map of logical table names to Drizzle table references */
@@ -30,6 +31,7 @@ const TABLE_MAP: Record<string, any> = {
   files: schema.files,
   problemSets: schema.problemSets,
   enrollments: schema.enrollments,
+  groupInstructors: schema.groupInstructors,
   testCases: schema.testCases,
   problemGroupAccess: schema.problemGroupAccess,
   assignments: schema.assignments,
@@ -38,6 +40,7 @@ const TABLE_MAP: Record<string, any> = {
   problemTags: schema.problemTags,
   chatMessages: schema.chatMessages,
   assignmentProblems: schema.assignmentProblems,
+  recruitingInvitations: schema.recruitingInvitations,
   examSessions: schema.examSessions,
   contestAccessTokens: schema.contestAccessTokens,
   submissions: schema.submissions,
@@ -141,85 +144,75 @@ export async function importDatabase(data: JudgeKitExport): Promise<ImportResult
   };
 
   try {
-    // Disable foreign key checks during import
-    await disableForeignKeys();
+    // Wrap entire import in a transaction so SET CONSTRAINTS DEFERRED has effect
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SET CONSTRAINTS ALL DEFERRED`);
 
-    // Truncate all tables in reverse FK order (children first)
-    const reverseOrder = getReversedTableOrder();
-    for (const tableName of reverseOrder) {
-      const table = TABLE_MAP[tableName];
-      if (!table) continue;
-      try {
-        await db.delete(table);
-      } catch (err: any) {
-        logger.warn({ tableName, err: err.message }, "Failed to truncate table during import");
-      }
-    }
-
-    // Import tables in FK order (parents first)
-    for (const { name: tableName } of Object.entries(TABLE_MAP).map(([name]) => ({ name }))) {
-      const tableData = data.tables[tableName];
-      if (!tableData || tableData.rowCount === 0) {
-        result.tableResults[tableName] = { imported: 0, skipped: 0 };
-        continue;
-      }
-
-      const table = TABLE_MAP[tableName];
-      if (!table) {
-        result.errors.push(`Unknown table in import: ${tableName}`);
-        continue;
-      }
-
-      const { columns, rows } = tableData;
-      let imported = 0;
-      let skipped = 0;
-
-      // Insert in batches of 100 to avoid parameter limits
-      const BATCH_SIZE = 100;
-      for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-        const batch = rows.slice(i, i + BATCH_SIZE);
-        const values = batch.map((row) => {
-          const obj: Record<string, unknown> = {};
-          for (let j = 0; j < columns.length; j++) {
-            obj[columns[j]] = convertValue(row[j], columns[j]);
-          }
-          return obj;
-        });
-
+      // Truncate all tables in reverse FK order (children first)
+      const reverseOrder = getReversedTableOrder();
+      for (const tableName of reverseOrder) {
+        const table = TABLE_MAP[tableName];
+        if (!table) continue;
         try {
-          await db.insert(table).values(values);
-          imported += values.length;
+          await tx.delete(table);
         } catch (err: any) {
-          logger.error({ tableName, batch: i, err: err.message }, "Failed to insert batch");
-          result.errors.push(`${tableName} batch ${i}: ${err.message}`);
-          skipped += values.length;
+          logger.warn({ tableName, err: err.message }, "Failed to truncate table during import");
         }
       }
 
-      result.tableResults[tableName] = { imported, skipped };
-      result.tablesImported++;
-      result.totalRowsImported += imported;
-    }
+      // Import tables in FK order (parents first)
+      const tableOrder = getTableOrder();
+      for (const tableName of tableOrder) {
+        const tableData = data.tables[tableName];
+        if (!tableData || tableData.rowCount === 0) {
+          result.tableResults[tableName] = { imported: 0, skipped: 0 };
+          continue;
+        }
 
-    // Re-enable foreign key checks
-    await enableForeignKeys();
+        const table = TABLE_MAP[tableName];
+        if (!table) {
+          result.errors.push(`Unknown table in import: ${tableName}`);
+          continue;
+        }
+
+        const { columns, rows } = tableData;
+        let imported = 0;
+        let skipped = 0;
+
+        // Insert in batches of 100 to avoid parameter limits
+        const BATCH_SIZE = 100;
+        for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+          const batch = rows.slice(i, i + BATCH_SIZE);
+          const values = batch.map((row) => {
+            const obj: Record<string, unknown> = {};
+            for (let j = 0; j < columns.length; j++) {
+              obj[columns[j]] = convertValue(row[j], columns[j]);
+            }
+            return obj;
+          });
+
+          try {
+            await tx.insert(table).values(values);
+            imported += values.length;
+          } catch (err: any) {
+            logger.error({ tableName, batch: i, err: err.message }, "Failed to insert batch");
+            result.errors.push(`${tableName} batch ${i}: ${err.message}`);
+            skipped += values.length;
+          }
+        }
+
+        result.tableResults[tableName] = { imported, skipped };
+        result.tablesImported++;
+        result.totalRowsImported += imported;
+      }
+    }); // constraints checked at COMMIT
 
   } catch (err: any) {
     result.success = false;
     result.errors.push(`Import failed: ${err.message}`);
-    // Try to re-enable FK checks
-    try { await enableForeignKeys(); } catch { /* best effort */ }
   }
 
   return result;
-}
-
-async function disableForeignKeys(): Promise<void> {
-  if (pool) await pool.query("SET CONSTRAINTS ALL DEFERRED");
-}
-
-async function enableForeignKeys(): Promise<void> {
-  if (pool) await pool.query("SET CONSTRAINTS ALL IMMEDIATE");
 }
 
 /**
@@ -230,8 +223,8 @@ export async function getDatabaseSummary(): Promise<Record<string, number>> {
   const summary: Record<string, number> = {};
   for (const [name, table] of Object.entries(TABLE_MAP)) {
     try {
-      const rows = await db.select().from(table);
-      summary[name] = rows.length;
+      const [row] = await db.select({ count: sql<number>`count(*)` }).from(table);
+      summary[name] = Number(row?.count ?? 0);
     } catch {
       summary[name] = -1; // error reading
     }
