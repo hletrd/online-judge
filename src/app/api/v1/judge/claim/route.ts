@@ -58,12 +58,14 @@ export async function POST(request: NextRequest) {
           judge_claimed_at = to_timestamp(@claimCreatedAt::double precision / 1000),
           judge_worker_id = @workerId
         WHERE id = (
-          SELECT id
-          FROM submissions
-          WHERE status = 'pending'
-             OR (status IN ('queued', 'judging')
-                 AND judge_claimed_at < NOW() - (@staleClaimTimeoutMs || ' milliseconds')::interval)
-          ORDER BY submitted_at ASC, id ASC
+          SELECT s.id
+          FROM submissions s
+          INNER JOIN problems p ON p.id = s.problem_id
+          WHERE (s.status = 'pending'
+             OR (s.status IN ('queued', 'judging')
+                 AND s.judge_claimed_at < NOW() - (@staleClaimTimeoutMs || ' milliseconds')::interval))
+            AND COALESCE(p.problem_type, 'auto') != 'manual'
+          ORDER BY s.submitted_at ASC, s.id ASC
           LIMIT 1
           FOR UPDATE SKIP LOCKED
         )
