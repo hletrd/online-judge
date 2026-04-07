@@ -182,12 +182,14 @@ export function AppSidebar({ user, siteTitle, platformMode, capabilities = [] }:
   const capsSet = new Set(capabilities);
   const hideStandaloneCompiler = getPlatformModePolicy(platformMode).restrictStandaloneCompiler;
 
+  const isAdmin = user.role === "admin" || user.role === "super_admin" || user.role === "instructor";
+
   function filterItems(items: NavItem[]) {
     return items.filter((item) => {
-      if (item.hiddenInModes?.includes(platformMode)) {
+      if (item.hiddenInModes?.includes(platformMode) && !isAdmin) {
         return false;
       }
-      if (hideStandaloneCompiler && item.href === "/dashboard/compiler") {
+      if (hideStandaloneCompiler && item.href === "/dashboard/compiler" && !isAdmin) {
         return false;
       }
       return !item.capability || capsSet.has(item.capability);
