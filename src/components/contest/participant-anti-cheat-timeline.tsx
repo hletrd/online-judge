@@ -233,7 +233,7 @@ export function ParticipantAntiCheatTimeline({
                           variant="secondary"
                           className={EVENT_TYPE_COLORS[event.eventType] ?? ""}
                         >
-                          {event.eventType}
+                          {t(`eventTypes.${event.eventType}` as any) ?? event.eventType}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">

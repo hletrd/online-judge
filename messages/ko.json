@@ -1712,8 +1712,10 @@
         "copy": "복사",
         "paste": "붙여넣기",
         "blur": "창 포커스 해제",
+        "contextmenu": "우클릭",
         "ip_change": "IP 변경",
-        "code_similarity": "코드 유사도"
+        "code_similarity": "코드 유사도",
+        "heartbeat": "하트비트"
       },
       "warningTabSwitch": "탭 전환이 감지되었습니다. 검토용 신호가 기록됩니다.",
       "similarityCheck": "유사도 스캔 실행",
