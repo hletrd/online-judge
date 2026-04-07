@@ -102,6 +102,11 @@ export const POST = createApiHandler({
         failed.push({ username: item.username, reason: "usernameInUse" });
         return false;
       }
+      const email = item.email?.trim().toLowerCase();
+      if (email && existingEmailSet.has(email)) {
+        failed.push({ username: item.username, reason: "emailInUse" });
+        return false;
+      }
       return true;
     });
 
