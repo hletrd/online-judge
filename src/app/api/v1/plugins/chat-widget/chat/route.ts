@@ -108,6 +108,11 @@ export const POST = createApiHandler({
     }
     logger.info({ userId: session.user.id, role: session.user.role }, "Chat API request");
 
+    // CSRF check — auth:false disables the handler's built-in check
+    const { validateCsrf } = await import("@/lib/security/csrf");
+    const csrfError = validateCsrf(req);
+    if (csrfError) return csrfError;
+
     const enabled = await isPluginEnabled("chat-widget");
     if (!enabled) {
       return NextResponse.json({ error: "notConfigured" }, { status: 404 });
