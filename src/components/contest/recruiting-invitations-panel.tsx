@@ -81,6 +81,7 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
   const [createName, setCreateName] = useState("");
   const [createEmail, setCreateEmail] = useState("");
   const [createExpiry, setCreateExpiry] = useState("none");
+  const [customExpiryDate, setCustomExpiryDate] = useState("");
   const [metadataFields, setMetadataFields] = useState<{ key: string; value: string }[]>([]);
   const [creating, setCreating] = useState(false);
 
@@ -121,7 +122,9 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
     setCreating(true);
     try {
       let expiresAt: string | null = null;
-      if (createExpiry !== "none") {
+      if (createExpiry === "custom" && customExpiryDate) {
+        expiresAt = new Date(customExpiryDate + "T23:59:59").toISOString();
+      } else if (createExpiry !== "none" && createExpiry !== "custom") {
         const days = createExpiry === "7d" ? 7 : createExpiry === "30d" ? 30 : 90;
         expiresAt = new Date(Date.now() + days * 86400000).toISOString();
       }
@@ -215,6 +218,7 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
     "7d": t("expiry7d"),
     "30d": t("expiry30d"),
     "90d": t("expiry90d"),
+    custom: t("expiryCustom"),
   };
 
   return (
@@ -292,8 +296,17 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
                       <SelectItem value="7d" label={t("expiry7d")}>{t("expiry7d")}</SelectItem>
                       <SelectItem value="30d" label={t("expiry30d")}>{t("expiry30d")}</SelectItem>
                       <SelectItem value="90d" label={t("expiry90d")}>{t("expiry90d")}</SelectItem>
+                      <SelectItem value="custom" label={t("expiryCustom")}>{t("expiryCustom")}</SelectItem>
                     </SelectContent>
                   </Select>
+                  {createExpiry === "custom" && (
+                    <Input
+                      type="date"
+                      value={customExpiryDate}
+                      onChange={(e) => setCustomExpiryDate(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                    />
+                  )}
                 </div>
                 {/* Dynamic metadata fields */}
                 <div className="space-y-2">
