@@ -113,26 +113,28 @@ export async function POST(
       return apiError("userNotEnrolled", 400);
     }
 
-    // Upsert: delete existing then insert
-    await db.delete(scoreOverrides)
-      .where(
-        and(
-          eq(scoreOverrides.assignmentId, assignment.id),
-          eq(scoreOverrides.problemId, problemId),
-          eq(scoreOverrides.userId, userId)
-        )
-      );
+    // Atomic upsert: delete existing then insert within a transaction
+    await db.transaction(async (tx) => {
+      await tx.delete(scoreOverrides)
+        .where(
+          and(
+            eq(scoreOverrides.assignmentId, assignment.id),
+            eq(scoreOverrides.problemId, problemId),
+            eq(scoreOverrides.userId, userId)
+          )
+        );
 
-    await db.insert(scoreOverrides)
-      .values({
-        assignmentId: assignment.id,
-        problemId,
-        userId,
-        overrideScore,
-        reason: reason ?? null,
-        createdBy: user.id,
-        createdAt: new Date(),
-      });
+      await tx.insert(scoreOverrides)
+        .values({
+          assignmentId: assignment.id,
+          problemId,
+          userId,
+          overrideScore,
+          reason: reason ?? null,
+          createdBy: user.id,
+          createdAt: new Date(),
+        });
+    });
 
     recordAuditEvent({
       actorId: user.id,
