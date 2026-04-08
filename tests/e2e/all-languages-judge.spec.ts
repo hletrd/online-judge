@@ -1165,7 +1165,9 @@ test.describe("Judge all supported languages", () => {
     }
 
     // Submit all languages with retry logic for rate-limited responses
-    const languages = Object.keys(SOLUTIONS).filter(l => !KNOWN_FAILING.has(l));
+    const languages = Object.keys(SOLUTIONS).filter((language) => !KNOWN_FAILING.has(language));
+
+    console.log(`[all-languages] pre-submitting ${languages.length} languages`);
 
     async function submitWithRetry(language: string, maxRetries = 3): Promise<void> {
       const code = (SOLUTIONS as Record<string, string>)[language];
@@ -1198,6 +1200,13 @@ test.describe("Judge all supported languages", () => {
     const BATCH_SIZE = 10;
     for (let i = 0; i < languages.length; i += BATCH_SIZE) {
       const batch = languages.slice(i, i + BATCH_SIZE);
+      const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+      const totalBatches = Math.ceil(languages.length / BATCH_SIZE);
+
+      console.log(
+        `[all-languages] submitting batch ${batchNumber}/${totalBatches}: ${batch.join(", ")}`
+      );
+
       await Promise.all(batch.map((lang) => submitWithRetry(lang)));
       if (i + BATCH_SIZE < languages.length) {
         await new Promise((r) => setTimeout(r, 1000)); // 1s between batches
