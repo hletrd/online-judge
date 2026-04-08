@@ -79,6 +79,7 @@ SKIP_BUILD=false
 SKIP_LANGUAGES=false
 LANGUAGE_FILTER=""
 INCLUDE_WORKER="${INCLUDE_WORKER:-true}"
+BUILD_WORKER_IMAGE="${BUILD_WORKER_IMAGE:-auto}"
 for arg in "$@"; do
   case "$arg" in
     --skip-build) SKIP_BUILD=true ;;
@@ -86,15 +87,20 @@ for arg in "$@"; do
     --languages=*) LANGUAGE_FILTER="${arg#--languages=}" ;;
     --no-worker) INCLUDE_WORKER=false ;;
     --with-worker) INCLUDE_WORKER=true ;;
+    --skip-worker-build) BUILD_WORKER_IMAGE=false ;;
+    --build-worker) BUILD_WORKER_IMAGE=true ;;
     --help|-h)
-      echo "Usage: $0 [--skip-build] [--skip-languages] [--languages=<preset|lang,lang,...>] [--no-worker|--with-worker]"
+      echo "Usage: $0 [--skip-build] [--skip-languages] [--languages=<preset|lang,lang,...>] [--no-worker|--with-worker] [--skip-worker-build|--build-worker]"
       echo ""
       echo "Options:"
       echo "  --no-worker    — Do not start a local judge worker (use when workers run on separate machines)"
       echo "  --with-worker  — Force starting a local judge worker"
+      echo "  --skip-worker-build — Skip building the judge-worker image"
+      echo "  --build-worker      — Force building the judge-worker image"
       echo ""
       echo "Environment:"
       echo "  INCLUDE_WORKER=false  — Persistently disable the local worker for this target"
+      echo "  BUILD_WORKER_IMAGE=false — Persistently skip the judge-worker image build"
       echo ""
       echo "Language presets: core, popular, extended, all, none"
       echo "  core     — C/C++, Python, Java/Kotlin (~1.2 GB)"
@@ -106,6 +112,10 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+if [[ "${BUILD_WORKER_IMAGE}" == "auto" ]]; then
+  BUILD_WORKER_IMAGE="${INCLUDE_WORKER}"
+fi
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -267,9 +277,13 @@ if [[ "$SKIP_BUILD" == false ]]; then
     remote "cd ${REMOTE_DIR} && docker build --no-cache --platform ${PLATFORM} ${EXTRA_BUILD_ARGS} -t judgekit-app:latest -f Dockerfile ."
     success "App image built on remote"
 
-    info "Building judge worker image on ${REMOTE_HOST} (judgekit-judge-worker:latest) [${PLATFORM}]..."
-    remote "cd ${REMOTE_DIR} && docker build --no-cache --platform ${PLATFORM} -t judgekit-judge-worker:latest -f Dockerfile.judge-worker ."
-    success "Judge worker image built on remote"
+    if [[ "${BUILD_WORKER_IMAGE}" == "true" ]]; then
+        info "Building judge worker image on ${REMOTE_HOST} (judgekit-judge-worker:latest) [${PLATFORM}]..."
+        remote "cd ${REMOTE_DIR} && docker build --no-cache --platform ${PLATFORM} -t judgekit-judge-worker:latest -f Dockerfile.judge-worker ."
+        success "Judge worker image built on remote"
+    else
+        info "Skipping judge worker image build (BUILD_WORKER_IMAGE=${BUILD_WORKER_IMAGE}, INCLUDE_WORKER=${INCLUDE_WORKER})"
+    fi
 
     if [[ "$SKIP_LANGUAGES" == false ]]; then
         if [[ -n "$LANGUAGE_FILTER" ]]; then
