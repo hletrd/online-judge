@@ -2072,6 +2072,7 @@
     "title": "코딩 평가",
     "welcome": "{name}님, 환영합니다",
     "description": "코딩 평가에 초대됐습니다.",
+    "ogDescription": "코딩 평가에 초대됐습니다. 클릭하여 시작하세요.",
     "duration": "{minutes}분",
     "instructions": "시작을 누르면 타이머가 바로 시작됩니다. 중간에 멈출 수 없습니다.",
     "problemCount": "총 {count}문제",

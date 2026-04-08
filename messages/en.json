@@ -2072,6 +2072,7 @@
     "title": "Coding Assessment",
     "welcome": "Welcome, {name}",
     "description": "You're invited to a coding assessment.",
+    "ogDescription": "You've been invited to a coding assessment. Click to begin.",
     "duration": "{minutes} min",
     "instructions": "The timer starts when you click Start. No pausing or restarting.",
     "problemCount": "{count, plural, one {# problem} other {# problems}}",

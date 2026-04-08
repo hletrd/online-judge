@@ -34,9 +34,18 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const problem = await db.query.problems.findFirst({
     where: eq(problems.id, id),
-    columns: { title: true },
+    columns: { title: true, description: true, visibility: true },
   });
-  return { title: problem?.title ?? "Problem" };
+  if (!problem) return { title: "Problem" };
+  if (problem.visibility !== "public") return { title: problem.title };
+
+  const { stripMarkdownForMeta } = await import("@/lib/utils");
+  const desc = stripMarkdownForMeta(problem.description ?? "").slice(0, 160);
+  return {
+    title: problem.title,
+    description: desc || undefined,
+    openGraph: { title: problem.title, description: desc || undefined },
+  };
 }
 
 export default async function ProblemDetailPage({
@@ -206,7 +215,7 @@ export default async function ProblemDetailPage({
   });
 
   const problemPanel = (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -272,7 +281,7 @@ export default async function ProblemDetailPage({
         </div>
       </div>
       <Card>
-        <CardContent className="pt-4">
+        <CardContent className="pt-2">
           {problem.description ? (
             <ProblemDescription
               className="text-sm sm:text-base"

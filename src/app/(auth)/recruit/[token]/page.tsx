@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRecruitingInvitationByToken } from "@/lib/assignments/recruiting-invitations";
@@ -5,6 +6,41 @@ import { db } from "@/lib/db";
 import { assignmentProblems, assignments } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { RecruitStartForm } from "./recruit-start-form";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}): Promise<Metadata> {
+  const { token } = await params;
+  const t = await getTranslations("recruit");
+  const invitation = await getRecruitingInvitationByToken(token);
+
+  if (!invitation || invitation.status === "revoked") {
+    return { title: t("invalidToken") };
+  }
+  if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+    return { title: t("expired") };
+  }
+
+  const [assignment] = await db
+    .select({ title: assignments.title })
+    .from(assignments)
+    .where(eq(assignments.id, invitation.assignmentId))
+    .limit(1);
+
+  if (!assignment) return { title: t("invalidToken") };
+
+  const title = assignment.title;
+  const description = t("ogDescription");
+
+  return {
+    title,
+    description,
+    openGraph: { title, description },
+    twitter: { card: "summary", title, description },
+  };
+}
 
 export default async function RecruitPage({
   params,

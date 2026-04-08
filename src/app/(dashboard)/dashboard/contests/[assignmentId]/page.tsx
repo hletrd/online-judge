@@ -89,7 +89,11 @@ export async function generateMetadata({ params }: { params: Promise<{ assignmen
     where: eq(assignments.id, assignmentId),
     columns: { title: true },
   });
-  return { title: assignment?.title ?? "Contest" };
+  const title = assignment?.title ?? "Contest";
+  return {
+    title,
+    openGraph: { title },
+  };
 }
 
 export default async function ContestDetailPage({

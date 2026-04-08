@@ -27,13 +27,27 @@ export async function generateMetadata(): Promise<Metadata> {
     siteDescription: t("appDescription"),
   });
 
+  const siteTitle = settings.siteTitle;
+  const siteDescription = settings.siteDescription;
+
   return {
     title: {
-      default: settings.siteTitle,
-      template: `%s - ${settings.siteTitle}`,
+      default: siteTitle,
+      template: `%s - ${siteTitle}`,
     },
-    description: settings.siteDescription,
+    description: siteDescription,
     metadataBase: getAuthUrlObject() ?? undefined,
+    openGraph: {
+      title: siteTitle,
+      description: siteDescription,
+      siteName: siteTitle,
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title: siteTitle,
+      description: siteDescription,
+    },
   };
 }
 

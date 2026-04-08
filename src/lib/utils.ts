@@ -4,3 +4,15 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+
+/** Strip markdown syntax and HTML tags for use in meta descriptions. */
+export function stripMarkdownForMeta(text: string): string {
+  return text
+    .replace(/<[^>]*>/g, "")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`[^`]*`/g, "")
+    .replace(/[#*_~\[\]()>|\\]/g, "")
+    .replace(/!\[.*?\]\(.*?\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
