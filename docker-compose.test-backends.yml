@@ -63,7 +63,7 @@ services:
       - "127.0.0.1:3100:3000"
     volumes:
       - judgekit-data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /compiler-workspaces:/compiler-workspaces
     env_file:
       - .env.production
@@ -87,9 +87,9 @@ services:
     container_name: judgekit-app-postgres
     restart: unless-stopped
     ports:
-      - "0.0.0.0:3101:3000"
+      - "127.0.0.1:3101:3000"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /compiler-workspaces:/compiler-workspaces
     env_file:
       - .env.production
@@ -117,9 +117,9 @@ services:
     container_name: judgekit-app-mysql
     restart: unless-stopped
     ports:
-      - "0.0.0.0:3102:3000"
+      - "127.0.0.1:3102:3000"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /compiler-workspaces:/compiler-workspaces
     env_file:
       - .env.production
@@ -151,7 +151,7 @@ services:
     security_opt:
       - apparmor:unconfined
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /judge-workspaces:/judge-workspaces
       - judgekit-dead-letter:/app/dead-letter
     env_file:

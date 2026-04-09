@@ -363,8 +363,12 @@ success "Database is ready"
 # ---------------------------------------------------------------------------
 info "Running database migrations (drizzle-kit push)..."
 
-# Extract POSTGRES_PASSWORD from .env.production on the remote
-PG_PASS=$(remote "grep '^POSTGRES_PASSWORD=' ${REMOTE_DIR}/.env.production | cut -d= -f2-")
+# Create a temporary env file on the remote for DB credentials (avoids leaking
+# passwords in process listings via -e flags).
+remote "grep '^POSTGRES_PASSWORD=' ${REMOTE_DIR}/.env.production > ${REMOTE_DIR}/.env.dbcreds && \
+        echo 'PGPASSWORD='\"$(grep '^POSTGRES_PASSWORD=' ${REMOTE_DIR}/.env.production | cut -d= -f2-)\" >> ${REMOTE_DIR}/.env.dbcreds && \
+        echo 'DATABASE_URL=postgres://judgekit:'\"$(grep '^POSTGRES_PASSWORD=' ${REMOTE_DIR}/.env.production | cut -d= -f2-)\"'@db:5432/judgekit' >> ${REMOTE_DIR}/.env.dbcreds && \
+        chmod 600 ${REMOTE_DIR}/.env.dbcreds"
 
 # Determine the Docker network name (compose project name + _default)
 NETWORK_NAME=$(remote "docker network ls --format '{{.Name}}' | grep judgekit | head -1" 2>/dev/null)
@@ -375,7 +379,7 @@ NETWORK_NAME="${NETWORK_NAME:-judgekit_default}"
 remote "docker run --rm \
     --network ${NETWORK_NAME} \
     -v ${REMOTE_DIR}:/app -w /app \
-    -e DATABASE_URL='postgres://judgekit:${PG_PASS}@db:5432/judgekit' \
+    --env-file ${REMOTE_DIR}/.env.dbcreds \
     node:24-alpine \
     sh -c 'npx drizzle-kit push'" 2>&1 || \
   warn "drizzle-kit push failed — may need manual intervention"
@@ -386,7 +390,7 @@ success "Database migrated"
 info "Applying additive PostgreSQL schema repairs..."
 remote "docker run --rm \
     --network ${NETWORK_NAME} \
-    -e PGPASSWORD='${PG_PASS}' \
+    --env-file ${REMOTE_DIR}/.env.dbcreds \
     postgres:18-alpine \
     psql -h db -U judgekit -d judgekit <<'SQL'
 ALTER TABLE problems ADD COLUMN IF NOT EXISTS default_language text;
@@ -398,10 +402,13 @@ success "Schema repairs applied"
 info "Running ANALYZE on database..."
 remote "docker run --rm \
     --network ${NETWORK_NAME} \
-    -e PGPASSWORD='${PG_PASS}' \
+    --env-file ${REMOTE_DIR}/.env.dbcreds \
     postgres:18-alpine \
     psql -h db -U judgekit -d judgekit -c 'ANALYZE;'" 2>&1 || true
 success "Database statistics updated"
+
+# Clean up temporary credentials file
+remote "rm -f ${REMOTE_DIR}/.env.dbcreds"
 
 # 6b. Now start all remaining containers
 COMPOSE_PROFILE_FLAG=""

@@ -116,7 +116,7 @@ success "Images loaded"
 
 # ---- Step 6: Prepare host directories ----
 info "Ensuring /compiler-workspaces exists with correct permissions..."
-remote "sudo mkdir -p /compiler-workspaces && sudo chmod 1777 /compiler-workspaces"
+remote "sudo mkdir -p /compiler-workspaces && sudo chmod 750 /compiler-workspaces && sudo chown root:docker /compiler-workspaces"
 success "Host directories ready"
 
 # ---- Step 6b: Start containers ----
@@ -146,23 +146,27 @@ success "Seeding complete"
 
 # ---- Step 8: Set up nginx reverse proxy ----
 info "Configuring nginx for ${DOMAIN}..."
-remote "sudo tee /etc/nginx/sites-available/judgekit > /dev/null" <<'NGINX_EOF'
+remote "sudo tee /etc/nginx/sites-available/judgekit > /dev/null" <<NGINX_EOF
 server {
     listen 80;
     server_name ${DOMAIN};
 
     client_max_body_size 50M;
 
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
     location / {
         proxy_pass http://127.0.0.1:3100;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $remote_addr;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$remote_addr;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
     }
 }
 NGINX_EOF

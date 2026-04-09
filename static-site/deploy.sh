@@ -25,7 +25,7 @@ STATIC_DOMAIN="static.auraedu.me"
 COMPOSE_CMD="docker-compose"
 
 # SSH options
-SSH_OPTS="-o StrictHostKeyChecking=no -o LogLevel=ERROR"
+SSH_OPTS="-o StrictHostKeyChecking=accept-new -o LogLevel=ERROR"
 if [[ -n "${SSH_KEY:-}" && -f "$SSH_KEY" ]]; then
     SSH_OPTS="$SSH_OPTS -i $SSH_KEY"
 fi
