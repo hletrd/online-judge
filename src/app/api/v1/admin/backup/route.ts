@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       request,
     });
 
-    return new Response(streamDatabaseExport(), {
+    return new Response(streamDatabaseExport({ signal: request.signal }), {
       headers: {
         "Content-Type": "application/json",
         "Content-Disposition": `attachment; filename="${filename}"`,

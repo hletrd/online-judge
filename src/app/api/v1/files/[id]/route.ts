@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq, like } from "drizzle-orm";
+import { eq, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { files, problems } from "@/lib/db/schema";
 import { getApiUser, unauthorized, csrfForbidden, forbidden } from "@/lib/api/auth";
@@ -9,6 +9,7 @@ import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { readUploadedFile, deleteUploadedFile } from "@/lib/files/storage";
 import { isImageMimeType } from "@/lib/files/image-processing";
+import { extractLinkedFileIds } from "@/lib/files/problem-links";
 import { logger } from "@/lib/logger";
 import { getAccessibleProblemIds } from "@/lib/auth/permissions";
 
@@ -38,14 +39,30 @@ async function canAccessFile(
         })
         .from(problems)
         .where(eq(problems.id, problemId))
-    : await db
-        .select({
-          id: problems.id,
-          visibility: problems.visibility,
-          authorId: problems.authorId,
-        })
-        .from(problems)
-        .where(like(problems.description, `%"/api/v1/files/${fileId}"%`));
+    : (
+        await db
+          .select({
+            id: problems.id,
+            visibility: problems.visibility,
+            authorId: problems.authorId,
+            description: problems.description,
+          })
+          .from(problems)
+          .where(isNotNull(problems.description))
+      ).flatMap((problem) => {
+        if (
+          typeof problem.description !== "string" ||
+          !extractLinkedFileIds(problem.description).includes(fileId)
+        ) {
+          return [];
+        }
+
+        return [{
+          id: problem.id,
+          visibility: problem.visibility,
+          authorId: problem.authorId,
+        }];
+      });
 
   if (problemRows.length === 0) {
     return false;

@@ -149,6 +149,19 @@ fn detect_architecture() -> Option<String> {
 
 #[tokio::main]
 async fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|arg| arg == "--help" || arg == "-h") {
+        println!("JudgeKit judge worker");
+        println!();
+        println!("Runs the JudgeKit worker loop using configuration from environment variables.");
+        println!("Use --version to print the package version.");
+        return;
+    }
+    if args.iter().any(|arg| arg == "--version" || arg == "-V") {
+        println!("{}", env!("CARGO_PKG_VERSION"));
+        return;
+    }
+
     // Initialize tracing with RUST_LOG env filter, default to "info"
     tracing_subscriber::fmt()
         .with_env_filter(

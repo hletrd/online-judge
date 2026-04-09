@@ -11,21 +11,111 @@ import { computeSimilarityRust } from "./code-similarity-client";
  * Preserves C/C++ preprocessor directives (#include, #define, etc.).
  */
 export function normalizeSource(source: string): string {
-  return source
-    // Remove single-line comments (// style)
-    .replace(/\/\/.*$/gm, "")
-    // Remove multi-line comments (/* */ style)
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    // Remove Python/Ruby comments but preserve C preprocessor directives
-    // Only strip # comments that don't start with #include, #define, #pragma, #ifdef, etc.
-    .replace(/^#(?!include|define|pragma|ifdef|ifndef|endif|else|elif|undef|if |error|warning).*$/gm, "")
-    // Collapse whitespace
-    .replace(/\s+/g, " ")
-    // Remove string literals
-    .replace(/"[^"]*"/g, '""')
-    .replace(/'[^']*'/g, "''")
-    .trim()
-    .toLowerCase();
+  let result = "";
+  let index = 0;
+
+  while (index < source.length) {
+    const current = source[index];
+    const next = source[index + 1];
+
+    if (current === "/" && next === "/") {
+      index += 2;
+      while (index < source.length && source[index] !== "\n") {
+        index += 1;
+      }
+      continue;
+    }
+
+    if (current === "/" && next === "*") {
+      index += 2;
+      while (index + 1 < source.length && !(source[index] === "*" && source[index + 1] === "/")) {
+        index += 1;
+      }
+      if (index + 1 < source.length) {
+        index += 2;
+      }
+      continue;
+    }
+
+    if (current === "#" && (index === 0 || source[index - 1] === "\n")) {
+      if (!startsWithPreprocessorDirective(source, index)) {
+        while (index < source.length && source[index] !== "\n") {
+          index += 1;
+        }
+        continue;
+      }
+    }
+
+    if (current === "\"") {
+      result += "\"";
+      index += 1;
+      while (index < source.length && source[index] !== "\"") {
+        if (source[index] === "\\" && index + 1 < source.length) {
+          index += 2;
+          continue;
+        }
+        index += 1;
+      }
+      if (index < source.length) {
+        result += "\"";
+        index += 1;
+      }
+      continue;
+    }
+
+    if (current === "'") {
+      result += "'";
+      index += 1;
+      while (index < source.length && source[index] !== "'") {
+        if (source[index] === "\\" && index + 1 < source.length) {
+          index += 2;
+          continue;
+        }
+        index += 1;
+      }
+      if (index < source.length) {
+        result += "'";
+        index += 1;
+      }
+      continue;
+    }
+
+    if (/\s/.test(current)) {
+      if (result.length > 0 && !result.endsWith(" ")) {
+        result += " ";
+      }
+      index += 1;
+      while (index < source.length && /\s/.test(source[index])) {
+        index += 1;
+      }
+      continue;
+    }
+
+    result += current.toLowerCase();
+    index += 1;
+  }
+
+  return result.trimEnd();
+}
+
+const PREPROCESSOR_DIRECTIVES = [
+  "include",
+  "define",
+  "pragma",
+  "ifdef",
+  "ifndef",
+  "endif",
+  "else",
+  "elif",
+  "undef",
+  "if ",
+  "error",
+  "warning",
+] as const;
+
+function startsWithPreprocessorDirective(source: string, hashIndex: number): boolean {
+  const remainder = source.slice(hashIndex + 1);
+  return PREPROCESSOR_DIRECTIVES.some((directive) => remainder.startsWith(directive));
 }
 
 /**

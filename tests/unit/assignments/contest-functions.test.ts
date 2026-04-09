@@ -155,6 +155,27 @@ describe("normalizeSource", () => {
     expect(result).not.toContain("hello world");
     expect(result).toContain('""');
   });
+
+  it("does not treat // inside string literals as comments", () => {
+    const src = 'printf("http://example.com"); // comment';
+    const result = normalizeSource(src);
+
+    expect(result).toBe('printf("");');
+  });
+
+  it("does not treat /* */ inside string literals as block comments", () => {
+    const src = 'const pattern = "/* not a comment */";';
+    const result = normalizeSource(src);
+
+    expect(result).toBe('const pattern = "";');
+  });
+
+  it("preserves escaped quotes inside string literals while stripping their contents", () => {
+    const src = 'const quote = "say \\"hello\\" // later";';
+    const result = normalizeSource(src);
+
+    expect(result).toBe('const quote = "";');
+  });
 });
 
 describe("jaccardSimilarity", () => {

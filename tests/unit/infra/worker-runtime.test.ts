@@ -14,4 +14,10 @@ describe("judge worker runtime loops", () => {
     expect(source).not.toContain("cleanup_counter");
     expect(source).toContain("last_cleanup_at.elapsed() >= cleanup_interval");
   });
+
+  it("supports a help/version fast path so container build verification does not require runtime env vars", () => {
+    expect(source).toContain('arg == "--help" || arg == "-h"');
+    expect(source).toContain('arg == "--version" || arg == "-V"');
+    expect(source).toContain('println!("JudgeKit judge worker")');
+  });
 });

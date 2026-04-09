@@ -2,6 +2,7 @@ import { eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, execTransaction, type TransactionClient } from "@/lib/db";
 import { problems, testCases, tags, problemTags, files } from "@/lib/db/schema";
+import { extractLinkedFileIds } from "@/lib/files/problem-links";
 import type { ProblemMutationInput } from "@/lib/validators/problem-management";
 import { sanitizeMarkdown } from "@/lib/security/sanitize-html";
 
@@ -14,11 +15,6 @@ function mapTestCases(problemId: string, values: ProblemMutationInput["testCases
     isVisible: testCase.isVisible,
     sortOrder: index,
   }));
-}
-
-function extractLinkedFileIds(description: string): string[] {
-  const matches = description.matchAll(/\/api\/v1\/files\/([A-Za-z0-9_-]+)/g);
-  return [...new Set(Array.from(matches, (match) => match[1]))];
 }
 
 type DatabaseExecutor = Pick<typeof db, "select" | "insert" | "update" | "delete">;

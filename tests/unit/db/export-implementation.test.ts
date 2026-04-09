@@ -18,6 +18,9 @@ describe("exportDatabase implementation guards", () => {
     expect(source).toContain("export function streamDatabaseExport");
     expect(source).toContain("new ReadableStream");
     expect(source).toContain('controller.enqueue(encoder.encode("}}"))');
+    expect(source).toContain("waitForReadableStreamDemand");
+    expect(source).toContain('options.signal?.addEventListener("abort", abort, { once: true })');
+    expect(source).toContain("controller.desiredSize <= 0");
   });
 
   it("uses the streaming export helper in the migration script instead of materializing the whole export object", () => {

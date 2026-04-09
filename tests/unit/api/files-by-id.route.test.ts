@@ -170,6 +170,7 @@ describe("GET /api/v1/files/[id]", () => {
             id: "problem-1",
             visibility: "private",
             authorId: "instructor-1",
+            description: '<img src="/api/v1/files/file-1" />',
           },
         ])
       );
@@ -179,6 +180,7 @@ describe("GET /api/v1/files/[id]", () => {
     const res = await GET(makeRequest("file-1"), { params: Promise.resolve({ id: "file-1" }) });
 
     expect(res.status).toBe(200);
+    expect(dbUpdateMock).toHaveBeenCalledTimes(1);
     const problemArg = getAccessibleProblemIdsMock.mock.calls[0]?.[2];
     expect(problemArg).toEqual(
       expect.arrayContaining([
@@ -250,5 +252,42 @@ describe("GET /api/v1/files/[id]", () => {
     const res = await GET(makeRequest("file-1"), { params: Promise.resolve({ id: "file-1" }) });
 
     expect(res.status).toBe(403);
+  });
+
+  it("does not authorize a file based on substring matches inside another file id", async () => {
+    getApiUserMock.mockResolvedValue({
+      ...ownerUser,
+      id: "student-5",
+      username: "student5",
+    });
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["files.upload"]));
+    dbSelectMock
+      .mockReturnValueOnce(
+        makeSelectChain([
+          {
+            id: "file-1",
+            storedName: "stored.bin",
+            originalName: "secret.txt",
+            mimeType: "text/plain",
+            uploadedBy: "other-user",
+          },
+        ])
+      )
+      .mockReturnValueOnce(
+        makeWhereTerminalChain([
+          {
+            id: "problem-9",
+            visibility: "private",
+            authorId: "instructor-1",
+            description: '<img src="/api/v1/files/file-10" />',
+          },
+        ])
+      );
+
+    const { GET } = await import("@/app/api/v1/files/[id]/route");
+    const res = await GET(makeRequest("file-1"), { params: Promise.resolve({ id: "file-1" }) });
+
+    expect(res.status).toBe(403);
+    expect(getAccessibleProblemIdsMock).not.toHaveBeenCalled();
   });
 });

@@ -110,8 +110,8 @@ async function getDbInfo() {
 export default async function AdminSettingsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role !== "super_admin") redirect("/dashboard");
   const caps = await resolveCapabilities(session.user.role);
+  if (!caps.has("system.settings")) redirect("/dashboard");
 
   const t = await getTranslations("admin.settings");
   const tCommon = await getTranslations("common");

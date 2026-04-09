@@ -57,16 +57,34 @@ export function createExportJsonStream(data: JudgeKitExport): ReadableStream<Uin
   });
 }
 
-export function streamDatabaseExport(): ReadableStream<Uint8Array> {
+async function waitForReadableStreamDemand(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  isCancelled: () => boolean
+) {
+  while (
+    !isCancelled() &&
+    controller.desiredSize !== null &&
+    controller.desiredSize <= 0
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
+export function streamDatabaseExport(options: { signal?: AbortSignal } = {}): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   let cancelled = false;
+  const abort = () => {
+    cancelled = true;
+  };
 
   return new ReadableStream({
     async start(controller) {
+      options.signal?.addEventListener("abort", abort, { once: true });
       try {
         await db.transaction(async (tx) => {
           if (cancelled) return;
           await tx.execute(sql.raw("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"));
+          await waitForReadableStreamDemand(controller, () => cancelled);
 
           controller.enqueue(
             encoder.encode(
@@ -86,6 +104,7 @@ export function streamDatabaseExport(): ReadableStream<Uint8Array> {
             const columns = columnsChunk.length > 0 ? Object.keys(columnsChunk[0] as object) : [];
             const redactSet = REDACTED_COLUMNS[name];
 
+            await waitForReadableStreamDemand(controller, () => cancelled);
             controller.enqueue(
               encoder.encode(
                 `${tableIndex === 0 ? "" : ","}${JSON.stringify(name)}:{"columns":${JSON.stringify(columns)},"rows":[`
@@ -103,6 +122,7 @@ export function streamDatabaseExport(): ReadableStream<Uint8Array> {
 
               for (const row of chunk) {
                 if (cancelled) return;
+                await waitForReadableStreamDemand(controller, () => cancelled);
                 const normalizedRow = columns.map((col) =>
                   redactSet?.has(col) ? null : normalizeValue((row as any)[col])
                 );
@@ -126,16 +146,20 @@ export function streamDatabaseExport(): ReadableStream<Uint8Array> {
                 .offset(offset);
             }
 
+            await waitForReadableStreamDemand(controller, () => cancelled);
             controller.enqueue(encoder.encode(`],"rowCount":${rowCount}}`));
           }
 
           if (cancelled) return;
+          await waitForReadableStreamDemand(controller, () => cancelled);
           controller.enqueue(encoder.encode("}}"));
         });
         if (cancelled) return;
         controller.close();
       } catch (error) {
         if (!cancelled) controller.error(error);
+      } finally {
+        options.signal?.removeEventListener("abort", abort);
       }
     },
     cancel() {
