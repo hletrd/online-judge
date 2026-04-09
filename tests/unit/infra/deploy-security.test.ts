@@ -12,6 +12,7 @@ describe("deployment security defaults", () => {
 
     expect(deployDocker).toContain("StrictHostKeyChecking=accept-new");
     expect(deployDocker).toContain("remote_sudo()");
+    expect(deployDocker).toContain('SSHPASS="$SSH_PASSWORD" rsync -e "sshpass -e ssh $SSH_OPTS"');
     expect(deployDocker).not.toContain("echo '${SSH_PASSWORD}' | sudo -S");
   });
 

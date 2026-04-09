@@ -155,7 +155,7 @@ remote_copy() {
 
 remote_rsync() {
     if [[ -n "${SSH_PASSWORD:-}" ]]; then
-        sshpass -p "$SSH_PASSWORD" rsync -e "ssh $SSH_OPTS" "$@"
+        SSHPASS="$SSH_PASSWORD" rsync -e "sshpass -e ssh $SSH_OPTS" "$@"
     else
         rsync -e "ssh $SSH_OPTS" "$@"
     fi
@@ -252,8 +252,12 @@ remote_rsync -az --delete \
     --exclude='*.db' \
     --exclude='judge-worker-rs/target/' \
     --exclude='rate-limiter-rs/target/' \
+    --exclude='code-similarity-rs/target/' \
     --exclude='.omc/' \
+    --exclude='.omx/' \
     --exclude='.claude/' \
+    --exclude='.agent/' \
+    --exclude='.sisyphus/' \
     --exclude='tests/' \
     --exclude='.playwright/' \
     --exclude='backups/' \
