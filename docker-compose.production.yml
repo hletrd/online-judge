@@ -87,6 +87,7 @@ services:
       - HOSTNAME=0.0.0.0
       - COMPILER_RUNNER_URL=http://judge-worker:3001
       - DISABLE_COMPILER_LOCAL_FALLBACK=1
+      - RATE_LIMITER_URL=http://rate-limiter:3001
     depends_on:
       db:
         condition: service_healthy
@@ -143,6 +144,24 @@ services:
       - CODE_SIMILARITY_PORT=3002
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "-O", "/dev/null", "http://127.0.0.1:3002/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  rate-limiter:
+    build:
+      context: .
+      dockerfile: Dockerfile.rate-limiter-rs
+    image: judgekit-rate-limiter:latest
+    container_name: judgekit-rate-limiter
+    restart: unless-stopped
+    environment:
+      - RUST_LOG=info
+      - RATE_LIMITER_HOST=0.0.0.0
+      - RATE_LIMITER_PORT=3001
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "-O", "/dev/null", "http://127.0.0.1:3001/health"]
       interval: 30s
       timeout: 5s
       retries: 3

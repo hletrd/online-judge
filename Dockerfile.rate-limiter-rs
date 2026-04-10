@@ -1,0 +1,31 @@
+# =============================================================================
+# JudgeKit Rate Limiter — Multi-stage Rust Build
+# Produces a minimal Alpine image with the rate-limiter sidecar binary.
+# The sidecar is optional; the app falls back to DB-backed rate limiting if
+# the service is unreachable (see src/lib/security/rate-limiter-client.ts).
+# =============================================================================
+
+FROM rust:1-alpine AS builder
+
+RUN apk add --no-cache musl-dev
+
+WORKDIR /build
+COPY rate-limiter-rs/ .
+RUN cargo build --release
+
+# ---------------------------------------------------------------------------
+# Runtime: minimal Alpine
+# ---------------------------------------------------------------------------
+FROM alpine:3.21 AS runner
+
+RUN apk add --no-cache ca-certificates wget
+
+COPY --from=builder /build/target/release/rate-limiter /usr/local/bin/rate-limiter
+
+ENV RUST_LOG=info
+ENV RATE_LIMITER_HOST=0.0.0.0
+ENV RATE_LIMITER_PORT=3001
+
+EXPOSE 3001
+
+CMD ["rate-limiter"]

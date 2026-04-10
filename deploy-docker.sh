@@ -299,6 +299,14 @@ if [[ "$SKIP_BUILD" == false ]]; then
         info "Skipping judge worker image build (BUILD_WORKER_IMAGE=${BUILD_WORKER_IMAGE}, INCLUDE_WORKER=${INCLUDE_WORKER})"
     fi
 
+    info "Building code-similarity image on ${REMOTE_HOST} (judgekit-code-similarity:latest) [${PLATFORM}]..."
+    remote "cd ${REMOTE_DIR} && docker build --platform ${PLATFORM} -t judgekit-code-similarity:latest -f Dockerfile.code-similarity ."
+    success "Code similarity image built on remote"
+
+    info "Building rate-limiter image on ${REMOTE_HOST} (judgekit-rate-limiter:latest) [${PLATFORM}]..."
+    remote "cd ${REMOTE_DIR} && docker build --platform ${PLATFORM} -t judgekit-rate-limiter:latest -f Dockerfile.rate-limiter-rs ."
+    success "Rate limiter image built on remote"
+
     if [[ "$SKIP_LANGUAGES" == false ]]; then
         if [[ -n "$LANGUAGE_FILTER" ]]; then
             LANGS_TO_BUILD=$(resolve_languages "$LANGUAGE_FILTER")
