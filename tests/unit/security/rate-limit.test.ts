@@ -131,6 +131,7 @@ describe("rate-limit helpers", () => {
   it("blocks after the configured threshold and escalates repeat blocks", async () => {
     const nowSpy = vi.spyOn(Date, "now");
     const {
+      consumeRateLimitAttemptMulti,
       isAnyKeyRateLimited,
       isRateLimited,
       recordRateLimitFailure,
@@ -156,6 +157,19 @@ describe("rate-limit helpers", () => {
     await recordRateLimitFailure("login:198.51.100.8");
     expect(rows.get("login:198.51.100.8")?.blockedUntil).toBe(4250);
     expect(rows.get("login:198.51.100.8")?.consecutiveBlocks).toBe(2);
+
+    nowSpy.mockReturnValue(5000);
+    await expect(consumeRateLimitAttemptMulti("login:consume")).resolves.toBe(false);
+    expect(rows.get("login:consume")?.attempts).toBe(1);
+
+    nowSpy.mockReturnValue(5050);
+    await expect(consumeRateLimitAttemptMulti("login:consume")).resolves.toBe(true);
+    expect(rows.get("login:consume")?.attempts).toBe(2);
+    expect(rows.get("login:consume")?.blockedUntil).toBe(6050);
+
+    nowSpy.mockReturnValue(5060);
+    await expect(consumeRateLimitAttemptMulti("login:consume")).resolves.toBe(true);
+    expect(rows.get("login:consume")?.attempts).toBe(2);
   });
 
   it("clears single and multiple keys", async () => {

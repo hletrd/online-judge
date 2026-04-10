@@ -28,8 +28,11 @@ FROM alpine:3.21 AS runner
 
 RUN apk add --no-cache docker-cli ca-certificates
 
+WORKDIR /app
+
 COPY --from=builder /build/target/release/judge-worker /usr/local/bin/judge-worker
 COPY docker/seccomp-profile.json /etc/judge/seccomp-profile.json
+COPY docker ./docker
 
 # Verify the binary is executable on this platform
 RUN /usr/local/bin/judge-worker --help >/dev/null

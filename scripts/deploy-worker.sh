@@ -20,12 +20,14 @@
 # =============================================================================
 
 set -euo pipefail
+umask 077
 
 # Defaults
 CONCURRENCY=4
 SSH_USER="${SSH_USER:-root}"
 REMOTE_DIR="/opt/judgekit-worker"
 SYNC_IMAGES=false
+SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o IdentitiesOnly=yes)
 
 # Parse arguments
 for arg in "$@"; do
@@ -67,6 +69,13 @@ if [[ -z "${AUTH_TOKEN:-}" ]]; then
 fi
 
 REMOTE="${SSH_USER}@${HOST}"
+LOCAL_ENV_FILE=""
+cleanup() {
+  if [[ -n "${LOCAL_ENV_FILE}" && -f "${LOCAL_ENV_FILE}" ]]; then
+    rm -f "${LOCAL_ENV_FILE}"
+  fi
+}
+trap cleanup EXIT
 
 echo "=== JudgeKit Worker Deployment ==="
 echo "  Target:      ${REMOTE}"
@@ -76,30 +85,33 @@ echo ""
 
 # Step 1: Transfer the judge worker image
 echo "[1/4] Transferring judge-worker image..."
-docker save judgekit-judge-worker:latest | gzip | ssh "${REMOTE}" "docker load"
+docker save judgekit-judge-worker:latest | gzip | ssh "${SSH_OPTS[@]}" "${REMOTE}" "docker load"
 
 # Clean up stale (dangling) worker images from previous deploys — keeps :latest
 echo "    Cleaning up stale worker images..."
-ssh "${REMOTE}" "docker image prune -f" >/dev/null 2>&1 || true
+ssh "${SSH_OPTS[@]}" "${REMOTE}" "docker image prune -f" >/dev/null 2>&1 || true
 
 # Step 2: Create remote directory and transfer compose file
 echo "[2/4] Setting up remote directory..."
-ssh "${REMOTE}" "mkdir -p ${REMOTE_DIR} /judge-workspaces"
-scp docker-compose.worker.yml "${REMOTE}:${REMOTE_DIR}/docker-compose.yml"
+ssh "${SSH_OPTS[@]}" "${REMOTE}" "install -d -m 700 ${REMOTE_DIR} && mkdir -p /judge-workspaces"
+scp "${SSH_OPTS[@]}" docker-compose.worker.yml "${REMOTE}:${REMOTE_DIR}/docker-compose.yml"
 
 # Step 3: Create .env file on the remote
 echo "[3/4] Creating environment file..."
-ssh "${REMOTE}" "cat > ${REMOTE_DIR}/.env << 'ENVEOF'
+LOCAL_ENV_FILE=$(mktemp)
+cat > "${LOCAL_ENV_FILE}" <<ENVEOF
 JUDGE_BASE_URL=${APP_URL}
 JUDGE_AUTH_TOKEN=${AUTH_TOKEN}
 JUDGE_CONCURRENCY=${CONCURRENCY}
 JUDGE_WORKER_HOSTNAME=${HOST}
 RUST_LOG=info
-ENVEOF"
+ENVEOF
+scp "${SSH_OPTS[@]}" "${LOCAL_ENV_FILE}" "${REMOTE}:${REMOTE_DIR}/.env"
+ssh "${SSH_OPTS[@]}" "${REMOTE}" "chmod 600 ${REMOTE_DIR}/.env"
 
 # Step 4: Start the worker
 echo "[4/4] Starting worker..."
-ssh "${REMOTE}" "cd ${REMOTE_DIR} && docker compose --env-file .env up -d"
+ssh "${SSH_OPTS[@]}" "${REMOTE}" "cd ${REMOTE_DIR} && docker compose --env-file .env up -d"
 
 echo ""
 echo "Worker deployed successfully to ${HOST}"
@@ -111,7 +123,7 @@ if [[ "${SYNC_IMAGES}" == "true" ]]; then
   echo "=== Syncing judge language images ==="
   for image in $(docker images --format '{{.Repository}}:{{.Tag}}' | grep '^judge-' | grep -v 'judge-worker'); do
     echo "  Transferring ${image}..."
-    docker save "${image}" | gzip | ssh "${REMOTE}" "docker load"
+    docker save "${image}" | gzip | ssh "${SSH_OPTS[@]}" "${REMOTE}" "docker load"
   done
   echo "Image sync complete."
 fi

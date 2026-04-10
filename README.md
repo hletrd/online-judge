@@ -170,7 +170,7 @@ judgekit/
 
 Workers connect to the app server via HTTP(S) only. Each worker registers on startup, sends periodic heartbeats, and deregisters on graceful shutdown. The atomic `UPDATE...RETURNING` claim SQL prevents two workers from claiming the same submission. Stale workers are detected automatically and their submissions reclaimed.
 
-The judge worker also exposes an HTTP runner endpoint (default port 3001) for interactive "Run Code" requests. When `COMPILER_RUNNER_URL` is set in the app, the Next.js process delegates Docker execution to the Rust worker instead of spawning containers locally, freeing the Node.js event loop. Falls back to local execution if the runner is unreachable.
+The judge worker also exposes an HTTP runner endpoint (default port `3001`) for interactive "Run Code" requests plus a small internal Docker-management API used by the admin image-management screens. In the shipped Docker deployment, the Next.js app delegates all Docker work to the Rust worker instead of talking to the Docker daemon directly.
 
 ## Deployment
 
@@ -224,9 +224,10 @@ Monitor workers at `/dashboard/admin/workers`.
 
 ### Prerequisites
 
-- **Docker socket proxy**: The deployment uses a dedicated `docker-proxy` service (`tecnativa/docker-socket-proxy`) as the only container with direct `/var/run/docker.sock` access. The `app` and `judge-worker` containers talk to Docker through `DOCKER_HOST=tcp://docker-proxy:2375`, reducing direct socket exposure while still allowing sandbox execution and admin image management.
+- **Docker socket proxy**: The deployment uses a dedicated `docker-proxy` service (`tecnativa/docker-socket-proxy`) as the only container with direct `/var/run/docker.sock` access. The **judge worker only** talks to Docker through `DOCKER_HOST=tcp://docker-proxy:2375`; the Next.js app uses the worker’s authenticated internal API instead of direct daemon access.
 - **`/judge-workspaces`**: Must exist on the host before starting the stack — used as the shared workspace volume between the judge worker and sibling judge containers.
-- **`COMPILER_RUNNER_URL`**: Set to `http://judge-worker:3001` in the app container to delegate interactive code execution to the Rust runner. The judge worker exposes this endpoint by default on port 3001 (configurable via `RUNNER_PORT`, `RUNNER_HOST`, `RUNNER_CONCURRENCY`, `RUNNER_ENABLED`).
+- **`COMPILER_RUNNER_URL`**: Set to `http://judge-worker:3001` in the app container to delegate interactive code execution to the Rust runner. In the shipped Docker compose files, `DISABLE_COMPILER_LOCAL_FALLBACK=1` keeps the app from retrying Docker locally if the runner is unavailable.
+- **`TRUSTED_DOCKER_REGISTRIES`**: Optional comma-separated allowlist for externally qualified image references (for example `ghcr.io/your-org/,registry.example.com/`). Unqualified local images such as `judge-python:latest` remain allowed.
 - The `deploy-docker.sh` script handles setup automatically (server-side builds, architecture detection, nginx config). See [Deployment Guide](docs/deployment.md).
 
 ## Platform Modes

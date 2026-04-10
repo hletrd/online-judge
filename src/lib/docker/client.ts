@@ -3,6 +3,9 @@ import { promisify } from "util";
 import pLimit from "p-limit";
 
 const exec = promisify(execFile);
+const JUDGE_WORKER_URL = process.env.COMPILER_RUNNER_URL || "";
+const JUDGE_AUTH_TOKEN = process.env.JUDGE_AUTH_TOKEN || "";
+const USE_WORKER_DOCKER_API = Boolean(JUDGE_WORKER_URL && JUDGE_AUTH_TOKEN);
 
 export interface DockerImage {
   repository: string;
@@ -17,8 +20,54 @@ export interface DockerPullProgress {
   error?: string;
 }
 
-/** List local Docker images, optionally filtered by reference pattern */
-export async function listDockerImages(filter?: string): Promise<DockerImage[]> {
+function isValidImageReference(value: string) {
+  return /^[a-zA-Z0-9][a-zA-Z0-9._\-/:]+$/.test(value);
+}
+
+async function readError(response: Response): Promise<string> {
+  try {
+    const data = await response.json() as { error?: string };
+    return data.error ?? `${response.status} ${response.statusText}`;
+  } catch {
+    return `${response.status} ${response.statusText}`;
+  }
+}
+
+async function callWorkerJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  headers.set("Content-Type", "application/json");
+  headers.set("Authorization", `Bearer ${JUDGE_AUTH_TOKEN}`);
+
+  const response = await fetch(`${JUDGE_WORKER_URL}${path}`, {
+    ...init,
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(await readError(response));
+  }
+
+  return response.json() as Promise<T>;
+}
+
+async function callWorkerNoContent(path: string, init?: RequestInit): Promise<void> {
+  const headers = new Headers(init?.headers);
+  headers.set("Content-Type", "application/json");
+  headers.set("Authorization", `Bearer ${JUDGE_AUTH_TOKEN}`);
+
+  const response = await fetch(`${JUDGE_WORKER_URL}${path}`, {
+    ...init,
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(await readError(response));
+  }
+}
+
+async function listDockerImagesLocal(filter?: string): Promise<DockerImage[]> {
   const args = ["images", "--format", "{{json .}}"];
   if (filter) args.push("--filter", `reference=${filter}`);
 
@@ -43,15 +92,13 @@ export async function listDockerImages(filter?: string): Promise<DockerImage[]> 
   }
 }
 
-/** Pull a Docker image by tag. Returns success/error */
-export async function pullDockerImage(imageTag: string): Promise<{ success: boolean; error?: string }> {
-  // Validate image tag to prevent command injection
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9._\-/:]+$/.test(imageTag)) {
+async function pullDockerImageLocal(imageTag: string): Promise<{ success: boolean; error?: string }> {
+  if (!isValidImageReference(imageTag)) {
     return { success: false, error: "Invalid image tag" };
   }
 
   try {
-    await exec("docker", ["pull", imageTag], { timeout: 300_000 }); // 5 min timeout
+    await exec("docker", ["pull", imageTag], { timeout: 300_000 });
     return { success: true };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
@@ -59,9 +106,8 @@ export async function pullDockerImage(imageTag: string): Promise<{ success: bool
   }
 }
 
-/** Inspect a Docker image */
-export async function inspectDockerImage(imageTag: string): Promise<Record<string, unknown> | null> {
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9._\-/:]+$/.test(imageTag)) {
+async function inspectDockerImageLocal(imageTag: string): Promise<Record<string, unknown> | null> {
+  if (!isValidImageReference(imageTag)) {
     return null;
   }
 
@@ -74,21 +120,17 @@ export async function inspectDockerImage(imageTag: string): Promise<Record<strin
   }
 }
 
-/** Build a Docker image from a Dockerfile using the repo root as the build context. */
-export async function buildDockerImage(
+async function buildDockerImageLocal(
   imageName: string,
   dockerfilePath: string,
 ): Promise<{ success: boolean; error?: string; logs?: string }> {
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9._\-/:]+$/.test(imageName)) {
+  if (!isValidImageReference(imageName)) {
     return { success: false, error: "Invalid image name" };
   }
-  // Prevent path traversal in dockerfile path
   if (/\.\.|[/\\]/.test(dockerfilePath.replace(/^docker\/Dockerfile\./, ""))) {
     return { success: false, error: "Invalid dockerfile path" };
   }
 
-  // Use the repository root as the build context so Dockerfiles can COPY shared
-  // assets under docker/ and other repo-relative paths just like the deploy scripts.
   const contextDir = ".";
 
   return new Promise((resolve) => {
@@ -126,8 +168,7 @@ export async function buildDockerImage(
   });
 }
 
-/** Get disk usage info */
-export async function getDiskUsage(): Promise<{ total: string; used: string; available: string; usePercent: string } | null> {
+async function getDiskUsageLocal(): Promise<{ total: string; used: string; available: string; usePercent: string } | null> {
   try {
     const { stdout } = await exec("df", ["-h", "/"], { timeout: 5_000 });
     const lines = stdout.trim().split("\n");
@@ -144,9 +185,8 @@ export async function getDiskUsage(): Promise<{ total: string; used: string; ava
   }
 }
 
-/** Remove a Docker image */
-export async function removeDockerImage(imageTag: string): Promise<{ success: boolean; error?: string }> {
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9._\-/:]+$/.test(imageTag)) {
+async function removeDockerImageLocal(imageTag: string): Promise<{ success: boolean; error?: string }> {
+  if (!isValidImageReference(imageTag)) {
     return { success: false, error: "Invalid image tag" };
   }
 
@@ -156,6 +196,126 @@ export async function removeDockerImage(imageTag: string): Promise<{ success: bo
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     return { success: false, error: msg };
+  }
+}
+
+/** List local Docker images, optionally filtered by reference pattern */
+export async function listDockerImages(filter?: string): Promise<DockerImage[]> {
+  if (!USE_WORKER_DOCKER_API) {
+    return listDockerImagesLocal(filter);
+  }
+
+  try {
+    const query = filter ? `?filter=${encodeURIComponent(filter)}` : "";
+    return await callWorkerJson<DockerImage[]>(`/docker/images${query}`, {
+      method: "GET",
+    });
+  } catch {
+    return [];
+  }
+}
+
+/** Pull a Docker image by tag. Returns success/error */
+export async function pullDockerImage(imageTag: string): Promise<{ success: boolean; error?: string }> {
+  if (!USE_WORKER_DOCKER_API) {
+    return pullDockerImageLocal(imageTag);
+  }
+
+  if (!isValidImageReference(imageTag)) {
+    return { success: false, error: "Invalid image tag" };
+  }
+
+  try {
+    await callWorkerNoContent("/docker/pull", {
+      method: "POST",
+      body: JSON.stringify({ imageTag }),
+    });
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/** Inspect a Docker image */
+export async function inspectDockerImage(imageTag: string): Promise<Record<string, unknown> | null> {
+  if (!USE_WORKER_DOCKER_API) {
+    return inspectDockerImageLocal(imageTag);
+  }
+
+  if (!isValidImageReference(imageTag)) {
+    return null;
+  }
+
+  try {
+    return await callWorkerJson<Record<string, unknown>>("/docker/inspect", {
+      method: "POST",
+      body: JSON.stringify({ imageTag }),
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Build a Docker image from a Dockerfile using the repo root as the build context. */
+export async function buildDockerImage(
+  imageName: string,
+  dockerfilePath: string,
+): Promise<{ success: boolean; error?: string; logs?: string }> {
+  if (!USE_WORKER_DOCKER_API) {
+    return buildDockerImageLocal(imageName, dockerfilePath);
+  }
+
+  if (!isValidImageReference(imageName)) {
+    return { success: false, error: "Invalid image name" };
+  }
+  if (/\.\.|[/\\]/.test(dockerfilePath.replace(/^docker\/Dockerfile\./, ""))) {
+    return { success: false, error: "Invalid dockerfile path" };
+  }
+
+  try {
+    const response = await callWorkerJson<{ logs: string }>("/docker/build", {
+      method: "POST",
+      body: JSON.stringify({ imageName, dockerfilePath }),
+    });
+    return { success: true, logs: response.logs };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/** Get disk usage info */
+export async function getDiskUsage(): Promise<{ total: string; used: string; available: string; usePercent: string } | null> {
+  if (!USE_WORKER_DOCKER_API) {
+    return getDiskUsageLocal();
+  }
+
+  try {
+    return await callWorkerJson<{ total: string; used: string; available: string; usePercent: string }>("/docker/disk-usage", {
+      method: "GET",
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Remove a Docker image */
+export async function removeDockerImage(imageTag: string): Promise<{ success: boolean; error?: string }> {
+  if (!USE_WORKER_DOCKER_API) {
+    return removeDockerImageLocal(imageTag);
+  }
+
+  if (!isValidImageReference(imageTag)) {
+    return { success: false, error: "Invalid image tag" };
+  }
+
+  try {
+    await callWorkerNoContent("/docker/remove", {
+      method: "POST",
+      body: JSON.stringify({ imageTag }),
+    });
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 

@@ -2,6 +2,7 @@ mod similarity;
 mod types;
 
 use axum::{
+    http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
@@ -35,11 +36,15 @@ async fn compute(Json(req): Json<ComputeRequest>) -> impl IntoResponse {
         Ok(result) => result,
         Err(e) => {
             tracing::error!(error = %e, "Similarity computation panicked");
-            Vec::new()
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ComputeResponse { pairs: Vec::new() }),
+            )
+                .into_response();
         }
     };
 
-    Json(ComputeResponse { pairs })
+    (StatusCode::OK, Json(ComputeResponse { pairs })).into_response()
 }
 
 // ---------------------------------------------------------------------------

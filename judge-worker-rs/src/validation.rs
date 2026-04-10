@@ -7,9 +7,30 @@ pub fn validate_docker_image(image: &str) -> bool {
     if !first.is_ascii_alphanumeric() {
         return false;
     }
-    image
+    let basic_format_ok = image
         .chars()
-        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-' | '/' | ':'))
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-' | '/' | ':'));
+
+    if !basic_format_ok {
+        return false;
+    }
+
+    let mut segments = image.split('/');
+    let first_segment = segments.next().unwrap_or_default();
+    let has_registry_prefix = image.contains('/') && first_segment.contains('.');
+    if !has_registry_prefix {
+        return true;
+    }
+
+    let trusted = std::env::var("TRUSTED_DOCKER_REGISTRIES").unwrap_or_default();
+    let trusted: Vec<String> = trusted
+        .split(',')
+        .map(|item| item.trim())
+        .filter(|item| !item.is_empty())
+        .map(ToOwned::to_owned)
+        .collect();
+
+    !trusted.is_empty() && trusted.iter().any(|prefix| image.starts_with(prefix))
 }
 
 /// Validate that a file extension is safe (starts with dot, alphanumeric + dots only).
@@ -28,7 +49,13 @@ mod tests {
     fn valid_docker_images() {
         assert!(validate_docker_image("judge-python:latest"));
         assert!(validate_docker_image("alpine:3.18"));
+        unsafe {
+            std::env::set_var("TRUSTED_DOCKER_REGISTRIES", "registry.example.com/");
+        }
         assert!(validate_docker_image("registry.example.com/judge-rust:1.0"));
+        unsafe {
+            std::env::remove_var("TRUSTED_DOCKER_REGISTRIES");
+        }
     }
 
     #[test]
@@ -37,6 +64,10 @@ mod tests {
         assert!(!validate_docker_image("http://evil.com/image"));
         assert!(!validate_docker_image("../../../etc/passwd"));
         assert!(!validate_docker_image("-flag"));
+        unsafe {
+            std::env::remove_var("TRUSTED_DOCKER_REGISTRIES");
+        }
+        assert!(!validate_docker_image("registry.example.com/judge-rust:1.0"));
     }
 
     #[test]

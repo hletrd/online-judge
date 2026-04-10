@@ -15,10 +15,9 @@ import { users } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import {
   clearRateLimitMulti,
+  consumeRateLimitAttemptMulti,
   getRateLimitKey,
   getUsernameRateLimitKey,
-  isAnyKeyRateLimited,
-  recordRateLimitFailureMulti,
 } from "@/lib/security/rate-limit";
 import {
   getAuthSessionCookieName,
@@ -137,9 +136,8 @@ export const authConfig: NextAuthConfig = {
       async authorize(credentials, request) {
         // Recruiting token auth — bypass password flow
         if (typeof credentials?.recruitToken === "string" && credentials.recruitToken.length > 0) {
-          // Apply rate limiting by IP to prevent token brute-force attacks
           const recruitIpKey = getRateLimitKey("login", request.headers);
-          if (await isAnyKeyRateLimited(recruitIpKey)) {
+          if (await consumeRateLimitAttemptMulti(recruitIpKey)) {
             recordLoginEvent({
               outcome: "rate_limited",
               attemptedIdentifier: "recruitToken",
@@ -151,7 +149,6 @@ export const authConfig: NextAuthConfig = {
           const result = await authorizeRecruitingToken(credentials.recruitToken, request);
 
           if (!result) {
-            await recordRateLimitFailureMulti(recruitIpKey);
             recordLoginEvent({
               outcome: "invalid_credentials",
               attemptedIdentifier: "recruitToken",
@@ -172,7 +169,7 @@ export const authConfig: NextAuthConfig = {
 
         const rateLimitKeys = [ipRateLimitKey, ...(usernameRateLimitKey ? [usernameRateLimitKey] : [])];
 
-        if (await isAnyKeyRateLimited(...rateLimitKeys)) {
+        if (await consumeRateLimitAttemptMulti(...rateLimitKeys)) {
           recordLoginEvent({
             outcome: "rate_limited",
             attemptedIdentifier,
@@ -200,7 +197,6 @@ export const authConfig: NextAuthConfig = {
 
         if (!user || !user.passwordHash || !user.isActive) {
           await verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
-          await recordRateLimitFailureMulti(...rateLimitKeys);
           recordLoginEvent({
             outcome: "invalid_credentials",
             attemptedIdentifier: identifier,
@@ -212,7 +208,6 @@ export const authConfig: NextAuthConfig = {
 
         const { valid: isValid, needsRehash } = await verifyPassword(password, user.passwordHash);
         if (!isValid) {
-          await recordRateLimitFailureMulti(...rateLimitKeys);
           recordLoginEvent({
             outcome: "invalid_credentials",
             attemptedIdentifier: identifier,

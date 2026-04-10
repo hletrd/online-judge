@@ -1,11 +1,13 @@
 use std::sync::Arc;
+use std::path::Path;
 
-use axum::extract::State;
+use axum::extract::{Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio::sync::Semaphore;
 
 use crate::config::Config;
@@ -22,6 +24,16 @@ const MIN_COMPILE_TIMEOUT_MS: u64 = 30_000;
 pub struct RunnerState {
     pub config: Arc<Config>,
     pub semaphore: Arc<Semaphore>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DockerImageSummary {
+    repository: String,
+    tag: String,
+    id: String,
+    created: String,
+    size: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -58,6 +70,40 @@ struct ErrorResponse {
     error: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DockerImagesQuery {
+    filter: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DockerImageRequest {
+    image_tag: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DockerBuildRequest {
+    image_name: String,
+    dockerfile_path: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DiskUsageResponse {
+    total: String,
+    used: String,
+    available: String,
+    use_percent: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DockerBuildResponse {
+    logs: String,
+}
+
 use crate::validation::{validate_docker_image, validate_extension};
 
 fn validate_shell_command(cmd: &str) -> bool {
@@ -79,6 +125,163 @@ fn validate_shell_command(cmd: &str) -> bool {
         return false;
     }
     true
+}
+
+fn validate_admin_image_tag(image: &str) -> bool {
+    validate_docker_image(image) && (image.starts_with("judge-") || image.contains("/judge-"))
+}
+
+fn validate_image_filter(filter: &str) -> bool {
+    !filter.is_empty()
+        && filter.contains("judge-")
+        && filter
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-' | '/' | ':' | '*'))
+}
+
+fn validate_dockerfile_path_for_build(path: &str) -> bool {
+    path.starts_with("docker/Dockerfile.judge-")
+        && !path.contains("..")
+        && path
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-' | '/'))
+}
+
+async fn run_command(
+    program: &str,
+    args: &[&str],
+    current_dir: Option<&Path>,
+) -> Result<std::process::Output, String> {
+    let mut command = tokio::process::Command::new(program);
+    command.args(args);
+    if let Some(dir) = current_dir {
+        command.current_dir(dir);
+    }
+
+    command
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run {program}: {e}"))
+}
+
+fn combined_output(output: &std::process::Output) -> String {
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    format!("{stdout}\n{stderr}").trim().to_string()
+}
+
+async fn docker_list_images(filter: &str) -> Result<Vec<DockerImageSummary>, String> {
+    let output = run_command(
+        "docker",
+        &["images", "--format", "{{json .}}", "--filter", &format!("reference={filter}")],
+        None,
+    )
+    .await?;
+
+    if !output.status.success() {
+        return Err(combined_output(&output));
+    }
+
+    let mut images = Vec::new();
+    for line in String::from_utf8_lossy(&output.stdout).lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let value: Value = serde_json::from_str(line)
+            .map_err(|e| format!("Failed to parse docker images output: {e}"))?;
+        images.push(DockerImageSummary {
+            repository: value
+                .get("Repository")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string(),
+            tag: value.get("Tag").and_then(Value::as_str).unwrap_or("").to_string(),
+            id: value.get("ID").and_then(Value::as_str).unwrap_or("").to_string(),
+            created: value
+                .get("CreatedSince")
+                .or_else(|| value.get("CreatedAt"))
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string(),
+            size: value.get("Size").and_then(Value::as_str).unwrap_or("").to_string(),
+        });
+    }
+
+    Ok(images)
+}
+
+async fn docker_inspect_image(image_tag: &str) -> Result<Option<Value>, String> {
+    let output = run_command("docker", &["inspect", image_tag], None).await?;
+    if !output.status.success() {
+        return Ok(None);
+    }
+
+    let value: Value = serde_json::from_slice(&output.stdout)
+        .map_err(|e| format!("Failed to parse docker inspect output: {e}"))?;
+    Ok(value
+        .as_array()
+        .and_then(|items| items.first().cloned()))
+}
+
+async fn docker_pull_image(image_tag: &str) -> Result<(), String> {
+    let output = run_command("docker", &["pull", image_tag], None).await?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(combined_output(&output))
+    }
+}
+
+async fn docker_remove_image(image_tag: &str) -> Result<(), String> {
+    let output = run_command("docker", &["rmi", image_tag], None).await?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(combined_output(&output))
+    }
+}
+
+async fn docker_build_image(image_name: &str, dockerfile_path: &str) -> Result<String, String> {
+    let cwd = std::env::current_dir().map_err(|e| format!("Failed to resolve build root: {e}"))?;
+    let dockerfile = cwd.join(dockerfile_path);
+    if !dockerfile.exists() {
+        return Err(format!("Dockerfile not found: {}", dockerfile.display()));
+    }
+
+    let output = run_command(
+        "docker",
+        &["build", "-t", image_name, "-f", dockerfile_path, "."],
+        Some(&cwd),
+    )
+    .await?;
+
+    let logs = combined_output(&output);
+    if output.status.success() {
+        Ok(logs)
+    } else {
+        Err(logs)
+    }
+}
+
+async fn host_disk_usage() -> Result<DiskUsageResponse, String> {
+    let output = run_command("df", &["-h", "/"], None).await?;
+    if !output.status.success() {
+        return Err(combined_output(&output));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut lines = stdout.lines();
+    let _header = lines.next();
+    let data = lines.next().ok_or_else(|| "df output missing data line".to_string())?;
+    let parts: Vec<&str> = data.split_whitespace().collect();
+
+    Ok(DiskUsageResponse {
+        total: parts.get(1).copied().unwrap_or("?").to_string(),
+        used: parts.get(2).copied().unwrap_or("?").to_string(),
+        available: parts.get(3).copied().unwrap_or("?").to_string(),
+        use_percent: parts.get(4).copied().unwrap_or("?").to_string(),
+    })
 }
 
 fn check_auth(headers: &HeaderMap, config: &Config) -> Result<(), StatusCode> {
@@ -110,6 +313,213 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 
 async fn health() -> StatusCode {
     StatusCode::OK
+}
+
+async fn docker_images_handler(
+    State(state): State<Arc<RunnerState>>,
+    headers: HeaderMap,
+    Query(query): Query<DockerImagesQuery>,
+) -> impl IntoResponse {
+    if let Err(status) = check_auth(&headers, &state.config) {
+        return (
+            status,
+            Json(ErrorResponse {
+                error: "unauthorized".to_string(),
+            }),
+        )
+            .into_response();
+    }
+
+    let filter = query.filter.unwrap_or_else(|| "judge-*".to_string());
+    if !validate_image_filter(&filter) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Invalid Docker image filter".to_string(),
+            }),
+        )
+            .into_response();
+    }
+
+    match docker_list_images(&filter).await {
+        Ok(images) => (StatusCode::OK, Json(images)).into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error }),
+        )
+            .into_response(),
+    }
+}
+
+async fn docker_inspect_handler(
+    State(state): State<Arc<RunnerState>>,
+    headers: HeaderMap,
+    Json(req): Json<DockerImageRequest>,
+) -> impl IntoResponse {
+    if let Err(status) = check_auth(&headers, &state.config) {
+        return (
+            status,
+            Json(ErrorResponse {
+                error: "unauthorized".to_string(),
+            }),
+        )
+            .into_response();
+    }
+
+    if !validate_admin_image_tag(&req.image_tag) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Invalid Docker image reference".to_string(),
+            }),
+        )
+            .into_response();
+    }
+
+    match docker_inspect_image(&req.image_tag).await {
+        Ok(Some(info)) => (StatusCode::OK, Json(info)).into_response(),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: "Docker image not found".to_string(),
+            }),
+        )
+            .into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error }),
+        )
+            .into_response(),
+    }
+}
+
+async fn docker_pull_handler(
+    State(state): State<Arc<RunnerState>>,
+    headers: HeaderMap,
+    Json(req): Json<DockerImageRequest>,
+) -> impl IntoResponse {
+    if let Err(status) = check_auth(&headers, &state.config) {
+        return (
+            status,
+            Json(ErrorResponse {
+                error: "unauthorized".to_string(),
+            }),
+        )
+            .into_response();
+    }
+
+    if !validate_admin_image_tag(&req.image_tag) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Invalid Docker image reference".to_string(),
+            }),
+        )
+            .into_response();
+    }
+
+    match docker_pull_image(&req.image_tag).await {
+        Ok(()) => StatusCode::OK.into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error }),
+        )
+            .into_response(),
+    }
+}
+
+async fn docker_remove_handler(
+    State(state): State<Arc<RunnerState>>,
+    headers: HeaderMap,
+    Json(req): Json<DockerImageRequest>,
+) -> impl IntoResponse {
+    if let Err(status) = check_auth(&headers, &state.config) {
+        return (
+            status,
+            Json(ErrorResponse {
+                error: "unauthorized".to_string(),
+            }),
+        )
+            .into_response();
+    }
+
+    if !validate_admin_image_tag(&req.image_tag) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Invalid Docker image reference".to_string(),
+            }),
+        )
+            .into_response();
+    }
+
+    match docker_remove_image(&req.image_tag).await {
+        Ok(()) => StatusCode::OK.into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error }),
+        )
+            .into_response(),
+    }
+}
+
+async fn docker_build_handler(
+    State(state): State<Arc<RunnerState>>,
+    headers: HeaderMap,
+    Json(req): Json<DockerBuildRequest>,
+) -> impl IntoResponse {
+    if let Err(status) = check_auth(&headers, &state.config) {
+        return (
+            status,
+            Json(ErrorResponse {
+                error: "unauthorized".to_string(),
+            }),
+        )
+            .into_response();
+    }
+
+    if !validate_admin_image_tag(&req.image_name) || !validate_dockerfile_path_for_build(&req.dockerfile_path) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Invalid Docker build parameters".to_string(),
+            }),
+        )
+            .into_response();
+    }
+
+    match docker_build_image(&req.image_name, &req.dockerfile_path).await {
+        Ok(logs) => (StatusCode::OK, Json(DockerBuildResponse { logs })).into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error }),
+        )
+            .into_response(),
+    }
+}
+
+async fn disk_usage_handler(
+    State(state): State<Arc<RunnerState>>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    if let Err(status) = check_auth(&headers, &state.config) {
+        return (
+            status,
+            Json(ErrorResponse {
+                error: "unauthorized".to_string(),
+            }),
+        )
+            .into_response();
+    }
+
+    match host_disk_usage().await {
+        Ok(usage) => (StatusCode::OK, Json(usage)).into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error }),
+        )
+            .into_response(),
+    }
 }
 
 async fn run_handler(
@@ -372,5 +782,11 @@ pub fn create_router(state: Arc<RunnerState>) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/run", post(run_handler))
+        .route("/docker/images", get(docker_images_handler))
+        .route("/docker/inspect", post(docker_inspect_handler))
+        .route("/docker/pull", post(docker_pull_handler))
+        .route("/docker/remove", post(docker_remove_handler))
+        .route("/docker/build", post(docker_build_handler))
+        .route("/docker/disk-usage", get(disk_usage_handler))
         .with_state(state)
 }

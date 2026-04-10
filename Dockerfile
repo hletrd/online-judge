@@ -52,13 +52,11 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV AUTH_TRUST_HOST=true
 
-# libstdc++ for native modules; Docker CLI for admin image management; vips for sharp image processing
-RUN apk add --no-cache libstdc++ docker-cli vips
+# libstdc++ for native modules; vips for sharp image processing
+RUN apk add --no-cache libstdc++ vips
 
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs && \
-    addgroup -g 987 docker 2>/dev/null || true && \
-    addgroup nextjs docker 2>/dev/null || true
+    adduser --system --uid 1001 nextjs
 
 # Copy standalone server output
 COPY --from=builder /app/.next/standalone ./
@@ -68,6 +66,7 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/messages ./messages
 COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/docker ./docker
 
 # Drizzle migration support: config + schema + dependencies needed by drizzle-kit push
 COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts

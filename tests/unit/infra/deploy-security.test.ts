@@ -14,11 +14,24 @@ describe("deployment security defaults", () => {
     expect(deployDocker).toContain("remote_sudo()");
     expect(deployDocker).toContain('SSHPASS="$SSH_PASSWORD" rsync -e "sshpass -e ssh $SSH_OPTS"');
     expect(deployDocker).not.toContain("echo '${SSH_PASSWORD}' | sudo -S");
+    expect(deployDocker).not.toContain(".env.dbcreds");
+    expect(deployDocker).toContain("-e POSTGRES_PASSWORD -e PGPASSWORD -e DATABASE_URL");
   });
 
   it("uses https AUTH_URL defaults for deploy scripts", () => {
     expect(read("deploy.sh")).toContain("AUTH_URL=https://${DOMAIN}");
     expect(read("deploy-test-backends.sh")).toContain("AUTH_URL=https://${DOMAIN}");
+  });
+
+  it("hardens dedicated worker deployment artifacts", () => {
+    const workerDeploy = read("scripts/deploy-worker.sh");
+    const rateLimiterService = read("scripts/rate-limiter-rs.service");
+
+    expect(workerDeploy).toContain("StrictHostKeyChecking=accept-new");
+    expect(workerDeploy).toContain("chmod 600 ${REMOTE_DIR}/.env");
+    expect(workerDeploy).not.toContain("cat > ${REMOTE_DIR}/.env");
+    expect(rateLimiterService).toContain("RATE_LIMITER_HOST=127.0.0.1");
+    expect(rateLimiterService).toContain("RATE_LIMITER_ENABLE_RESET=0");
   });
 
   it("documents the current single-app-instance requirement for SSE and anti-cheat coordination", () => {
@@ -29,5 +42,17 @@ describe("deployment security defaults", () => {
     expect(readme).toContain("single app instance");
     expect(deploymentGuide).toContain("single instance");
     expect(workersGuide).toContain("process-local memory");
+  });
+
+  it("keeps Docker daemon access out of the app container in deployment compose files", () => {
+    const production = read("docker-compose.production.yml");
+    const testBackends = read("docker-compose.test-backends.yml");
+    const dockerfile = read("Dockerfile");
+    const productionAppSection = production.split("judge-worker:")[0] ?? production;
+
+    expect(productionAppSection).not.toContain("DOCKER_HOST=tcp://docker-proxy:2375");
+    expect(testBackends).toContain("COMPILER_RUNNER_URL=http://judge-worker:3001");
+    expect(dockerfile).not.toContain("docker-cli");
+    expect(dockerfile).not.toContain("addgroup nextjs docker");
   });
 });

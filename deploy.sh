@@ -116,7 +116,7 @@ success "Images loaded"
 
 # ---- Step 6: Prepare host directories ----
 info "Ensuring /compiler-workspaces exists with correct permissions..."
-remote "sudo mkdir -p /compiler-workspaces && sudo chmod 1777 /compiler-workspaces && sudo chown root:root /compiler-workspaces"
+remote "sudo mkdir -p /compiler-workspaces && sudo chown 1001:1001 /compiler-workspaces && sudo chmod 0700 /compiler-workspaces"
 success "Host directories ready"
 
 # ---- Step 6b: Start containers ----

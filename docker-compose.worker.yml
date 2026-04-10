@@ -32,12 +32,6 @@ services:
     image: judgekit-judge-worker:latest
     container_name: judgekit-judge-worker
     restart: unless-stopped
-    # Minimal capabilities for Docker container management (avoids full privileged mode)
-    # Docker access is routed through docker-proxy rather than a direct socket mount.
-    cap_add:
-      - SYS_ADMIN
-    security_opt:
-      - apparmor:unconfined
     volumes:
       - /judge-workspaces:/judge-workspaces
       - judgekit-dead-letter:/app/dead-letter

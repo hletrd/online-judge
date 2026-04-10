@@ -83,7 +83,7 @@ JUDGE_CONCURRENCY=4 \
 docker compose -f docker-compose.worker.yml up -d
 ```
 
-The dedicated worker compose file includes a local `docker-proxy` sidecar. The judge worker reaches Docker through `DOCKER_HOST=tcp://docker-proxy:2375` instead of mounting `/var/run/docker.sock` directly, which narrows direct daemon exposure.
+The dedicated worker compose file includes a local `docker-proxy` sidecar. The judge worker reaches Docker through `DOCKER_HOST=tcp://docker-proxy:2375` instead of mounting `/var/run/docker.sock` directly, which narrows direct daemon exposure. The worker container itself no longer needs `SYS_ADMIN` or AppArmor overrides to do that.
 
 > **Important:** this horizontal scaling guidance applies to **judge workers**.
 > The main Next.js app currently keeps SSE connection tracking and anti-cheat
@@ -108,6 +108,8 @@ Options:
 - `--app-url=<url>` — App server API URL (required)
 - `--token=<token>` — Judge auth token (reads from `.env.production` if omitted)
 - `--concurrency=<n>` — Max concurrent submissions (default: 4)
+
+The deploy script now copies the worker `.env` file with mode `0600` instead of embedding the shared judge token directly into a remote shell heredoc.
 - `--sync-images` — Also transfer judge language Docker images
 - `--ssh-user=<user>` — SSH user (default: root)
 

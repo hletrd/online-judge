@@ -51,6 +51,9 @@ const WORKSPACE_BASE = process.env.COMPILER_WORKSPACE_DIR || tmpdir();
  */
 const COMPILER_RUNNER_URL = process.env.COMPILER_RUNNER_URL || "";
 const JUDGE_AUTH_TOKEN = process.env.JUDGE_AUTH_TOKEN || "";
+const DISABLE_LOCAL_FALLBACK = /^(1|true|yes|on)$/i.test(
+  process.env.DISABLE_COMPILER_LOCAL_FALLBACK || "",
+);
 
 export interface CompilerRunOptions {
   /** Source code to compile/run */
@@ -451,6 +454,17 @@ export async function executeCompilerRun(
   // Try Rust runner first
   const rustResult = await tryRustRunner(options);
   if (rustResult !== null) return rustResult;
+  if (COMPILER_RUNNER_URL && DISABLE_LOCAL_FALLBACK) {
+    return {
+      stdout: "",
+      stderr: "Compiler runner unavailable",
+      exitCode: null,
+      executionTimeMs: 0,
+      timedOut: false,
+      oomKilled: false,
+      compileOutput: null,
+    };
+  }
 
   const settings = getConfiguredSettings();
   const timeLimitMs = options.timeLimitMs ?? settings.compilerTimeLimitMs;

@@ -20,4 +20,12 @@ describe("judge worker runtime loops", () => {
     expect(source).toContain('arg == "--version" || arg == "-V"');
     expect(source).toContain('println!("JudgeKit judge worker")');
   });
+
+  it("exposes internal docker-management endpoints through the runner router", () => {
+    const runner = readFileSync(join(process.cwd(), "judge-worker-rs/src/runner.rs"), "utf8");
+
+    expect(runner).toContain('.route("/docker/images", get(docker_images_handler))');
+    expect(runner).toContain('.route("/docker/build", post(docker_build_handler))');
+    expect(runner).toContain('.route("/docker/remove", post(docker_remove_handler))');
+  });
 });

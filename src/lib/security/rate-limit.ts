@@ -116,6 +116,66 @@ export async function isAnyKeyRateLimited(...keys: string[]) {
   });
 }
 
+/**
+ * Atomically consume a login/auth attempt across one or more rate-limit keys.
+ *
+ * This closes the check-then-record race by performing the "is blocked?"
+ * check and the attempt increment inside the same transaction/row lock set.
+ *
+ * Returns true when the request should be rejected immediately because at
+ * least one key is already blocked or because this attempt hit the threshold.
+ */
+export async function consumeRateLimitAttemptMulti(...keys: string[]) {
+  return execTransaction(async (tx) => {
+    const config = getRateLimitConfig();
+    const entries = await Promise.all(keys.map(async (key) => ({
+      key,
+      ...(await getEntry(key, tx)),
+    })));
+
+    const hasActiveBlock = entries.some(({ now, entry }) => entry.blockedUntil > now);
+    if (hasActiveBlock) {
+      return true;
+    }
+
+    let shouldBlock = false;
+
+    for (const { key, now, entry, exists } of entries) {
+      const attempts = entry.attempts + 1;
+      let blockedUntil = entry.blockedUntil;
+      let consecutiveBlocks = entry.consecutiveBlocks;
+
+      if (attempts >= config.maxAttempts) {
+        consecutiveBlocks += 1;
+        const blockMs = config.blockMs * Math.pow(2, Math.min(consecutiveBlocks - 1, 5));
+        blockedUntil = now + blockMs;
+        shouldBlock = true;
+      }
+
+      if (exists) {
+        await tx.update(rateLimits).set({
+          attempts,
+          windowStartedAt: entry.windowStartedAt,
+          blockedUntil: blockedUntil > 0 ? blockedUntil : null,
+          consecutiveBlocks,
+          lastAttempt: now,
+        }).where(eq(rateLimits.key, key));
+      } else {
+        await tx.insert(rateLimits).values({
+          key,
+          attempts,
+          windowStartedAt: entry.windowStartedAt,
+          blockedUntil: blockedUntil > 0 ? blockedUntil : null,
+          consecutiveBlocks,
+          lastAttempt: now,
+        });
+      }
+    }
+
+    return shouldBlock;
+  });
+}
+
 export async function recordRateLimitFailure(key: string) {
   await execTransaction(async (tx) => {
     const { now, entry, exists } = await getEntry(key, tx);

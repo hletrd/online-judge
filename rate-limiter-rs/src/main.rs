@@ -274,6 +274,13 @@ fn spawn_eviction_task(store: Store) {
     });
 }
 
+fn env_flag(name: &str, default: bool) -> bool {
+    match std::env::var(name) {
+        Ok(value) => matches!(value.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on"),
+        Err(_) => default,
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Graceful shutdown
 // ---------------------------------------------------------------------------
@@ -321,6 +328,7 @@ async fn main() {
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(3001);
+    let enable_reset = env_flag("RATE_LIMITER_ENABLE_RESET", false);
 
     let store: Store = Arc::new(DashMap::new());
 
@@ -330,9 +338,14 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(health))
         .route("/check", post(check))
-        .route("/record-failure", post(record_failure))
-        .route("/reset", post(reset))
-        .with_state(store);
+        .route("/record-failure", post(record_failure));
+
+    let app = if enable_reset {
+        app.route("/reset", post(reset))
+    } else {
+        app
+    }
+    .with_state(store);
 
     let addr: SocketAddr = format!("{host}:{port}")
         .parse()

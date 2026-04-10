@@ -14,6 +14,14 @@ describe("compiler execute implementation", () => {
   it("keeps the legacy deploy path compatible with compiler workspace creation", () => {
     const source = readFileSync(join(process.cwd(), "deploy.sh"), "utf8");
 
-    expect(source).toContain("sudo chmod 1777 /compiler-workspaces");
+    expect(source).toContain("sudo chown 1001:1001 /compiler-workspaces");
+    expect(source).toContain("sudo chmod 0700 /compiler-workspaces");
+  });
+
+  it("supports disabling the local compiler fallback when a worker runner is configured", () => {
+    const source = readFileSync(join(process.cwd(), "src/lib/compiler/execute.ts"), "utf8");
+
+    expect(source).toContain("DISABLE_COMPILER_LOCAL_FALLBACK");
+    expect(source).toContain('stderr: "Compiler runner unavailable"');
   });
 });
