@@ -143,10 +143,10 @@ describe("normalizeSource", () => {
     expect(result).not.toMatch(/\s{2,}/);
   });
 
-  it("lowercases output", () => {
+  it("preserves identifier casing for case-sensitive languages", () => {
     const src = "INT X = HELLO;";
     const result = normalizeSource(src);
-    expect(result).toBe(result.toLowerCase());
+    expect(result).toBe("INT X = HELLO;");
   });
 
   it("replaces string literals with empty string placeholders", () => {
