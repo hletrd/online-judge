@@ -7,6 +7,7 @@ import { randomUUID } from "crypto";
 import { existsSync } from "fs";
 import pLimit from "p-limit";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
+import { isAllowedJudgeDockerImage } from "@/lib/judge/docker-image-validation";
 import { logger } from "@/lib/logger";
 
 const exec = promisify(execFile);
@@ -89,35 +90,6 @@ interface DockerRunResult {
   timedOut: boolean;
   oomKilled: boolean;
   durationMs: number;
-}
-
-/**
- * Validate Docker image reference to prevent arbitrary image pulls
- * and potential supply chain attacks.
- */
-function validateDockerImage(image: string): boolean {
-  // Allow only valid image reference format:
-  // - No registry URLs with ://
-  // - Only alphanumeric, dots, hyphens, underscores, slashes, colons
-  // - Must start with alphanumeric
-  const pattern = /^[a-zA-Z0-9][a-zA-Z0-9._\-\/:]*$/;
-  if (!pattern.test(image) || image.includes("://")) return false;
-
-  // If image references an external registry (first path segment contains a dot),
-  // it must match one of the trusted registries in TRUSTED_DOCKER_REGISTRIES env var.
-  const firstSegment = image.split("/")[0];
-  const hasRegistryPrefix = image.includes("/") && firstSegment.includes(".");
-  if (hasRegistryPrefix) {
-    const trusted = (process.env.TRUSTED_DOCKER_REGISTRIES || "")
-      .split(",")
-      .map((r) => r.trim())
-      .filter(Boolean);
-    if (trusted.length === 0 || !trusted.some((r) => image.startsWith(r))) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 /**
@@ -224,7 +196,7 @@ async function runDocker(opts: {
   const containerName = `compiler-${randomUUID()}`;
 
   // Validate image before running
-  if (!validateDockerImage(opts.image)) {
+  if (!isAllowedJudgeDockerImage(opts.image)) {
     throw new Error(`Invalid Docker image: ${opts.image}`);
   }
 
@@ -470,7 +442,7 @@ export async function executeCompilerRun(
   const timeLimitMs = options.timeLimitMs ?? settings.compilerTimeLimitMs;
 
   // Validate Docker image
-  if (!validateDockerImage(options.language.dockerImage)) {
+  if (!isAllowedJudgeDockerImage(options.language.dockerImage)) {
     return {
       stdout: "",
       stderr: "Invalid Docker image reference",

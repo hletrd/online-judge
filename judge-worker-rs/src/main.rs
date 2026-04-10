@@ -15,6 +15,7 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 
 /// Map ARM CPU implementer + part to a human-readable name.
+#[cfg(target_os = "linux")]
 fn lookup_arm_cpu_part(implementer: &str, part: &str) -> Option<&'static str> {
     // ARM Ltd (0x41) parts
     if implementer == "0x41" {
@@ -383,7 +384,7 @@ async fn main() {
                 drop(permit);
                 break;
             }
-            result = client.poll(worker_id.as_deref()) => {
+            result = client.poll(worker_id.as_deref(), worker_secret.as_deref()) => {
                 match result {
                     Ok(Some(submission)) => Some(submission),
                     Ok(None) => None,

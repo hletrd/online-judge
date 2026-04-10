@@ -4,21 +4,22 @@ import { defineConfig, devices } from "@playwright/test";
 const localBaseUrl = "http://localhost:3110";
 const localServerUrl = localBaseUrl;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? localBaseUrl;
+const isRemoteRun = Boolean(process.env.PLAYWRIGHT_BASE_URL);
 const evidenceRoot = path.join(".sisyphus", "evidence", "playwright");
-const remoteDbAssistedSpecs = [
-  "tests/e2e/admin-audit-logs.spec.ts",
-  "tests/e2e/admin-login-logs.spec.ts",
-  "tests/e2e/assignment-board-score.spec.ts",
-  "tests/e2e/group-assignment-management.spec.ts",
-  "tests/e2e/remediation.smoke.spec.ts",
-  "tests/e2e/task12-destructive-actions.spec.ts",
-  "tests/e2e/task7-unsaved-changes-history.spec.ts",
-  "tests/e2e/timezone-settings.spec.ts",
+const remoteSafeSpecs = [
+  "tests/e2e/admin-languages.spec.ts",
+  "tests/e2e/admin-workers.spec.ts",
+  "tests/e2e/auth-flow.spec.ts",
+  "tests/e2e/contest-nav-test.spec.ts",
+  "tests/e2e/contest-participant-audit.spec.ts",
+  "tests/e2e/contest-system.spec.ts",
+  "tests/e2e/ops-health.spec.ts",
+  "tests/e2e/rankings.spec.ts",
 ];
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testIgnore: process.env.PLAYWRIGHT_BASE_URL ? remoteDbAssistedSpecs : undefined,
+  testMatch: isRemoteRun ? remoteSafeSpecs : undefined,
   fullyParallel: false,
   workers: 1,
   timeout: 90_000,
@@ -33,9 +34,9 @@ export default defineConfig({
   use: {
     baseURL,
     headless: true,
-    trace: process.env.PLAYWRIGHT_BASE_URL ? "off" : "retain-on-failure",
-    video: process.env.PLAYWRIGHT_BASE_URL ? "off" : "retain-on-failure",
-    screenshot: process.env.PLAYWRIGHT_BASE_URL ? "off" : "only-on-failure",
+    trace: isRemoteRun ? "off" : "retain-on-failure",
+    video: isRemoteRun ? "off" : "retain-on-failure",
+    screenshot: isRemoteRun ? "off" : "only-on-failure",
   },
   projects: [
     {
@@ -45,7 +46,7 @@ export default defineConfig({
       },
     },
   ],
-  webServer: process.env.PLAYWRIGHT_BASE_URL
+  webServer: isRemoteRun
     ? undefined
     : {
         command: "npm run db:push && npm run start -- --hostname localhost --port 3110",

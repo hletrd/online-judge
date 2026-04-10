@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { rawQueryOne } from "@/lib/db/queries";
@@ -33,6 +34,19 @@ const claimedSubmissionRowSchema = z.object({
 
 type ClaimedSubmissionRow = z.infer<typeof claimedSubmissionRowSchema>;
 
+const claimRequestSchema = z.object({
+  workerId: z.string().min(1).optional(),
+  workerSecret: z.string().min(1).optional(),
+}).superRefine((value, ctx) => {
+  if (value.workerId && !value.workerSecret) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["workerSecret"],
+      message: "workerSecretRequired",
+    });
+  }
+});
+
 export async function POST(request: NextRequest) {
   try {
     if (!isJudgeAuthorized(request)) {
@@ -44,8 +58,13 @@ export async function POST(request: NextRequest) {
       return apiError("unsupportedMediaType", 415);
     }
 
-    const body = await request.json();
-    const workerId: string | null = typeof body?.workerId === "string" ? body.workerId : null;
+    const parsed = claimRequestSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return apiError(parsed.error.issues[0]?.message ?? "invalidRequest", 400);
+    }
+
+    const workerId = parsed.data.workerId ?? null;
+    const workerSecret = parsed.data.workerSecret ?? null;
 
     // Validate that the worker exists and is online before attempting an
     // atomic capacity-gated claim below.
@@ -53,6 +72,7 @@ export async function POST(request: NextRequest) {
       const [worker] = await db
         .select({
           status: judgeWorkers.status,
+          secretToken: judgeWorkers.secretToken,
         })
         .from(judgeWorkers)
         .where(eq(judgeWorkers.id, workerId))
@@ -60,6 +80,16 @@ export async function POST(request: NextRequest) {
 
       if (!worker || worker.status !== "online") {
         return apiError("workerNotFound", 403);
+      }
+
+      if (!worker.secretToken) {
+        return apiError("workerSecretNotConfigured", 403);
+      }
+
+      const provided = Buffer.from(workerSecret ?? "");
+      const expected = Buffer.from(worker.secretToken);
+      if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+        return apiError("invalidWorkerSecret", 403);
       }
     }
 

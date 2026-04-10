@@ -1,5 +1,4 @@
-/// Validate that a docker image reference is safe (no protocol, alphanumeric start).
-pub fn validate_docker_image(image: &str) -> bool {
+fn validate_docker_image_with_trusted(image: &str, trusted_prefixes: &[&str]) -> bool {
     if image.is_empty() || image.contains("://") {
         return false;
     }
@@ -15,22 +14,38 @@ pub fn validate_docker_image(image: &str) -> bool {
         return false;
     }
 
-    let mut segments = image.split('/');
-    let first_segment = segments.next().unwrap_or_default();
-    let has_registry_prefix = image.contains('/') && first_segment.contains('.');
-    if !has_registry_prefix {
-        return true;
+    let segments: Vec<&str> = image.split('/').collect();
+    let first_segment = segments.first().copied().unwrap_or_default();
+    let has_registry_prefix = segments.len() > 1 && first_segment.contains('.');
+    let image_name = segments
+        .last()
+        .and_then(|segment| segment.split(':').next())
+        .unwrap_or_default();
+
+    if !image_name.starts_with("judge-") {
+        return false;
     }
 
+    if !has_registry_prefix {
+        return segments.len() == 1;
+    }
+
+    !trusted_prefixes.is_empty()
+        && trusted_prefixes
+            .iter()
+            .any(|prefix| image.starts_with(prefix))
+}
+
+/// Validate that a docker image reference is safe (no protocol, alphanumeric start).
+pub fn validate_docker_image(image: &str) -> bool {
     let trusted = std::env::var("TRUSTED_DOCKER_REGISTRIES").unwrap_or_default();
-    let trusted: Vec<String> = trusted
+    let trusted: Vec<&str> = trusted
         .split(',')
         .map(|item| item.trim())
         .filter(|item| !item.is_empty())
-        .map(ToOwned::to_owned)
         .collect();
 
-    !trusted.is_empty() && trusted.iter().any(|prefix| image.starts_with(prefix))
+    validate_docker_image_with_trusted(image, &trusted)
 }
 
 /// Validate that a file extension is safe (starts with dot, alphanumeric + dots only).
@@ -48,14 +63,14 @@ mod tests {
     #[test]
     fn valid_docker_images() {
         assert!(validate_docker_image("judge-python:latest"));
-        assert!(validate_docker_image("alpine:3.18"));
-        unsafe {
-            std::env::set_var("TRUSTED_DOCKER_REGISTRIES", "registry.example.com/");
-        }
-        assert!(validate_docker_image("registry.example.com/judge-rust:1.0"));
-        unsafe {
-            std::env::remove_var("TRUSTED_DOCKER_REGISTRIES");
-        }
+        assert!(validate_docker_image_with_trusted(
+            "registry.example.com/judge-rust:1.0",
+            &["registry.example.com/"],
+        ));
+        assert!(validate_docker_image_with_trusted(
+            "registry.example.com/team/judge-rust:1.0",
+            &["registry.example.com/"],
+        ));
     }
 
     #[test]
@@ -64,10 +79,12 @@ mod tests {
         assert!(!validate_docker_image("http://evil.com/image"));
         assert!(!validate_docker_image("../../../etc/passwd"));
         assert!(!validate_docker_image("-flag"));
-        unsafe {
-            std::env::remove_var("TRUSTED_DOCKER_REGISTRIES");
-        }
-        assert!(!validate_docker_image("registry.example.com/judge-rust:1.0"));
+        assert!(!validate_docker_image("alpine:3.18"));
+        assert!(!validate_docker_image("library/judge-python:latest"));
+        assert!(!validate_docker_image_with_trusted(
+            "registry.example.com/judge-rust:1.0",
+            &[],
+        ));
     }
 
     #[test]

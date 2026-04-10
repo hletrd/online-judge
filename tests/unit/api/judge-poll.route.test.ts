@@ -161,6 +161,7 @@ describe("POST /api/v1/judge/claim", () => {
         makeSelectChain([
           {
             status: "online",
+            secretToken: "worker-secret",
           },
         ])
       )
@@ -182,7 +183,7 @@ describe("POST /api/v1/judge/claim", () => {
           Authorization: "Bearer test-token",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ workerId: "worker-1" }),
+        body: JSON.stringify({ workerId: "worker-1", workerSecret: "worker-secret" }),
       })
     );
 
@@ -199,6 +200,7 @@ describe("POST /api/v1/judge/claim", () => {
         makeSelectChain([
           {
             status: "online",
+            secretToken: "worker-secret",
           },
         ])
       )
@@ -219,7 +221,7 @@ describe("POST /api/v1/judge/claim", () => {
           Authorization: "Bearer test-token",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ workerId: "worker-1" }),
+        body: JSON.stringify({ workerId: "worker-1", workerSecret: "worker-secret" }),
       })
     );
 
@@ -271,5 +273,46 @@ describe("POST /api/v1/judge/claim", () => {
       id: "submission-1",
       claimToken: "claim-token",
     });
+  });
+
+  it("rejects worker claims when the per-worker secret is missing", async () => {
+    const response = await POST(
+      new NextRequest("http://localhost:3000/api/v1/judge/claim", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer test-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ workerId: "worker-1" }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "workerSecretRequired" });
+  });
+
+  it("rejects worker claims when the per-worker secret is invalid", async () => {
+    dbSelectMock.mockReturnValueOnce(
+      makeSelectChain([
+        {
+          status: "online",
+          secretToken: "expected-secret",
+        },
+      ])
+    );
+
+    const response = await POST(
+      new NextRequest("http://localhost:3000/api/v1/judge/claim", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer test-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ workerId: "worker-1", workerSecret: "wrong-secret" }),
+      })
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: "invalidWorkerSecret" });
   });
 });

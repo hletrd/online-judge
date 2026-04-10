@@ -334,4 +334,6 @@ pub struct DeregisterRequest<'a> {
 pub struct ClaimRequest<'a> {
     #[serde(rename = "workerId", skip_serializing_if = "Option::is_none")]
     pub worker_id: Option<&'a str>,
+    #[serde(rename = "workerSecret", skip_serializing_if = "Option::is_none")]
+    pub worker_secret: Option<&'a str>,
 }

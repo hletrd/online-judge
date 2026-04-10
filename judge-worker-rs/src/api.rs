@@ -135,8 +135,15 @@ impl ApiClient {
     /// POST claim_url with Bearer auth.
     /// Returns Ok(Some(submission)) if work available,
     /// Ok(None) if no work, Err on network/parse error.
-    pub async fn poll(&self, worker_id: Option<&str>) -> Result<Option<Submission>, String> {
-        let body = ClaimRequest { worker_id };
+    pub async fn poll(
+        &self,
+        worker_id: Option<&str>,
+        worker_secret: Option<&str>,
+    ) -> Result<Option<Submission>, String> {
+        let body = ClaimRequest {
+            worker_id,
+            worker_secret,
+        };
 
         let response = self
             .client
