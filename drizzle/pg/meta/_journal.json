@@ -57,6 +57,13 @@
       "when": 1775546772663,
       "tag": "0007_clumsy_obadiah_stane",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1775835847355,
+      "tag": "0008_pg_schema_drift_cleanup",
+      "breakpoints": true
     }
   ]
 }
