@@ -4,20 +4,48 @@ import { CountdownTimer } from "@/components/exam/countdown-timer";
 
 // Mock Badge to render children in a span with className exposed
 vi.mock("@/components/ui/badge", () => ({
-  Badge: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <span data-testid="badge" className={className}>
+  Badge: ({
+    children,
+    className,
+    variant,
+    role,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+    variant?: string;
+    role?: string;
+  }) => (
+    <span data-testid="badge" data-variant={variant} role={role} className={className}>
       {children}
     </span>
   ),
+}));
+
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
+}));
+
+vi.mock("sonner", () => ({
+  toast: {
+    warning: vi.fn(),
+  },
 }));
 
 describe("CountdownTimer", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        json: async () => ({ timestamp: Date.now() }),
+      }))
+    );
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -80,7 +108,7 @@ describe("CountdownTimer", () => {
     const deadline = Date.now() + (4 * 60 + 59) * 1000;
     render(<CountdownTimer deadline={deadline} />);
     const badge = screen.getByTestId("badge");
-    expect(badge.className).toContain("bg-red-500");
+    expect(badge).toHaveAttribute("data-variant", "destructive");
   });
 
   it("applies yellow color class when between 5 and 30 minutes remaining", () => {
@@ -88,7 +116,7 @@ describe("CountdownTimer", () => {
     const deadline = Date.now() + 15 * 60 * 1000;
     render(<CountdownTimer deadline={deadline} />);
     const badge = screen.getByTestId("badge");
-    expect(badge.className).toContain("bg-yellow-500");
+    expect(badge).toHaveAttribute("data-variant", "secondary");
   });
 
   it("applies green color class when more than 30 minutes remaining", () => {
@@ -96,14 +124,14 @@ describe("CountdownTimer", () => {
     const deadline = Date.now() + 45 * 60 * 1000;
     render(<CountdownTimer deadline={deadline} />);
     const badge = screen.getByTestId("badge");
-    expect(badge.className).toContain("bg-green-500");
+    expect(badge).toHaveAttribute("data-variant", "success");
   });
 
   it("applies dark red color class when expired", () => {
     const deadline = Date.now() - 1000;
     render(<CountdownTimer deadline={deadline} />);
     const badge = screen.getByTestId("badge");
-    expect(badge.className).toContain("bg-red-600");
+    expect(badge).toHaveAttribute("data-variant", "destructive");
   });
 
   it("updates display as time progresses", () => {

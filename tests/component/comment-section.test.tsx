@@ -19,6 +19,7 @@ vi.mock("next-intl", () => ({
 
     return key;
   },
+  useLocale: () => "en",
 }));
 
 vi.mock("@/lib/api/client", () => ({
