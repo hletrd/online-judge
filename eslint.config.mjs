@@ -73,6 +73,9 @@ const eslintConfig = defineConfig([
     ".sisyphus/**",
     "static-site/**",
     "test-results/**",
+    "judge-worker-rs/target/**",
+    "code-similarity-rs/target/**",
+    "rate-limiter-rs/target/**",
   ]),
 ]);
 
