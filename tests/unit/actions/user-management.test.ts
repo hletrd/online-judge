@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => {
     dbUpdateWhere: vi.fn(),
     dbDeleteWhere: vi.fn(),
     dbInsertValues: vi.fn(),
+    execTransaction: vi.fn(),
 
     resolveCapabilitiesMock: vi.fn(),
   };
@@ -132,6 +133,7 @@ vi.mock("@/lib/db", () => ({
       }),
     })),
   },
+  execTransaction: (...args: unknown[]) => mocks.execTransaction(...args),
 }));
 
 vi.mock("next/headers", () => ({
@@ -178,6 +180,34 @@ const defaultUserInput = {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  mocks.execTransaction.mockImplementation(async (callback: any) =>
+    callback({
+      update: vi.fn(() => ({
+        set: vi.fn((...args: unknown[]) => {
+          mocks.dbUpdateSet(...args);
+          return {
+            where: vi.fn((...wArgs: unknown[]) => {
+              mocks.dbUpdateWhere(...wArgs);
+              return Promise.resolve();
+            }),
+          };
+        }),
+      })),
+      insert: vi.fn(() => ({
+        values: vi.fn((...args: unknown[]) => {
+          mocks.dbInsertValues(...args);
+          return Promise.resolve();
+        }),
+      })),
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            limit: vi.fn(async () => []),
+          })),
+        })),
+      })),
+    })
+  );
   mocks.dbQueryGroupsFindMany.mockResolvedValue([]);
   mocks.resolveCapabilitiesMock.mockImplementation(async (role: string) => {
     const { DEFAULT_ROLE_CAPABILITIES } = await import("@/lib/capabilities/defaults");
@@ -647,6 +677,24 @@ describe("editUser", () => {
     });
     expect(result).toEqual({ success: false, error: "updateUserFailed" });
   });
+
+  it("returns usernameInUse when the final update loses a username unique race", async () => {
+    const { editUser } = await import("@/lib/actions/user-management");
+    setupAuthorizedAdmin();
+    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.dbQueryUsersFindFirst.mockResolvedValue({
+      id: "user-1",
+      username: "target",
+      role: "student",
+    });
+    mocks.execTransaction.mockRejectedValue({
+      code: "23505",
+      constraint: "users_username_unique",
+    });
+
+    const result = await editUser("user-1", defaultUserInput);
+    expect(result).toEqual({ success: false, error: "usernameInUse" });
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -782,13 +830,26 @@ describe("createUser", () => {
     mocks.nanoid.mockReturnValue("new-id");
     mocks.generateSecurePassword.mockReturnValue("gen-pw");
     mocks.hashPassword.mockResolvedValue("hashed");
-    const { db } = await import("@/lib/db");
-    (db.insert as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
-      values: vi.fn(() => Promise.reject(new Error("db error"))),
-    }));
+    mocks.execTransaction.mockRejectedValue(new Error("db error"));
 
     const result = await createUser({ ...defaultUserInput, password: undefined });
     expect(result).toEqual({ success: false, error: "createUserFailed" });
+  });
+
+  it("returns emailInUse when the final insert loses an email unique race", async () => {
+    const { createUser } = await import("@/lib/actions/user-management");
+    setupAuthorizedAdmin();
+    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.nanoid.mockReturnValue("new-id");
+    mocks.generateSecurePassword.mockReturnValue("gen-pw");
+    mocks.hashPassword.mockResolvedValue("hashed");
+    mocks.execTransaction.mockRejectedValue({
+      code: "23505",
+      constraint: "users_email_unique",
+    });
+
+    const result = await createUser({ ...defaultUserInput, password: undefined });
+    expect(result).toEqual({ success: false, error: "emailInUse" });
   });
 
   it("returns rateLimited when rate limit is exceeded", async () => {

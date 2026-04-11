@@ -1,7 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { db, execTransaction } from "@/lib/db";
 import { users, groups } from "@/lib/db/schema";
 import { withUpdatedAt } from "@/lib/db/helpers";
 import { auth } from "@/lib/auth";
@@ -246,14 +246,6 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
     if (!isUserRole(requestedRole)) return { success: false, error: "updateUserFailed" };
     const validatedRole = requestedRole;
 
-    if (await isUsernameTaken(data.username, userId)) {
-      return { success: false, error: "usernameInUse" };
-    }
-
-    if (normalizedEmail && await isEmailTaken(normalizedEmail, userId)) {
-      return { success: false, error: "emailInUse" };
-    }
-
     // Prevent password reset for users of equal or higher privilege
     if (data.password && targetUser.role) {
       const actorLevel = ROLE_LEVEL[actorRole as UserRole] ?? 0;
@@ -295,7 +287,36 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
       updates.tokenInvalidatedAt = new Date();
     }
 
-    await db.update(users).set(withUpdatedAt(updates)).where(eq(users.id, userId));
+    try {
+      await execTransaction(async (tx) => {
+        if (await isUsernameTaken(data.username, userId, tx)) {
+          throw new Error("usernameInUse");
+        }
+
+        if (normalizedEmail && await isEmailTaken(normalizedEmail, userId, tx)) {
+          throw new Error("emailInUse");
+        }
+
+        await tx.update(users).set(withUpdatedAt(updates)).where(eq(users.id, userId));
+      });
+    } catch (error) {
+      const pgErr = error as { code?: string; constraint?: string };
+      if (error instanceof Error && error.message === "usernameInUse") {
+        return { success: false, error: "usernameInUse" };
+      }
+      if (error instanceof Error && error.message === "emailInUse") {
+        return { success: false, error: "emailInUse" };
+      }
+      if (pgErr.code === "23505") {
+        if (pgErr.constraint?.includes("username")) {
+          return { success: false, error: "usernameInUse" };
+        }
+        if (pgErr.constraint?.includes("email")) {
+          return { success: false, error: "emailInUse" };
+        }
+      }
+      throw error;
+    }
 
     const auditContext = await buildServerActionAuditContext("/dashboard/admin/users");
     recordAuditEvent({
@@ -360,14 +381,6 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
     if (!isUserRole(requestedRole)) return { success: false, error: "createUserFailed" };
     const validatedRole = requestedRole;
 
-    if (await isUsernameTaken(data.username)) {
-      return { success: false, error: "usernameInUse" };
-    }
-
-    if (normalizedEmail && await isEmailTaken(normalizedEmail)) {
-      return { success: false, error: "emailInUse" };
-    }
-
     const id = nanoid();
     let passwordHash: string;
     if (data.password) {
@@ -381,19 +394,48 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
       passwordHash = await hashPassword(generateSecurePassword());
     }
 
-    await db.insert(users).values({
-      id,
-      username: data.username,
-      email: normalizedEmail,
-      name: data.name,
-      className: normalizedClassName,
-      role: validatedRole,
-      passwordHash,
-      isActive: true,
-      mustChangePassword: true, // force new user to change password on first login
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    try {
+      await execTransaction(async (tx) => {
+        if (await isUsernameTaken(data.username, undefined, tx)) {
+          throw new Error("usernameInUse");
+        }
+
+        if (normalizedEmail && await isEmailTaken(normalizedEmail, undefined, tx)) {
+          throw new Error("emailInUse");
+        }
+
+        await tx.insert(users).values({
+          id,
+          username: data.username,
+          email: normalizedEmail,
+          name: data.name,
+          className: normalizedClassName,
+          role: validatedRole,
+          passwordHash,
+          isActive: true,
+          mustChangePassword: true, // force new user to change password on first login
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      });
+    } catch (error) {
+      const pgErr = error as { code?: string; constraint?: string };
+      if (error instanceof Error && error.message === "usernameInUse") {
+        return { success: false, error: "usernameInUse" };
+      }
+      if (error instanceof Error && error.message === "emailInUse") {
+        return { success: false, error: "emailInUse" };
+      }
+      if (pgErr.code === "23505") {
+        if (pgErr.constraint?.includes("username")) {
+          return { success: false, error: "usernameInUse" };
+        }
+        if (pgErr.constraint?.includes("email")) {
+          return { success: false, error: "emailInUse" };
+        }
+      }
+      throw error;
+    }
 
     const auditContext = await buildServerActionAuditContext("/dashboard/admin/users");
     recordAuditEvent({

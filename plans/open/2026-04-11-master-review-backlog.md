@@ -35,6 +35,7 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - ✅ assignment problem-lock checks are now repeated inside the update transaction so new submissions cannot reopen the TOCTOU gap between route preflight and mutation.
 - ✅ user creation now maps insert-time unique username/email races to stable conflict responses instead of leaking raw database 500s.
 - ✅ user updates now map insert-time unique username/email races to stable conflict responses instead of leaking raw database 500s.
+- ✅ server-action create/edit user flows now use transactional uniqueness checks and map insert-time unique races to stable conflict responses too.
 - ✅ worker force-removal now locks and reads the worker row inside the final transaction instead of depending on a stale pre-transaction lookup.
 - ✅ atomic login/recruit-token throttling and submission-rate limiting were already fixed at `HEAD` and revalidated during plan execution.
 - ✅ tag creation now only retries on real unique-constraint races instead of masking arbitrary insert failures.

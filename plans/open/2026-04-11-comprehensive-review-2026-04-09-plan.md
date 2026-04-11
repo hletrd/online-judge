@@ -10,6 +10,7 @@ This review still appears to contain **open work**. It is broad and overlaps wit
 - ✅ Completed in this plan execution: single and bulk recruiting-invitation creation now take assignment/email advisory locks and recheck duplicates inside the transaction before inserting, closing the duplicate-email invite race.
 - ✅ Completed in this plan execution: group member removal now locks the enrollment row inside the final transaction before checking assignment submissions and deleting the enrollment, closing the stale pre-transaction lookup race.
 - ✅ Completed in this plan execution: role deletion now locks and reads the role row inside the final transaction before checking assigned users and deleting it, closing the stale pre-transaction role lookup.
+- ✅ Completed in this plan execution: server-action `createUser` / `editUser` now use transactional uniqueness checks and translate insert-time unique races into the same stable conflict errors as the API routes.
 - ✅ Revalidated at `HEAD`: password rehash is awaited, recruiting-token auth is rate-limited through the same atomic limiter path, and submission creation already holds an advisory lock for the submission-rate limit check.
 
 ## Critical / high themes to address
@@ -42,7 +43,7 @@ Use this plan for findings that are still unique after dedupe.
 - make rate-limit check/consume flows atomic with row locking or a single transactional primitive
 - use the same atomic pattern for recruiting-token auth
 - collapse uniqueness checks and writes into the same transaction for user create/update flows
-- **Status:** password rehash, submission-rate limiting, and atomic login/recruit-token checks were already fixed at `HEAD`; user create/update conflict handling is now robust against insert-time uniqueness races, while any remaining auth/identity concurrency gaps still need revalidation.
+- **Status:** password rehash, submission-rate limiting, and atomic login/recruit-token checks were already fixed at `HEAD`; API and server-action user create/update flows now both handle insert-time uniqueness races robustly, while any remaining auth/identity concurrency gaps still need revalidation.
 
 ### Tests
 - concurrent auth attempts
