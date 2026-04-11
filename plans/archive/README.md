@@ -12,6 +12,7 @@ This folder keeps **completed or historical planning artifacts**.
 - `prd-2026-04-09-review-remediation.md`
 - `test-spec-2026-04-09-review-remediation.md`
 - `2026-04-11-comprehensive-code-review-2026-04-10-plan.md`
+- `2026-04-11-comprehensive-code-review-2026-04-09-plan.md`
 
 ## Why copied instead of moved
 `.omx/plans/` is part of the OMX runtime/state surface. These files were copied here so the repo has a stable, user-facing archive without mutating runtime history.

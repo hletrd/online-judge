@@ -1,7 +1,7 @@
 # Implementation plan — `.context/reviews/comprehensive-code-review-2026-04-09.md`
 
 ## Source review status
-This review still appears to contain **open work**. No later addendum in the source file marks it as fully remediated.
+This plan has now been fully revalidated and implemented at `HEAD` on 2026-04-12, so it is archived for reference rather than kept in the active queue.
 
 ## Progress updates
 - ✅ Revalidated at `HEAD`: PostgreSQL-only runtime/support docs are already aligned; the earlier SQLite/MySQL runtime-support finding is closed by current docs and the migration helper now explicitly labels the SQLite flow as legacy/unsupported.
@@ -94,6 +94,7 @@ Before changing code, re-check the current implementation for each numbered find
 - pick one canonical rule for case folding + uniqueness
 - apply it at creation, update, login, and bulk-import boundaries
 - add tests for `Foo@Example.com` vs `foo@example.com`
+- **Status:** revalidated at `HEAD` as closed for the reviewed login and user-management paths — login matches emails case-insensitively, and create/update/bulk flows normalize stored emails to lowercase with implementation coverage.
 
 ## Phase 2 — Authorization and secret disclosure cleanup
 ### Track 2A — Replace description-based file access
@@ -205,6 +206,7 @@ Before changing code, re-check the current implementation for each numbered find
 - add a code-level single-instance guard or explicit startup warning for SSE/anti-cheat assumptions
 - add real Rust tests for rate-limiter behavior
 - harden similarity parser tokenization so string literals do not look like comment delimiters
+- **Status:** revalidated at `HEAD` as closed for the reviewed surfaces — deployment docs/tests already document the single-instance SSE / anti-cheat assumption, `rate-limiter-rs` ships Rust tests in `src/main.rs`, and similarity normalization regression tests already cover string-literal comment-marker cases.
 
 ## Acceptance criteria
 - every still-reproducible finding above has either a merged fix plan or an explicit "not reproducible at HEAD" note
