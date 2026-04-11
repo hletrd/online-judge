@@ -31,6 +31,7 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 
 **Progress**
 - ✅ bulk group enrollment now reports skips from the actual inserted row count, including duplicate request ids and insert-time conflicts.
+- ✅ admin role creation now maps insert-time unique constraint races to a stable `roleNameExists` response instead of a 500.
 
 ### 2. Import/export and schema-truth hardening
 **Why next:** multiple reviews still question whether DB import/export is correct, atomic, and aligned with schema/migrations.

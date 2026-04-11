@@ -3,6 +3,9 @@
 ## Source review status
 This review still appears to contain **open work**. It is broad and overlaps with the 2026-04-10 code review, so execution should dedupe fixes instead of treating every item as isolated work.
 
+## Progress updates
+- ✅ Completed in this plan execution: admin role creation now treats insert-time unique violations as `roleNameExists` instead of surfacing a raw 500, closing the concurrent create race on custom role names.
+
 ## Critical / high themes to address
 - auth and rate-limit races
 - worker/judge claim lifecycle races
@@ -93,6 +96,7 @@ Use this plan for findings that are still unique after dedupe.
 - move uniqueness/existence checks plus writes into the same transaction
 - standardize conflict handling (`23505` / no-op outcomes / partial-success reporting)
 - verify role cache invalidation and refresh semantics after mutations
+- **Status:** role-create conflict handling is now robust against insert-time uniqueness races; additional role/member/invite mutation paths still need revalidation or fixes.
 
 ### Tests
 - concurrent invite creation

@@ -93,7 +93,11 @@ export const POST = createApiHandler({
         });
       });
     } catch (err: unknown) {
-      if (err instanceof Error && err.message === "roleNameExists") {
+      const pgErr = err as { code?: string };
+      if (
+        (err instanceof Error && err.message === "roleNameExists")
+        || pgErr.code === "23505"
+      ) {
         return apiError("roleNameExists", 409);
       }
       throw err;
