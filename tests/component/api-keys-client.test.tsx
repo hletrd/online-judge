@@ -39,7 +39,9 @@ const translations: Record<string, string> = {
   keyCreatedTitle: "API Key Created",
   keyCreatedDescription: "Copy this key now. It will not be shown again.",
   copyKey: "Copy Key",
+  copyMaskedKeyPreview: "Copy masked key preview",
   copied: "Copied!",
+  maskedKeyPreviewCopied: "Masked key preview copied",
   done: "Done",
   deactivateSuccess: "API key deactivated",
   activateSuccess: "API key activated",
@@ -68,10 +70,6 @@ describe("ApiKeysClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal("fetch", fetchMock);
-    Object.defineProperty(globalThis.navigator, "clipboard", {
-      configurable: true,
-      value: undefined,
-    });
     Object.defineProperty(document, "execCommand", {
       configurable: true,
       value: vi.fn(() => true),
@@ -149,19 +147,28 @@ describe("ApiKeysClient", () => {
     expect(screen.queryByText("jk_ci_secret_key_123456")).not.toBeInTheDocument();
 
     const user = userEvent.setup();
+    const clipboardWriteTextSpy = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue(undefined);
     await user.click(screen.getByRole("button", { name: "Create API Key" }));
     await user.type(screen.getByPlaceholderText("e.g. CI/CD Pipeline"), "CI Key");
     await user.click(screen.getByRole("button", { name: "Create" }));
 
     expect(await screen.findByText("API Key Created")).toBeInTheDocument();
     expect(screen.getByText("jk_ci_secret_key_123456")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Copy Key" }));
+
+    await waitFor(() => {
+      expect(clipboardWriteTextSpy).toHaveBeenCalledWith("jk_ci_secret_key_123456");
+      expect(toast.success).toHaveBeenCalledWith("Copied!");
+    });
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(3);
     });
   });
 
-  it("copies the masked key preview from the table without revealing the secret", async () => {
+  it("copies the masked key preview from the table without presenting it as the full key", async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -186,10 +193,20 @@ describe("ApiKeysClient", () => {
     expect(await screen.findByText("Deploy Key")).toBeInTheDocument();
 
     const user = userEvent.setup();
+    const clipboardWriteTextSpy = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue(undefined);
     const row = screen.getByText("Deploy Key").closest("tr");
     expect(row).not.toBeNull();
-    await user.click(within(row as HTMLTableRowElement).getByRole("button", { name: "Copy Key" }));
+    const rowScope = within(row as HTMLTableRowElement);
+    expect(rowScope.queryByRole("button", { name: "Copy Key" })).not.toBeInTheDocument();
+    await user.click(
+      rowScope.getByRole("button", { name: /copyMaskedKeyPreview|Copy masked key preview/i })
+    );
 
-    expect(toast.success).toHaveBeenCalledWith("Copied!");
+    await waitFor(() => {
+      expect(clipboardWriteTextSpy).toHaveBeenCalledWith("jk_test_••••••••••••");
+      expect(toast.success).toHaveBeenCalledWith("Masked key preview copied");
+    });
   });
 });
