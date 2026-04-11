@@ -601,7 +601,7 @@ export default function CreateProblemForm({
             id="memoryLimit"
             type="number"
             min={16}
-            max={1024}
+            max={2048}
             value={memoryLimitMb}
             onChange={(e) => { const v = parseInt(e.target.value, 10); if (!Number.isNaN(v)) setMemoryLimitMb(v); }}
             required

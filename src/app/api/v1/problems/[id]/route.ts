@@ -16,7 +16,7 @@ const problemPatchSchema = z.object({
   sequenceNumber: z.number().int().min(1).nullable().optional(),
   problemType: z.enum(["auto", "manual"]).optional(),
   timeLimitMs: z.number().int().min(100).max(30000).optional(),
-  memoryLimitMb: z.number().int().min(16).max(1024).optional(),
+  memoryLimitMb: z.number().int().min(16).max(2048).optional(),
   visibility: z.enum(["public", "private", "hidden"]).optional(),
   showCompileOutput: z.boolean().optional(),
   showDetailedResults: z.boolean().optional(),

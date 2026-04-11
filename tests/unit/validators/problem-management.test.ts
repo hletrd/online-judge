@@ -153,14 +153,14 @@ describe("problemMutationSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects memoryLimitMb above 1024", () => {
-    const result = problemMutationSchema.safeParse({ ...validPayload, memoryLimitMb: 1025 });
+  it("rejects memoryLimitMb above 2048", () => {
+    const result = problemMutationSchema.safeParse({ ...validPayload, memoryLimitMb: 2049 });
     expect(result.success).toBe(false);
     expect(result.error?.issues.map((i) => i.message)).toContain("invalidMemoryLimit");
   });
 
-  it("accepts memoryLimitMb at exactly 1024", () => {
-    const result = problemMutationSchema.safeParse({ ...validPayload, memoryLimitMb: 1024 });
+  it("accepts memoryLimitMb at exactly 2048", () => {
+    const result = problemMutationSchema.safeParse({ ...validPayload, memoryLimitMb: 2048 });
     expect(result.success).toBe(true);
   });
 

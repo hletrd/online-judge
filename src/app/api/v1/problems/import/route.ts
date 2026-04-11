@@ -12,7 +12,7 @@ const problemImportSchema = z.object({
     description: z.string().default(""),
     sequenceNumber: z.number().int().min(1).nullable().optional(),
     timeLimitMs: z.number().int().min(100).max(30000).default(1000),
-    memoryLimitMb: z.number().int().min(16).max(1024).default(256),
+    memoryLimitMb: z.number().int().min(16).max(2048).default(256),
     problemType: z.enum(["auto", "manual"]).default("auto"),
     visibility: z.enum(["public", "private", "hidden"]).default("private"),
     showCompileOutput: z.boolean().default(true),
