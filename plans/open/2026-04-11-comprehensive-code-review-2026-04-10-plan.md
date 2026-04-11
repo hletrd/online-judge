@@ -9,6 +9,7 @@ This is the freshest broad code review in the repo and currently has **no closur
 - ✅ Completed in this plan execution: `ContestQuickStats` now stops its refresh interval while the tab is hidden and resumes immediately on visibility restore, closing the background-tab polling issue with component coverage.
 - ✅ Completed in this plan execution: `useSourceDraft` no longer recreates its internal store just because the caller passed a new `languages` array with the same values, so unsaved drafts survive innocuous rerenders.
 - ✅ Completed in this plan execution: the polling worker executor now derives compile timeouts from the submission time limit with a floor and ceiling, so the old no-op constant timeout is gone and covered by Rust tests.
+- ✅ Completed in this plan execution: import timestamp/boolean/json coercion now derives from schema metadata instead of hand-maintained name lists, closing the stale-column drift issue for future schema changes.
 
 ## Planning policy
 Start every execution slice by revalidating the cited finding against `HEAD`; if already fixed, mark it closed in the execution log and skip implementation.
@@ -83,6 +84,7 @@ Start every execution slice by revalidating the cited finding against `HEAD`; if
 - close all drift between `schema.pg.ts`, relations, and SQL migrations
 - simplify ambiguous relation naming before more logic depends on it
 - sanitize migrate/import envelope parsing before handing data to import code
+- **Status:** schema-derived import coercion is now in place; remaining work in this phase is broader relations/migration drift and any still-reproducible ambiguous-relation issues.
 
 ## Phase 4 — Route/UI/client correctness fixes
 ### Findings

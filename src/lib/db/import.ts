@@ -5,7 +5,7 @@
  * handling type conversions between dialects.
  */
 
-import { sql } from "drizzle-orm";
+import { getTableColumns, sql } from "drizzle-orm";
 import { db } from "./index";
 import * as schema from "./schema";
 import { validateExport, getTableOrder, getReversedTableOrder, type JudgeKitExport } from "./export";
@@ -51,38 +51,37 @@ const TABLE_MAP: Record<string, any> = {
   submissionComments: schema.submissionComments,
 };
 
-/**
- * Columns that store timestamps.
- * Used to convert ISO strings back to dialect-appropriate values.
- */
-const TIMESTAMP_COLUMNS = new Set([
-  "createdAt", "updatedAt", "enrolledAt", "submittedAt", "judgedAt",
-  "startedAt", "personalDeadline", "expiresAt", "expires", "startsAt",
-  "deadline", "lateDeadline", "freezeLeaderboardAt", "redeemedAt",
-  "lastActiveAt", "tokenInvalidatedAt", "lastSeenAt", "registeredAt",
-  "lastUsedAt", "judgeClaimedAt", "uploadedAt", "lastHeartbeatAt",
-  "deregisteredAt", "assignedAt", "emailVerified",
-]);
+function buildImportColumnSets(tableMap: Record<string, any>) {
+  const timestampColumns = new Set<string>();
+  const booleanColumns = new Set<string>();
+  const jsonColumns = new Set<string>();
 
-/**
- * Columns that store boolean values.
- * SQLite uses 0/1 integers, PG/MySQL use native booleans.
- */
-const BOOLEAN_COLUMNS = new Set([
-  "isActive", "mustChangePassword", "isBuiltin", "isVisible", "isEnabled",
-  "enableAntiCheat", "showLeaderboard", "showSubmissions",
-  "aiAssistantEnabled", "showCompileOutput", "showDetailedResults",
-  "showRuntimeErrors", "allowAiAssistant", "anonymousLeaderboard",
-  "showResultsToCandidate", "hideScoresFromCandidates", "enabled",
-]);
+  for (const table of Object.values(tableMap)) {
+    const columns = getTableColumns(table);
+    for (const [columnName, column] of Object.entries(columns)) {
+      const dataType = (column as { dataType?: string }).dataType;
+      if (dataType === "date") {
+        timestampColumns.add(columnName);
+      } else if (dataType === "boolean") {
+        booleanColumns.add(columnName);
+      } else if (dataType === "json") {
+        jsonColumns.add(columnName);
+      }
+    }
+  }
 
-/**
- * Columns that store JSON values.
- * SQLite stores as stringified text, PG uses jsonb, MySQL uses json.
- */
-const JSON_COLUMNS = new Set([
-  "details", "capabilities", "config", "labels", "metadata",
-]);
+  return {
+    timestampColumns,
+    booleanColumns,
+    jsonColumns,
+  };
+}
+
+const {
+  timestampColumns: TIMESTAMP_COLUMNS,
+  booleanColumns: BOOLEAN_COLUMNS,
+  jsonColumns: JSON_COLUMNS,
+} = buildImportColumnSets(TABLE_MAP);
 
 export interface ImportResult {
   success: boolean;

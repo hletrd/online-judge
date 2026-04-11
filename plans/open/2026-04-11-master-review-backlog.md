@@ -51,6 +51,9 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - close schema-vs-SQL drift
 - add import/export regression coverage for partial failures and migration edges
 
+**Progress**
+- ✅ import timestamp/boolean/json coercion now derives from schema metadata instead of manual column-name sets.
+
 ### 3. Authorization, secret disclosure, and dangerous fallback removal
 **Why next:** several reviews still flag routes that rely on brittle text matching, secret redisclosure, or stale built-in-role checks.
 
