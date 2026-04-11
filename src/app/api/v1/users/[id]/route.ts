@@ -4,13 +4,14 @@ import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db, execTransaction } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { forbidden, notFound, isAdmin, createApiHandler } from "@/lib/api/handler";
+import { forbidden, notFound, createApiHandler } from "@/lib/api/handler";
 import type { AuthUser } from "@/lib/api/handler";
 import { recordAuditEvent } from "@/lib/audit/events";
 import {
   canManageRole,
   isUserRole,
 } from "@/lib/security/constants";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { safeUserSelect } from "@/lib/db/selects";
 import { updateProfileSchema, adminUpdateUserSchema } from "@/lib/validators/profile";
 import { withUpdatedAt } from "@/lib/db/helpers";
@@ -245,10 +246,11 @@ async function applyPasswordUpdate(
 export const GET = createApiHandler({
   handler: async (req: NextRequest, { user, params }) => {
     const { id } = params;
-    const isAdminActor = isAdmin(user.role);
+    const caps = await resolveCapabilities(user.role);
+    const canViewUsers = caps.has("users.view");
     const isSelf = user.id === id;
 
-    if (!isAdminActor && !isSelf) return forbidden();
+    if (!canViewUsers && !isSelf) return forbidden();
 
     const found = await findSafeUserById(id);
 
@@ -262,7 +264,8 @@ export const PATCH = createApiHandler({
   rateLimit: "users:update",
   handler: async (req: NextRequest, { user, params }) => {
     const { id } = params;
-    const isAdminActor = isAdmin(user.role);
+    const caps = await resolveCapabilities(user.role);
+    const isAdminActor = caps.has("users.edit");
     const isSelf = user.id === id;
 
     if (!isAdminActor && !isSelf) return forbidden();
@@ -371,7 +374,8 @@ export const PATCH = createApiHandler({
 export const DELETE = createApiHandler({
   rateLimit: "users:delete",
   handler: async (req: NextRequest, { user, params }) => {
-    if (!isAdmin(user.role)) return forbidden();
+    const caps = await resolveCapabilities(user.role);
+    if (!caps.has("users.delete")) return forbidden();
 
     const { id } = params;
     const permanent = req.nextUrl.searchParams.get("permanent") === "true";

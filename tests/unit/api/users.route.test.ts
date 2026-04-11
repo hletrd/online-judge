@@ -516,6 +516,27 @@ describe("GET /api/v1/users/[id]", () => {
     expect(res.status).toBe(403);
   });
 
+  it("allows a custom role with users.view to fetch another user", async () => {
+    getApiUserMock.mockResolvedValue({
+      id: "custom-viewer",
+      username: "viewer",
+      role: "custom_viewer",
+      email: "viewer@example.com",
+      name: "Viewer",
+      className: null,
+      mustChangePassword: false,
+    });
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["users.view"]));
+    dbSelectMock.mockReturnValue(makeSelectChain([safeUser]));
+
+    const req = makeRequest(
+      "http://localhost:3000/api/v1/users/student-id"
+    );
+    const res = await GET(req, makeCtx("student-id"));
+
+    expect(res.status).toBe(200);
+  });
+
   it("returns 404 when user not found", async () => {
     getApiUserMock.mockResolvedValue(adminUser);
     dbSelectMock.mockReset();
@@ -590,6 +611,38 @@ describe("PATCH /api/v1/users/[id]", () => {
     expect(res.status).toBe(200);
     expect(body.data).toMatchObject({ name: "Updated Name" });
     expect(recordAuditEventMock).toHaveBeenCalled();
+  });
+
+  it("allows a custom role with users.edit to update another user", async () => {
+    getApiUserMock.mockResolvedValue({
+      id: "custom-editor",
+      username: "editor",
+      role: "custom_editor",
+      email: "editor@example.com",
+      name: "Editor",
+      className: null,
+      mustChangePassword: false,
+    });
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["users.edit"]));
+
+    const updatedUser = { ...safeUser, name: "Updated Name" };
+    dbSelectMock
+      .mockReturnValueOnce(makeSelectChain([safeUser]))
+      .mockReturnValueOnce(makeSelectChain([updatedUser]));
+
+    const updateChain = { set: vi.fn() };
+    updateChain.set.mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
+    });
+    dbUpdateMock.mockReturnValue(updateChain);
+
+    const req = makeRequest(
+      "http://localhost:3000/api/v1/users/student-id",
+      { method: "PATCH", body: { name: "Updated Name" } }
+    );
+    const res = await PATCH(req, makeCtx("student-id"));
+
+    expect(res.status).toBe(200);
   });
 
   it("admin can update username", async () => {

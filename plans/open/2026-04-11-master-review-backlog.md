@@ -105,6 +105,7 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - ✅ group deletion now authorizes through `groups.delete` capability instead of built-in admin/super-admin role checks.
 - ✅ group assignment export now uses the shared async group-resource capability check instead of hard-coded admin/instructor logic.
 - ✅ group list/create and problem list/create routes now use the corresponding capability checks instead of built-in admin/instructor branching.
+- ✅ user list/create/detail/update/delete routes now gate privileged access through `users.*` capabilities instead of built-in admin-only role checks.
 
 ### 4. Judge/worker runtime correctness
 **Why next:** the latest code review still has critical worker/runtime findings that can corrupt verdicts or mis-measure execution.

@@ -4,13 +4,14 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { execTransaction } from "@/lib/db";
-import { forbidden, isAdmin } from "@/lib/api/handler";
+import { forbidden } from "@/lib/api/handler";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { nanoid } from "nanoid";
 import { hashPassword } from "@/lib/security/password-hash";
 import { generateSecurePassword } from "@/lib/auth/generated-password";
 import { safeUserSelect } from "@/lib/db/selects";
 import { assertUserRole, isUserRole } from "@/lib/security/constants";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { userCreateSchema } from "@/lib/validators/profile";
 import { parsePagination } from "@/lib/api/pagination";
 import {
@@ -21,7 +22,8 @@ import { createApiHandler } from "@/lib/api/handler";
 
 export const GET = createApiHandler({
   handler: async (req: NextRequest, { user }) => {
-    if (!isAdmin(user.role)) return forbidden();
+    const caps = await resolveCapabilities(user.role);
+    if (!caps.has("users.view")) return forbidden();
 
     const searchParams = req.nextUrl.searchParams;
     const { page, limit, offset } = parsePagination(searchParams);
@@ -53,7 +55,8 @@ export const GET = createApiHandler({
 export const POST = createApiHandler({
   rateLimit: "users:create",
   handler: async (req: NextRequest, { user }) => {
-    if (!isAdmin(user.role)) return forbidden();
+    const caps = await resolveCapabilities(user.role);
+    if (!caps.has("users.create")) return forbidden();
 
     const parsed = userCreateSchema.safeParse(await req.json());
 
