@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Database backup script — supports PostgreSQL (production) and SQLite (dev)
+# Database backup script — PostgreSQL runtime by default, with a historical
+# SQLite path kept only for legacy/offline migration contexts.
 #
 # PostgreSQL modes:
 #   host-exec     (default): requires host-level pg_dump; reads DATABASE_URL
@@ -15,7 +16,7 @@
 #     /home/ubuntu/judgekit/scripts/backup-db.sh
 set -euo pipefail
 
-DB_DIALECT="${DB_DIALECT:-sqlite}"
+DB_DIALECT="${DB_DIALECT:-postgresql}"
 
 if [ "$DB_DIALECT" = "postgresql" ]; then
   BACKUP_PATH="${1:-${BACKUP_PATH:-data/backups/judge-$(date +%Y%m%d-%H%M%S).sql.gz}}"
@@ -56,7 +57,7 @@ if [ "$DB_DIALECT" = "postgresql" ]; then
   echo "Backup verified (valid gzip)"
 
 else
-  # --- SQLite backup via Python ---
+  # --- Historical SQLite backup via Python ---
   SOURCE_DB="${SOURCE_DB:-data/judge.db}"
   BACKUP_PATH="${1:-data/backups/judge-$(date +%Y%m%d-%H%M%S).db}"
 

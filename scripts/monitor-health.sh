@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Health monitoring script for JudgeKit
-# Supports PostgreSQL (production) and SQLite (dev)
+# PostgreSQL runtime by default; SQLite-specific checks remain only for
+# historical/local migration contexts.
 # Run via cron: */5 * * * * /path/to/monitor-health.sh
 set -euo pipefail
 
-DB_DIALECT="${DB_DIALECT:-sqlite}"
+DB_DIALECT="${DB_DIALECT:-postgresql}"
 DISK_WARN_PERCENT=85
 DISK_CRIT_PERCENT=95
 

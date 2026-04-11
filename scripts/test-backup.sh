@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Smoke test for scripts/backup-db.sh
-# Creates a temporary SQLite database, runs the backup script, verifies the output, then cleans up.
+# Smoke test for scripts/backup-db.sh historical SQLite mode.
+# Creates a temporary SQLite database, runs the legacy branch explicitly,
+# verifies the output, then cleans up.
 
 set -euo pipefail
 
@@ -35,7 +36,7 @@ print(f"Created source DB: {sys.argv[1]}")
 PY
 
 # Run the backup script against the temporary database
-SOURCE_DB="$SOURCE_DB" bash "$BACKUP_SCRIPT" "$BACKUP_DB"
+DB_DIALECT=sqlite SOURCE_DB="$SOURCE_DB" bash "$BACKUP_SCRIPT" "$BACKUP_DB"
 
 # Verify the backup file exists
 if [ ! -f "$BACKUP_DB" ]; then

@@ -66,6 +66,7 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - add import/export regression coverage for partial failures and migration edges
 
 **Progress**
+- ✅ PostgreSQL-only runtime guidance is now consistent across the reviewed backup/health/systemd script surfaces; SQLite branches remain only as explicit historical paths.
 - ✅ import timestamp/boolean/json coercion now derives from schema metadata instead of manual column-name sets.
 - ✅ import batching now fails honestly: batch insert errors abort the wrapping transaction instead of silently reporting partial success.
 - ✅ missing high-value Drizzle relations for users/groups/problems/assignments/files/tags are now defined in `relations.pg.ts`.

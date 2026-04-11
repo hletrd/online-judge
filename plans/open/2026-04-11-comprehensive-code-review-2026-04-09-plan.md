@@ -73,6 +73,7 @@ Before changing code, re-check the current implementation for each numbered find
 - decide whether SQLite/MySQL support is truly dead or needs restoration
 - if dead, remove the claims everywhere and replace the migration script with explicit historical/offline guidance
 - if alive, repair the documented path and add a smoke test
+- **Status:** revalidated at `HEAD` as PostgreSQL-only for the live runtime surfaces — deployment docs and migration guidance already describe PostgreSQL-only operation, and the remaining bundled backup/health/systemd script surfaces now default to PostgreSQL while marking SQLite branches as historical-only.
 
 ### Track 1B — Remove unsafe shell evaluation
 **Files**

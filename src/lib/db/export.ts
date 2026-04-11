@@ -1,8 +1,8 @@
 /**
- * Portable database export engine.
+ * PostgreSQL runtime export engine.
  *
- * Exports all tables in FK-dependency order to a JSON format that can
- * be imported into any supported dialect (SQLite, PostgreSQL, MySQL).
+ * Exports all tables in FK-dependency order to a JSON format used by the
+ * current PostgreSQL runtime and by historical migration tooling.
  */
 
 import { asc, sql } from "drizzle-orm";

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Verify a database backup — supports PostgreSQL (.sql.gz) and SQLite (.db)
+# Verify a database backup — PostgreSQL (.sql.gz) is the active runtime format;
+# SQLite (.db) verification remains for historical backups only.
 set -euo pipefail
 
 if [ "$#" -lt 1 ]; then

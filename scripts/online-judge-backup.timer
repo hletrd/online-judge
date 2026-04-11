@@ -1,5 +1,5 @@
 [Unit]
-Description=Run Online Judge SQLite backup every day
+Description=Run JudgeKit PostgreSQL backup every day
 
 [Timer]
 OnCalendar=*-*-* 03:15:00
