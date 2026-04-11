@@ -163,7 +163,7 @@ export function ProblemSubmissionForm({
     } finally {
       setIsRunning(false);
     }
-  }, [sourceCode, language, stdin, tCommon, translateSubmissionError]);
+  }, [assignmentId, sourceCode, language, stdin, tCommon, translateSubmissionError]);
 
   // Publish editor content for AI chat widget (read-only bridge)
   useEffect(() => {
