@@ -25,6 +25,7 @@ This review still appears to contain **open work**. No later addendum in the sou
 - ✅ Completed in this plan execution: group list/create and problem list/create routes now use `groups.*` / `problems.*` capability checks instead of built-in admin/instructor branching.
 - ✅ Completed in this plan execution: user list/create/detail/update/delete routes now use `users.*` capabilities for privileged access instead of hard-coded admin-only gates, while still preserving self-service access where intended.
 - ✅ Completed in this plan execution: problem detail/update/delete now use `problems.edit` / `problems.delete` capabilities for privileged management while preserving author ownership access.
+- ✅ Completed in this plan execution: group detail email visibility now follows the shared async group-management permission helper, so co-instructors and custom manager roles can see the same member emails as primary instructors/admins.
 
 ## Findings covered by this plan
 1. PostgreSQL-only runtime still documented as SQLite/MySQL-capable
@@ -120,7 +121,7 @@ Before changing code, re-check the current implementation for each numbered find
 - inventory every route/page still using hard-coded role checks
 - decide whether to convert to capabilities or keep built-in-only intentionally
 - align UI gating and server enforcement
-- **Status:** recruiting invitation APIs, contest-management routes, admin log APIs, user management routes/actions, problem-set routes, submission moderation routes, admin tag routes, contest quick-create, contest code-snapshot history, group list/create/delete/export, and problem list/detail/create/update/delete now use capability-aware or dynamic-role-aware logic; additional hard-coded role clusters still need inventory and conversion or explicit justification.
+- **Status:** recruiting invitation APIs, contest-management routes, admin log APIs, user management routes/actions, problem-set routes, submission moderation routes, admin tag routes, contest quick-create, contest code-snapshot history, group list/detail/create/delete/export, and problem list/detail/create/update/delete now use capability-aware or dynamic-role-aware logic; additional hard-coded role clusters still need inventory and conversion or explicit justification.
 
 ### Track 2D — Tighten legacy HTML rendering instead of trusting external media
 **Files**

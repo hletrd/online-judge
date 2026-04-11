@@ -9,7 +9,7 @@ import { recordAuditEvent } from "@/lib/audit/events";
 import { updateGroupSchema } from "@/lib/validators/groups";
 import { withUpdatedAt } from "@/lib/db/helpers";
 import { execTransaction } from "@/lib/db";
-import { createApiHandler, isAdmin, notFound, forbidden } from "@/lib/api/handler";
+import { createApiHandler, notFound, forbidden } from "@/lib/api/handler";
 
 export const GET = createApiHandler({
   handler: async (_req: NextRequest, { user, params }) => {
@@ -71,7 +71,12 @@ export const GET = createApiHandler({
       isComplete: returnedEnrollmentCount >= memberCount,
     };
 
-    const canViewEmails = isAdmin(user.role) || group.instructorId === user.id;
+    const canViewEmails = await canManageGroupResourcesAsync(
+      group.instructorId,
+      user.id,
+      user.role,
+      id
+    );
 
     return apiSuccess({
       ...group,

@@ -10,6 +10,7 @@ const {
   csrfForbiddenMock,
   consumeApiRateLimitMock,
   resolveCapabilitiesMock,
+  canManageGroupResourcesAsyncMock,
   recordAuditEventMock,
   canAccessGroupMock,
   groupsFindFirstMock,
@@ -28,6 +29,7 @@ const {
     csrfForbiddenMock: vi.fn<() => NextResponse | null>(() => null),          // null = no CSRF error
     consumeApiRateLimitMock: vi.fn<() => NextResponse | null>(() => null),    // null = not rate-limited
     resolveCapabilitiesMock: vi.fn(),
+    canManageGroupResourcesAsyncMock: vi.fn(),
     recordAuditEventMock: vi.fn(),
     canAccessGroupMock: vi.fn(),
     groupsFindFirstMock: vi.fn(),
@@ -61,6 +63,10 @@ vi.mock("@/lib/security/api-rate-limit", () => ({
 
 vi.mock("@/lib/capabilities/cache", () => ({
   resolveCapabilities: resolveCapabilitiesMock,
+}));
+
+vi.mock("@/lib/assignments/management", () => ({
+  canManageGroupResourcesAsync: canManageGroupResourcesAsyncMock,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -174,6 +180,7 @@ beforeEach(() => {
   csrfForbiddenMock.mockReturnValue(null);
   consumeApiRateLimitMock.mockReturnValue(null);
   resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.delete"]));
+  canManageGroupResourcesAsyncMock.mockResolvedValue(false);
   canAccessGroupMock.mockResolvedValue(true);
   groupsFindFirstMock.mockResolvedValue(EXISTING_GROUP);
   // default: no submissions → deletion allowed
@@ -237,6 +244,55 @@ describe("GET /api/v1/groups/[id] — enrollment contract", () => {
       isComplete: true,
     });
     expect(body.data.membersTruncated).toBe(false);
+  });
+
+  it("shows member emails to a custom role that can manage the group", async () => {
+    getApiUserMock.mockResolvedValue({
+      id: "custom-manager",
+      role: "custom_manager",
+      username: "manager",
+      email: "manager@example.com",
+      name: "Manager",
+      className: null,
+      mustChangePassword: false,
+    });
+    canManageGroupResourcesAsyncMock.mockResolvedValueOnce(true);
+    canAccessGroupMock.mockResolvedValueOnce(true);
+    groupsFindFirstMock
+      .mockResolvedValueOnce({ id: EXISTING_GROUP.id })
+      .mockResolvedValueOnce({
+        ...EXISTING_GROUP,
+        instructor: {
+          id: "instructor-1",
+          name: "Instructor",
+          email: "instructor@example.com",
+        },
+        enrollments: [
+          {
+            id: "enrollment-1",
+            userId: "student-1",
+            groupId: EXISTING_GROUP.id,
+            enrolledAt: new Date("2026-04-01T00:00:00Z"),
+            user: {
+              id: "student-1",
+              name: "Student One",
+              email: "student1@example.com",
+            },
+          },
+        ],
+      });
+    dbSelectMock.mockReturnValueOnce({
+      from: vi.fn(() => ({
+        where: vi.fn().mockResolvedValue([{ count: 1 }]),
+      })),
+    });
+
+    const res = await GET(makeRequest("GET"), { params: PARAMS });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.data.instructor.email).toBe("instructor@example.com");
+    expect(body.data.enrollments[0].user.email).toBe("student1@example.com");
   });
 
   it("returns 403 when the caller cannot access the group", async () => {
