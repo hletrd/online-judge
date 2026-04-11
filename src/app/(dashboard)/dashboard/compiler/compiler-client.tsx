@@ -63,6 +63,18 @@ function getDefaultCode(language: string): string {
   return "";
 }
 
+function resolveInitialCompilerLanguage(
+  languages: CompilerLanguage[],
+  preferredLanguage?: string | null
+) {
+  return (
+    (preferredLanguage && languages.some((l) => l.language === preferredLanguage) ? preferredLanguage : null)
+    ?? languages.find((l) => l.language === "python")?.language
+    ?? languages[0]?.language
+    ?? "python"
+  );
+}
+
 // Component for truncated output display
 function TruncatedOutput({ content, className }: { content: string; className?: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -90,23 +102,10 @@ function TruncatedOutput({ content, className }: { content: string; className?: 
 
 export function CompilerClient({ languages, title, description, preferredLanguage }: CompilerClientProps) {
   const t = useTranslations("compiler");
+  const initialLanguage = resolveInitialCompilerLanguage(languages, preferredLanguage);
 
-  // MEDIUM FIX: Proper state initialization order
-  const [initialState] = useState(() => {
-    const saved = typeof window !== "undefined" ? localStorage.getItem("compiler:language") : null;
-    const defaultLanguage = saved && languages.some((l) => l.language === saved)
-      ? saved
-      : preferredLanguage && languages.some((l) => l.language === preferredLanguage)
-        ? preferredLanguage
-        : languages.find((l) => l.language === "python")?.language ?? languages[0]?.language;
-    return {
-      language: defaultLanguage,
-      sourceCode: getDefaultCode(defaultLanguage ?? "python"),
-    };
-  });
-
-  const [language, setLanguage] = useState(initialState.language);
-  const [sourceCode, setSourceCode] = useState(initialState.sourceCode);
+  const [language, setLanguage] = useState(initialLanguage);
+  const [sourceCode, setSourceCode] = useState(() => getDefaultCode(initialLanguage));
   const [stdin, setStdin] = useState("");
   const [result, setResult] = useState<CompilerResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +115,28 @@ export function CompilerClient({ languages, title, description, preferredLanguag
   const [isRunning, setIsRunning] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+  const hydratedPreferenceRef = useRef(false);
+
+  useEffect(() => {
+    if (hydratedPreferenceRef.current) return;
+    hydratedPreferenceRef.current = true;
+
+    const savedLanguage = window.localStorage.getItem("compiler:language");
+    if (!savedLanguage || !languages.some((entry) => entry.language === savedLanguage)) {
+      return;
+    }
+    if (savedLanguage === language) {
+      return;
+    }
+
+    const currentDefault = getDefaultCode(initialLanguage);
+    setLanguage(savedLanguage);
+    setSourceCode((currentSource) =>
+      currentSource === currentDefault ? getDefaultCode(savedLanguage) : currentSource
+    );
+    setResult(null);
+    setError(null);
+  }, [initialLanguage, language, languages]);
 
   // Persist language preference
   useEffect(() => {

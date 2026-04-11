@@ -130,6 +130,7 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - ✅ `GET /api/v1/groups/[id]` now publishes explicit enrollment metadata so consumers can distinguish a full list from a preview payload.
 - ✅ `ContestQuickStats` now pauses polling while the document is hidden and resumes on visibility restore.
 - ✅ `useSourceDraft` now preserves unsaved state when parent components recreate the `languages` array with the same values.
+- ✅ `CompilerClient` now hydrates the saved language preference after mount instead of touching `localStorage` during render.
 
 ### 6. Ops/testing/documentation truth
 **Why last:** some items may be documentation-only, but they still need explicit closure so the backlog doesn't linger.

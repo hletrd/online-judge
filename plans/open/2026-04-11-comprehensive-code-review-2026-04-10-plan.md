@@ -11,6 +11,7 @@ This is the freshest broad code review in the repo and currently has **no closur
 - ✅ Completed in this plan execution: the polling worker executor now derives compile timeouts from the submission time limit with a floor and ceiling, so the old no-op constant timeout is gone and covered by Rust tests.
 - ✅ Completed in this plan execution: import timestamp/boolean/json coercion now derives from schema metadata instead of hand-maintained name lists, closing the stale-column drift issue for future schema changes.
 - ✅ Completed in this plan execution: legacy `deploy.sh` now writes the nginx config to a local temp file, copies it to the host, and installs it with `sudo cp`, eliminating the fragile remote heredoc path.
+- ✅ Completed in this plan execution: `CompilerClient` now hydrates saved language preference after mount instead of reading `localStorage` during render-time state initialization.
 
 ## Planning policy
 Start every execution slice by revalidating the cited finding against `HEAD`; if already fixed, mark it closed in the execution log and skip implementation.
@@ -111,7 +112,7 @@ Start every execution slice by revalidating the cited finding against `HEAD`; if
 - fix crash-prone null assertions and parser handling first
 - then clean up closure/timer/polling/hydration bugs in a UI-focused pass
 - preserve existing feature behavior with targeted component tests
-- **Status:** background-tab polling issue closed for `ContestQuickStats`, and the language-array store-recreation bug in `useSourceDraft` is also closed; remaining items in this phase are the other UI/runtime follow-ups.
+- **Status:** background-tab polling, draft-store recreation, and compiler language preference hydration are all closed; remaining items in this phase are the other UI/runtime follow-ups.
 
 ## Phase 5 — Service/runtime hardening follow-ups
 ### Findings
