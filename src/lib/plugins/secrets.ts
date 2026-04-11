@@ -1,21 +1,11 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { getPluginDefinition } from "./registry";
 import { logger } from "@/lib/logger";
+import { deriveEncryptionKey, legacyEncryptionKey } from "@/lib/security/derive-key";
 
 const ENCRYPTION_VERSION = "enc:v1";
 const SECRET_KEY_SUFFIX = "Configured";
-
-function getEncryptionKey() {
-  const secret = process.env.PLUGIN_CONFIG_ENCRYPTION_KEY;
-
-  if (!secret) {
-    throw new Error(
-      "PLUGIN_CONFIG_ENCRYPTION_KEY must be set. Generate a dedicated key: openssl rand -hex 32"
-    );
-  }
-
-  return createHash("sha256").update(secret).digest();
-}
+const PLUGIN_DOMAIN = "plugin-config";
 
 export function isEncryptedPluginSecret(value: unknown): value is string {
   return typeof value === "string" && value.startsWith(`${ENCRYPTION_VERSION}:`);
@@ -25,7 +15,7 @@ export function encryptPluginSecret(plaintext: string) {
   if (!plaintext) return "";
 
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", getEncryptionKey(), iv);
+  const cipher = createCipheriv("aes-256-gcm", deriveEncryptionKey(PLUGIN_DOMAIN), iv);
   const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
 
@@ -47,17 +37,24 @@ export function decryptPluginSecret(value: string) {
     throw new Error("Malformed encrypted plugin secret");
   }
 
-  const decipher = createDecipheriv(
-    "aes-256-gcm",
-    getEncryptionKey(),
-    Buffer.from(ivRaw, "base64url")
-  );
-  decipher.setAuthTag(Buffer.from(tagRaw, "base64url"));
-
-  return Buffer.concat([
-    decipher.update(Buffer.from(ciphertextRaw, "base64url")),
-    decipher.final(),
-  ]).toString("utf8");
+  // Try HKDF-derived key first, then legacy key for backward compatibility
+  for (const key of [deriveEncryptionKey(PLUGIN_DOMAIN), legacyEncryptionKey()]) {
+    try {
+      const decipher = createDecipheriv(
+        "aes-256-gcm",
+        key,
+        Buffer.from(ivRaw, "base64url")
+      );
+      decipher.setAuthTag(Buffer.from(tagRaw, "base64url"));
+      return Buffer.concat([
+        decipher.update(Buffer.from(ciphertextRaw, "base64url")),
+        decipher.final(),
+      ]).toString("utf8");
+    } catch {
+      continue;
+    }
+  }
+  throw new Error("Failed to decrypt plugin secret with any available key");
 }
 
 function getSecretConfigKeys(pluginId: string) {

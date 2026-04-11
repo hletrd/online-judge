@@ -4,12 +4,14 @@ import { db } from "@/lib/db";
 import { apiKeys, users } from "@/lib/db/schema";
 import { authUserSelect } from "@/lib/db/selects";
 import { ROLE_LEVEL } from "@/lib/security/constants";
+import { deriveEncryptionKey, legacyEncryptionKey } from "@/lib/security/derive-key";
 import type { UserRole } from "@/types";
 
 export const API_KEY_PREFIX = "jk_";
 const KEY_RANDOM_BYTES = 20; // 20 bytes = 40 hex chars → total key = "jk_" + 40 = 43 chars
 export const STORED_PREFIX_LEN = 8; // store first 8 chars of full key for display
 const MASKED_KEY_SUFFIX = "••••••••••••";
+const API_KEY_DOMAIN = "api-key-encryption";
 
 export function buildMaskedApiKeyPreview(keyPrefix: string) {
   return `${keyPrefix}${MASKED_KEY_SUFFIX}`;
@@ -19,20 +21,9 @@ export function hashApiKey(rawKey: string) {
   return createHash("sha256").update(rawKey).digest("hex");
 }
 
-function getEncryptionKey() {
-  const secret = process.env.PLUGIN_CONFIG_ENCRYPTION_KEY;
-  if (!secret) {
-    throw new Error(
-      "PLUGIN_CONFIG_ENCRYPTION_KEY must be set for API key encryption. " +
-      "Generate a dedicated key: openssl rand -hex 32"
-    );
-  }
-  return createHash("sha256").update(secret).digest();
-}
-
 export function encryptApiKey(rawKey: string): string {
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", getEncryptionKey(), iv);
+  const cipher = createCipheriv("aes-256-gcm", deriveEncryptionKey(API_KEY_DOMAIN), iv);
   const ciphertext = Buffer.concat([cipher.update(rawKey, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return [iv.toString("base64url"), tag.toString("base64url"), ciphertext.toString("base64url")].join(":");
@@ -41,9 +32,18 @@ export function encryptApiKey(rawKey: string): string {
 export function decryptApiKey(encrypted: string): string {
   const [ivRaw, tagRaw, ciphertextRaw] = encrypted.split(":");
   if (!ivRaw || !tagRaw || !ciphertextRaw) throw new Error("Malformed encrypted API key");
-  const decipher = createDecipheriv("aes-256-gcm", getEncryptionKey(), Buffer.from(ivRaw, "base64url"));
-  decipher.setAuthTag(Buffer.from(tagRaw, "base64url"));
-  return Buffer.concat([decipher.update(Buffer.from(ciphertextRaw, "base64url")), decipher.final()]).toString("utf8");
+
+  // Try HKDF-derived key first, then fall back to legacy key for backward compatibility
+  for (const key of [deriveEncryptionKey(API_KEY_DOMAIN), legacyEncryptionKey()]) {
+    try {
+      const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(ivRaw, "base64url"));
+      decipher.setAuthTag(Buffer.from(tagRaw, "base64url"));
+      return Buffer.concat([decipher.update(Buffer.from(ciphertextRaw, "base64url")), decipher.final()]).toString("utf8");
+    } catch {
+      continue;
+    }
+  }
+  throw new Error("Failed to decrypt API key with any available key");
 }
 
 /** Generate a new API key. Returns the one-time reveal token plus stored fields. */
