@@ -261,8 +261,6 @@ export default function CreateProblemForm({
         return t("invalidMemoryLimit");
       case "invalidDifficulty":
         return t("invalidDifficulty");
-      case "testCaseInputRequired":
-        return t("testCaseInputRequired");
       case "testCaseOutputRequired":
         return t("testCaseOutputRequired");
       case "tooManyTestCases":
