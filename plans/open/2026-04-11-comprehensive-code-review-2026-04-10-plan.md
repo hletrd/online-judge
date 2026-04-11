@@ -8,6 +8,7 @@ This is the freshest broad code review in the repo and currently has **no closur
 - ✅ Completed in this plan execution: API-key privilege clamping now resolves custom-role levels through the capability cache instead of collapsing custom roles to a built-in fallback rank.
 - ✅ Completed in this plan execution: `ContestQuickStats` now stops its refresh interval while the tab is hidden and resumes immediately on visibility restore, closing the background-tab polling issue with component coverage.
 - ✅ Completed in this plan execution: `useSourceDraft` no longer recreates its internal store just because the caller passed a new `languages` array with the same values, so unsaved drafts survive innocuous rerenders.
+- ✅ Completed in this plan execution: the polling worker executor now derives compile timeouts from the submission time limit with a floor and ceiling, so the old no-op constant timeout is gone and covered by Rust tests.
 
 ## Planning policy
 Start every execution slice by revalidating the cited finding against `HEAD`; if already fixed, mark it closed in the execution log and skip implementation.
@@ -130,6 +131,7 @@ Start every execution slice by revalidating the cited finding against `HEAD`; if
 - remove blocking or panic-swallowing behavior from services
 - consolidate duplicated validators so TS/Rust policies cannot drift again
 - repair deploy script quoting/expansion only after higher-risk correctness work is stable
+- **Status:** compile-timeout no-op is closed; remaining items in this phase are deploy-script quoting plus any still-reproducible service/runtime cleanup gaps.
 
 ## Acceptance criteria
 - every critical finding and every still-reproducible high finding has an implementation slice and regression coverage

@@ -10,6 +10,7 @@ use tracing::Instrument;
 
 const COMPILATION_MEMORY_LIMIT_MB: u32 = 2048;
 const COMPILATION_TIMEOUT_MS: u64 = 600_000;
+const MIN_COMPILE_TIMEOUT_MS: u64 = 30_000;
 const MIN_TIMEOUT_MS: u64 = 100;
 const MAX_MEMORY_LIMIT_MB: u32 = 1024;
 
@@ -22,6 +23,12 @@ fn max_time_limit_ms() -> u64 {
 const MAX_SOURCE_CODE_BYTES: usize = 256 * 1024; // 256 KB
 
 use crate::validation::validate_docker_image;
+
+fn compile_timeout_ms_for_submission(time_limit_ms: u64) -> u64 {
+    time_limit_ms
+        .saturating_mul(2)
+        .clamp(MIN_COMPILE_TIMEOUT_MS, COMPILATION_TIMEOUT_MS)
+}
 
 pub async fn execute(client: &ApiClient, config: &Config, submission: Submission) {
     let span = tracing::info_span!("judge_submission", submission_id = %submission.id);
@@ -134,7 +141,7 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
 
     // Compile phase (if language requires compilation)
     if let Some(compile_command) = compile_command {
-        let compile_timeout_ms = COMPILATION_TIMEOUT_MS;
+        let compile_timeout_ms = compile_timeout_ms_for_submission(submission.time_limit_ms);
         let compile_memory_mb =
             COMPILATION_MEMORY_LIMIT_MB.max(submission.memory_limit_mb.min(MAX_MEMORY_LIMIT_MB));
 
@@ -309,6 +316,26 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
     .await;
 
     // temp_dir is dropped here, cleaning up automatically
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{compile_timeout_ms_for_submission, COMPILATION_TIMEOUT_MS, MIN_COMPILE_TIMEOUT_MS};
+
+    #[test]
+    fn compile_timeout_has_reasonable_floor_for_tiny_time_limits() {
+        assert_eq!(compile_timeout_ms_for_submission(500), MIN_COMPILE_TIMEOUT_MS);
+    }
+
+    #[test]
+    fn compile_timeout_scales_with_submission_limit() {
+        assert_eq!(compile_timeout_ms_for_submission(20_000), 40_000);
+    }
+
+    #[test]
+    fn compile_timeout_is_capped_for_huge_time_limits() {
+        assert_eq!(compile_timeout_ms_for_submission(400_000), COMPILATION_TIMEOUT_MS);
+    }
 }
 
 async fn report_error(client: &ApiClient, config: &Config, submission: &Submission, status: &str, message: &str) {

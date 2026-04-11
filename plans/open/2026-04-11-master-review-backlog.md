@@ -95,6 +95,10 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - validate path/command/image inputs consistently
 - regression tests around claim, rejudge, and timing boundaries
 
+**Progress**
+- ✅ seccomp retry, timestamp parsing, and verdict-preserving deregistration were already fixed at `HEAD`.
+- ✅ the polling worker executor now derives compile timeouts from submission limits instead of using a dead constant.
+
 ### 5. Client/UI correctness and long-tail request-path cleanup
 **Why later:** important, but lower blast radius than integrity/security work.
 
