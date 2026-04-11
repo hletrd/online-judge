@@ -171,9 +171,19 @@ export const PATCH = createApiHandler({
     }
 
     try {
-      await updateAssignmentWithProblems(assignmentId, parsedInput.data);
+      await updateAssignmentWithProblems(assignmentId, parsedInput.data, {
+        problemLinksChanged: body.problems !== undefined,
+        allowLockedProblemChanges: allowLockedProblems && isAdmin(user.role),
+      });
     } catch (error) {
-      if (error instanceof Error && (error.message === "examModeChangeBlocked" || error.message === "examTimingChangeBlocked")) {
+      if (
+        error instanceof Error
+        && (
+          error.message === "examModeChangeBlocked"
+          || error.message === "examTimingChangeBlocked"
+          || error.message === "assignmentProblemsLocked"
+        )
+      ) {
         return apiError(error.message, 409);
       }
       throw error;

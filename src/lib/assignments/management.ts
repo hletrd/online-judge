@@ -168,9 +168,14 @@ export async function createAssignmentWithProblems(
 
 export async function updateAssignmentWithProblems(
   assignmentId: string,
-  input: AssignmentMutationInput
+  input: AssignmentMutationInput,
+  options: {
+    problemLinksChanged?: boolean;
+    allowLockedProblemChanges?: boolean;
+  } = {}
 ) {
   const now = new Date();
+  const { problemLinksChanged = false, allowLockedProblemChanges = false } = options;
 
   await db.transaction(async (tx) => {
     const [assignment] = await tx
@@ -187,6 +192,18 @@ export async function updateAssignmentWithProblems(
 
     if (!assignment) {
       throw new Error("Assignment not found");
+    }
+
+    if (problemLinksChanged && !allowLockedProblemChanges) {
+      const [submissionRow] = await tx
+        .select({ id: submissions.id })
+        .from(submissions)
+        .where(eq(submissions.assignmentId, assignmentId))
+        .limit(1);
+
+      if (submissionRow) {
+        throw new Error("assignmentProblemsLocked");
+      }
     }
 
     if (assignment.examMode === "windowed") {
