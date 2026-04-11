@@ -65,6 +65,7 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - ✅ import timestamp/boolean/json coercion now derives from schema metadata instead of manual column-name sets.
 - ✅ missing high-value Drizzle relations for users/groups/problems/assignments/files/tags are now defined in `relations.pg.ts`.
 - ✅ reverse user relations for `scoreOverrides` and recruiting invitations are now explicit, removing the last ambiguous relation gap from that review thread.
+- ✅ PostgreSQL schema parity and migration drift guard tests currently pass at `HEAD`, reducing the remaining schema-truth work to future drift rather than known current mismatches.
 
 ### 3. Authorization, secret disclosure, and dangerous fallback removal
 **Why next:** several reviews still flag routes that rely on brittle text matching, secret redisclosure, or stale built-in-role checks.

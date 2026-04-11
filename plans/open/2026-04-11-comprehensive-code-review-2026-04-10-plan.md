@@ -6,6 +6,7 @@ This is the freshest broad code review in the repo and currently has **no closur
 ## Progress updates
 - ✅ Revalidated at `HEAD`: all six Phase 1 critical findings from this review are already fixed in the current codebase (`deregister` status filter, seccomp retry logic, full-date timestamp parsing, honest import transaction note, `recruitingInvitations.createdBy` delete behavior, and boolean coercion set cleanup).
 - ✅ Revalidated at `HEAD`: the remaining route/runtime review findings for plugin PATCH null assertions, migrate export/import JSON parsing, code snapshot timer resets, runner extension validation, code-similarity panic handling, and empty `run_command` fall-through are already closed in the current codebase.
+- ✅ Revalidated at `HEAD`: schema parity and migration drift guards currently pass for the reviewed PostgreSQL runtime schema/migration set, so the remaining Phase 3 work is narrower than the original broad drift warning suggested.
 - ✅ Completed in this plan execution: API-key privilege clamping now resolves custom-role levels through the capability cache instead of collapsing custom roles to a built-in fallback rank.
 - ✅ Completed in this plan execution: `ContestQuickStats` now stops its refresh interval while the tab is hidden and resumes immediately on visibility restore, closing the background-tab polling issue with component coverage.
 - ✅ Completed in this plan execution: `useSourceDraft` no longer recreates its internal store just because the caller passed a new `languages` array with the same values, so unsaved drafts survive innocuous rerenders.
@@ -96,7 +97,7 @@ Start every execution slice by revalidating the cited finding against `HEAD`; if
 - close all drift between `schema.pg.ts`, relations, and SQL migrations
 - simplify ambiguous relation naming before more logic depends on it
 - sanitize migrate/import envelope parsing before handing data to import code
-- **Status:** schema-derived import coercion, the missing high-value relations, and the ambiguous score-override / recruiting-invitation reverse relations are now in place; remaining work in this phase is broader SQL migration drift.
+- **Status:** schema-derived import coercion, the missing high-value relations, the ambiguous score-override / recruiting-invitation reverse relations, and the currently-tested SQL drift guardrails are in place; remaining work in this phase is only any new drift not covered by the existing migration/schema guard tests.
 
 ## Phase 4 — Route/UI/client correctness fixes
 ### Findings
