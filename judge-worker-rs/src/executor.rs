@@ -5,6 +5,8 @@ use crate::docker::{self, DockerRunOptions, Phase};
 use crate::languages;
 use crate::types::{Submission, TestResult, Verdict};
 use serde::Serialize;
+use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 use tokio::fs;
 use tracing::Instrument;
 
@@ -28,6 +30,45 @@ fn compile_timeout_ms_for_submission(time_limit_ms: u64) -> u64 {
     time_limit_ms
         .saturating_mul(2)
         .clamp(MIN_COMPILE_TIMEOUT_MS, COMPILATION_TIMEOUT_MS)
+}
+
+async fn prune_dead_letter_dir(dead_letter_dir: &Path, max_files: usize) {
+    let mut entries = match fs::read_dir(dead_letter_dir).await {
+        Ok(entries) => entries,
+        Err(_) => return,
+    };
+
+    let mut files: Vec<(PathBuf, SystemTime)> = Vec::new();
+
+    loop {
+        match entries.next_entry().await {
+            Ok(Some(entry)) => {
+                if entry.path().extension().is_some_and(|ext| ext == "json") {
+                    let modified = entry
+                        .metadata()
+                        .await
+                        .and_then(|metadata| metadata.modified())
+                        .unwrap_or(SystemTime::UNIX_EPOCH);
+                    files.push((entry.path(), modified));
+                }
+            }
+            Ok(None) => break,
+            Err(_) => return,
+        }
+    }
+
+    if files.len() <= max_files {
+        return;
+    }
+
+    files.sort_by_key(|(_, modified)| *modified);
+    let remove_count = files.len() - max_files;
+
+    for (path, _) in files.into_iter().take(remove_count) {
+        if fs::remove_file(&path).await.is_ok() {
+            tracing::info!(path = ?path, "Pruned old dead-letter file");
+        }
+    }
 }
 
 pub async fn execute(client: &ApiClient, config: &Config, submission: Submission) {
@@ -320,7 +361,12 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
 
 #[cfg(test)]
 mod tests {
-    use super::{compile_timeout_ms_for_submission, COMPILATION_TIMEOUT_MS, MIN_COMPILE_TIMEOUT_MS};
+    use super::{
+        compile_timeout_ms_for_submission, prune_dead_letter_dir, COMPILATION_TIMEOUT_MS,
+        MIN_COMPILE_TIMEOUT_MS,
+    };
+    use tempfile::tempdir;
+    use tokio::fs;
 
     #[test]
     fn compile_timeout_has_reasonable_floor_for_tiny_time_limits() {
@@ -335,6 +381,29 @@ mod tests {
     #[test]
     fn compile_timeout_is_capped_for_huge_time_limits() {
         assert_eq!(compile_timeout_ms_for_submission(400_000), COMPILATION_TIMEOUT_MS);
+    }
+
+    #[tokio::test]
+    async fn prune_dead_letter_dir_keeps_only_newest_json_files() {
+        let temp = tempdir().unwrap();
+
+        for index in 0..3 {
+            let path = temp.path().join(format!("entry-{index}.json"));
+            fs::write(&path, format!("{{\"index\":{index}}}")).await.unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        fs::write(temp.path().join("note.txt"), "keep").await.unwrap();
+
+        prune_dead_letter_dir(temp.path(), 2).await;
+
+        let mut entries = fs::read_dir(temp.path()).await.unwrap();
+        let mut names = Vec::new();
+        while let Some(entry) = entries.next_entry().await.unwrap() {
+            names.push(entry.file_name().to_string_lossy().into_owned());
+        }
+        names.sort();
+
+        assert_eq!(names, vec!["entry-1.json", "entry-2.json", "note.txt"]);
     }
 }
 
@@ -482,31 +551,7 @@ async fn report_with_retry(
                         dead_letter_path = ?file_path,
                         "All report attempts exhausted; result written to dead-letter file"
                     );
-                    // Prune dead-letter directory if it exceeds 1000 files
-                    if let Ok(entries) = std::fs::read_dir(&config.dead_letter_dir) {
-                        let mut files: Vec<_> = entries
-                            .filter_map(|e| e.ok())
-                            .filter(|e| {
-                                e.path()
-                                    .extension()
-                                    .map_or(false, |ext| ext == "json")
-                            })
-                            .collect();
-                        if files.len() > 1000 {
-                            files.sort_by_key(|e| {
-                                e.metadata()
-                                    .and_then(|m| m.modified())
-                                    .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
-                            });
-                            for entry in &files[..files.len() - 1000] {
-                                let _ = std::fs::remove_file(entry.path());
-                                tracing::info!(
-                                    path = ?entry.path(),
-                                    "Pruned old dead-letter file"
-                                );
-                            }
-                        }
-                    }
+                    prune_dead_letter_dir(&config.dead_letter_dir, 1000).await;
                 }
             },
         },

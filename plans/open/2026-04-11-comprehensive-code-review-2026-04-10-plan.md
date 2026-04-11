@@ -13,6 +13,7 @@ This is the freshest broad code review in the repo and currently has **no closur
 - ✅ Completed in this plan execution: legacy `deploy.sh` now writes the nginx config to a local temp file, copies it to the host, and installs it with `sudo cp`, eliminating the fragile remote heredoc path.
 - ✅ Completed in this plan execution: `CompilerClient` now hydrates saved language preference after mount instead of reading `localStorage` during render-time state initialization.
 - ✅ Completed in this plan execution: bulk group enrollment now reports skips from duplicate request ids, invalid ids, and insert-time conflicts based on the actual inserted row count.
+- ✅ Completed in this plan execution: dead-letter pruning in the judge worker now uses async `tokio::fs` instead of blocking `std::fs` inside the async executor path, with a regression test for pruning behavior.
 
 ## Planning policy
 Start every execution slice by revalidating the cited finding against `HEAD`; if already fixed, mark it closed in the execution log and skip implementation.
@@ -137,7 +138,7 @@ Start every execution slice by revalidating the cited finding against `HEAD`; if
 - remove blocking or panic-swallowing behavior from services
 - consolidate duplicated validators so TS/Rust policies cannot drift again
 - repair deploy script quoting/expansion only after higher-risk correctness work is stable
-- **Status:** compile-timeout no-op is closed; remaining items in this phase are deploy-script quoting plus any still-reproducible service/runtime cleanup gaps.
+- **Status:** compile-timeout no-op, dead-letter pruning blocking I/O, and the legacy nginx heredoc issue are closed; remaining items in this phase are any still-reproducible service/runtime cleanup gaps.
 - **Status:** compile-timeout no-op and the legacy nginx heredoc issue are closed; remaining items in this phase are any still-reproducible service/runtime cleanup gaps.
 
 ## Acceptance criteria
