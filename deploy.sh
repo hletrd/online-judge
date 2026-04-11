@@ -122,7 +122,8 @@ success "Judge language images built"
 
 # ---- Step 3: Save and transfer images ----
 TMPFILE="$(mktemp /tmp/judgekit-images.XXXXXX.tar.gz)"
-trap "rm -f '$TMPFILE'" EXIT
+NGINX_TMPFILE="$(mktemp /tmp/judgekit-nginx.XXXXXX.conf)"
+trap "rm -f '$TMPFILE' '$NGINX_TMPFILE'" EXIT
 
 info "Saving Docker images..."
 docker save \
@@ -235,7 +236,7 @@ success "Seeding complete"
 
 # ---- Step 8: Set up nginx reverse proxy ----
 info "Configuring nginx for ${DOMAIN}..."
-remote "sudo tee /etc/nginx/sites-available/judgekit > /dev/null" <<NGINX_EOF
+cat > "$NGINX_TMPFILE" <<NGINX_EOF
 server {
     listen 80;
     server_name ${DOMAIN};
@@ -260,6 +261,8 @@ server {
 }
 NGINX_EOF
 
+remote_copy "$NGINX_TMPFILE" "${REMOTE_USER}@${REMOTE_HOST}:/tmp/judgekit-nginx.conf"
+remote "sudo cp /tmp/judgekit-nginx.conf /etc/nginx/sites-available/judgekit && rm -f /tmp/judgekit-nginx.conf"
 remote "sudo ln -sf /etc/nginx/sites-available/judgekit /etc/nginx/sites-enabled/judgekit"
 remote "sudo nginx -t && sudo systemctl reload nginx" || warn "Nginx not installed — install with: sudo apt install nginx"
 success "Nginx configured"

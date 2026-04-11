@@ -10,6 +10,7 @@ This is the freshest broad code review in the repo and currently has **no closur
 - ✅ Completed in this plan execution: `useSourceDraft` no longer recreates its internal store just because the caller passed a new `languages` array with the same values, so unsaved drafts survive innocuous rerenders.
 - ✅ Completed in this plan execution: the polling worker executor now derives compile timeouts from the submission time limit with a floor and ceiling, so the old no-op constant timeout is gone and covered by Rust tests.
 - ✅ Completed in this plan execution: import timestamp/boolean/json coercion now derives from schema metadata instead of hand-maintained name lists, closing the stale-column drift issue for future schema changes.
+- ✅ Completed in this plan execution: legacy `deploy.sh` now writes the nginx config to a local temp file, copies it to the host, and installs it with `sudo cp`, eliminating the fragile remote heredoc path.
 
 ## Planning policy
 Start every execution slice by revalidating the cited finding against `HEAD`; if already fixed, mark it closed in the execution log and skip implementation.
@@ -134,6 +135,7 @@ Start every execution slice by revalidating the cited finding against `HEAD`; if
 - consolidate duplicated validators so TS/Rust policies cannot drift again
 - repair deploy script quoting/expansion only after higher-risk correctness work is stable
 - **Status:** compile-timeout no-op is closed; remaining items in this phase are deploy-script quoting plus any still-reproducible service/runtime cleanup gaps.
+- **Status:** compile-timeout no-op and the legacy nginx heredoc issue are closed; remaining items in this phase are any still-reproducible service/runtime cleanup gaps.
 
 ## Acceptance criteria
 - every critical finding and every still-reproducible high finding has an implementation slice and regression coverage

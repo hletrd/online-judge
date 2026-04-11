@@ -152,6 +152,7 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 **Progress**
 - ✅ runtime support docs already describe the active runtime as PostgreSQL-only with SQLite/MySQL retained only for historical migration context.
 - ✅ `rate-limiter-rs` already has real Rust tests; the old “0 tests” finding is stale.
+- ✅ legacy `deploy.sh` no longer relies on a remote nginx heredoc; it now installs the config via temp file + `scp` + `sudo cp`.
 
 ## Recommended execution order
 1. Transactionality / TOCTOU
