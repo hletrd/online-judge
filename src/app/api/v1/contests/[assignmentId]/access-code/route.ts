@@ -11,7 +11,7 @@ export const GET = createApiHandler({
 
     const assignment = await getContestAssignment(assignmentId);
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
-    if (!canManageContest(user, assignment)) return apiError("forbidden", 403);
+    if (!(await canManageContest(user, assignment))) return apiError("forbidden", 403);
 
     const code = await getAccessCode(assignmentId);
     return apiSuccess({ accessCode: code });
@@ -24,7 +24,7 @@ export const POST = createApiHandler({
 
     const assignment = await getContestAssignment(assignmentId);
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
-    if (!canManageContest(user, assignment)) return apiError("forbidden", 403);
+    if (!(await canManageContest(user, assignment))) return apiError("forbidden", 403);
 
     const code = await setAccessCode(assignmentId);
     return apiSuccess({ accessCode: code }, { status: 201 });
@@ -37,7 +37,7 @@ export const DELETE = createApiHandler({
 
     const assignment = await getContestAssignment(assignmentId);
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
-    if (!canManageContest(user, assignment)) return apiError("forbidden", 403);
+    if (!(await canManageContest(user, assignment))) return apiError("forbidden", 403);
 
     await revokeAccessCode(assignmentId);
     return apiSuccess({ accessCode: null });

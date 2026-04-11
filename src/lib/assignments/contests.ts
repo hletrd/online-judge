@@ -1,4 +1,4 @@
-import { isAdmin, isInstructor } from "@/lib/api/auth";
+import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
 import { rawQueryOne, rawQueryAll } from "@/lib/db/queries";
 import type { UserRole, ExamMode, ScoringModel } from "@/types";
 
@@ -175,8 +175,16 @@ export type ContestAssignmentRow = {
 /**
  * Check if a user can manage a contest (admin or owning instructor).
  */
-export function canManageContest(user: { id: string; role: string }, assignment: ContestAssignmentRow): boolean {
-  return isAdmin(user.role) || (isInstructor(user.role) && assignment.instructorId === user.id);
+export async function canManageContest(
+  user: { id: string; role: string },
+  assignment: Pick<ContestAssignmentRow, "groupId" | "instructorId">
+): Promise<boolean> {
+  return canManageGroupResourcesAsync(
+    assignment.instructorId,
+    user.id,
+    user.role,
+    assignment.groupId
+  );
 }
 
 type RawContestAssignmentRow = {

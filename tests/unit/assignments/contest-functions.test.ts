@@ -5,6 +5,14 @@ vi.mock("@/lib/db/queries", () => ({
   rawQueryAll: vi.fn(),
 }));
 
+const { canManageGroupResourcesAsyncMock } = vi.hoisted(() => ({
+  canManageGroupResourcesAsyncMock: vi.fn(),
+}));
+
+vi.mock("@/lib/assignments/management", () => ({
+  canManageGroupResourcesAsync: canManageGroupResourcesAsyncMock,
+}));
+
 vi.mock("@/lib/db", () => ({
   db: {},
 }));
@@ -20,6 +28,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 import { computeIcpcPenalty } from "@/lib/assignments/contest-scoring";
 import { generateAccessCode } from "@/lib/assignments/access-codes";
+import { canManageContest } from "@/lib/assignments/contests";
 import {
   normalizeSource,
   jaccardSimilarity,
@@ -97,6 +106,22 @@ describe("generateAccessCode", () => {
     const codes = new Set(Array.from({ length: 20 }, () => generateAccessCode()));
     // With a 32-char alphabet and 8 positions, collision probability is negligible
     expect(codes.size).toBeGreaterThan(1);
+  });
+});
+
+describe("canManageContest", () => {
+  it("delegates contest management to the async group-resource capability check", async () => {
+    canManageGroupResourcesAsyncMock.mockResolvedValue(true);
+
+    await expect(
+      canManageContest(
+        { id: "custom-1", role: "custom_manager" },
+        {
+          groupId: "group-1",
+          instructorId: "owner-1",
+        }
+      )
+    ).resolves.toBe(true);
   });
 });
 

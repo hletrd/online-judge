@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
 import { inArray } from "drizzle-orm";
-import { createApiHandler, isAdmin, isInstructor } from "@/lib/api/handler";
+import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { runAndStoreSimilarityCheck } from "@/lib/assignments/code-similarity";
-import { getContestAssignment } from "@/lib/assignments/contests";
+import { getContestAssignment, canManageContest } from "@/lib/assignments/contests";
 
 export const POST = createApiHandler({
   rateLimit: "similarity-check",
@@ -18,9 +18,7 @@ export const POST = createApiHandler({
       return apiError("notFound", 404);
     }
 
-    const canManage =
-      isAdmin(user.role) ||
-      (isInstructor(user.role) && assignment.instructorId === user.id);
+    const canManage = await canManageContest(user, assignment);
 
     if (!canManage) {
       return apiError("forbidden", 403);

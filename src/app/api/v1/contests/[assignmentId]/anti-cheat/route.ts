@@ -2,13 +2,13 @@ import { NextRequest } from "next/server";
 import { extractClientIp } from "@/lib/security/ip";
 import { nanoid } from "nanoid";
 import { z } from "zod";
-import { createApiHandler, isAdmin, isInstructor } from "@/lib/api/handler";
+import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { rawQueryOne } from "@/lib/db/queries";
 import { antiCheatEvents, users } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { getContestAssignment } from "@/lib/assignments/contests";
+import { getContestAssignment, canManageContest } from "@/lib/assignments/contests";
 import { LRUCache } from "lru-cache";
 
 /** last heartbeat insert time per "assignmentId:userId" — only insert once per 60s */
@@ -121,9 +121,7 @@ export const GET = createApiHandler({
       return apiError("notFound", 404);
     }
 
-    const canView =
-      isAdmin(user.role) ||
-      (isInstructor(user.role) && assignment.instructorId === user.id);
+    const canView = await canManageContest(user, assignment);
 
     if (!canView) {
       return apiError("forbidden", 403);

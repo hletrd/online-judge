@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { LRUCache } from "lru-cache";
-import { createApiHandler, isAdmin, isInstructor } from "@/lib/api/handler";
+import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { computeContestAnalytics } from "@/lib/assignments/contest-analytics";
+import { canManageContest } from "@/lib/assignments/contests";
 import { rawQueryOne } from "@/lib/db/queries";
 
 type ContestAnalytics = Awaited<ReturnType<typeof computeContestAnalytics>>;
@@ -29,9 +30,7 @@ export const GET = createApiHandler({
       return apiError("notFound", 404);
     }
 
-    const canView =
-      isAdmin(user.role) ||
-      (isInstructor(user.role) && assignment.instructorId === user.id);
+    const canView = await canManageContest(user, assignment);
 
     if (!canView) {
       return apiError("forbidden", 403);

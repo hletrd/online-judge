@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { createApiHandler, isAdmin, isInstructor } from "@/lib/api/handler";
+import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
+import { canManageContest } from "@/lib/assignments/contests";
 import { computeLeaderboard, getLeaderboardProblems } from "@/lib/assignments/leaderboard";
 import { rawQueryOne } from "@/lib/db/queries";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
@@ -31,9 +32,7 @@ export const GET = createApiHandler({
     }
 
     // Access check
-    const isInstructorView =
-      isAdmin(user.role) ||
-      (isInstructor(user.role) && assignment.instructorId === user.id);
+    const isInstructorView = await canManageContest(user, assignment);
 
     if (!isInstructorView) {
       // Student: must be enrolled or have access token

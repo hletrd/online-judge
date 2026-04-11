@@ -22,7 +22,7 @@ export const GET = createApiHandler({
 
     const assignment = await getContestAssignment(assignmentId);
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
-    if (!canManageContest(user, assignment)) return apiError("forbidden", 403);
+    if (!(await canManageContest(user, assignment))) return apiError("forbidden", 403);
 
     const query = req.nextUrl.searchParams.get("q")?.trim() ?? "";
     if (!query) return apiSuccess([]);
@@ -83,7 +83,7 @@ export const POST = createApiHandler({
 
     const assignment = await getContestAssignment(assignmentId);
     if (!assignment || assignment.examMode === "none") return apiError("notFound", 404);
-    if (!canManageContest(apiUser, assignment)) return apiError("forbidden", 403);
+    if (!(await canManageContest(apiUser, assignment))) return apiError("forbidden", 403);
 
     const targetUser = await db.query.users.findFirst({
       where: eq(users.username, body.username),

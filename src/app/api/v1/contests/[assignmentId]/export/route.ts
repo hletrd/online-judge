@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createApiHandler, isAdmin, isInstructor } from "@/lib/api/handler";
+import { createApiHandler } from "@/lib/api/handler";
 import { apiError } from "@/lib/api/responses";
+import { canManageContest } from "@/lib/assignments/contests";
 import { computeContestRanking } from "@/lib/assignments/contest-scoring";
 import { getLeaderboardProblems } from "@/lib/assignments/leaderboard";
 import { rawQueryOne, rawQueryAll } from "@/lib/db/queries";
@@ -55,9 +56,7 @@ export const GET = createApiHandler({
       return apiError("notFound", 404);
     }
 
-    const canView =
-      isAdmin(user.role) ||
-      (isInstructor(user.role) && assignment.instructorId === user.id);
+    const canView = await canManageContest(user, assignment);
 
     if (!canView) {
       return apiError("forbidden", 403);
