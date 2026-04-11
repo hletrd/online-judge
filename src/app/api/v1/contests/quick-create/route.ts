@@ -4,7 +4,7 @@ import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { groups, assignments, assignmentProblems, problems } from "@/lib/db/schema";
 import { inArray } from "drizzle-orm";
-import { createApiHandler, isAdmin } from "@/lib/api/handler";
+import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { recordAuditEvent } from "@/lib/audit/events";
 
@@ -20,10 +20,9 @@ const quickCreateSchema = z.object({
 });
 
 export const POST = createApiHandler({
+  auth: { capabilities: ["contests.create"] },
   schema: quickCreateSchema,
   handler: async (req: NextRequest, { user, body }) => {
-    if (!isAdmin(user.role)) return apiError("forbidden", 403);
-
     const groupId = nanoid();
     const assignmentId = nanoid();
     const now = new Date();

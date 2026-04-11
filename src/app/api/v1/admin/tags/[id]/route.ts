@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { createApiHandler, isAdmin, notFound } from "@/lib/api/handler";
-import { apiSuccess, apiError } from "@/lib/api/responses";
+import { createApiHandler, notFound } from "@/lib/api/handler";
+import { apiSuccess } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { tags } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -13,10 +13,9 @@ const updateTagSchema = z.object({
 });
 
 export const PATCH = createApiHandler({
+  auth: { capabilities: ["system.settings"] },
   schema: updateTagSchema,
   handler: async (req: NextRequest, { user, body, params }) => {
-    if (!isAdmin(user.role)) return apiError("forbidden", 403);
-
     const existing = await db
       .select({ id: tags.id, name: tags.name })
       .from(tags)
@@ -58,9 +57,8 @@ export const PATCH = createApiHandler({
 });
 
 export const DELETE = createApiHandler({
+  auth: { capabilities: ["system.settings"] },
   handler: async (req: NextRequest, { user, params }) => {
-    if (!isAdmin(user.role)) return apiError("forbidden", 403);
-
     const existing = await db
       .select({ id: tags.id, name: tags.name })
       .from(tags)

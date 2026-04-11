@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { createApiHandler, isAdmin } from "@/lib/api/handler";
-import { apiSuccess, apiError } from "@/lib/api/responses";
+import { createApiHandler } from "@/lib/api/handler";
+import { apiSuccess } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { tags, problemTags } from "@/lib/db/schema";
 import { asc, count, eq } from "drizzle-orm";
@@ -13,9 +13,8 @@ const createTagSchema = z.object({
 });
 
 export const GET = createApiHandler({
-  handler: async (req: NextRequest, { user }) => {
-    if (!isAdmin(user.role)) return apiError("forbidden", 403);
-
+  auth: { capabilities: ["system.settings"] },
+  handler: async () => {
     const tagList = await db
       .select({
         id: tags.id,
@@ -35,11 +34,10 @@ export const GET = createApiHandler({
 });
 
 export const POST = createApiHandler({
+  auth: { capabilities: ["system.settings"] },
   rateLimit: "tags:create",
   schema: createTagSchema,
   handler: async (req: NextRequest, { user, body }) => {
-    if (!isAdmin(user.role)) return apiError("forbidden", 403);
-
     const [created] = await db
       .insert(tags)
       .values({
