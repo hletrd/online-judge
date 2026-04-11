@@ -101,14 +101,14 @@ Treat every item below as **needs revalidation against `HEAD` before code change
 - ✅ admin audit-log and login-log APIs now authorize through `system.audit_logs` / `system.login_logs` capabilities instead of built-in admin-only role gates.
 - ✅ problem-set routes and submission comment/rejudge routes now authorize through their matching capabilities instead of built-in role-only gates.
 - ✅ admin tag routes, contest quick-create, and contest code-snapshot history now authorize through existing capability flags instead of built-in admin-only role gates.
-- ✅ server-action user-management privilege checks now resolve custom role levels through the capability cache instead of the built-in-only ROLE_LEVEL map.
+- ✅ server-action user-management privilege checks and create/edit role validation now resolve custom role levels through async capability-cache lookups instead of the built-in-only ROLE_LEVEL map.
 - ✅ group deletion now authorizes through `groups.delete` capability instead of built-in admin/super-admin role checks.
 - ✅ group assignment export now uses the shared async group-resource capability check instead of hard-coded admin/instructor logic.
 - ✅ problem detail/update/delete now use problem capabilities for the privileged path while still preserving author ownership access.
 - ✅ group list/create and problem list/create routes now use the corresponding capability checks instead of built-in admin/instructor branching.
-- ✅ user list/create/detail/update/delete routes now gate privileged access through `users.*` capabilities instead of built-in admin-only role checks.
+- ✅ user list/create/detail/update/delete routes now gate privileged access through `users.*` capabilities, and their create/update role validation + password-reset privilege checks now honor async custom-role levels instead of built-in-only helpers.
 - ✅ group detail email visibility now follows the shared async group-management permission helper instead of only primary-instructor/admin checks.
-- ✅ bulk-user creation now honors `users.create` for custom roles while preserving the legacy built-in instructor student-only carve-out.
+- ✅ bulk-user creation now honors `users.create` for custom roles via async role-validation checks while preserving the legacy built-in instructor student-only carve-out.
 - ✅ exam-session routes now use the shared group-management permission model and `contests.view_analytics` for elevated reads instead of built-in admin-only branching.
 - ✅ server-action user-management auth now honors `users.create` / `users.edit` / `users.delete` capabilities instead of relying only on built-in role checks.
 - ✅ submissions listing now uses `submissions.view_all` capability instead of a built-in admin-only branch.

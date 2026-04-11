@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => {
     isUsernameTaken: vi.fn<() => Promise<boolean>>(),
     isEmailTaken: vi.fn<() => Promise<boolean>>(),
     validateAndHashPassword: vi.fn<() => Promise<{ hash?: string; error?: string }>>(),
-    validateRoleChange: vi.fn<() => string | null>(),
+    validateRoleChangeAsync: vi.fn<() => Promise<string | null>>(),
     isUserRole: vi.fn<(v: string) => boolean>(),
     generateSecurePassword: vi.fn<() => string>(),
     hashPassword: vi.fn<() => Promise<string>>(),
@@ -56,11 +56,15 @@ vi.mock("@/lib/users/core", () => ({
   isUsernameTaken: mocks.isUsernameTaken,
   isEmailTaken: mocks.isEmailTaken,
   validateAndHashPassword: mocks.validateAndHashPassword,
-  validateRoleChange: mocks.validateRoleChange,
+  validateRoleChange: vi.fn(() => {
+    throw new Error("user-management actions should use validateRoleChangeAsync");
+  }),
+  validateRoleChangeAsync: mocks.validateRoleChangeAsync,
 }));
 
 vi.mock("@/lib/security/constants", () => ({
   isUserRole: mocks.isUserRole,
+  assertUserRole: (role: string) => role,
   USER_ROLES: ["student", "instructor", "admin", "super_admin"],
   canManageRole: vi.fn(),
   ROLE_LEVEL: {
@@ -181,6 +185,10 @@ const defaultUserInput = {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  mocks.isUserRole.mockImplementation((role: string) =>
+    ["student", "instructor", "admin", "super_admin"].includes(role)
+  );
+  mocks.validateRoleChangeAsync.mockResolvedValue(null);
   mocks.execTransaction.mockImplementation(async (callback: any) =>
     callback({
       update: vi.fn(() => ({
@@ -222,6 +230,9 @@ beforeEach(async () => {
       admin: 3,
       super_admin: 4,
       custom_low: 1,
+      custom_creator: 3,
+      custom_editor: 3,
+      custom_deleter: 3,
       custom_high: 5,
     };
     return defaults[role] ?? 0;
@@ -251,9 +262,27 @@ describe("toggleUserActive", () => {
     mocks.auth.mockResolvedValue({
       user: { id: "u1", role: "student", username: "student1" },
     });
+    mocks.resolveCapabilitiesMock.mockResolvedValue(new Set());
 
     const result = await toggleUserActive("user-1", false);
     expect(result).toEqual({ success: false, error: "unauthorized" });
+  });
+
+  it("allows a custom role with users.edit to toggle user access", async () => {
+    const { toggleUserActive } = await import("@/lib/actions/user-management");
+    mocks.isTrustedServerActionOrigin.mockResolvedValue(true);
+    mocks.auth.mockResolvedValue({
+      user: { id: "editor-1", role: "custom_editor", username: "editor1" },
+    });
+    mocks.resolveCapabilitiesMock.mockResolvedValue(new Set(["users.edit"]));
+    mocks.dbQueryUsersFindFirst.mockResolvedValue({
+      id: "user-2",
+      username: "targetuser",
+      role: "student",
+    });
+
+    const result = await toggleUserActive("user-2", false);
+    expect(result).toEqual({ success: true });
   });
 
   it("returns rateLimited when rate limit is hit", async () => {
@@ -455,6 +484,23 @@ describe("deleteUserPermanently", () => {
     expect(mocks.dbDeleteWhere).toHaveBeenCalled();
   });
 
+  it("allows a custom role with users.delete to delete a user", async () => {
+    const { deleteUserPermanently } = await import("@/lib/actions/user-management");
+    mocks.isTrustedServerActionOrigin.mockResolvedValue(true);
+    mocks.auth.mockResolvedValue({
+      user: { id: "deleter-1", role: "custom_deleter", username: "deleter" },
+    });
+    mocks.resolveCapabilitiesMock.mockResolvedValue(new Set(["users.delete"]));
+    mocks.dbQueryUsersFindFirst.mockResolvedValue({
+      id: "user-2",
+      username: "targetuser",
+      role: "student",
+    });
+
+    const result = await deleteUserPermanently("user-2", "targetuser");
+    expect(result).toEqual({ success: true });
+  });
+
   it("returns deleteUserFailed when db throws", async () => {
     const { deleteUserPermanently } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
@@ -517,7 +563,7 @@ describe("editUser", () => {
   it("returns error from validateRoleChange (invalidRole)", async () => {
     const { editUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue("invalidRole");
+    mocks.validateRoleChangeAsync.mockResolvedValue("invalidRole");
     mocks.dbQueryUsersFindFirst.mockResolvedValue({
       id: "user-1",
       username: "target",
@@ -531,7 +577,7 @@ describe("editUser", () => {
   it("returns error from validateRoleChange (privilege error)", async () => {
     const { editUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue("onlySuperAdminCanChangeSuperAdminRole");
+    mocks.validateRoleChangeAsync.mockResolvedValue("onlySuperAdminCanChangeSuperAdminRole");
     mocks.dbQueryUsersFindFirst.mockResolvedValue({
       id: "user-1",
       username: "target",
@@ -545,7 +591,7 @@ describe("editUser", () => {
   it("returns usernameInUse when username is taken", async () => {
     const { editUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.dbQueryUsersFindFirst.mockResolvedValue({
       id: "user-1",
       username: "target",
@@ -560,7 +606,7 @@ describe("editUser", () => {
   it("returns emailInUse when email is taken", async () => {
     const { editUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.dbQueryUsersFindFirst.mockResolvedValue({
       id: "user-1",
       username: "target",
@@ -579,7 +625,7 @@ describe("editUser", () => {
   it("prevents password reset for users of equal or higher privilege", async () => {
     const { editUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin(); // actor is "admin"
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.dbQueryUsersFindFirst.mockResolvedValue({
       id: "user-1",
       username: "target",
@@ -598,7 +644,7 @@ describe("editUser", () => {
   it("returns password validation error", async () => {
     const { editUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.dbQueryUsersFindFirst.mockResolvedValue({
       id: "user-1",
       username: "target",
@@ -618,7 +664,7 @@ describe("editUser", () => {
   it("updates user successfully without password change", async () => {
     const { editUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.dbQueryUsersFindFirst.mockResolvedValue({
       id: "user-1",
       username: "target",
@@ -644,10 +690,30 @@ describe("editUser", () => {
     );
   });
 
+  it("allows a custom role with users.edit to update a lower-level user", async () => {
+    const { editUser } = await import("@/lib/actions/user-management");
+    mocks.isTrustedServerActionOrigin.mockResolvedValue(true);
+    mocks.auth.mockResolvedValue({
+      user: { id: "editor-1", role: "custom_editor", username: "editor" },
+    });
+    mocks.resolveCapabilitiesMock.mockResolvedValue(new Set(["users.edit"]));
+    mocks.dbQueryUsersFindFirst.mockResolvedValue({
+      id: "user-1",
+      username: "target",
+      role: "student",
+    });
+    mocks.isUsernameTaken.mockResolvedValue(false);
+    mocks.isEmailTaken.mockResolvedValue(false);
+
+    const result = await editUser("user-1", defaultUserInput);
+
+    expect(result).toEqual({ success: true });
+  });
+
   it("updates user with password change and invalidates sessions", async () => {
     const { editUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.dbQueryUsersFindFirst.mockResolvedValue({
       id: "user-1",
       username: "target",
@@ -674,7 +740,7 @@ describe("editUser", () => {
   it("blocks password reset when the target custom role is at or above the actor level", async () => {
     const { editUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.dbQueryUsersFindFirst.mockResolvedValue({
       id: "user-1",
       username: "target",
@@ -690,12 +756,10 @@ describe("editUser", () => {
     expect(result).toEqual({ success: false, error: "unauthorized" });
   });
 
-  it("returns updateUserFailed when isUserRole returns false for requestedRole", async () => {
+  it("returns updateUserFailed when validateRoleChangeAsync reports an invalid requested role", async () => {
     const { editUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
-    // isUserRole returns true for actor role check, false for requestedRole check
-    mocks.isUserRole.mockReturnValueOnce(true).mockReturnValueOnce(false);
+    mocks.validateRoleChangeAsync.mockResolvedValue("invalidRole");
     mocks.dbQueryUsersFindFirst.mockResolvedValue({
       id: "user-1",
       username: "target",
@@ -712,15 +776,17 @@ describe("editUser", () => {
   it("returns usernameInUse when the final update loses a username unique race", async () => {
     const { editUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.dbQueryUsersFindFirst.mockResolvedValue({
       id: "user-1",
       username: "target",
       role: "student",
     });
-    mocks.execTransaction.mockRejectedValue({
-      code: "23505",
-      constraint: "users_username_unique",
+    mocks.execTransaction.mockImplementation(async () => {
+      throw {
+        code: "23505",
+        constraint: "users_username_unique",
+      };
     });
 
     const result = await editUser("user-1", defaultUserInput);
@@ -747,9 +813,31 @@ describe("createUser", () => {
     mocks.auth.mockResolvedValue({
       user: { id: "u1", role: "student", username: "stu1" },
     });
+    mocks.resolveCapabilitiesMock.mockResolvedValue(new Set());
 
     const result = await createUser(defaultUserInput);
     expect(result).toEqual({ success: false, error: "unauthorized" });
+  });
+
+  it("allows a custom role with users.create to create a user", async () => {
+    const { createUser } = await import("@/lib/actions/user-management");
+    mocks.isTrustedServerActionOrigin.mockResolvedValue(true);
+    mocks.auth.mockResolvedValue({
+      user: { id: "creator-1", role: "custom_creator", username: "creator" },
+    });
+    mocks.resolveCapabilitiesMock.mockResolvedValue(new Set(["users.create"]));
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
+    mocks.isUsernameTaken.mockResolvedValue(false);
+    mocks.isEmailTaken.mockResolvedValue(false);
+    mocks.nanoid.mockReturnValue("new-id");
+    mocks.generateSecurePassword.mockReturnValue("gen-password-abc");
+    mocks.hashPassword.mockResolvedValue("hashed-gen-password");
+
+    const result = await createUser({
+      ...defaultUserInput,
+      password: undefined,
+    });
+    expect(result).toEqual({ success: true });
   });
 
   it("returns usernameAndNameRequired for empty username", async () => {
@@ -763,7 +851,7 @@ describe("createUser", () => {
   it("returns usernameInUse for duplicate username", async () => {
     const { createUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.isUsernameTaken.mockResolvedValue(true);
 
     const result = await createUser(defaultUserInput);
@@ -773,7 +861,7 @@ describe("createUser", () => {
   it("returns emailInUse for duplicate email", async () => {
     const { createUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.isUsernameTaken.mockResolvedValue(false);
     mocks.isEmailTaken.mockResolvedValue(true);
 
@@ -787,7 +875,7 @@ describe("createUser", () => {
   it("returns password validation error when provided password is too short", async () => {
     const { createUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.isUsernameTaken.mockResolvedValue(false);
     mocks.isEmailTaken.mockResolvedValue(false);
     mocks.nanoid.mockReturnValue("new-id");
@@ -803,7 +891,7 @@ describe("createUser", () => {
   it("creates user with provided password", async () => {
     const { createUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.isUsernameTaken.mockResolvedValue(false);
     mocks.isEmailTaken.mockResolvedValue(false);
     mocks.nanoid.mockReturnValue("new-id");
@@ -833,7 +921,7 @@ describe("createUser", () => {
   it("creates user with generated password when none provided", async () => {
     const { createUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.isUsernameTaken.mockResolvedValue(false);
     mocks.isEmailTaken.mockResolvedValue(false);
     mocks.nanoid.mockReturnValue("new-id");
@@ -855,7 +943,7 @@ describe("createUser", () => {
   it("returns createUserFailed when db throws", async () => {
     const { createUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.isUsernameTaken.mockResolvedValue(false);
     mocks.isEmailTaken.mockResolvedValue(false);
     mocks.nanoid.mockReturnValue("new-id");
@@ -870,7 +958,7 @@ describe("createUser", () => {
   it("returns emailInUse when the final insert loses an email unique race", async () => {
     const { createUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue(null);
+    mocks.validateRoleChangeAsync.mockResolvedValue(null);
     mocks.nanoid.mockReturnValue("new-id");
     mocks.generateSecurePassword.mockReturnValue("gen-pw");
     mocks.hashPassword.mockResolvedValue("hashed");
@@ -898,7 +986,7 @@ describe("createUser", () => {
   it("returns error from validateRoleChange", async () => {
     const { createUser } = await import("@/lib/actions/user-management");
     setupAuthorizedAdmin();
-    mocks.validateRoleChange.mockReturnValue("onlySuperAdminCanChangeSuperAdminRole");
+    mocks.validateRoleChangeAsync.mockResolvedValue("onlySuperAdminCanChangeSuperAdminRole");
 
     const result = await createUser({
       ...defaultUserInput,

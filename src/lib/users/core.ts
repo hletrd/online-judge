@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { hashPassword } from "@/lib/security/password-hash";
 import { db, type TransactionClient } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { canManageRole, isUserRole } from "@/lib/security/constants";
+import { canManageRole, canManageRoleAsync, isUserRole } from "@/lib/security/constants";
 import { getPasswordValidationError, type PasswordValidationError } from "@/lib/security/password";
 
 // ─── Uniqueness checks ────────────────────────────────────────────────────────
@@ -86,6 +86,26 @@ export function validateRoleChange(
   }
 
   if (!canManageRole(actorRole, requestedRole)) {
+    return "onlySuperAdminCanChangeSuperAdminRole";
+  }
+
+  if (targetCurrentRole === "super_admin" && requestedRole !== "super_admin") {
+    return "cannotChangeSuperAdminRole";
+  }
+
+  return null;
+}
+
+export async function validateRoleChangeAsync(
+  actorRole: string,
+  requestedRole: string,
+  targetCurrentRole?: string
+): Promise<RoleValidationError | null> {
+  if (!isUserRole(requestedRole)) {
+    return "invalidRole";
+  }
+
+  if (!(await canManageRoleAsync(actorRole, requestedRole))) {
     return "onlySuperAdminCanChangeSuperAdminRole";
   }
 

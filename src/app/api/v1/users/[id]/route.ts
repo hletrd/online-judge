@@ -8,10 +8,9 @@ import { forbidden, notFound, createApiHandler } from "@/lib/api/handler";
 import type { AuthUser } from "@/lib/api/handler";
 import { recordAuditEvent } from "@/lib/audit/events";
 import {
-  canManageRole,
   isUserRole,
 } from "@/lib/security/constants";
-import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { getRoleLevel, resolveCapabilities } from "@/lib/capabilities/cache";
 import { safeUserSelect } from "@/lib/db/selects";
 import { updateProfileSchema, adminUpdateUserSchema } from "@/lib/validators/profile";
 import { withUpdatedAt } from "@/lib/db/helpers";
@@ -19,6 +18,7 @@ import {
   isUsernameTaken,
   isEmailTaken,
   validateAndHashPassword,
+  validateRoleChangeAsync,
 } from "@/lib/users/core";
 
 const adminPatchUserSchema = z.object({
@@ -168,13 +168,13 @@ function applyMustChangePasswordUpdate(
   return null;
 }
 
-function applyRoleUpdate(
+async function applyRoleUpdate(
   updates: UserUpdates,
   body: Record<string, unknown>,
   actor: AuthUser,
   found: ExistingUserRecord,
   isAdminActor: boolean
-) {
+): Promise<ReturnType<typeof apiError> | ReturnType<typeof forbidden> | null> {
   if (body.role === undefined) {
     return null;
   }
@@ -187,11 +187,8 @@ function applyRoleUpdate(
     return apiError("invalidRole", 400);
   }
 
-  if (!canManageRole(actor.role, body.role)) {
-    return apiError("superAdminRoleRestricted", 403);
-  }
-
-  if (found.role === "super_admin" && body.role !== "super_admin") {
+  const roleError = await validateRoleChangeAsync(actor.role, body.role, found.role);
+  if (roleError) {
     return apiError("superAdminRoleRestricted", 403);
   }
 
@@ -209,20 +206,22 @@ async function applyPasswordUpdate(
   password: unknown,
   actorRole: string,
   isSelf: boolean,
-  targetRole: string
-) {
+  targetRole: string,
+  isAdminActor: boolean
+): Promise<ReturnType<typeof apiError> | null> {
   if (password === undefined) {
     return null;
   }
-
-  const isAdminActor = actorRole === "admin" || actorRole === "super_admin";
 
   if (!isAdminActor || isSelf) {
     return apiError("passwordChangeRequiresCurrentPassword", 403);
   }
 
-  // Only super_admin can reset another admin's password
-  if ((targetRole === "admin" || targetRole === "super_admin") && actorRole !== "super_admin") {
+  const [actorLevel, targetLevel] = await Promise.all([
+    getRoleLevel(actorRole),
+    getRoleLevel(targetRole),
+  ]);
+  if (targetLevel >= actorLevel) {
     return apiError("cannotResetAdminPassword", 403);
   }
 
@@ -300,7 +299,7 @@ export const PATCH = createApiHandler({
     const mustChangePasswordError = applyMustChangePasswordUpdate(updates, body, isAdminActor);
     if (mustChangePasswordError) return mustChangePasswordError;
 
-    const roleUpdateError = applyRoleUpdate(updates, body, user, found, isAdminActor);
+    const roleUpdateError = await applyRoleUpdate(updates, body, user, found, isAdminActor);
     if (roleUpdateError) return roleUpdateError;
 
     const passwordUpdateError = await applyPasswordUpdate(
@@ -308,7 +307,8 @@ export const PATCH = createApiHandler({
       body.password,
       user.role,
       isSelf,
-      found.role
+      found.role,
+      isAdminActor
     );
     if (passwordUpdateError) return passwordUpdateError;
 

@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => {
     getPasswordValidationError: vi.fn<() => string | null>(),
     isUserRole: vi.fn<(v: string) => boolean>(),
     canManageRole: vi.fn<() => boolean>(),
+    canManageRoleAsync: vi.fn<() => Promise<boolean>>(),
     eq: vi.fn((_field: unknown, value: unknown) => ({ _eq: value })),
     sql: vi.fn((...args: unknown[]) => ({ _sql: args })),
   };
@@ -46,6 +47,7 @@ vi.mock("@/lib/security/password-hash", () => ({
 vi.mock("@/lib/security/constants", () => ({
   isUserRole: mocks.isUserRole,
   canManageRole: mocks.canManageRole,
+  canManageRoleAsync: mocks.canManageRoleAsync,
 }));
 
 vi.mock("@/lib/security/password", () => ({
@@ -261,5 +263,42 @@ describe("validateRoleChange", () => {
 
     const result = validateRoleChange("super_admin", "super_admin", "super_admin");
     expect(result).toBeNull();
+  });
+});
+
+describe("validateRoleChangeAsync", () => {
+  it("returns null for a valid custom-role assignment", async () => {
+    const { validateRoleChangeAsync } = await import("@/lib/users/core");
+    mocks.isUserRole.mockReturnValue(true);
+    mocks.canManageRoleAsync.mockResolvedValue(true);
+
+    const result = await validateRoleChangeAsync("custom_editor", "student");
+    expect(result).toBeNull();
+  });
+
+  it("returns invalidRole for an invalid role string", async () => {
+    const { validateRoleChangeAsync } = await import("@/lib/users/core");
+    mocks.isUserRole.mockReturnValue(false);
+
+    const result = await validateRoleChangeAsync("custom_editor", "bogus_role");
+    expect(result).toBe("invalidRole");
+  });
+
+  it("returns onlySuperAdminCanChangeSuperAdminRole when actor level is too low", async () => {
+    const { validateRoleChangeAsync } = await import("@/lib/users/core");
+    mocks.isUserRole.mockReturnValue(true);
+    mocks.canManageRoleAsync.mockResolvedValue(false);
+
+    const result = await validateRoleChangeAsync("custom_editor", "admin");
+    expect(result).toBe("onlySuperAdminCanChangeSuperAdminRole");
+  });
+
+  it("returns cannotChangeSuperAdminRole when trying to demote a super_admin target", async () => {
+    const { validateRoleChangeAsync } = await import("@/lib/users/core");
+    mocks.isUserRole.mockReturnValue(true);
+    mocks.canManageRoleAsync.mockResolvedValue(true);
+
+    const result = await validateRoleChangeAsync("super_admin", "admin", "super_admin");
+    expect(result).toBe("cannotChangeSuperAdminRole");
   });
 });

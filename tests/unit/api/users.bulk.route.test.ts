@@ -6,12 +6,14 @@ const {
   recordAuditEventMock,
   execTransactionMock,
   validateAndHashPasswordMock,
+  validateRoleChangeAsyncMock,
   resolveCapabilitiesMock,
 } = vi.hoisted(() => ({
   getApiUserMock: vi.fn(),
   recordAuditEventMock: vi.fn(),
   execTransactionMock: vi.fn(),
   validateAndHashPasswordMock: vi.fn(),
+  validateRoleChangeAsyncMock: vi.fn(),
   resolveCapabilitiesMock: vi.fn(),
 }));
 
@@ -45,7 +47,10 @@ vi.mock("@/lib/audit/events", () => ({
 }));
 
 vi.mock("@/lib/users/core", () => ({
-  validateRoleChange: vi.fn(() => null),
+  validateRoleChange: vi.fn(() => {
+    throw new Error("bulk user route should use validateRoleChangeAsync");
+  }),
+  validateRoleChangeAsync: validateRoleChangeAsyncMock,
   validateAndHashPassword: validateAndHashPasswordMock,
 }));
 
@@ -74,6 +79,7 @@ describe("POST /api/v1/users/bulk", () => {
       mustChangePassword: false,
     });
     resolveCapabilitiesMock.mockResolvedValue(new Set(["users.create"]));
+    validateRoleChangeAsyncMock.mockResolvedValue(null);
     validateAndHashPasswordMock.mockResolvedValue({ hash: "hashed" });
     execTransactionMock.mockImplementation(async (callback: (tx: {
       execute: (query: unknown) => Promise<void>;

@@ -10,12 +10,14 @@ const {
   isUsernameTakenMock,
   isEmailTakenMock,
   validateAndHashPasswordMock,
+  validateRoleChangeAsyncMock,
   dbSelectMock,
   dbInsertMock,
   dbUpdateMock,
   dbDeleteMock,
   dbQueryUsersFindFirstMock,
   resolveCapabilitiesMock,
+  getRoleLevelMock,
 } = vi.hoisted(() => ({
   getApiUserMock: vi.fn(),
   csrfForbiddenMock: vi.fn(),
@@ -24,12 +26,14 @@ const {
   isUsernameTakenMock: vi.fn(),
   isEmailTakenMock: vi.fn(),
   validateAndHashPasswordMock: vi.fn(),
+  validateRoleChangeAsyncMock: vi.fn(),
   dbSelectMock: vi.fn(),
   dbInsertMock: vi.fn(),
   dbUpdateMock: vi.fn(),
   dbDeleteMock: vi.fn(),
   dbQueryUsersFindFirstMock: vi.fn(),
   resolveCapabilitiesMock: vi.fn(),
+  getRoleLevelMock: vi.fn(),
 }));
 
 vi.mock("@/lib/api/auth", () => ({
@@ -59,7 +63,10 @@ vi.mock("@/lib/users/core", () => ({
   isUsernameTaken: isUsernameTakenMock,
   isEmailTaken: isEmailTakenMock,
   validateAndHashPassword: validateAndHashPasswordMock,
-  validateRoleChange: vi.fn(() => null),
+  validateRoleChange: vi.fn(() => {
+    throw new Error("users routes should use validateRoleChangeAsync");
+  }),
+  validateRoleChangeAsync: validateRoleChangeAsyncMock,
 }));
 
 vi.mock("nanoid", () => ({
@@ -122,7 +129,7 @@ vi.mock("@/lib/db", () => ({
 vi.mock("@/lib/capabilities/cache", () => ({
   resolveCapabilities: resolveCapabilitiesMock,
   invalidateRoleCache: vi.fn(),
-  getRoleLevel: vi.fn().mockResolvedValue(0),
+  getRoleLevel: getRoleLevelMock,
   isValidRole: vi.fn().mockResolvedValue(true),
 }));
 
@@ -131,6 +138,21 @@ beforeEach(() => {
     const { DEFAULT_ROLE_CAPABILITIES } = await import("@/lib/capabilities/defaults");
     const caps = DEFAULT_ROLE_CAPABILITIES[role as keyof typeof DEFAULT_ROLE_CAPABILITIES];
     return new Set(caps ?? []);
+  });
+  validateRoleChangeAsyncMock.mockResolvedValue(null);
+  getRoleLevelMock.mockImplementation(async (role: string) => {
+    const defaults: Record<string, number> = {
+      student: 0,
+      instructor: 1,
+      admin: 2,
+      super_admin: 3,
+      custom_creator: 2,
+      custom_editor: 2,
+      custom_viewer: 1,
+      custom_low: 0,
+      custom_high: 3,
+    };
+    return defaults[role] ?? 0;
   });
 });
 
@@ -441,6 +463,44 @@ describe("POST /api/v1/users", () => {
     expect(res.status).toBe(403);
   });
 
+  it("allows a custom role with users.create to create a lower-level user", async () => {
+    getApiUserMock.mockResolvedValue({
+      id: "custom-creator",
+      username: "creator",
+      role: "custom_creator",
+      email: "creator@example.com",
+      name: "Creator",
+      className: null,
+      mustChangePassword: false,
+    });
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["users.create"]));
+
+    dbSelectMock.mockReset();
+    dbSelectMock
+      .mockReturnValueOnce(makeSelectChain([]))
+      .mockReturnValueOnce(makeSelectChain([]))
+      .mockReturnValueOnce(makeSelectChain([safeUser]));
+
+    dbInsertMock.mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([safeUser]),
+      }),
+    });
+
+    const req = makeRequest("http://localhost:3000/api/v1/users", {
+      method: "POST",
+      body: {
+        username: "customstudent",
+        name: "Custom Student",
+        role: "student",
+      },
+    });
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(201);
+  });
+
   it("rejects missing CSRF with 403", async () => {
     csrfForbiddenMock.mockReturnValue(
       new Response(JSON.stringify({ error: "forbidden" }), { status: 403 })
@@ -639,6 +699,39 @@ describe("PATCH /api/v1/users/[id]", () => {
     const req = makeRequest(
       "http://localhost:3000/api/v1/users/student-id",
       { method: "PATCH", body: { name: "Updated Name" } }
+    );
+    const res = await PATCH(req, makeCtx("student-id"));
+
+    expect(res.status).toBe(200);
+  });
+
+  it("allows a custom role with users.edit to reset a lower-level user's password", async () => {
+    getApiUserMock.mockResolvedValue({
+      id: "custom-editor",
+      username: "editor",
+      role: "custom_editor",
+      email: "editor@example.com",
+      name: "Editor",
+      className: null,
+      mustChangePassword: false,
+    });
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["users.edit"]));
+
+    const updatedUser = {
+      ...safeUser,
+      mustChangePassword: true,
+    };
+    dbSelectMock
+      .mockReturnValueOnce(makeSelectChain([safeUser]))
+      .mockReturnValueOnce(makeSelectChain([updatedUser]));
+
+    dbUpdateMock.mockReturnValue({
+      set: vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) })),
+    });
+
+    const req = makeRequest(
+      "http://localhost:3000/api/v1/users/student-id",
+      { method: "PATCH", body: { password: "NewStrongPass123!" } }
     );
     const res = await PATCH(req, makeCtx("student-id"));
 

@@ -13,15 +13,14 @@ import {
   isUsernameTaken,
   isEmailTaken,
   validateAndHashPassword,
-  validateRoleChange,
+  validateRoleChangeAsync,
 } from "@/lib/users/core";
-import { isUserRole } from "@/lib/security/constants";
-import { isInstructorOrAbove } from "@/lib/auth/role-helpers";
+import { assertUserRole, isUserRole } from "@/lib/security/constants";
 import { adminUpdateUserSchema, userCreateSchema } from "@/lib/validators/profile";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
 import { logger } from "@/lib/logger";
-import { getRoleLevel } from "@/lib/capabilities/cache";
+import { getRoleLevel, resolveCapabilities } from "@/lib/capabilities/cache";
 
 type UserUpdates = Partial<typeof users.$inferInsert>;
 
@@ -67,7 +66,12 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
   }
 
   const session = await auth();
-  if (!session?.user || !isInstructorOrAbove(session.user.role)) {
+  if (!session?.user) {
+    return { success: false, error: "unauthorized" };
+  }
+  const actorCaps = await resolveCapabilities(session.user.role);
+  const canEditUsers = actorCaps.has("users.edit") || session.user.role === "instructor";
+  if (!canEditUsers) {
     return { success: false, error: "unauthorized" };
   }
 
@@ -136,7 +140,11 @@ export async function deleteUserPermanently(userId: string, confirmUsername: str
   }
 
   const session = await auth();
-  if (!session?.user || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
+  if (!session?.user) {
+    return { success: false, error: "unauthorized" };
+  }
+  const actorCaps = await resolveCapabilities(session.user.role);
+  if (!actorCaps.has("users.delete")) {
     return { success: false, error: "unauthorized" };
   }
 
@@ -203,7 +211,12 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
   }
 
   const session = await auth();
-  if (!session?.user || !isInstructorOrAbove(session.user.role)) {
+  if (!session?.user) {
+    return { success: false, error: "unauthorized" };
+  }
+  const actorCaps = await resolveCapabilities(session.user.role);
+  const canEditUsers = actorCaps.has("users.edit") || session.user.role === "instructor";
+  if (!canEditUsers) {
     return { success: false, error: "unauthorized" };
   }
 
@@ -220,9 +233,6 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
   }
 
   try {
-    if (!isUserRole(session.user.role)) {
-      return { success: false, error: "unauthorized" };
-    }
     const actorRole = session.user.role;
     const normalizedEmail = data.email?.trim().toLowerCase() || null;
     const normalizedClassName = data.className?.trim() || null;
@@ -240,11 +250,11 @@ export async function editUser(userId: string, data: ManagedUserInput): Promise<
       return { success: false, error: "unauthorized" };
     }
 
-    const roleError = validateRoleChange(actorRole, requestedRole, targetUser.role);
+    const roleError = await validateRoleChangeAsync(actorRole, requestedRole, targetUser.role);
     if (roleError === "invalidRole") return { success: false, error: "updateUserFailed" };
     if (roleError) return { success: false, error: roleError };
     if (!isUserRole(requestedRole)) return { success: false, error: "updateUserFailed" };
-    const validatedRole = requestedRole;
+    const validatedRole = assertUserRole(requestedRole);
 
     // Prevent password reset for users of equal or higher privilege
     if (data.password && targetUser.role) {
@@ -351,7 +361,12 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
   }
 
   const session = await auth();
-  if (!session?.user || !isInstructorOrAbove(session.user.role)) {
+  if (!session?.user) {
+    return { success: false, error: "unauthorized" };
+  }
+  const actorCaps = await resolveCapabilities(session.user.role);
+  const canCreateUsers = actorCaps.has("users.create") || session.user.role === "instructor";
+  if (!canCreateUsers) {
     return { success: false, error: "unauthorized" };
   }
 
@@ -364,9 +379,6 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
   }
 
   try {
-    if (!isUserRole(session.user.role)) {
-      return { success: false, error: "unauthorized" };
-    }
     const actorRole = session.user.role;
     const normalizedEmail = data.email?.trim().toLowerCase() || null;
     const normalizedClassName = data.className?.trim() || null;
@@ -377,11 +389,11 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
       return { success: false, error: "unauthorized" };
     }
 
-    const roleError = validateRoleChange(actorRole, requestedRole);
+    const roleError = await validateRoleChangeAsync(actorRole, requestedRole);
     if (roleError === "invalidRole") return { success: false, error: "createUserFailed" };
     if (roleError) return { success: false, error: roleError };
     if (!isUserRole(requestedRole)) return { success: false, error: "createUserFailed" };
-    const validatedRole = requestedRole;
+    const validatedRole = assertUserRole(requestedRole);
 
     const id = nanoid();
     let passwordHash: string;

@@ -16,7 +16,7 @@ import { userCreateSchema } from "@/lib/validators/profile";
 import { parsePagination } from "@/lib/api/pagination";
 import {
   validateAndHashPassword,
-  validateRoleChange,
+  validateRoleChangeAsync,
 } from "@/lib/users/core";
 import { createApiHandler } from "@/lib/api/handler";
 
@@ -69,7 +69,7 @@ export const POST = createApiHandler({
     const normalizedClassName = className ?? null;
     const requestedRole = role.trim() || "student";
 
-    const roleError = validateRoleChange(user.role, requestedRole);
+    const roleError = await validateRoleChangeAsync(user.role, requestedRole);
     if (roleError === "invalidRole") {
       return apiError("invalidRole", 400);
     }

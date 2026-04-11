@@ -7,7 +7,7 @@ import { forbidden, isInstructor, createApiHandler } from "@/lib/api/handler";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { nanoid } from "nanoid";
 import { bulkUserCreateSchema } from "@/lib/validators/bulk-users";
-import { validateAndHashPassword, validateRoleChange } from "@/lib/users/core";
+import { validateAndHashPassword, validateRoleChangeAsync } from "@/lib/users/core";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import pLimit from "p-limit";
 
@@ -29,11 +29,10 @@ export const POST = createApiHandler({
 
     // Validate role escalation for each user
     for (const entry of userList) {
-      if (entry.role && entry.role !== "student") {
-        const roleError = validateRoleChange(user.role, entry.role);
-        if (roleError) {
-          return apiError(roleError, 403);
-        }
+      const requestedRole = entry.role ?? "student";
+      const roleError = await validateRoleChangeAsync(user.role, requestedRole);
+      if (roleError) {
+        return apiError(roleError, 403);
       }
     }
 
