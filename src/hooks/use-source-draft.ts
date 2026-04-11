@@ -217,9 +217,10 @@ function readDraftPayload(storageKey: string, languages: readonly string[]) {
 }
 
 export function useSourceDraft({ userId, problemId, languages, initialLanguage }: UseSourceDraftOptions): UseSourceDraftResult {
+  const languagesSignature = useMemo(() => languages.join("\u0000"), [languages]);
   const availableLanguages = useMemo(
     () => (languages.length > 0 ? [...languages] : [initialLanguage]),
-    [initialLanguage, languages],
+    [initialLanguage, languagesSignature],
   );
   const fallbackLanguage = useMemo(
     () => initialLanguage ?? availableLanguages[0],

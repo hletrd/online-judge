@@ -80,4 +80,36 @@ describe("useSourceDraft", () => {
       expect(window.localStorage.getItem(STORAGE_KEY)).toContain("console.log('updated')"),
     );
   });
+
+  it("does not drop unsaved draft state when the languages prop is recreated with the same values", async () => {
+    const { result, rerender } = renderHook(
+      (props: { languages: string[] }) =>
+        useSourceDraft({
+          userId: "user-1",
+          problemId: "problem-1",
+          languages: props.languages,
+          initialLanguage: "javascript",
+        }),
+      {
+        initialProps: {
+          languages: ["javascript", "python"],
+        },
+      },
+    );
+
+    await waitFor(() => expect(result.current.language).toBe("javascript"));
+
+    act(() => {
+      result.current.setSourceCode("console.log('draft')");
+    });
+
+    expect(result.current.sourceCode).toBe("console.log('draft')");
+
+    rerender({
+      languages: ["javascript", "python"],
+    });
+
+    expect(result.current.sourceCode).toBe("console.log('draft')");
+    expect(result.current.isDirty).toBe(true);
+  });
 });
