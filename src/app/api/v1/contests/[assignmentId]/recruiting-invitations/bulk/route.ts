@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { eq, and, inArray } from "drizzle-orm";
-import { createApiHandler, isAdmin } from "@/lib/api/handler";
+import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { recruitingInvitations } from "@/lib/db/schema";
@@ -9,10 +9,9 @@ import { bulkCreateRecruitingInvitationsSchema } from "@/lib/validators/recruiti
 import { recordAuditEvent } from "@/lib/audit/events";
 
 export const POST = createApiHandler({
+  auth: { capabilities: ["recruiting.manage_invitations"] },
   schema: bulkCreateRecruitingInvitationsSchema,
   handler: async (req: NextRequest, { user, params, body }) => {
-    if (!isAdmin(user.role)) return apiError("forbidden", 403);
-
     const { assignmentId } = params;
 
     // Check for duplicate emails within the request

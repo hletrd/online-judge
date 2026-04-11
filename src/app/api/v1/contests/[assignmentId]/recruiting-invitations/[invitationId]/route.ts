@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createApiHandler, isAdmin } from "@/lib/api/handler";
+import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import {
   getRecruitingInvitation,
@@ -10,9 +10,8 @@ import { updateRecruitingInvitationSchema } from "@/lib/validators/recruiting-in
 import { recordAuditEvent } from "@/lib/audit/events";
 
 export const GET = createApiHandler({
-  handler: async (req: NextRequest, { user, params }) => {
-    if (!isAdmin(user.role)) return apiError("forbidden", 403);
-
+  auth: { capabilities: ["recruiting.manage_invitations"] },
+  handler: async (_req: NextRequest, { params }) => {
     const invitation = await getRecruitingInvitation(params.invitationId);
     if (!invitation) return apiError("notFound", 404, "RecruitingInvitation");
 
@@ -21,10 +20,9 @@ export const GET = createApiHandler({
 });
 
 export const PATCH = createApiHandler({
+  auth: { capabilities: ["recruiting.manage_invitations"] },
   schema: updateRecruitingInvitationSchema,
   handler: async (req: NextRequest, { user, params, body }) => {
-    if (!isAdmin(user.role)) return apiError("forbidden", 403);
-
     const invitation = await getRecruitingInvitation(params.invitationId);
     if (!invitation) return apiError("notFound", 404, "RecruitingInvitation");
 
@@ -77,9 +75,8 @@ export const PATCH = createApiHandler({
 });
 
 export const DELETE = createApiHandler({
+  auth: { capabilities: ["recruiting.manage_invitations"] },
   handler: async (req: NextRequest, { user, params }) => {
-    if (!isAdmin(user.role)) return apiError("forbidden", 403);
-
     const invitation = await getRecruitingInvitation(params.invitationId);
     if (!invitation) return apiError("notFound", 404, "RecruitingInvitation");
 

@@ -15,6 +15,7 @@ This review still appears to contain **open work**. No later addendum in the sou
 - ✅ Revalidated at `HEAD`: similarity normalization already has regression tests proving comment markers inside string literals are not treated as comments.
 - ✅ Completed in this plan execution: file download authorization no longer falls back to scanning problem descriptions; access now relies on explicit `files.problemId` linkage or normal owner/manage capabilities.
 - ✅ Completed in this plan execution: legacy HTML sanitization now strips external `<img>` sources by default while preserving first-party root-relative assets, closing the review's remote tracking-image concern without removing all historical HTML rendering.
+- ✅ Completed in this plan execution: recruiting invitation routes now authorize via `recruiting.manage_invitations` capability checks instead of admin-only role gates, moving one more route cluster onto the capability model.
 
 ## Findings covered by this plan
 1. PostgreSQL-only runtime still documented as SQLite/MySQL-capable
@@ -110,6 +111,7 @@ Before changing code, re-check the current implementation for each numbered find
 - inventory every route/page still using hard-coded role checks
 - decide whether to convert to capabilities or keep built-in-only intentionally
 - align UI gating and server enforcement
+- **Status:** recruiting invitation APIs now use capability guards; additional hard-coded role clusters still need inventory and conversion or explicit justification.
 
 ### Track 2D — Tighten legacy HTML rendering instead of trusting external media
 **Files**
