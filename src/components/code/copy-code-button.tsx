@@ -19,9 +19,12 @@ export function CopyCodeButton({ value }: { value: string }) {
       textarea.style.position = "fixed";
       textarea.style.opacity = "0";
       document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
+      try {
+        textarea.select();
+        document.execCommand("copy");
+      } finally {
+        document.body.removeChild(textarea);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
