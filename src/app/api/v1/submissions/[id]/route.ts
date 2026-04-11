@@ -40,7 +40,7 @@ export const GET = createApiHandler({
         results: {
           with: {
             testCase: {
-              columns: { sortOrder: true },
+              columns: { sortOrder: true, isVisible: true },
             },
           },
         },
@@ -52,13 +52,26 @@ export const GET = createApiHandler({
     const isOwner = submission.userId === user.id;
     const caps = await resolveCapabilities(user.role);
     const canViewSource = caps.has("submissions.view_source");
+    const canViewAllResults = caps.has("submissions.view_all");
+
+    // Strip hidden test case details for non-privileged users
+    const sanitized = { ...submission };
+    if (!canViewAllResults && sanitized.results) {
+      sanitized.results = sanitized.results.map((r) => {
+        const isVisible = r.testCase?.isVisible ?? false;
+        if (!isVisible) {
+          return { ...r, actualOutput: null, testCase: { isVisible: false as const, sortOrder: r.testCase?.sortOrder ?? null } };
+        }
+        return r;
+      });
+    }
 
     if (!isOwner && !canViewSource) {
-      const { sourceCode: _sourceCode, ...rest } = submission;
+      const { sourceCode: _sourceCode, ...rest } = sanitized;
       void _sourceCode;
       return apiSuccess(rest);
     }
 
-    return apiSuccess(submission);
+    return apiSuccess(sanitized);
   },
 });
