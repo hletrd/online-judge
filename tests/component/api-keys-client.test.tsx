@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiKeysClient } from "@/app/(dashboard)/dashboard/admin/api-keys/api-keys-client";
+import { toast } from "sonner";
 
 const translations: Record<string, string> = {
   title: "API Keys",
@@ -67,6 +68,14 @@ describe("ApiKeysClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal("fetch", fetchMock);
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      configurable: true,
+      value: undefined,
+    });
+    Object.defineProperty(document, "execCommand", {
+      configurable: true,
+      value: vi.fn(() => true),
+    });
   });
 
   it("renders only masked previews for stored keys and reveals raw key once after creation", async () => {
@@ -150,5 +159,37 @@ describe("ApiKeysClient", () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(3);
     });
+  });
+
+  it("copies the masked key preview from the table without revealing the secret", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            id: "key-1",
+            name: "Deploy Key",
+            keyPrefix: "jk_test_",
+            role: "admin",
+            createdById: "admin-id",
+            createdByName: "Admin User",
+            lastUsedAt: null,
+            expiresAt: null,
+            isActive: true,
+            createdAt: "2026-04-04T00:00:00.000Z",
+          },
+        ],
+      }),
+    });
+    render(<ApiKeysClient />);
+
+    expect(await screen.findByText("Deploy Key")).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    const row = screen.getByText("Deploy Key").closest("tr");
+    expect(row).not.toBeNull();
+    await user.click(within(row as HTMLTableRowElement).getByRole("button", { name: "Copy Key" }));
+
+    expect(toast.success).toHaveBeenCalledWith("Copied!");
   });
 });

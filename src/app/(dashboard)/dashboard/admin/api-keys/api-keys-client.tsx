@@ -82,6 +82,7 @@ export function ApiKeysClient() {
   const [loading, setLoading] = useState(true);
   const [createdKey, setCreatedKey] = useState<CreatedKey | null>(null);
   const [createdKeyCopied, setCreatedKeyCopied] = useState(false);
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
 
   // Create dialog state
   const [createOpen, setCreateOpen] = useState(false);
@@ -162,6 +163,24 @@ export function ApiKeysClient() {
     setCreatedKeyCopied(true);
     toast.success(t("copied"));
     setTimeout(() => setCreatedKeyCopied(false), 2000);
+  }
+
+  async function handleCopyKeyPrefix(key: ApiKey) {
+    try {
+      await navigator.clipboard.writeText(buildMaskedApiKeyPreview(key.keyPrefix));
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = buildMaskedApiKeyPreview(key.keyPrefix);
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+    setCopiedKeyId(key.id);
+    toast.success(t("copied"));
+    setTimeout(() => setCopiedKeyId(null), 2000);
   }
 
   async function handleToggle(key: ApiKey) {
@@ -351,9 +370,24 @@ export function ApiKeysClient() {
                     <TableRow key={key.id}>
                       <TableCell className="font-medium">{key.name}</TableCell>
                       <TableCell>
-                        <code className="text-xs bg-muted px-2 py-1 rounded truncate select-all max-w-[280px] block">
-                          {buildMaskedApiKeyPreview(key.keyPrefix)}
-                        </code>
+                        <div className="flex items-center gap-1.5">
+                          <code className="text-xs bg-muted px-2 py-1 rounded truncate select-all max-w-[240px]">
+                            {buildMaskedApiKeyPreview(key.keyPrefix)}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0"
+                            onClick={() => handleCopyKeyPrefix(key)}
+                            aria-label={t("copyKey")}
+                          >
+                            {copiedKeyId === key.id ? (
+                              <Check className="h-3.5 w-3.5 text-green-500" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{key.role}</Badge>
