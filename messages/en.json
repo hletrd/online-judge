@@ -1095,7 +1095,13 @@
         "exam": "For controlled assessments. Disables AI review and standalone compiler by default.",
         "contest": "For competitive programming. Disables AI review by default; compiler stays available.",
         "recruiting": "For hiring evaluations. Restricted navigation for candidates, hiring-focused labels, no AI assistance."
-      }
+      },
+      "platformModeOperationalTitle": "Operational effect of this mode",
+      "platformModeAiRestricted": "AI assistance is disabled by default in this mode.",
+      "platformModeAiAvailable": "AI assistance may remain available, subject to problem-level and global settings.",
+      "platformModeCompilerRestricted": "The standalone compiler is blocked for affected users in this mode.",
+      "platformModeCompilerAvailable": "The standalone compiler remains available unless a narrower context disables it.",
+      "platformModeHighStakesNotice": "Do not treat exam, contest, or recruiting modes as high-stakes ready unless the current deployment and policy checklists are satisfied."
     },
     "files": {
       "title": "File Management",

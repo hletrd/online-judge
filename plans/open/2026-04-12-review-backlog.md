@@ -94,6 +94,10 @@ After comparing the full review set against the archived remediation plans:
 - surfaced effective-mode information in admin/instructor UI
 - tighter mode-boundary tests for recruiting/exam/contest/homework contexts
 
+**Progress**
+- ✅ the dashboard header now shows the effective platform mode visibly instead of only via screen-reader text
+- ✅ admin system settings now include an operational summary block for the currently selected platform mode
+
 ### 5. Anti-cheat posture and evidence-quality honesty
 **Why next:** this is essential before exam/recruiting claims are expanded.
 
@@ -111,6 +115,9 @@ After comparing the full review set against the archived remediation plans:
 - participant/instructor/admin wording that reflects telemetry rather than strong proctoring
 - explicit evidence-quality guidance in dashboards/docs
 - release/readiness docs aligned to the real integrity story
+
+**Progress**
+- ✅ published `docs/high-stakes-operations.md` with explicit anti-cheat telemetry guidance and launch-truth framing
 
 ### 6. High-stakes operational readiness and realtime scaling
 **Why next:** homework can tolerate this; exams/serious contests cannot.
@@ -144,6 +151,9 @@ After comparing the full review set against the archived remediation plans:
 - stronger operator guidance for the privileged worker boundary
 - clearer monitoring/runbook expectations around worker compromise or misbehavior
 - explicit separation between normal app ops and privileged judge-worker ops
+
+**Progress**
+- ✅ published `docs/high-stakes-operations.md`, including a dedicated judge-worker trust-boundary section for operators
 
 ## Recommended execution order
 1. Recruiting identity and re-entry hardening

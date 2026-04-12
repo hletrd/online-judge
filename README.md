@@ -263,6 +263,7 @@ Default: `homework`. Change in admin settings or directly in the database (`syst
 - [Languages](docs/languages.md) — all 118 variants, Docker image presets, admin management
 - [Judge Workers](docs/judge-workers.md) — multi-worker architecture, registration, deployment
 - [Privacy & Retention](docs/privacy-retention.md) — current retention windows and handling rules for sensitive operational data
+- [High-Stakes Operations](docs/high-stakes-operations.md) — operational truth and launch checks for recruiting, exams, and serious contests
 
 ## License
 

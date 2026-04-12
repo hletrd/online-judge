@@ -38,6 +38,9 @@ Students currently interact with a system that can act like homework platform, c
 - a student can tell which assessment context they are in without reading docs
 - mode-specific restrictions are visible and tested, not just implicit in route behavior
 
+**Progress**
+- ✅ the dashboard header now shows the effective platform mode as a visible badge
+
 ## Workstream B — Instructor workflow simplification
 **Problem**
 The platform is powerful but dense. Too much of the real workflow is hidden behind deep navigation and implicit rules.
@@ -74,6 +77,10 @@ The admin surface is broad and powerful, but the system still expects a technica
 **Acceptance criteria**
 - admin/operator docs clearly state what is and is not ready today
 - high-stakes launches require explicit operator acknowledgment of current limits
+
+**Progress**
+- ✅ published `docs/high-stakes-operations.md` with current launch posture, operator checks, and the single-instance/high-stakes caveats
+- ✅ admin system settings now show a mode-specific operational summary block inline
 
 ## Workstream D — Assistant governance and data lifecycle
 **Problem**
@@ -133,6 +140,9 @@ The review correctly highlights that the remaining weaknesses are concentrated i
 - keep anti-cheat wording honest: telemetry, not proctoring
 - decide whether high-stakes readiness requires real shared coordination before exams/public contests are reconsidered
 - explicitly document the current trust boundary around the judge worker and what operators must do about it
+
+**Progress**
+- ✅ published `docs/high-stakes-operations.md` with explicit anti-cheat telemetry language and a judge-worker trust-boundary section
 
 ## Recommended execution order
 1. Workstream E — candidate identity/privacy

@@ -139,6 +139,9 @@ Choose one explicit path:
 - the platform is explicit about whether exams/public contests are supported
 - unsupported deployment topologies cannot be mistaken for supported high-stakes setups
 
+**Progress**
+- ✅ published `docs/high-stakes-operations.md` with the current launch truth for recruiting, exams, and serious contests
+
 **Tests / verification**
 - runtime guard tests or shared-coordination tests, depending on chosen path
 - docs/readiness artifacts updated in lockstep
@@ -161,6 +164,10 @@ Choose one explicit path:
 - operators can see the active/effective mode and its restrictions without reverse-engineering the code
 - high-stakes restrictions are verified by tests
 
+**Progress**
+- ✅ the dashboard header now shows the effective mode visibly
+- ✅ admin system settings now explain the operational effects of the currently selected mode inline
+
 ## Phase 6 — Treat the judge worker as privileged infrastructure
 ### Track 6A — Harden ops expectations around the worker boundary
 **Severity:** MEDIUM
@@ -178,6 +185,9 @@ Choose one explicit path:
 **Acceptance criteria**
 - worker trust assumptions are written down and easy for operators to find
 - high-consequence worker events have a runbook/monitoring story
+
+**Progress**
+- ✅ `docs/high-stakes-operations.md` now documents the judge worker as a privileged trust boundary and calls out operator responsibilities
 
 ## Verification targets for future implementation
 - `pnpm -s tsc --noEmit`

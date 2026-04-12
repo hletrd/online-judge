@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DEFAULT_PLATFORM_MODE, PLATFORM_MODE_VALUES } from "@/lib/platform-mode";
+import { DEFAULT_PLATFORM_MODE, PLATFORM_MODE_VALUES, getPlatformModePolicy } from "@/lib/platform-mode";
 import type { PlatformMode } from "@/types";
 
 type SystemSettingsFormProps = {
@@ -70,6 +70,7 @@ export function SystemSettingsForm({
   const [aiAssistantEnabled, setAiAssistantEnabled] = useState(initialAiAssistantEnabled);
   const [defaultLanguage, setDefaultLanguage] = useState(initialDefaultLanguage);
   const [isLoading, setIsLoading] = useState(false);
+  const platformPolicy = useMemo(() => getPlatformModePolicy(platformMode), [platformMode]);
   const ianaTimeZones = useMemo(() => {
     try {
       return Intl.supportedValuesOf("timeZone");
@@ -185,6 +186,22 @@ export function SystemSettingsForm({
           })}
         </p>
         <p className="text-xs text-muted-foreground">{t(`platformModeDescriptions.${platformMode}`)}</p>
+        <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
+          <p className="font-medium text-foreground">{t("platformModeOperationalTitle")}</p>
+          <ul className="mt-2 list-disc space-y-1 pl-4">
+            <li>
+              {platformPolicy.restrictAiByDefault
+                ? t("platformModeAiRestricted")
+                : t("platformModeAiAvailable")}
+            </li>
+            <li>
+              {platformPolicy.restrictStandaloneCompiler
+                ? t("platformModeCompilerRestricted")
+                : t("platformModeCompilerAvailable")}
+            </li>
+            <li>{t("platformModeHighStakesNotice")}</li>
+          </ul>
+        </div>
       </div>
 
       <div className="space-y-2">
