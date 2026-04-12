@@ -166,7 +166,8 @@
     "viewAttempts": "시도 내역 보기",
     "viewAttempt": "시도 보기",
     "scoreLabel": "점수: {score}",
-    "instructorQuickActions": "빠른 작업"
+    "instructorQuickActions": "빠른 작업",
+    "adminQuickActions": "관리자 빠른 작업"
   },
   "dashboardState": {
     "loadingDescription": "대시보드를 불러오는 중...",

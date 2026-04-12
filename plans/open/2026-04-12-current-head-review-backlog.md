@@ -106,6 +106,9 @@ After re-reading the full review set against the current codebase and archived r
 - guided workflows for common high-value tasks
 - more discoverable admin/instructor actions without requiring deep system knowledge
 
+**Progress**
+- ✅ both instructor and admin dashboards now surface quick links for common high-value workflows
+
 ### 6. Privileged worker boundary and operational containment
 **Why later:** still important for high-stakes trust, but broader than a single product bug.
 

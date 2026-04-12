@@ -119,6 +119,9 @@ The platform is more usable than before, but still feels like a technical power 
 **Acceptance criteria**
 - common instructor/admin workflows become more discoverable without needing deep internal knowledge
 
+**Progress**
+- ✅ instructor and admin dashboards now surface quick links for common operational tasks
+
 ## Suggested execution order
 1. Workstream A — external-recruiting identity assurance
 2. Workstream B — exam/contest architecture truth

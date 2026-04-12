@@ -12,6 +12,8 @@ import {
 } from "@/lib/judge/languages";
 import { getRuntimeSystemInfo } from "@/lib/system-info";
 import { getTranslations } from "next-intl/server";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 function summarizeWorkerCpus(workers: { cpuModel: string | null }[]): string | null {
   const models = workers.map((w) => w.cpuModel).filter(Boolean) as string[];
@@ -31,6 +33,7 @@ export async function AdminDashboard() {
   const t = await getTranslations("dashboard");
   const tJudge = await getTranslations("judge");
   const tLangs = await getTranslations("languages");
+  const tNav = await getTranslations("nav");
 
   const [langs, runtimeSystemInfo, onlineWorkers] = await Promise.all([
     db.select().from(languageConfigs).where(eq(languageConfigs.isEnabled, true)),
@@ -90,6 +93,27 @@ export async function AdminDashboard() {
             </div>
           </div>
           <p className="text-sm text-muted-foreground mb-4">{tJudge("limitsNote")}</p>
+        </CardContent>
+      </Card>
+
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("adminQuickActions")}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Link href="/dashboard/admin/workers">
+            <Button size="sm" variant="outline">{tNav("judgeWorkers")}</Button>
+          </Link>
+          <Link href="/dashboard/admin/languages">
+            <Button size="sm" variant="outline">{tNav("languages")}</Button>
+          </Link>
+          <Link href="/dashboard/admin/users">
+            <Button size="sm" variant="outline">{tNav("userManagement")}</Button>
+          </Link>
+          <Link href="/dashboard/admin/audit-logs">
+            <Button size="sm" variant="outline">{tNav("auditLogs")}</Button>
+          </Link>
         </CardContent>
       </Card>
 

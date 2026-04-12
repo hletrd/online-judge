@@ -166,7 +166,8 @@
     "viewAttempts": "View attempts",
     "viewAttempt": "View attempt",
     "scoreLabel": "Score: {score}",
-    "instructorQuickActions": "Quick actions"
+    "instructorQuickActions": "Quick actions",
+    "adminQuickActions": "Admin quick actions"
   },
   "dashboardState": {
     "loadingDescription": "Loading dashboard...",
