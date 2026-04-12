@@ -18,6 +18,7 @@ const {
   txInsertMock,
   txValuesMock,
   recordAuditEventMock,
+  resolveCapabilitiesMock,
 } = vi.hoisted(() => ({
   getApiUserMock: vi.fn(),
   consumeApiRateLimitMock: vi.fn<() => NextResponse | null>(() => null),
@@ -35,6 +36,7 @@ const {
   txInsertMock: vi.fn(),
   txValuesMock: vi.fn(),
   recordAuditEventMock: vi.fn(),
+  resolveCapabilitiesMock: vi.fn(),
 }));
 
 vi.mock("@/lib/api/auth", () => ({
@@ -101,6 +103,10 @@ vi.mock("@/lib/recruiting/access", () => ({
 
 vi.mock("@/lib/security/constants", () => ({
   isUserRole: vi.fn(() => true),
+}));
+
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: resolveCapabilitiesMock,
 }));
 
 import { POST as joinPOST } from "@/app/api/v1/contests/join/route";
@@ -304,6 +310,7 @@ describe("POST /api/v1/contests/quick-create", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getApiUserMock.mockResolvedValue(ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["contests.create"]));
     txValuesMock.mockResolvedValue(undefined);
     txInsertMock.mockReturnValue({ values: txValuesMock });
     dbTransactionMock.mockImplementation(async (callback: any) => callback({
@@ -346,6 +353,7 @@ describe("/api/v1/contests/[assignmentId]/access-code", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getApiUserMock.mockResolvedValue(ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["contests.create"]));
     getContestAssignmentMock.mockResolvedValue(CONTEST_ASSIGNMENT);
     canManageContestMock.mockImplementation((user, assignment) => user.role === "admin" || assignment.instructorId === user.id);
     getAccessCodeMock.mockResolvedValue("ABC123");
@@ -481,6 +489,7 @@ describe("GET /api/v1/contests/[assignmentId]/leaderboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getApiUserMock.mockResolvedValue(ADMIN_USER);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["contests.create"]));
     consumeApiRateLimitMock.mockReturnValue(null);
     canManageContestMock.mockImplementation((user, assignment) => user.role === "admin" || assignment.instructorId === user.id);
     getRecruitingAccessContextMock.mockResolvedValue({
