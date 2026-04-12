@@ -20,8 +20,8 @@ After comparing the reviews against the archived remediation plans and current r
 - the only currently actionable missing work surfaced by the latest reviews is the remaining set from:
   - `.context/reviews/deep-code-review-2026-04-12-post-remediation.md`
 
-## Planning-only note
-This file is a planning artifact only. It does **not** implement any fixes.
+## Historical note
+This file began as the implementation plan for the remaining post-remediation review findings and was fully implemented at `HEAD` on 2026-04-12. It is now archived for reference.
 
 ## Missing tasks still worth doing
 1. The realtime coordination contract is misleading: `REALTIME_COORDINATION_BACKEND=redis|postgresql` currently disables the runtime guard without any actual shared coordination implementation.
