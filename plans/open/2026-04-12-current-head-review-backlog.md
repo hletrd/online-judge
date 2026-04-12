@@ -83,6 +83,9 @@ After re-reading the full review set against the current codebase and archived r
 - tighter access controls and handling workflows for sensitive transcripts/evidence
 - explicit institution/employer policy knobs where needed
 
+**Progress**
+- ✅ retention windows are now environment-configurable instead of being hard-coded only in the application source
+
 ### 5. Instructor/admin usability beyond power-user workflows
 **Why later:** important, but not the main security/integrity blocker.
 

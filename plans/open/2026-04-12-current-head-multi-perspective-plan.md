@@ -93,6 +93,9 @@ The system now prunes several data classes, but the current 365-day defaults may
 - retention behavior is an explicit product-policy choice, not just a code default
 - operators have a supported path for longer retention or export-before-delete needs
 
+**Progress**
+- ✅ the default retention windows can now be overridden per deployment through explicit environment variables
+
 ## Workstream E — Instructor/admin workflow simplification
 **Problem**
 The platform is more usable than before, but still feels like a technical power tool.

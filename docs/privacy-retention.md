@@ -24,6 +24,10 @@ This document defines the current default handling expectations for sensitive op
 - Recruiting and exam records may be reviewed by authorized staff for support, dispute handling, and assessment governance.
 - AI chat transcripts should be treated as potentially sensitive academic or candidate-support data.
 
+## Retention configuration
+- Deployments can override the default windows with environment variables such as `CHAT_MESSAGE_RETENTION_DAYS`, `ANTI_CHEAT_RETENTION_DAYS`, `RECRUITING_RECORD_RETENTION_DAYS`, and `SUBMISSION_RETENTION_DAYS`.
+- If you change these values, review legal/academic retention obligations before rollout.
+
 ## Current automation baseline
 - audit-log pruning is automated in the app runtime
 - AI chat-log pruning is automated in the app runtime

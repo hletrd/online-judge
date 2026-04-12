@@ -103,6 +103,9 @@ Retention is now bounded, but privileged transcript access and deletion-policy f
 **Acceptance criteria**
 - sensitive-data governance is defensible both technically and operationally
 
+**Progress**
+- ✅ retention windows are now configurable per deployment instead of being fixed application constants only
+
 ## Phase 5 — Worker-boundary operational containment
 **Severity:** MEDIUM
 
