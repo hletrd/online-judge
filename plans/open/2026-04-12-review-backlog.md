@@ -14,6 +14,7 @@ After comparing the full review set against the archived remediation plans:
 
 ### 1. Recruiting identity and re-entry hardening
 **Why first:** this is the highest-impact issue for hiring trust.
+**Progress (2026-04-12):** In progress. The invite URL is now claim-only at the auth/page layer, and redeemed links only allow same-session resume instead of token replay. Stronger cross-device recovery remains open.
 
 **Feeds from reviews**
 - multi-perspective review: “recruiting identity is too weak for serious hiring use”

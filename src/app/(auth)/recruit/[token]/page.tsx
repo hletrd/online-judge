@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { auth } from "@/lib/auth";
 import { getRecruitingInvitationByToken } from "@/lib/assignments/recruiting-invitations";
 import { db } from "@/lib/db";
 import { assignmentProblems, assignments } from "@/lib/db/schema";
@@ -21,6 +22,15 @@ export async function generateMetadata({
   }
   if (invitation.expiresAt && invitation.expiresAt < new Date()) {
     return { title: t("expired") };
+  }
+  if (invitation.status === "redeemed") {
+    const description = t("claimedDescription");
+    return {
+      title: t("claimed"),
+      description,
+      openGraph: { title: t("claimed"), description },
+      twitter: { card: "summary", title: t("claimed"), description },
+    };
   }
 
   const [assignment] = await db
@@ -49,6 +59,7 @@ export default async function RecruitPage({
 }) {
   const { token } = await params;
   const t = await getTranslations("recruit");
+  const session = await auth();
 
   const invitation = await getRecruitingInvitationByToken(token);
 
@@ -80,6 +91,24 @@ export default async function RecruitPage({
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">{t("expired")}</CardTitle>
           <CardDescription>{t("expiredDescription")}</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  const isRedeemed = invitation.status === "redeemed" && invitation.userId;
+  const resumeWithCurrentSession = Boolean(
+    isRedeemed &&
+    invitation.userId &&
+    session?.user?.id === invitation.userId
+  );
+
+  if (isRedeemed && !resumeWithCurrentSession) {
+    return (
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">{t("claimed")}</CardTitle>
+          <CardDescription>{t("claimedDescription")}</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -118,8 +147,6 @@ export default async function RecruitPage({
       </Card>
     );
   }
-
-  const isRedeemed = invitation.status === "redeemed" && invitation.userId;
 
   const [problemCountRow] = await db
     .select({ count: sql<number>`count(*)` })
@@ -168,11 +195,17 @@ export default async function RecruitPage({
               <li>{t("reviewNoticeAi")}</li>
             </ul>
           </div>
+          {resumeWithCurrentSession && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30 p-3 text-sm text-emerald-800 dark:text-emerald-200">
+              {t("resumeSessionOnlyNotice")}
+            </div>
+          )}
         </div>
         <RecruitStartForm
           token={token}
           assignmentId={assignment.id}
           isReentry={!!isRedeemed}
+          resumeWithCurrentSession={resumeWithCurrentSession}
         />
       </CardContent>
     </Card>

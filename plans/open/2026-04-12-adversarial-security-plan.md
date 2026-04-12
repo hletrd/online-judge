@@ -46,6 +46,7 @@ If any of these change before implementation starts, update the plan first.
 ## Phase 1 — Eliminate replayable recruiting-token login
 ### Track 1A — Make the invite URL claim-only
 **Severity:** HIGH
+**Status (2026-04-12):** Partially implemented. Redeemed invite URLs no longer create sessions again, and same-session candidates now resume without replaying the token. A stronger cross-device re-entry/reset flow is still open for a future slice.
 
 **Files**
 - recruiting invitation/token redemption/auth surfaces

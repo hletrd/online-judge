@@ -213,21 +213,10 @@ export async function redeemRecruitingToken(
 
       if (!invitation) return { ok: false as const, error: "invalidToken" };
 
-      // Already redeemed — allow re-entry
+      // Already redeemed — the original invite URL is claim-only and can no
+      // longer be reused as a login credential.
       if (invitation.status === "redeemed" && invitation.userId) {
-        const [assignment] = await tx
-          .select({ id: assignments.id, groupId: assignments.groupId })
-          .from(assignments)
-          .where(eq(assignments.id, invitation.assignmentId))
-          .limit(1);
-        if (!assignment) return { ok: false as const, error: "assignmentNotFound" };
-        return {
-          ok: true as const,
-          userId: invitation.userId,
-          assignmentId: assignment.id,
-          groupId: assignment.groupId,
-          alreadyRedeemed: true,
-        };
+        return { ok: false as const, error: "alreadyRedeemed" };
       }
 
       if (invitation.status === "revoked") return { ok: false as const, error: "tokenRevoked" };

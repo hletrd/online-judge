@@ -101,6 +101,18 @@ describe("authorizeRecruitingToken", () => {
     expect(result).toBeNull();
   });
 
+  it("returns null when a claimed invite token is replayed", async () => {
+    mocks.redeemRecruitingToken.mockResolvedValueOnce({
+      ok: false,
+      error: "alreadyRedeemed",
+    });
+
+    const result = await authorizeRecruitingToken(validToken, mockRequest());
+
+    expect(result).toBeNull();
+    expect(mocks.dbQueryUsersFindFirst).not.toHaveBeenCalled();
+  });
+
   it("returns null when user is not found in database", async () => {
     mocks.redeemRecruitingToken.mockResolvedValueOnce({
       ok: true,

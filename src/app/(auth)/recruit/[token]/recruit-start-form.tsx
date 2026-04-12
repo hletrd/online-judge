@@ -10,10 +10,12 @@ export function RecruitStartForm({
   token,
   assignmentId,
   isReentry,
+  resumeWithCurrentSession,
 }: {
   token: string;
   assignmentId: string;
   isReentry: boolean;
+  resumeWithCurrentSession: boolean;
 }) {
   const t = useTranslations("recruit");
   const router = useRouter();
@@ -25,6 +27,12 @@ export function RecruitStartForm({
     setError(null);
 
     try {
+      if (resumeWithCurrentSession) {
+        router.push(`/dashboard/contests/${assignmentId}`);
+        router.refresh();
+        return;
+      }
+
       // Sign out any existing session first
       await signOut({ redirect: false }).catch(() => {});
 
