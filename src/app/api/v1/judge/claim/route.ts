@@ -129,11 +129,11 @@ export async function POST(request: NextRequest) {
             judge_claim_token = @claimToken,
             judge_claimed_at = to_timestamp(@claimCreatedAt::double precision / 1000),
             judge_worker_id = @workerId
+          FROM candidate
           WHERE id = (
             SELECT candidate.id
             FROM candidate
           )
-          FROM candidate
           RETURNING
             id,
             user_id AS "userId",
@@ -181,11 +181,11 @@ export async function POST(request: NextRequest) {
           judge_claim_token = @claimToken,
           judge_claimed_at = to_timestamp(@claimCreatedAt::double precision / 1000),
           judge_worker_id = @workerId
+        FROM candidate
         WHERE id = (
           SELECT candidate.id
           FROM candidate
         )
-        FROM candidate
         RETURNING
           id,
           user_id AS "userId",
