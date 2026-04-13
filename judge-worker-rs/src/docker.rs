@@ -107,6 +107,10 @@ fn parse_timestamp_epoch_ms(s: &str) -> Option<u64> {
     if m <= 2 { y -= 1; m += 12; }
     let days = 365 * y + y / 4 - y / 100 + y / 400 + (153 * (m - 3) + 2) / 5 + day - 719469;
     let total_ms = ((days * 86400 + hours * 3600 + minutes * 60 + secs) * 1000) + millis;
+    if total_ms < 0 {
+        return None;
+    }
+
     Some(total_ms as u64)
 }
 
@@ -418,7 +422,7 @@ pub async fn run_docker(
 
 #[cfg(test)]
 mod tests {
-    use super::{resolve_seccomp_profile, JudgeEnvironmentError, Phase};
+    use super::{parse_timestamp_epoch_ms, resolve_seccomp_profile, JudgeEnvironmentError, Phase};
     use std::path::PathBuf;
     use tempfile::NamedTempFile;
 
@@ -455,6 +459,17 @@ mod tests {
             .expect("disabled seccomp should skip profile lookup");
 
         assert!(resolved.is_none());
+    }
+
+    #[test]
+    fn parse_timestamp_handles_unix_epoch() {
+        assert_eq!(parse_timestamp_epoch_ms("1970-01-01T00:00:00Z"), Some(0));
+        assert_eq!(parse_timestamp_epoch_ms("1970-01-01T00:00:00.123456789Z"), Some(123));
+    }
+
+    #[test]
+    fn parse_timestamp_rejects_pre_epoch_docker_zero_time() {
+        assert_eq!(parse_timestamp_epoch_ms("0001-01-01T00:00:00Z"), None);
     }
 }
 
