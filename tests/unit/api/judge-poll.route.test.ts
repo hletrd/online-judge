@@ -191,9 +191,8 @@ describe("POST /api/v1/judge/claim", () => {
     expect(rawQueryOneMock).toHaveBeenCalledOnce();
     expect(rawQueryOneMock.mock.calls[0]?.[0]).toContain("WITH worker_slot AS");
     expect(rawQueryOneMock.mock.calls[0]?.[0]).toContain("active_tasks = active_tasks + 1");
-    expect(rawQueryOneMock.mock.calls[0]?.[0]).toContain(`judge_worker_id = @workerId
-          FROM candidate
-          WHERE id = (`);
+    expect(rawQueryOneMock.mock.calls[0]?.[0]).toContain("FROM candidate");
+    expect(rawQueryOneMock.mock.calls[0]?.[0]).toContain("WHERE s.id = candidate.id");
   });
 
   it("returns workerAtCapacity when the atomic worker reservation cannot be acquired", async () => {

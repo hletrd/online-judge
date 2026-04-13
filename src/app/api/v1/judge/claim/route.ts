@@ -123,33 +123,30 @@ export async function POST(request: NextRequest) {
           FOR UPDATE SKIP LOCKED
         ),
         claimed AS (
-          UPDATE submissions
+          UPDATE submissions AS s
           SET
             status = 'queued',
             judge_claim_token = @claimToken,
             judge_claimed_at = to_timestamp(@claimCreatedAt::double precision / 1000),
             judge_worker_id = @workerId
           FROM candidate
-          WHERE id = (
-            SELECT candidate.id
-            FROM candidate
-          )
+          WHERE s.id = candidate.id
           RETURNING
-            id,
-            user_id AS "userId",
-            problem_id AS "problemId",
-            assignment_id AS "assignmentId",
+            s.id,
+            s.user_id AS "userId",
+            s.problem_id AS "problemId",
+            s.assignment_id AS "assignmentId",
             candidate.previous_status AS "previousStatus",
-            judge_claim_token AS "claimToken",
-            language,
-            source_code AS "sourceCode",
-            status,
-            compile_output AS "compileOutput",
-            execution_time_ms AS "executionTimeMs",
-            memory_used_kb AS "memoryUsedKb",
-            score,
-            EXTRACT(EPOCH FROM judged_at)::integer AS "judgedAt",
-            EXTRACT(EPOCH FROM submitted_at)::integer AS "submittedAt"
+            s.judge_claim_token AS "claimToken",
+            s.language,
+            s.source_code AS "sourceCode",
+            s.status,
+            s.compile_output AS "compileOutput",
+            s.execution_time_ms AS "executionTimeMs",
+            s.memory_used_kb AS "memoryUsedKb",
+            s.score,
+            EXTRACT(EPOCH FROM s.judged_at)::integer AS "judgedAt",
+            EXTRACT(EPOCH FROM s.submitted_at)::integer AS "submittedAt"
         ),
         worker_bump AS (
           UPDATE judge_workers
@@ -175,33 +172,30 @@ export async function POST(request: NextRequest) {
           LIMIT 1
           FOR UPDATE SKIP LOCKED
         )
-        UPDATE submissions
+        UPDATE submissions AS s
         SET
           status = 'queued',
           judge_claim_token = @claimToken,
           judge_claimed_at = to_timestamp(@claimCreatedAt::double precision / 1000),
           judge_worker_id = @workerId
         FROM candidate
-        WHERE id = (
-          SELECT candidate.id
-          FROM candidate
-        )
+        WHERE s.id = candidate.id
         RETURNING
-          id,
-          user_id AS "userId",
-          problem_id AS "problemId",
-          assignment_id AS "assignmentId",
+          s.id,
+          s.user_id AS "userId",
+          s.problem_id AS "problemId",
+          s.assignment_id AS "assignmentId",
           candidate.previous_status AS "previousStatus",
-          judge_claim_token AS "claimToken",
-          language,
-          source_code AS "sourceCode",
-          status,
-          compile_output AS "compileOutput",
-          execution_time_ms AS "executionTimeMs",
-          memory_used_kb AS "memoryUsedKb",
-          score,
-          EXTRACT(EPOCH FROM judged_at)::integer AS "judgedAt",
-          EXTRACT(EPOCH FROM submitted_at)::integer AS "submittedAt"
+          s.judge_claim_token AS "claimToken",
+          s.language,
+          s.source_code AS "sourceCode",
+          s.status,
+          s.compile_output AS "compileOutput",
+          s.execution_time_ms AS "executionTimeMs",
+          s.memory_used_kb AS "memoryUsedKb",
+          s.score,
+          EXTRACT(EPOCH FROM s.judged_at)::integer AS "judgedAt",
+          EXTRACT(EPOCH FROM s.submitted_at)::integer AS "submittedAt"
       `;
 
     // Atomic claim via raw SQL (PostgreSQL). When a worker is provided, the
