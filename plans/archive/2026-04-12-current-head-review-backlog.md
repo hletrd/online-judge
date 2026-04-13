@@ -1,5 +1,8 @@
 # Master review backlog — remaining work after the current-HEAD review pass
 
+> Archived on 2026-04-13 after explicit user acceptance of the remaining current-state limitations for now.
+
+
 ## Source reviews that still require action
 - `.context/reviews/multi-perspective-review-2026-04-12-current-head.md`
 - `.context/reviews/adversarial-security-review-2026-04-12-current-head.md`

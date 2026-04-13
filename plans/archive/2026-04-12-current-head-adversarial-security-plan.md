@@ -1,5 +1,8 @@
 # Implementation plan — `.context/reviews/adversarial-security-review-2026-04-12-current-head.md`
 
+> Archived on 2026-04-13 after explicit user acceptance of the remaining current-state limitations for now.
+
+
 ## Source review status
 Open plan. No implementation is included here.
 

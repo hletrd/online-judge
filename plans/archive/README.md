@@ -31,3 +31,7 @@ This folder keeps **completed or historical planning artifacts**.
 
 ## Note on current-HEAD re-review plans
 The new current-HEAD re-review plans stay under `plans/open/` because they track what still blocks a higher assurance bar after the earlier 2026-04-12 remediation was completed.
+- `2026-04-12-current-head-review-backlog.md`
+- `2026-04-12-current-head-multi-perspective-plan.md`
+- `2026-04-12-current-head-adversarial-security-plan.md`
+- `2026-04-13-current-head-acceptance.md`

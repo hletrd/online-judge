@@ -47,11 +47,9 @@ This note records which review lines already remain covered by archived plan art
 - **Reason:** retained for reference, not for new implementation planning.
 
 ## Open review lines after this pass
-The original 2026-04-12 remediation plans are closed, but the newer current-HEAD re-review artifacts have now reopened a higher-bar follow-up planning lane:
-- `.context/reviews/multi-perspective-review-2026-04-12-current-head.md`
-- `.context/reviews/adversarial-security-review-2026-04-12-current-head.md`
+None.
 
-Their fresh implementation plans now live under `plans/open/`.
+The original 2026-04-12 remediation plans are closed, and the newer current-HEAD follow-up plans were archived on 2026-04-13 after explicit user acceptance of the remaining current-state limitations for now.
 
 ## Post-completion verification note
 - 2026-04-12: restored the missing `db:push` package script expected by local Playwright/CI web-server flows and added `scripts/playwright-local-webserver.sh` so local Playwright starts against a fresh ephemeral PostgreSQL instance before seeding, syncing languages, building, and starting the app.
@@ -59,3 +57,5 @@ Their fresh implementation plans now live under `plans/open/`.
 - 2026-04-12 follow-up: added an admin-side resume-code reset path for redeemed recruiting invitations so candidates who lose their resume code can be recovered without reopening invite-link replay.
 - 2026-04-12 follow-up: automated pruning now also covers aged recruiting invitation records once they are terminal or long-expired.
 - 2026-04-12 follow-up: automated retention now prunes terminal submissions and grading records older than 365 days while excluding in-progress queue items.
+
+- 2026-04-13: archived the current-head follow-up plans as accepted-current-posture after the user explicitly accepted the remaining limitations around identity assurance, code-path-only load verification, browser-based anti-cheat, long retention, and worker isolation.
