@@ -14,6 +14,11 @@ type LectureModeContextValue = {
   setColorScheme: (scheme: LectureColorScheme) => void;
   panelLayout: "split" | "problem" | "code";
   setPanelLayout: (layout: "split" | "problem" | "code") => void;
+  statsAvailable: boolean;
+  setStatsAvailable: (available: boolean) => void;
+  showStats: boolean;
+  toggleStats: () => void;
+  closeStats: () => void;
 };
 
 const LectureModeContext = createContext<LectureModeContextValue | null>(null);
@@ -30,6 +35,11 @@ export function useLectureMode() {
       setColorScheme: () => {},
       panelLayout: "split" as const,
       setPanelLayout: () => {},
+      statsAvailable: false,
+      setStatsAvailable: () => {},
+      showStats: false,
+      toggleStats: () => {},
+      closeStats: () => {},
     };
   }
   return ctx;
@@ -56,6 +66,8 @@ export function LectureModeProvider({
     (["dark", "light", "solarized"].includes(initialColorScheme) ? initialColorScheme : "dark") as LectureColorScheme
   );
   const [panelLayout, setPanelLayout] = useState<"split" | "problem" | "code">("split");
+  const [statsAvailable, setStatsAvailable] = useState(false);
+  const [showStats, setShowStats] = useState(false);
 
   // Apply/remove CSS classes on <html>
   useEffect(() => {
@@ -89,9 +101,38 @@ export function LectureModeProvider({
     persistAction?.({ lectureColorScheme: scheme }).catch(() => {});
   }, [persistAction]);
 
+  const toggleStats = useCallback(() => {
+    setShowStats((prev) => (statsAvailable ? !prev : false));
+  }, [statsAvailable]);
+
+  const closeStats = useCallback(() => {
+    setShowStats(false);
+  }, []);
+
+  const handleSetStatsAvailable = useCallback((available: boolean) => {
+    setStatsAvailable(available);
+    if (!available) {
+      setShowStats(false);
+    }
+  }, []);
+
   return (
     <LectureModeContext.Provider
-      value={{ active, toggle, fontScale, setFontScale, colorScheme, setColorScheme, panelLayout, setPanelLayout }}
+      value={{
+        active,
+        toggle,
+        fontScale,
+        setFontScale,
+        colorScheme,
+        setColorScheme,
+        panelLayout,
+        setPanelLayout,
+        statsAvailable,
+        setStatsAvailable: handleSetStatsAvailable,
+        showStats,
+        toggleStats,
+        closeStats,
+      }}
     >
       {children}
     </LectureModeContext.Provider>

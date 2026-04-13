@@ -41,10 +41,12 @@ function categorize(status: string): keyof Omit<SubmissionStats, "total"> {
 }
 
 export function SubmissionOverview({
+  assignmentId,
   problemId,
   open,
   onClose,
 }: {
+  assignmentId?: string | null;
   problemId: string;
   open: boolean;
   onClose: () => void;
@@ -61,21 +63,39 @@ export function SubmissionOverview({
   const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/v1/submissions?problemId=${problemId}&limit=100`, {
+      const params = new URLSearchParams({
+        problemId,
+        limit: "10",
+        includeSummary: "1",
+      });
+      if (assignmentId) {
+        params.set("assignmentId", assignmentId);
+      }
+      const res = await fetch(`/api/v1/submissions?${params.toString()}`, {
         headers: { "X-Requested-With": "XMLHttpRequest" },
       });
       if (!res.ok) return;
       const json = await res.json();
       const submissions: Array<{ id: string; status: string; language: string; submittedAt: string; userId: string }> =
         json.data?.submissions ?? json.data ?? [];
+      const summary = json.data?.summary as Record<string, number> | undefined;
+      const total = typeof json.data?.total === "number" ? json.data.total : submissions.length;
 
       const newStats: SubmissionStats = {
-        total: submissions.length, accepted: 0, wrongAnswer: 0, compileError: 0,
+        total, accepted: 0, wrongAnswer: 0, compileError: 0,
         runtimeError: 0, timeLimit: 0, pending: 0, other: 0,
       };
-      for (const sub of submissions) {
-        const cat = categorize(sub.status);
-        newStats[cat]++;
+
+      if (summary) {
+        for (const [status, count] of Object.entries(summary)) {
+          const cat = categorize(status);
+          newStats[cat] += count;
+        }
+      } else {
+        for (const sub of submissions) {
+          const cat = categorize(sub.status);
+          newStats[cat]++;
+        }
       }
       setStats(newStats);
       setRecent(submissions.slice(0, 10));
@@ -84,7 +104,7 @@ export function SubmissionOverview({
     } finally {
       setLoading(false);
     }
-  }, [problemId]);
+  }, [assignmentId, problemId]);
 
   useEffect(() => {
     if (!open) return;

@@ -30,6 +30,8 @@ export const GET = createApiHandler({
     const problemId = searchParams.get("problemId");
     const status = searchParams.get("status");
     const cursorParam = searchParams.get("cursor");
+    const assignmentId = searchParams.get("assignmentId");
+    const includeSummary = searchParams.get("includeSummary") === "1";
     const caps = await resolveCapabilities(user.role);
 
     if (status && !isSubmissionStatus(status)) {
@@ -43,6 +45,7 @@ export const GET = createApiHandler({
     const userFilter = caps.has("submissions.view_all") ? undefined : eq(submissions.userId, user.id);
     const problemFilter = problemId ? eq(submissions.problemId, problemId) : undefined;
     const statusFilter = status ? eq(submissions.status, status) : undefined;
+    const assignmentFilter = assignmentId ? eq(submissions.assignmentId, assignmentId) : undefined;
 
     if (cursorParam !== null) {
       // Cursor-based pagination mode
@@ -63,7 +66,7 @@ export const GET = createApiHandler({
         }
       }
 
-      const filters = [userFilter, problemFilter, statusFilter, cursorFilter].flatMap((f) =>
+      const filters = [userFilter, problemFilter, statusFilter, assignmentFilter, cursorFilter].flatMap((f) =>
         f ? [f] : []
       );
       const whereClause =
@@ -99,7 +102,7 @@ export const GET = createApiHandler({
     // Offset-based pagination mode (default, backward compatible)
     const { page, limit, offset } = parsePagination(searchParams);
 
-    const filters = [userFilter, problemFilter, statusFilter].flatMap((filter) =>
+    const filters = [userFilter, problemFilter, statusFilter, assignmentFilter].flatMap((filter) =>
       filter ? [filter] : []
     );
     const whereClause =
@@ -129,6 +132,29 @@ export const GET = createApiHandler({
       limit,
       offset,
     });
+
+    if (includeSummary) {
+      const grouped = await db
+        .select({
+          status: submissions.status,
+          count: sql<number>`count(*)`,
+        })
+        .from(submissions)
+        .where(whereClause)
+        .groupBy(submissions.status);
+
+      const summary = Object.fromEntries(
+        grouped.map((row) => [row.status, Number(row.count ?? 0)])
+      );
+
+      return apiSuccess({
+        submissions: results,
+        page,
+        limit,
+        total: Number(totalRow?.count ?? 0),
+        summary,
+      });
+    }
 
     return apiPaginated(results, page, limit, Number(totalRow?.count ?? 0));
   },

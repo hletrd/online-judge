@@ -13,9 +13,20 @@ const AUTO_HIDE_MS = 4000;
 type FontScale = (typeof FONT_SCALES)[number];
 type ColorScheme = (typeof COLOR_SCHEMES)[number];
 
-export function LectureToolbar({ onToggleStats }: { onToggleStats?: () => void }) {
+export function LectureToolbar() {
   const t = useTranslations("lecture");
-  const { active, toggle, fontScale, setFontScale, colorScheme, setColorScheme, panelLayout, setPanelLayout } = useLectureMode();
+  const {
+    active,
+    toggle,
+    fontScale,
+    setFontScale,
+    colorScheme,
+    setColorScheme,
+    panelLayout,
+    setPanelLayout,
+    statsAvailable,
+    toggleStats,
+  } = useLectureMode();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [visible, setVisible] = useState(true);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -85,14 +96,14 @@ export function LectureToolbar({ onToggleStats }: { onToggleStats?: () => void }
           break;
         case "s":
         case "S":
-          if (!e.ctrlKey && !e.metaKey) onToggleStats?.();
+          if (!e.ctrlKey && !e.metaKey) toggleStats();
           break;
       }
       resetHideTimer();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [active, fontScale, onToggleStats, resetHideTimer, setFontScale, setPanelLayout, toggle, toggleFullscreen]);
+  }, [active, fontScale, resetHideTimer, setFontScale, setPanelLayout, toggle, toggleFullscreen, toggleStats]);
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
@@ -150,8 +161,8 @@ export function LectureToolbar({ onToggleStats }: { onToggleStats?: () => void }
         {isFullscreen ? <Minimize className="size-3.5" /> : <Maximize className="size-3.5" />}
       </Button>
 
-      {onToggleStats && (
-        <Button variant="ghost" size="icon-sm" onClick={onToggleStats} title={t("submissionStatsTitle", { key: "S" })}>
+      {statsAvailable && (
+        <Button variant="ghost" size="icon-sm" onClick={toggleStats} title={t("submissionStatsTitle", { key: "S" })}>
           <BarChart3 className="size-3.5" />
         </Button>
       )}

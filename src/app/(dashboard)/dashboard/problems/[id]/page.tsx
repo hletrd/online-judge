@@ -372,6 +372,7 @@ export default async function ProblemDetailPage({
 
   return (
     <ProblemLectureWrapper
+      assignmentId={assignmentContext?.id ?? null}
       problemId={problem.id}
       problemTitle={problem.title}
       problemPanel={problemPanel}
