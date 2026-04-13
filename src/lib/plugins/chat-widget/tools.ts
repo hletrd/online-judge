@@ -1,7 +1,9 @@
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { problems, submissions, submissionResults, assignments } from "@/lib/db/schema";
-import { canAccessProblem } from "@/lib/auth/permissions";
+import { canAccessProblem, canAccessGroup } from "@/lib/auth/permissions";
+import { canViewAssignmentSubmissions } from "@/lib/assignments/submissions";
+import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 
 export interface ToolDefinition {
   name: string;
@@ -255,6 +257,7 @@ async function handleGetAssignmentInfo(context: AgentContext): Promise<string> {
     where: eq(assignments.id, context.assignmentId),
     columns: {
       id: true,
+      groupId: true,
       title: true,
       deadline: true,
       lateDeadline: true,
@@ -263,6 +266,23 @@ async function handleGetAssignmentInfo(context: AgentContext): Promise<string> {
 
   if (!assignment) {
     return JSON.stringify({ error: "Assignment not found" });
+  }
+
+  const canViewPrivileged = await canViewAssignmentSubmissions(
+    context.assignmentId,
+    context.userId,
+    context.userRole
+  );
+  const recruitingAccess = await getRecruitingAccessContext(context.userId);
+  const hasAssignmentScopedRecruitingAccess = recruitingAccess.assignmentIds.includes(
+    context.assignmentId
+  );
+  const hasGroupAccess =
+    hasAssignmentScopedRecruitingAccess ||
+    (await canAccessGroup(assignment.groupId, context.userId, context.userRole));
+
+  if (!canViewPrivileged && !hasGroupAccess) {
+    return JSON.stringify({ error: "Assignment not found or access denied" });
   }
 
   return JSON.stringify({

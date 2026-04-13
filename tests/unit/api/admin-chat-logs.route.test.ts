@@ -3,12 +3,14 @@ import { NextRequest } from "next/server";
 
 const {
   findManyMock,
-  selectMock,
+  rawQueryAllMock,
+  rawQueryOneMock,
   resolveCapabilitiesMock,
   recordAuditEventMock,
 } = vi.hoisted(() => ({
   findManyMock: vi.fn(),
-  selectMock: vi.fn(),
+  rawQueryAllMock: vi.fn(),
+  rawQueryOneMock: vi.fn(),
   resolveCapabilitiesMock: vi.fn(),
   recordAuditEventMock: vi.fn(),
 }));
@@ -37,8 +39,12 @@ vi.mock("@/lib/db", () => ({
         findMany: findManyMock,
       },
     },
-    select: selectMock,
   },
+}));
+
+vi.mock("@/lib/db/queries", () => ({
+  rawQueryAll: rawQueryAllMock,
+  rawQueryOne: rawQueryOneMock,
 }));
 
 vi.mock("@/lib/db/schema", () => ({
@@ -79,25 +85,6 @@ function makeCapabilities(canView: boolean) {
   };
 }
 
-function makeSelectChain(result: unknown) {
-  return {
-    from: vi.fn(() => ({
-      leftJoin: vi.fn(() => ({
-        where: vi.fn(() => ({
-          groupBy: vi.fn(() => ({
-            orderBy: vi.fn(() => ({
-              limit: vi.fn(() => ({
-                offset: vi.fn().mockResolvedValue(result),
-              })),
-            })),
-          })),
-        })),
-      })),
-      where: vi.fn().mockResolvedValue(result),
-    })),
-  };
-}
-
 describe("GET /api/v1/admin/chat-logs", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -105,29 +92,22 @@ describe("GET /api/v1/admin/chat-logs", () => {
   });
 
   it("records an audit event when listing chat-log sessions", async () => {
-    selectMock
-      .mockReturnValueOnce(
-        makeSelectChain([
-          {
-            sessionId: "session-1",
-            userId: "user-1",
-            problemId: "problem-1",
-            provider: "openai",
-            model: "gpt",
-            messageCount: 2,
-            firstMessage: "hello",
-            startedAt: "2026-04-12T00:00:00Z",
-            lastMessageAt: "2026-04-12T00:05:00Z",
-            userName: "Candidate",
-            username: "candidate",
-          },
-        ])
-      )
-      .mockReturnValueOnce({
-        from: vi.fn(() => ({
-          where: vi.fn().mockResolvedValue([{ total: 1 }]),
-        })),
-      });
+    rawQueryAllMock.mockResolvedValue([
+      {
+        sessionId: "session-1",
+        userId: "user-1",
+        problemId: "problem-1",
+        provider: "openai",
+        model: "gpt",
+        messageCount: 2,
+        firstMessage: "hello",
+        startedAt: "2026-04-12T00:00:00Z",
+        lastMessageAt: "2026-04-12T00:05:00Z",
+        userName: "Candidate",
+        username: "candidate",
+      },
+    ]);
+    rawQueryOneMock.mockResolvedValue({ total: 1 });
 
     const { GET } = await import("@/app/api/v1/admin/chat-logs/route");
     const res = await GET(new NextRequest("http://localhost/api/v1/admin/chat-logs?page=1"));
@@ -135,6 +115,8 @@ describe("GET /api/v1/admin/chat-logs", () => {
 
     expect(res.status).toBe(200);
     expect(body.sessions).toHaveLength(1);
+    expect(rawQueryAllMock).toHaveBeenCalledOnce();
+    expect(rawQueryOneMock).toHaveBeenCalledOnce();
     expect(recordAuditEventMock).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "chat_log.list_viewed",

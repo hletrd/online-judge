@@ -14,6 +14,10 @@ import { nanoid } from "nanoid";
 import { isAiAssistantEnabledForContext } from "@/lib/platform-mode-context";
 
 const MAX_TOOL_ITERATIONS = 5;
+const STREAM_HEADERS = {
+  "Content-Type": "text/plain; charset=utf-8",
+  "Cache-Control": "no-cache",
+} as const;
 
 function generateSessionId(): string {
   return nanoid(12);
@@ -32,9 +36,59 @@ const requestSchema = z.object({
     editorCode: z.string().max(100000).nullish(),
     editorLanguage: z.string().max(50).nullish(),
     sessionId: z.string().max(50).nullish(),
-    skipLog: z.boolean().nullish(),
   }).optional(),
 });
+
+async function persistChatMessage(entry: {
+  userId: string;
+  sessionId: string;
+  role: "user" | "assistant";
+  content: string;
+  problemId: string | null;
+  provider: string;
+  model: string | null;
+}) {
+  if (!entry.content) return;
+
+  try {
+    await db.insert(chatMessages).values(entry);
+  } catch (error) {
+    logger.error({ err: error, role: entry.role, sessionId: entry.sessionId }, "Failed to save chat message");
+  }
+}
+
+function buildLoggedStreamingResponse(options: {
+  stream: ReadableStream<Uint8Array>;
+  sessionId: string;
+  persistAssistantMessage: () => Promise<void>;
+}) {
+  const passthrough = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const reader = options.stream.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) controller.enqueue(value);
+        }
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      } finally {
+        reader.releaseLock();
+        await options.persistAssistantMessage();
+      }
+    },
+  });
+
+  return new Response(passthrough, {
+    headers: {
+      ...STREAM_HEADERS,
+      "Transfer-Encoding": "chunked",
+      "X-Chat-Session-Id": options.sessionId,
+    },
+  }) as unknown as NextResponse;
+}
 
 function buildSystemPrompt(config: {
   systemPrompt: string;
@@ -160,45 +214,18 @@ export const POST = createApiHandler({
 
     const sessionId = context?.sessionId || generateSessionId();
 
-    // Save the latest user message (skip for auto-analysis)
-    const skipLog = context?.skipLog === true;
+    // Save the latest user message as the authoritative request record.
     const lastUserMessage = [...parsed.data.messages].reverse().find(m => m.role === "user");
-    if (lastUserMessage && !skipLog) {
-      try {
-        await db.insert(chatMessages).values({
-          userId: session.user.id,
-          sessionId,
-          role: "user",
-          content: lastUserMessage.content,
-          problemId: context?.problemId ?? null,
-          model: null,
-          provider: config.provider,
-        });
-      } catch (e) {
-        // Don't fail the request if logging fails
-        logger.error({ err: e }, "Failed to save chat message");
-      }
-    }
-
-    // Also save any previous assistant message that wasn't saved yet
-    // (the client sends full history, so the second-to-last message from assistant is the previous response)
-    if (parsed.data.messages.length >= 2 && !skipLog) {
-      const prevAssistant = parsed.data.messages[parsed.data.messages.length - 2];
-      if (prevAssistant?.role === "assistant" && prevAssistant.content) {
-        try {
-          await db.insert(chatMessages).values({
-            userId: session.user.id,
-            sessionId,
-            role: "assistant",
-            content: prevAssistant.content,
-            problemId: context?.problemId ?? null,
-            model: null,
-            provider: config.provider,
-          });
-        } catch (e) {
-          logger.error({ err: e }, "Failed to save assistant message");
-        }
-      }
+    if (lastUserMessage) {
+      await persistChatMessage({
+        userId: session.user.id,
+        sessionId,
+        role: "user",
+        content: lastUserMessage.content,
+        problemId: context?.problemId ?? null,
+        model: null,
+        provider: config.provider,
+      });
     }
 
     // Check global AI assistant toggle
@@ -294,11 +321,42 @@ export const POST = createApiHandler({
         messages,
         maxTokens: config.maxTokens,
       });
+      const decoder = new TextDecoder();
+      let assistantContent = "";
+      const loggingStream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          const reader = stream.getReader();
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              if (value) {
+                assistantContent += decoder.decode(value, { stream: true });
+                controller.enqueue(value);
+              }
+            }
+            assistantContent += decoder.decode();
+            controller.close();
+          } catch (error) {
+            controller.error(error);
+          } finally {
+            reader.releaseLock();
+            await persistChatMessage({
+              userId: session.user.id,
+              sessionId,
+              role: "assistant",
+              content: assistantContent,
+              problemId: context?.problemId ?? null,
+              model,
+              provider: config.provider,
+            });
+          }
+        },
+      });
 
-      return new Response(stream, {
+      return new Response(loggingStream, {
         headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "no-cache",
+          ...STREAM_HEADERS,
           "Transfer-Encoding": "chunked",
           "X-Chat-Session-Id": sessionId,
         },
@@ -321,22 +379,29 @@ export const POST = createApiHandler({
       });
 
       if (response.type === "text") {
-        // Final text response — return as stream
+        const assistantContent = response.text ?? "";
         const encoder = new TextEncoder();
         const textStream = new ReadableStream({
           start(controller) {
-            controller.enqueue(encoder.encode(response.text ?? ""));
+            controller.enqueue(encoder.encode(assistantContent));
             controller.close();
           },
         });
-
-        return new Response(textStream, {
-          headers: {
-            "Content-Type": "text/plain; charset=utf-8",
-            "Cache-Control": "no-cache",
-            "X-Chat-Session-Id": sessionId,
+        return buildLoggedStreamingResponse({
+          stream: textStream,
+          sessionId,
+          persistAssistantMessage: async () => {
+            await persistChatMessage({
+              userId: session.user.id,
+              sessionId,
+              role: "assistant",
+              content: assistantContent,
+              problemId: context?.problemId ?? null,
+              model,
+              provider: config.provider,
+            });
           },
-        }) as unknown as NextResponse;
+        });
       }
 
       // Tool calls — execute and continue loop
@@ -356,11 +421,42 @@ export const POST = createApiHandler({
       messages: fullMessages as ChatMessage[],
       maxTokens: config.maxTokens,
     });
+    const decoder = new TextDecoder();
+    let assistantContent = "";
+    const loggingStream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const reader = finalStream.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) {
+              assistantContent += decoder.decode(value, { stream: true });
+              controller.enqueue(value);
+            }
+          }
+          assistantContent += decoder.decode();
+          controller.close();
+        } catch (error) {
+          controller.error(error);
+        } finally {
+          reader.releaseLock();
+          await persistChatMessage({
+            userId: session.user.id,
+            sessionId,
+            role: "assistant",
+            content: assistantContent,
+            problemId: context?.problemId ?? null,
+            model,
+            provider: config.provider,
+          });
+        }
+      },
+    });
 
-    return new Response(finalStream, {
+    return new Response(loggingStream, {
       headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-cache",
+        ...STREAM_HEADERS,
         "Transfer-Encoding": "chunked",
         "X-Chat-Session-Id": sessionId,
       },

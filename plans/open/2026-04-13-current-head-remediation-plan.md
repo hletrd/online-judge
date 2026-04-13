@@ -40,7 +40,12 @@ The earlier 2026-04-13 acceptance note is now superseded by a newer user directi
 - tool outputs do not leak assignment metadata outside authorized scope
 
 **Progress**
-- ⏳ not started
+- ✅ completed 2026-04-13
+- removed the client-controlled `skipLog` escape hatch from the effective server contract
+- server now persists authoritative assistant output from the generated stream instead of trusting replayed client history
+- admin chat-log session listing now uses a PostgreSQL-safe session-bounds / first-message query instead of invalid grouped non-aggregates and lexicographic `min(content)`
+- `get_assignment_info` now checks assignment/group/recruiting scope before returning metadata
+- coverage: targeted admin chat-log, chat route, and chat-tool tests
 
 ## Workstream C — Realtime/runtime/deploy correctness
 **Targets**

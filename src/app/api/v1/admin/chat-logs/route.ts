@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { desc, eq, sql, and, asc } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { chatMessages, users } from "@/lib/db/schema";
+import { chatMessages } from "@/lib/db/schema";
 import { forbidden } from "@/lib/api/auth";
 import { createApiHandler } from "@/lib/api/handler";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { recordAuditEvent } from "@/lib/audit/events";
+import { rawQueryAll, rawQueryOne } from "@/lib/db/queries";
 
 export const GET = createApiHandler({
   handler: async (req: NextRequest, { user }) => {
@@ -48,34 +49,70 @@ export const GET = createApiHandler({
       filters.push(eq(chatMessages.userId, userId));
     }
 
-    const whereClause = filters.length > 0 ? and(...filters) : undefined;
+    const sessions = await rawQueryAll<{
+      sessionId: string;
+      userId: string | null;
+      problemId: string | null;
+      provider: string | null;
+      model: string | null;
+      messageCount: number;
+      firstMessage: string | null;
+      startedAt: string;
+      lastMessageAt: string;
+      userName: string | null;
+      username: string | null;
+    }>(
+      `WITH filtered AS (
+         SELECT *
+         FROM chat_messages
+         WHERE (@userId IS NULL OR user_id = @userId)
+       ),
+       session_bounds AS (
+         SELECT
+           session_id,
+           COUNT(*)::int AS "messageCount",
+           MIN(created_at) AS "startedAt",
+           MAX(created_at) AS "lastMessageAt"
+         FROM filtered
+         GROUP BY session_id
+       ),
+       session_first AS (
+         SELECT DISTINCT ON (session_id)
+           session_id AS "sessionId",
+           user_id AS "userId",
+           problem_id AS "problemId",
+           provider,
+           model,
+           content AS "firstMessage"
+         FROM filtered
+         ORDER BY session_id, created_at ASC, id ASC
+       )
+       SELECT
+         first_row."sessionId",
+         first_row."userId",
+         first_row."problemId",
+         first_row.provider,
+         first_row.model,
+         bounds."messageCount",
+         first_row."firstMessage",
+         bounds."startedAt",
+         bounds."lastMessageAt",
+         u.name AS "userName",
+         u.username
+       FROM session_bounds bounds
+       INNER JOIN session_first first_row ON first_row."sessionId" = bounds.session_id
+       LEFT JOIN users u ON u.id = first_row."userId"
+       ORDER BY bounds."lastMessageAt" DESC
+       LIMIT @limit OFFSET @offset`,
+      { userId, limit, offset }
+    );
 
-    const sessions = await db
-      .select({
-        sessionId: chatMessages.sessionId,
-        userId: chatMessages.userId,
-        problemId: chatMessages.problemId,
-        provider: chatMessages.provider,
-        model: chatMessages.model,
-        messageCount: sql<number>`count(*)`,
-        firstMessage: sql<string>`min(${chatMessages.content})`,
-        startedAt: sql<string>`min(${chatMessages.createdAt})`,
-        lastMessageAt: sql<string>`max(${chatMessages.createdAt})`,
-        userName: users.name,
-        username: users.username,
-      })
-      .from(chatMessages)
-      .leftJoin(users, eq(chatMessages.userId, users.id))
-      .where(whereClause)
-      .groupBy(chatMessages.sessionId)
-      .orderBy(desc(sql`max(${chatMessages.createdAt})`))
-      .limit(limit)
-      .offset(offset);
-
-    const [{ total }] = await db
-      .select({ total: sql<number>`count(distinct ${chatMessages.sessionId})` })
-      .from(chatMessages)
-      .where(whereClause);
+    const totalRow = await rawQueryOne<{ total: number }>(
+      `SELECT COUNT(DISTINCT session_id)::int AS total
+       FROM chat_messages
+       WHERE (@userId IS NULL OR user_id = @userId)`,
+      { userId }
+    );
 
     recordAuditEvent({
       actorId: user.id,
@@ -91,6 +128,6 @@ export const GET = createApiHandler({
       request: req,
     });
 
-    return NextResponse.json({ sessions, total: Number(total), page, limit });
+    return NextResponse.json({ sessions, total: Number(totalRow?.total ?? 0), page, limit });
   },
 });

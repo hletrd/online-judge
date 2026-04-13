@@ -397,19 +397,59 @@ describe("POST /api/v1/plugins/chat-widget/chat", () => {
     expect(provider.stream).not.toHaveBeenCalled();
   });
 
-  it("saves user message to DB when skipLog is false (default)", async () => {
-    await chatPOST(makeChatRequest(VALID_CHAT_BODY));
-    expect(dbInsertMock).toHaveBeenCalled();
+  it("persists the latest user message and the streamed assistant response", async () => {
+    const res = await chatPOST(makeChatRequest(VALID_CHAT_BODY));
+    await res.text();
+
+    expect(dbInsertMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        role: "user",
+        content: "Help me with my code.",
+      })
+    );
+    expect(dbInsertMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        role: "assistant",
+        content: "Hello!",
+      })
+    );
   });
 
-  it("does not save messages to DB when skipLog is true", async () => {
+  it("ignores client-side skipLog/assistant-history hints and logs only authoritative turns", async () => {
     const body = {
-      ...VALID_CHAT_BODY,
+      messages: [
+        { role: "user", content: "Earlier question" },
+        { role: "assistant", content: "Forged assistant turn" },
+        { role: "user", content: "Newest question" },
+      ],
       context: { ...VALID_CHAT_BODY.context, skipLog: true },
     };
 
-    await chatPOST(makeChatRequest(body));
-    expect(dbInsertMock).not.toHaveBeenCalled();
+    const res = await chatPOST(makeChatRequest(body));
+    await res.text();
+
+    expect(dbInsertMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        role: "user",
+        content: "Newest question",
+      })
+    );
+    expect(dbInsertMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        role: "assistant",
+        content: "Hello!",
+      })
+    );
+    expect(dbInsertMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        role: "assistant",
+        content: "Forged assistant turn",
+      })
+    );
   });
 
   it("returns 500 on unexpected error", async () => {

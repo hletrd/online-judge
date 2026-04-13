@@ -23,7 +23,8 @@ The 2026-04-12 current-head follow-up plans were previously archived as **accept
 - client can suppress or forge logged chat history
 - admin chat-log session query is invalid on PostgreSQL and uses wrong preview semantics
 - chat tool assignment metadata still needs an access-control audit/fix
-- **Status:** open
+- **Status:** completed 2026-04-13
+- **Progress note:** chat logging now records authoritative user/assistant turns on the server instead of trusting client replay/skip flags, the admin chat-log session index now uses a PostgreSQL-safe first-message/session-bounds query, and the assignment-info tool now checks assignment/group/recruiting scope before returning metadata.
 
 ### 3. Realtime / deployment / worker runtime correctness
 - shared SSE coordination leaks slots on one-shot terminal responses
