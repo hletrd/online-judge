@@ -15,10 +15,10 @@ export function LectureProblemView({ problemPanel, codePanel, problemTitle }: Le
   const { panelLayout } = useLectureMode();
 
   return (
-    <div className="flex h-[calc(100vh-4.5rem)] gap-0 overflow-hidden rounded-lg border">
+    <div className="flex h-[calc(100vh-4.5rem)] min-h-0 gap-0 overflow-hidden rounded-lg border">
       {panelLayout !== "code" && (
         <div className={cn(
-          "flex flex-col overflow-hidden border-r",
+          "flex min-h-0 min-w-0 flex-col overflow-hidden border-r",
           panelLayout === "split" ? "w-1/2" : "w-full"
         )}>
           <div className="lecture-panel-header flex items-center gap-2">
@@ -26,17 +26,17 @@ export function LectureProblemView({ problemPanel, codePanel, problemTitle }: Le
             <span className="text-muted-foreground">—</span>
             <span className="truncate">{problemTitle}</span>
           </div>
-          <div className="flex-1 overflow-y-auto p-4">{problemPanel}</div>
+          <div className="flex-1 min-h-0 overflow-y-auto p-4">{problemPanel}</div>
         </div>
       )}
 
       {panelLayout !== "problem" && (
         <div className={cn(
-          "flex flex-col overflow-hidden",
+          "flex min-h-0 min-w-0 flex-col overflow-hidden",
           panelLayout === "split" ? "w-1/2" : "w-full"
         )}>
           <div className="lecture-panel-header">{t("codePanelLabel")}</div>
-          <div className="flex-1 overflow-y-auto p-4">{codePanel}</div>
+          <div className="flex-1 min-h-0 overflow-y-auto p-4">{codePanel}</div>
         </div>
       )}
     </div>
