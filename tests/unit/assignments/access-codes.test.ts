@@ -144,7 +144,7 @@ describe("access code helpers", () => {
       .mockResolvedValueOnce([{ id: "token-1" }])
       .mockResolvedValueOnce([]);
 
-    dbTransactionMock.mockImplementation(async (callback: (tx: typeof tx) => Promise<unknown>) => callback(tx));
+    dbTransactionMock.mockImplementation(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx));
 
     const accessCodesModule = await import("@/lib/assignments/access-codes");
     await expect(accessCodesModule.redeemAccessCode("ABCDEFGH", "user-1")).resolves.toMatchObject({
