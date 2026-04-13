@@ -124,8 +124,13 @@ async function handleGetSubmissionHistory(
   const limit = Math.min(Math.max(Number(args.limit) || 5, 1), 10);
 
   const recentSubmissions = await db.query.submissions.findMany({
-    where: (s, { and: andOp, eq: eqOp }) =>
-      andOp(eqOp(s.userId, context.userId), eqOp(s.problemId, context.problemId!)),
+    where: (s, { and: andOp, eq: eqOp }) => {
+      const filters = [eqOp(s.userId, context.userId), eqOp(s.problemId, context.problemId!)];
+      if (context.assignmentId) {
+        filters.push(eqOp(s.assignmentId, context.assignmentId));
+      }
+      return andOp(...filters);
+    },
     orderBy: [desc(submissions.submittedAt)],
     limit,
     columns: {

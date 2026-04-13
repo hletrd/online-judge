@@ -27,11 +27,37 @@ export function generateAccessCode(): string {
  * Set or regenerate an access code for an assignment.
  */
 export async function setAccessCode(assignmentId: string, code?: string): Promise<string> {
-  const accessCode = code ?? generateAccessCode();
-  await db.update(assignments)
-    .set(withUpdatedAt({ accessCode }))
-    .where(eq(assignments.id, assignmentId));
-  return accessCode;
+  const persistAccessCode = async (accessCode: string) => {
+    await db.update(assignments)
+      .set(withUpdatedAt({ accessCode }))
+      .where(eq(assignments.id, assignmentId));
+    return accessCode;
+  };
+
+  if (code) {
+    return persistAccessCode(code);
+  }
+
+  const MAX_GENERATION_ATTEMPTS = 5;
+  for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
+    const accessCode = generateAccessCode();
+    try {
+      return await persistAccessCode(accessCode);
+    } catch (err: unknown) {
+      if (
+        typeof err === "object"
+        && err !== null
+        && "code" in err
+        && err.code === "23505"
+        && attempt < MAX_GENERATION_ATTEMPTS - 1
+      ) {
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw new Error("accessCodeGenerationFailed");
 }
 
 /**
@@ -117,7 +143,34 @@ export async function redeemAccessCode(
         )
         .limit(1);
 
+      const ensureEnrollment = async () => {
+        const [enrollment] = await tx
+          .select({ id: enrollments.id })
+          .from(enrollments)
+          .where(
+            and(
+              eq(enrollments.groupId, assignment.groupId),
+              eq(enrollments.userId, userId)
+            )
+          )
+          .limit(1);
+
+        if (!enrollment) {
+          await tx.insert(enrollments)
+            .values({
+              id: nanoid(),
+              userId,
+              groupId: assignment.groupId,
+              enrolledAt: new Date(),
+            })
+            .onConflictDoNothing({
+              target: [enrollments.userId, enrollments.groupId],
+            });
+        }
+      };
+
       if (existing) {
+        await ensureEnrollment();
         return { ok: true as const, alreadyEnrolled: true, assignmentId: assignment.id, groupId: assignment.groupId };
       }
 
@@ -132,26 +185,7 @@ export async function redeemAccessCode(
         });
 
       // Auto-enroll in group if not already enrolled
-      const [enrollment] = await tx
-        .select({ id: enrollments.id })
-        .from(enrollments)
-        .where(
-          and(
-            eq(enrollments.groupId, assignment.groupId),
-            eq(enrollments.userId, userId)
-          )
-        )
-        .limit(1);
-
-      if (!enrollment) {
-        await tx.insert(enrollments)
-          .values({
-            id: nanoid(),
-            userId,
-            groupId: assignment.groupId,
-            enrolledAt: new Date(),
-          });
-      }
+      await ensureEnrollment();
 
       return { ok: true as const, assignmentId: assignment.id, groupId: assignment.groupId };
     });

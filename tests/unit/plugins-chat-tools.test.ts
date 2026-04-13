@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   assignmentFindFirstMock,
+  submissionFindManyMock,
   canViewAssignmentSubmissionsMock,
   canAccessGroupMock,
   getRecruitingAccessContextMock,
 } = vi.hoisted(() => ({
   assignmentFindFirstMock: vi.fn(),
+  submissionFindManyMock: vi.fn(),
   canViewAssignmentSubmissionsMock: vi.fn(),
   canAccessGroupMock: vi.fn(),
   getRecruitingAccessContextMock: vi.fn(),
@@ -17,6 +19,9 @@ vi.mock("@/lib/db", () => ({
     query: {
       assignments: {
         findFirst: assignmentFindFirstMock,
+      },
+      submissions: {
+        findMany: submissionFindManyMock,
       },
     },
   },
@@ -69,6 +74,7 @@ describe("chat widget assignment-info tool", () => {
       isRecruitingCandidate: false,
       effectivePlatformMode: "homework",
     });
+    submissionFindManyMock.mockResolvedValue([]);
   });
 
   it("rejects assignment metadata access when the caller lacks assignment/group scope", async () => {
@@ -114,5 +120,43 @@ describe("chat widget assignment-info tool", () => {
       deadline: null,
       lateDeadline: null,
     });
+  });
+
+  it("scopes submission history to the active assignment when one is present in chat context", async () => {
+    const { executeTool } = await import("@/lib/plugins/chat-widget/tools");
+
+    await executeTool(
+      "get_submission_history",
+      { limit: 3 },
+      {
+        userId: "student-1",
+        userRole: "student",
+        problemId: "problem-1",
+        assignmentId: "assignment-1",
+      }
+    );
+
+    const args = submissionFindManyMock.mock.calls[0]?.[0];
+    expect(args).toBeDefined();
+
+    const whereResult = args.where(
+      {
+        userId: "submissions.userId",
+        problemId: "submissions.problemId",
+        assignmentId: "submissions.assignmentId",
+      },
+      {
+        and: (...clauses: unknown[]) => clauses,
+        eq: (field: unknown, value: unknown) => ({ field, value }),
+      }
+    );
+
+    expect(whereResult).toEqual(
+      expect.arrayContaining([
+        { field: "submissions.userId", value: "student-1" },
+        { field: "submissions.problemId", value: "problem-1" },
+        { field: "submissions.assignmentId", value: "assignment-1" },
+      ])
+    );
   });
 });

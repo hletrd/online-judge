@@ -326,7 +326,7 @@ export const assignments = mysqlTable(
   },
   (table) => [
     index("assignments_group_idx").on(table.groupId),
-    index("assignments_access_code_idx").on(table.accessCode),
+    uniqueIndex("assignments_access_code_unique").on(table.accessCode),
   ]
 );
 
