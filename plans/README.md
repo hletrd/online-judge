@@ -39,7 +39,10 @@ This directory contains **planning only**. No implementation is included here.
 | `.context/reviews/_archive/*` | Historical | source archive | Already archived review context only |
 
 ## Currently actionable plan set
-- No active open review plans remain after the 2026-04-13 acceptance decision.
+- `plans/open/2026-04-13-current-head-master-backlog.md`
+- `plans/open/2026-04-13-current-head-remediation-plan.md`
+
+The earlier 2026-04-13 acceptance note is now superseded by a newer user directive to resume implementation on the current-head review set. Historical acceptance/archive notes remain preserved, but execution has been reopened in `plans/open/`.
 
 ## Archival note
 The older plan artifacts were **already archived** when their associated workstreams were closed. No additional historical implementation plans needed moving during this pass; instead, the review-status mapping was refreshed in `plans/archive/2026-04-12-review-status.md` and only the new still-open review lines received fresh plans.
