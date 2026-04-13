@@ -32,6 +32,19 @@ fn compile_timeout_ms_for_submission(time_limit_ms: u64) -> u64 {
         .clamp(MIN_COMPILE_TIMEOUT_MS, COMPILATION_TIMEOUT_MS)
 }
 
+fn reported_memory_used_kb(
+    memory_peak_kb: Option<u64>,
+    memory_limit_mb: u32,
+    oom_killed: bool,
+) -> u64 {
+    let memory_limit_kb = u64::from(memory_limit_mb.max(16)) * 1024;
+    if oom_killed {
+        return memory_limit_kb;
+    }
+
+    memory_peak_kb.unwrap_or(0).min(memory_limit_kb)
+}
+
 async fn prune_dead_letter_dir(dead_letter_dir: &Path, max_files: usize) {
     let mut entries = match fs::read_dir(dead_letter_dir).await {
         Ok(entries) => entries,
@@ -320,11 +333,11 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
             Verdict::Accepted
         };
 
-        let memory_used_kb: u64 = if execution.oom_killed {
-            (submission.memory_limit_mb.max(16) * 1024).into()
-        } else {
-            execution.memory_peak_kb.unwrap_or(0)
-        };
+        let memory_used_kb = reported_memory_used_kb(
+            execution.memory_peak_kb,
+            submission.memory_limit_mb,
+            execution.oom_killed,
+        );
 
         results.push(TestResult {
             test_case_id: test_case.id.clone(),
@@ -362,8 +375,8 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
 #[cfg(test)]
 mod tests {
     use super::{
-        compile_timeout_ms_for_submission, prune_dead_letter_dir, COMPILATION_TIMEOUT_MS,
-        MIN_COMPILE_TIMEOUT_MS,
+        compile_timeout_ms_for_submission, prune_dead_letter_dir, reported_memory_used_kb,
+        COMPILATION_TIMEOUT_MS, MIN_COMPILE_TIMEOUT_MS,
     };
     use tempfile::tempdir;
     use tokio::fs;
@@ -376,6 +389,20 @@ mod tests {
     #[test]
     fn compile_timeout_scales_with_submission_limit() {
         assert_eq!(compile_timeout_ms_for_submission(20_000), 40_000);
+    }
+
+    #[test]
+    fn reported_memory_uses_limit_for_oom_results() {
+        assert_eq!(reported_memory_used_kb(Some(u64::MAX), 256, true), 262_144);
+    }
+
+    #[test]
+    fn reported_memory_clamps_spurious_peaks_to_the_submission_limit() {
+        assert_eq!(
+            reported_memory_used_kb(Some(u64::MAX / 1024), 256, false),
+            262_144
+        );
+        assert_eq!(reported_memory_used_kb(Some(32_768), 256, false), 32_768);
     }
 
     #[test]
