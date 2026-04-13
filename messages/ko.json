@@ -506,6 +506,8 @@
       "memory_limit": "메모리 초과",
       "runtime_error": "런타임 오류",
       "compile_error": "컴파일 오류",
+      "canceled": "취소됨",
+      "cancelled": "취소됨",
       "submitted": "제출 완료"
     },
     "compileOutputHidden": "이 제출에 대한 컴파일 오류 상세 정보는 제공되지 않습니다.",

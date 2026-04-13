@@ -14,5 +14,8 @@ export function buildStatusLabels(t: (key: string) => string): Record<string, st
     memory_limit: t("status.memory_limit"),
     runtime_error: t("status.runtime_error"),
     compile_error: t("status.compile_error"),
+    submitted: t("status.submitted"),
+    canceled: t("status.canceled"),
+    cancelled: t("status.cancelled"),
   };
 }

@@ -506,6 +506,8 @@
       "memory_limit": "Memory Limit Exceeded",
       "runtime_error": "Runtime Error",
       "compile_error": "Compile Error",
+      "canceled": "Canceled",
+      "cancelled": "Cancelled",
       "submitted": "Submitted"
     },
     "compileOutputHidden": "Compile error details are not available for this submission.",
