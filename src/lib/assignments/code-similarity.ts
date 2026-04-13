@@ -37,8 +37,9 @@ export function normalizeSource(source: string): string {
       continue;
     }
 
-    if (current === "#" && (index === 0 || source[index - 1] === "\n")) {
-      if (!startsWithPreprocessorDirective(source, index)) {
+    if (current === "#") {
+      const isLineStart = index === 0 || source[index - 1] === "\n";
+      if (!(isLineStart && startsWithPreprocessorDirective(source, index))) {
         while (index < source.length && source[index] !== "\n") {
           index += 1;
         }

@@ -23,4 +23,16 @@ describe("high-stakes runtime implementation", () => {
     expect(doc).toContain("Realtime load validation");
     expect(doc).toContain("Recovery / failover rehearsal");
   });
+
+  it("keeps env examples and README aligned with the current runtime contract", () => {
+    const envExample = read(".env.example");
+    const envProduction = read(".env.production.example");
+    const readme = read("README.md");
+
+    expect(envExample).toContain("shared PostgreSQL mode");
+    expect(envExample).toContain("REALTIME_COORDINATION_BACKEND=postgresql");
+    expect(envProduction).toContain("shared PostgreSQL mode");
+    expect(envProduction).toContain("REALTIME_COORDINATION_BACKEND=postgresql");
+    expect(readme).toContain("TypeScript-5.9");
+  });
 });

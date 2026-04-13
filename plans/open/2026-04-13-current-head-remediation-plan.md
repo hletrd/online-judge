@@ -61,12 +61,12 @@ The earlier 2026-04-13 acceptance note is now superseded by a newer user directi
 - docs/env examples match actual runtime contract
 
 **Progress**
-- 🚧 in progress
+- ✅ completed 2026-04-13
 - fixed the shared-coordination leak on the terminal submission SSE path
 - production compose now mounts a dedicated app-data volume so uploaded files survive container replacement
 - production and dedicated-worker docker-proxy configs now enable image/build endpoints expected by the admin image-management surfaces
+- env examples now describe the real process-local vs PostgreSQL-backed coordination modes
 - coverage: targeted realtime implementation-guard and deploy-security tests
-- remaining: finish the docs/env truth-sync for the current runtime contract
 
 ## Workstream D — Similarity engine parity
 **Targets**
@@ -79,7 +79,10 @@ The earlier 2026-04-13 acceptance note is now superseded by a newer user directi
 - inline `#` comment churn no longer trivially evades normalization for supported language families
 
 **Progress**
-- ⏳ not started
+- ✅ completed 2026-04-13
+- Rust and TypeScript now preserve identifier casing consistently instead of lowercasing only in the sidecar
+- both implementations now treat inline `#` comments as comments unless they are line-start preprocessor directives
+- coverage: targeted Vitest similarity suites plus `cargo test --manifest-path code-similarity-rs/Cargo.toml`
 
 ## Workstream E — Current-head hardening follow-through
 **Targets**

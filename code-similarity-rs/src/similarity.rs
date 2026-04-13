@@ -38,10 +38,10 @@ pub fn normalize_source(source: &str) -> String {
             continue;
         }
 
-        // # comments: only at start of line, skip if NOT a C preprocessor directive
-        if bytes[i] == b'#' && (i == 0 || bytes[i - 1] == b'\n') {
-            if !is_preprocessor_directive(bytes, i) {
-                // Skip the whole line
+        // # comments: preserve only C preprocessor directives that start a line.
+        if bytes[i] == b'#' {
+            let is_line_start = i == 0 || bytes[i - 1] == b'\n';
+            if !(is_line_start && is_preprocessor_directive(bytes, i)) {
                 while i < len && bytes[i] != b'\n' {
                     i += 1;
                 }
@@ -98,8 +98,8 @@ pub fn normalize_source(source: &str) -> String {
             continue;
         }
 
-        // Normal character: lowercase and append
-        result.push((bytes[i] as char).to_ascii_lowercase());
+        // Normal character: preserve identifier casing for case-sensitive languages.
+        result.push(bytes[i] as char);
         i += 1;
     }
 
@@ -278,10 +278,10 @@ mod tests {
         for (directive, keyword) in &directives {
             let result = normalize_source(directive);
             assert!(
-                result.contains(&keyword.to_lowercase()),
+                result.contains(keyword),
                 "Expected '{}' to contain '{}', got '{}'",
                 directive,
-                keyword.to_lowercase(),
+                keyword,
                 result
             );
         }
@@ -295,10 +295,10 @@ mod tests {
     }
 
     #[test]
-    fn lowercases_output() {
+    fn preserves_identifier_casing() {
         let src = "INT X = HELLO;";
         let result = normalize_source(src);
-        assert_eq!(result, result.to_lowercase());
+        assert_eq!(result, "INT X = HELLO;");
     }
 
     #[test]
@@ -438,7 +438,7 @@ mod tests {
             ),
             (
                 "INT X = HELLO;",
-                "int x = hello;",
+                "INT X = HELLO;",
             ),
             (
                 "int   x   =   1;",
@@ -523,10 +523,9 @@ mod tests {
 
     #[test]
     fn normalize_hash_not_at_line_start() {
-        // # in the middle of a line should be kept as-is (not treated as comment)
-        let src = "x = a # 5";
+        let src = "x = a # inline comment";
         let result = normalize_source(src);
-        assert!(result.contains("#"));
+        assert_eq!(result, "x = a");
     }
 
     #[test]
@@ -553,7 +552,7 @@ mod tests {
             let result = normalize_source(directive);
             let keyword = directive.split_whitespace().next().unwrap();
             assert!(
-                result.contains(&keyword.to_lowercase()),
+                result.contains(keyword),
                 "Directive '{}' lost keyword '{}', got '{}'",
                 directive, keyword, result
             );

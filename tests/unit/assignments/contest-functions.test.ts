@@ -167,6 +167,12 @@ describe("normalizeSource", () => {
     expect(result).not.toContain("this is a python comment");
   });
 
+  it("strips inline # comments outside string literals", () => {
+    const src = "x = 1 # inline comment\ny = 2";
+    const result = normalizeSource(src);
+    expect(result).toBe("x = 1 y = 2");
+  });
+
   it("preserves C preprocessor directives", () => {
     const directives = [
       "#include <stdio.h>",

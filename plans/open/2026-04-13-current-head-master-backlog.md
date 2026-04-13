@@ -31,13 +31,14 @@ The 2026-04-12 current-head follow-up plans were previously archived as **accept
 - production upload blobs are not persisted across container replacement
 - shipped docker-proxy permissions do not match documented admin image-management behavior
 - current-head high-stakes/runtime posture docs/env examples need truth sync
-- **Status:** in progress
-- **Progress note:** the shared SSE terminal path now releases coordination slots correctly, production compose now persists `/app/data`, and production/dedicated-worker docker-proxy configs now expose the image/build surfaces expected by the admin image-management flow. Docs/env truth-sync remains open.
+- **Status:** completed 2026-04-13
+- **Progress note:** the shared SSE terminal path now releases coordination slots correctly, production compose now persists `/app/data`, production/dedicated-worker docker-proxy configs now expose the image/build surfaces expected by the admin image-management flow, and the env examples now describe the real supported realtime modes.
 
 ### 4. Similarity-engine parity
 - TS fallback and Rust sidecar normalize code differently
 - inline `#` comments still evade normalization in Python/shell-like languages
-- **Status:** open
+- **Status:** completed 2026-04-13
+- **Progress note:** TS and Rust now preserve identifier casing consistently, both strip inline `#` comments outside strings/preprocessor directives, and parity/regression coverage now locks the shared normalization contract.
 
 ### 5. Higher-assurance current-head follow-up workstreams
 - recruiting identity assurance beyond shared secrets
