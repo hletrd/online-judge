@@ -1,0 +1,57 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+function read(relativePath: string) {
+  return readFileSync(join(process.cwd(), relativePath), "utf8");
+}
+
+describe("Playwright profile configuration", () => {
+  const config = read("playwright.config.ts");
+
+  it("exports PLAYWRIGHT_PROFILE env var handling", () => {
+    expect(config).toContain("process.env.PLAYWRIGHT_PROFILE");
+  });
+
+  it("profile 'smoke' maps to remoteSafeSpecs only", () => {
+    expect(config).toContain('profile === "smoke" ? remoteSafeSpecs : undefined');
+  });
+
+  it("profile 'full' runs all specs (testMatch is undefined)", () => {
+    // When profile is not "smoke", testMatch resolves to undefined (no filter)
+    expect(config).toContain('profile === "smoke" ? remoteSafeSpecs : undefined');
+    // The undefined branch is the full profile — verify the variable is used as testMatch
+    expect(config).toContain("testMatch,");
+  });
+
+  it("legacy behaviour: PLAYWRIGHT_BASE_URL alone implies smoke profile", () => {
+    // isRemoteRun is derived solely from PLAYWRIGHT_BASE_URL
+    expect(config).toContain('const isRemoteRun = Boolean(process.env.PLAYWRIGHT_BASE_URL)');
+    // When PLAYWRIGHT_PROFILE is absent but isRemoteRun is true the profile falls back to "smoke"
+    expect(config).toContain('process.env.PLAYWRIGHT_PROFILE ?? (isRemoteRun ? "smoke" : "full")');
+  });
+
+  it("remoteSafeSpecs contains the expected safe specs", () => {
+    expect(config).toContain('"tests/e2e/admin-languages.spec.ts"');
+    expect(config).toContain('"tests/e2e/admin-workers.spec.ts"');
+    expect(config).toContain('"tests/e2e/auth-flow.spec.ts"');
+    expect(config).toContain('"tests/e2e/contest-nav-test.spec.ts"');
+    expect(config).toContain('"tests/e2e/contest-participant-audit.spec.ts"');
+    expect(config).toContain('"tests/e2e/contest-system.spec.ts"');
+    expect(config).toContain('"tests/e2e/ops-health.spec.ts"');
+    expect(config).toContain('"tests/e2e/rankings.spec.ts"');
+  });
+
+  it("destructive specs are excluded from the remoteSafeSpecs allowlist", () => {
+    // Extract only the remoteSafeSpecs array body to avoid false positives
+    // from comments or other references elsewhere in the file.
+    const arrayMatch = config.match(/const remoteSafeSpecs\s*=\s*\[([\s\S]*?)\];/);
+    expect(arrayMatch, "remoteSafeSpecs array not found").toBeTruthy();
+    const arrayBody = arrayMatch![1];
+
+    expect(arrayBody).not.toContain("admin-users.spec.ts");
+    expect(arrayBody).not.toContain("problem-management.spec.ts");
+    expect(arrayBody).not.toContain("contest-full-lifecycle.spec.ts");
+    expect(arrayBody).not.toContain("student-submission-flow.spec.ts");
+  });
+});
