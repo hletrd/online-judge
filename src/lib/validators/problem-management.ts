@@ -15,7 +15,7 @@ export const problemMutationSchema = z.object({
   description: z.string().max(50000, "descriptionTooLong").default(""),
   sequenceNumber: z.number().int().min(1).nullable().optional(),
   timeLimitMs: z.number().int().min(100, "invalidTimeLimit").max(10000, "invalidTimeLimit"),
-  memoryLimitMb: z.number().int().min(16, "invalidMemoryLimit").max(2048, "invalidMemoryLimit"),
+  memoryLimitMb: z.number().int().min(16, "invalidMemoryLimit").max(1024, "invalidMemoryLimit"),
   problemType: z.enum(problemTypeValues).optional().default("auto"),
   visibility: z.enum(problemVisibilityValues),
   showCompileOutput: z.boolean().optional().default(true),

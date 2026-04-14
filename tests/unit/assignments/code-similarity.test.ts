@@ -55,7 +55,7 @@ describe("code similarity status reporting", () => {
     });
   });
 
-  it("returns not_run with an explicit reason when submissions exceed the current limit", async () => {
+  it("tries the Rust sidecar before bailing out of oversized contests", async () => {
     rawQueryAllMock.mockResolvedValue(
       Array.from({ length: 501 }, (_, index) => ({
         userId: `user-${index}`,
@@ -63,10 +63,12 @@ describe("code similarity status reporting", () => {
         sourceCode: "print(1)",
       }))
     );
+    computeSimilarityRustMock.mockResolvedValue(null);
     const { MAX_SUBMISSIONS_FOR_SIMILARITY, runSimilarityCheck } = await import("@/lib/assignments/code-similarity");
 
     const result = await runSimilarityCheck("assignment-1");
 
+    expect(computeSimilarityRustMock).toHaveBeenCalledOnce();
     expect(result).toMatchObject({
       status: "not_run",
       reason: "too_many_submissions",

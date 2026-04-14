@@ -27,6 +27,22 @@ async fn compute(Json(req): Json<ComputeRequest>) -> impl IntoResponse {
     let ngram_size = req.ngram_size;
     let submissions = req.submissions;
 
+    if !(0.0..=1.0).contains(&threshold) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ComputeResponse { pairs: Vec::new() }),
+        )
+            .into_response();
+    }
+
+    if ngram_size == 0 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ComputeResponse { pairs: Vec::new() }),
+        )
+            .into_response();
+    }
+
     // Run CPU-intensive work on rayon's thread pool via spawn_blocking
     let pairs = match tokio::task::spawn_blocking(move || {
         compute_similarity(submissions, threshold, ngram_size)

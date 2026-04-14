@@ -264,18 +264,6 @@ export async function runSimilarityCheck(
     };
   }
 
-  // Guard against excessively large contests (O(n^2) comparison)
-  if (rows.length > MAX_SUBMISSIONS_FOR_SIMILARITY) {
-    return {
-      status: "not_run",
-      reason: "too_many_submissions",
-      pairs: [],
-      flaggedPairs: 0,
-      submissionCount: rows.length,
-      maxSupportedSubmissions: MAX_SUBMISSIONS_FOR_SIMILARITY,
-    };
-  }
-
   let pairs: SimilarityPair[];
 
   // Try Rust sidecar first
@@ -294,6 +282,18 @@ export async function runSimilarityCheck(
     }
   } catch {
     // Rust sidecar unavailable — fall through to TS
+  }
+
+  // Guard against excessively large contests only for the TypeScript fallback.
+  if (rows.length > MAX_SUBMISSIONS_FOR_SIMILARITY) {
+    return {
+      status: "not_run",
+      reason: "too_many_submissions",
+      pairs: [],
+      flaggedPairs: 0,
+      submissionCount: rows.length,
+      maxSupportedSubmissions: MAX_SUBMISSIONS_FOR_SIMILARITY,
+    };
   }
 
   pairs = await runSimilarityCheckTS(rows, threshold, ngramSize, signal);

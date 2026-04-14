@@ -78,7 +78,7 @@ sudo ./scripts/install-online-judge-service.sh
 sudo ./scripts/install-online-judge-worker-rs-service.sh
 ```
 
-Both expect the repo at `/home/ubuntu/online-judge` with `.env` in the same directory.
+Both expect the repo at `/home/ubuntu/judgekit` with `.env` in the same directory.
 
 ### Building the Rust Judge Worker
 

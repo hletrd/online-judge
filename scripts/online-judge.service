@@ -7,9 +7,9 @@ OnFailure=notify-failure@%n.service
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/home/ubuntu/online-judge
+WorkingDirectory=/home/ubuntu/judgekit
 Environment=NODE_ENV=production
-EnvironmentFile=/home/ubuntu/online-judge/.env
+EnvironmentFile=/home/ubuntu/judgekit/.env
 ExecStart=/usr/bin/npm start -- -H 127.0.0.1 -p 3000
 Restart=always
 RestartSec=5
@@ -18,7 +18,7 @@ ProtectSystem=strict
 ProtectHome=read-only
 PrivateTmp=true
 NoNewPrivileges=true
-ReadWritePaths=/home/ubuntu/online-judge/data
+ReadWritePaths=/home/ubuntu/judgekit/data
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true

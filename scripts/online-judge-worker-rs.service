@@ -7,16 +7,17 @@ OnFailure=notify-failure@%n.service
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/home/ubuntu/online-judge
-EnvironmentFile=/home/ubuntu/online-judge/.env
-ExecStart=/home/ubuntu/online-judge/judge-worker-rs/target/release/judge-worker
+WorkingDirectory=/home/ubuntu/judgekit
+EnvironmentFile=/home/ubuntu/judgekit/.env
+Environment=DEAD_LETTER_DIR=/home/ubuntu/judgekit/data/dead-letter
+ExecStart=/home/ubuntu/judgekit/judge-worker-rs/target/release/judge-worker
 Restart=always
 RestartSec=5
 # Security hardening
 ProtectSystem=strict
 ProtectHome=read-only
 NoNewPrivileges=true
-ReadWritePaths=/home/ubuntu/online-judge/data
+ReadWritePaths=/home/ubuntu/judgekit/data /home/ubuntu/judgekit/data/dead-letter
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true

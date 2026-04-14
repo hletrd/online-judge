@@ -6,8 +6,8 @@
 import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db, execTransaction } from "@/lib/db";
-import { submissions, submissionResults } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { submissions, submissionResults, judgeWorkers } from "@/lib/db/schema";
+import { eq, and, sql } from "drizzle-orm";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { isJudgeAuthorized } from "@/lib/judge/auth";
 import {
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
           .update(submissions)
           .set({
             status,
-            judgeClaimedAt: submission.judgeClaimedAt ?? new Date(),
+            judgeClaimedAt: new Date(),
           })
           .where(
             and(eq(submissions.id, submissionId), eq(submissions.judgeClaimToken, claimToken))
@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
           status,
           judgeClaimToken: null,
           judgeClaimedAt: null,
+          judgeWorkerId: null,
           compileOutput: compileOutput ?? null,
           score,
           executionTimeMs: maxExecutionTimeMs,
@@ -127,6 +128,15 @@ export async function POST(request: NextRequest) {
         const rows = buildSubmissionResultRows(submissionId, results);
         if (rows.length > 0) {
           await tx.insert(submissionResults).values(rows);
+        }
+
+        if (submission.judgeWorkerId) {
+          await tx
+            .update(judgeWorkers)
+            .set({
+              activeTasks: sql`GREATEST(${judgeWorkers.activeTasks} - 1, 0)`,
+            })
+            .where(eq(judgeWorkers.id, submission.judgeWorkerId));
         }
 
         claimValid = true;

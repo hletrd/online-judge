@@ -205,14 +205,10 @@ export async function listDockerImages(filter?: string): Promise<DockerImage[]> 
     return listDockerImagesLocal(filter);
   }
 
-  try {
-    const query = filter ? `?filter=${encodeURIComponent(filter)}` : "";
-    return await callWorkerJson<DockerImage[]>(`/docker/images${query}`, {
-      method: "GET",
-    });
-  } catch {
-    return [];
-  }
+  const query = filter ? `?filter=${encodeURIComponent(filter)}` : "";
+  return await callWorkerJson<DockerImage[]>(`/docker/images${query}`, {
+    method: "GET",
+  });
 }
 
 /** Pull a Docker image by tag. Returns success/error */

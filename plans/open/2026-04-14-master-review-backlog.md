@@ -43,6 +43,8 @@ Open review lines folded here:
 
 ### 2. Judge runtime, worker coordination, and deployment hardening
 **Plan:** `plans/open/2026-04-14-judge-runtime-and-deployment-hardening-plan.md`
+**Status:** in progress
+**Progress note:** started implementation of the runtime lane; current work refreshes claim timestamps during in-progress reports, clears worker ownership and decrements active task counts on terminal reports, aligns problem authoring/import limits with the worker’s real 1 GiB run-time cap, wires the similarity sidecar into Docker app services, tries Rust similarity before TypeScript large-contest bailout, validates `ngram_size > 0`, makes migration failure fatal, and updates checked-in nginx/systemd/docs toward the generated runtime truth.
 
 Open review lines folded here:
 - stale-claim timeout reclaiming legitimate long-running jobs

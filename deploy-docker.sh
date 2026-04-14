@@ -311,6 +311,14 @@ fi
 
 success "Source code synced to remote"
 
+if [[ "${INCLUDE_WORKER}" != "true" ]]; then
+    REMOTE_COMPILER_RUNNER_URL=$(remote "grep '^COMPILER_RUNNER_URL=' ${REMOTE_DIR}/.env.production 2>/dev/null | cut -d= -f2-" || true)
+    REMOTE_COMPILER_RUNNER_URL="${REMOTE_COMPILER_RUNNER_URL:-http://judge-worker:3001}"
+    if [[ -z "${REMOTE_COMPILER_RUNNER_URL}" || "${REMOTE_COMPILER_RUNNER_URL}" == "http://judge-worker:3001" ]]; then
+        die "INCLUDE_WORKER=false requires a non-local COMPILER_RUNNER_URL in ${REMOTE_DIR}/.env.production (pointing at a live external runner)"
+    fi
+fi
+
 # ---------------------------------------------------------------------------
 # Step 3: Build Docker images on the remote host
 # ---------------------------------------------------------------------------
@@ -500,7 +508,7 @@ remote "PG_PASS=\$(grep '^POSTGRES_PASSWORD=' ${REMOTE_DIR}/.env.production | cu
       -e POSTGRES_PASSWORD -e PGPASSWORD -e DATABASE_URL \
       node:24-alpine \
       sh -c 'npx drizzle-kit push'" 2>&1 || \
-  warn "drizzle-kit push failed — may need manual intervention"
+  die "drizzle-kit push failed — aborting deploy"
 success "Database migrated"
 
 # Apply additive schema repairs for columns that may be missing on older

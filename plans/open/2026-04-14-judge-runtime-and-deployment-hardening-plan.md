@@ -12,6 +12,18 @@ Primary sources:
 ## Goal
 Repair the current judge/worker/deploy invariants so long-running jobs, split-host deployments, similarity offload, and worker-boundary operations behave predictably and truthfully.
 
+## Progress
+- 🚧 in progress
+- implemented in the current pass:
+  - in-progress judge reports now refresh `judgeClaimedAt`
+  - terminal judge reports now clear `judgeWorkerId` and decrement `judge_workers.active_tasks`
+  - problem authoring/import/update now shares the worker’s real 1024 MB runtime memory ceiling
+  - Docker app services now receive `CODE_SIMILARITY_URL` and environment-driven `COMPILER_RUNNER_URL`
+  - the TypeScript similarity path now tries Rust before applying the large-contest bailout
+  - the Rust similarity service now rejects `ngram_size == 0`
+  - deploys now fail fast on migration errors and require an explicit external runner URL when `INCLUDE_WORKER=false`
+  - checked-in nginx/systemd/docs/env artifacts were updated toward the generated runtime truth
+
 ## Workstream A — Claim freshness and worker-capacity accounting
 **Targets**
 - `src/app/api/v1/judge/claim/route.ts`

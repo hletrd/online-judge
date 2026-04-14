@@ -5,5 +5,5 @@ After=network.target
 [Service]
 Type=oneshot
 User=ubuntu
-WorkingDirectory=/home/ubuntu/online-judge
-ExecStart=/bin/bash -lc 'mkdir -p /home/ubuntu/backups/online-judge && DB_DIALECT=postgresql /bin/bash /home/ubuntu/online-judge/scripts/backup-db.sh "/home/ubuntu/backups/online-judge/judge-$(date +%%Y%%m%%d-%%H%%M%%S).sql.gz"'
+WorkingDirectory=/home/ubuntu/judgekit
+ExecStart=/bin/bash -lc 'mkdir -p /home/ubuntu/backups/judgekit && DB_DIALECT=postgresql /bin/bash /home/ubuntu/judgekit/scripts/backup-db.sh "/home/ubuntu/backups/judgekit/judge-$(date +%%Y%%m%%d-%%H%%M%%S).sql.gz"'

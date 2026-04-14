@@ -16,7 +16,7 @@ Workers access the app via HTTP(S) only. The PostgreSQL runtime handles concurre
 
 On startup, the worker POSTs to `/api/v1/judge/register` with its hostname and concurrency. The server returns a `workerId` and heartbeat interval.
 
-If registration fails (e.g., older server without worker support), the worker continues without registration — backward compatible.
+If registration fails, the worker exits by default. Set `JUDGE_ALLOW_UNREGISTERED_MODE=1` only when you explicitly want degraded standalone operation.
 
 ### Heartbeat
 
@@ -126,7 +126,7 @@ The deploy script now copies the worker `.env` file with mode `0600` instead of 
 
 For 2-3 workers, `deploy-worker.sh --sync-images` transfers images via `docker save | ssh | docker load`.
 
-For larger fleets, consider a private Docker registry and set `JUDGE_DOCKER_REGISTRY` so workers pull images on startup.
+For larger fleets, use `deploy-worker.sh --sync-images` or your own registry/distribution tooling. `JUDGE_DOCKER_REGISTRY` is not a current built-in startup-pull feature.
 
 ## Admin Dashboard
 
