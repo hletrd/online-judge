@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { db } from "@/lib/db";
 import { submissions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -5,6 +7,17 @@ import { auth } from "@/lib/auth";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { redirect, notFound } from "next/navigation";
 import { SubmissionDetailClient } from "@/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client";
+import { NO_INDEX_METADATA } from "@/lib/seo";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("submissions");
+
+  return {
+    title: t("title"),
+    description: t("mySubmissions"),
+    ...NO_INDEX_METADATA,
+  };
+}
 
 export default async function PublicSubmissionDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ from?: string }> }) {
   const session = await auth();

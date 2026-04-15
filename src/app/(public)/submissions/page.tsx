@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -24,7 +24,7 @@ import { formatSubmissionIdPrefix } from "@/lib/submissions/format";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
 import { SubmissionListAutoRefresh } from "@/components/submission-list-auto-refresh";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
-import { buildPublicMetadata } from "@/lib/seo";
+import { NO_INDEX_METADATA } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { LogInIcon } from "lucide-react";
 
@@ -55,23 +55,21 @@ function escapeLike(value: string) {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const [tCommon, t, locale] = await Promise.all([
+  const [tCommon, t] = await Promise.all([
     getTranslations("common"),
     getTranslations("submissions"),
-    getLocale(),
   ]);
   const settings = await getResolvedSystemSettings({
     siteTitle: tCommon("appName"),
     siteDescription: tCommon("appDescription"),
   });
 
-  return buildPublicMetadata({
+  return {
     title: t("title"),
     description: t("mySubmissions"),
-    path: PAGE_PATH,
-    siteTitle: settings.siteTitle,
-    locale,
-  });
+    applicationName: settings.siteTitle,
+    ...NO_INDEX_METADATA,
+  };
 }
 
 export default async function SubmissionsPage({

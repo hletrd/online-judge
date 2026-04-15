@@ -17,11 +17,33 @@ JudgeKit needs a public SEO system that is:
 
 ---
 
+## Progress Updates
+
+- 2026-04-15 — Phase 0 route policy codified in `src/lib/public-route-seo.ts`.
+- 2026-04-15 — Phase 1 started: submissions surfaces moved to `noindex` policy and `robots.txt` disallow list expanded to include `/submissions`.
+
+### Public Route SEO Matrix
+
+| Route bucket | Indexable | Localized | Sitemap | JSON-LD | Social cards | Notes |
+|-------------|-----------|-----------|---------|---------|--------------|-------|
+| `/` | Yes | Yes | Yes | Yes | Yes | Public landing page |
+| `/practice` and `/practice/problems/[id]` | Yes | Yes | Yes | Yes | Yes | Public catalog and detail pages |
+| `/contests` and `/contests/[id]` | Yes | Yes | Yes | Yes | Yes | Public contest browsing |
+| `/community` and `/community/threads/[id]` | Yes | Yes | Yes | Yes | Yes | Public general board and public thread detail |
+| `/playground` | Yes | Yes | Yes | Yes | Yes | Public compiler landing page |
+| `/rankings` | Yes | Yes | Yes | Yes | Yes | Public rankings page |
+| `/submissions` and `/submissions/[id]` | No | No | No | No | No | Authenticated personal history/detail |
+| `/signup` | No | No | No | No | No | Conversion/auth route |
+| `/login` | No | No | No | No | No | Auth route |
+| `/community/new` | No | No | No | No | No | Authenticated thread composer |
+
+---
+
 ## Acceptance Criteria
 
 ### Crawlability / Indexability
-- [ ] All personal/authenticated public-surface routes are `noindex, nofollow`
-- [ ] `robots.txt` disallows all non-indexable public-auth routes, including `/submissions`
+- [x] All personal/authenticated public-surface routes are `noindex, nofollow`
+- [x] `robots.txt` disallows all non-indexable public-auth routes, including `/submissions`
 - [ ] Every intentionally indexable public page has explicit metadata ownership
 
 ### Locale SEO
@@ -80,7 +102,7 @@ Create a route-class matrix listing each public pathname bucket and whether it s
 - `/login`
 - `/community/new`
 
-**Output:** add this matrix to the implementation PR description or a local project note before coding.
+**Output:** completed in the route matrix above and codified in `src/lib/public-route-seo.ts`.
 
 ---
 
@@ -109,6 +131,8 @@ Create a route-class matrix listing each public pathname bucket and whether it s
 
 **Verification:**
 - unit test asserts new disallow rules
+
+**Status:** in progress — code change landed, tests still pending in the SEO regression pass.
 
 ---
 

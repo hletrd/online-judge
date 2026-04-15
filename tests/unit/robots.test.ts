@@ -26,6 +26,7 @@ describe("robots metadata route", () => {
         "/change-password",
         "/recruit",
         "/community/new",
+        "/submissions",
       ],
     });
   });
