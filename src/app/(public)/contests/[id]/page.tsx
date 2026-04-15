@@ -46,8 +46,10 @@ function formatDateLabel(value: Date | null, fallback: string, locale: string) {
 
 export default async function PublicContestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [t, locale] = await Promise.all([
+  const [t, tCommon, tProblems, locale] = await Promise.all([
     getTranslations("publicShell"),
+    getTranslations("common"),
+    getTranslations("problems"),
     getLocale(),
   ]);
   const statusLabels = {
@@ -83,6 +85,8 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
     <>
       <JsonLd data={eventJsonLd} />
       <PublicContestDetail
+        backHref="/contests"
+        backLabel={tCommon("back")}
         title={contest.title}
         description={contest.description}
         groupLabel={t("contests.hostedBy", { name: contest.groupName })}
@@ -95,6 +99,8 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
         publicProblemCountLabel={t("contests.publicProblemCount", { count: contest.publicProblemCount })}
         publicProblemsTitle={t("contests.publicProblemsTitle")}
         noPublicProblemsLabel={t("contests.noPublicProblems")}
+        problemTitleLabel={tProblems("table.title")}
+        actionLabel={t("contests.openContest")}
         publicProblems={contest.publicProblems}
         signInHref={`/login?callbackUrl=${encodeURIComponent(`/dashboard/contests/${contest.id}`)}`}
         signInLabel={t("contests.signInToJoin")}

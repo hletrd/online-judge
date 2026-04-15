@@ -11,6 +11,8 @@ describe("PublicContestDetail", () => {
   it("renders contest overview and public problem links", () => {
     render(
       <PublicContestDetail
+        backHref="/contests"
+        backLabel="Back"
         title="Spring Challenge"
         description="Public overview"
         groupLabel="Hosted by Algorithms 101"
@@ -23,6 +25,8 @@ describe("PublicContestDetail", () => {
         publicProblemCountLabel="2 public problems"
         publicProblemsTitle="Public problem set"
         noPublicProblemsLabel="No public problems"
+        problemTitleLabel="Title"
+        actionLabel="Open problem"
         publicProblems={[{ id: "problem-1", title: "A + B" }]}
         signInHref="/login"
         signInLabel="Sign in to join"
@@ -32,9 +36,12 @@ describe("PublicContestDetail", () => {
     );
 
     expect(screen.getByText("Spring Challenge")).toBeInTheDocument();
+    expect(screen.getByText("Back")).toBeInTheDocument();
     expect(screen.getByText("Hosted by Algorithms 101")).toBeInTheDocument();
+    expect(screen.getByText("Overview")).toBeInTheDocument();
     expect(screen.getByText("Public problem set")).toBeInTheDocument();
     expect(screen.getByText("A + B")).toBeInTheDocument();
+    expect(screen.getAllByText("Open problem").length).toBeGreaterThan(0);
     expect(screen.getByText("Sign in to join")).toBeInTheDocument();
   });
 });
