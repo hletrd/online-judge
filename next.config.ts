@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   productionBrowserSourceMaps: disableMinify,
+  serverExternalPackages: ["pg", "drizzle-orm", "@auth/drizzle-adapter"],
   experimental: {
     proxyClientMaxBodySize: "100mb",
   },
