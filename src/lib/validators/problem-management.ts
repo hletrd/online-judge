@@ -13,7 +13,7 @@ export const problemTestCaseSchema = z.object({
 export const problemMutationSchema = z.object({
   title: z.preprocess(trimString, z.string().min(1, "titleRequired").max(200, "titleTooLong")),
   description: z.string().max(50000, "descriptionTooLong").default(""),
-  sequenceNumber: z.number().int().min(1).nullable().optional(),
+  sequenceNumber: z.number().int().min(0).nullable().optional(),
   timeLimitMs: z.number().int().min(100, "invalidTimeLimit").max(10000, "invalidTimeLimit"),
   memoryLimitMb: z.number().int().min(16, "invalidMemoryLimit").max(1024, "invalidMemoryLimit"),
   problemType: z.enum(problemTypeValues).optional().default("auto"),
