@@ -10,7 +10,7 @@ const problemImportSchema = z.object({
   problem: z.object({
     title: z.string().min(1).max(200),
     description: z.string().default(""),
-    sequenceNumber: z.number().int().min(1).nullable().optional(),
+    sequenceNumber: z.number().int().min(0).nullable().optional(),
     timeLimitMs: z.number().int().min(100).max(30000).default(1000),
     memoryLimitMb: z.number().int().min(16).max(1024).default(256),
     problemType: z.enum(["auto", "manual"]).default("auto"),

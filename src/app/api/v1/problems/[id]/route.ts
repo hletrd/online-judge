@@ -14,7 +14,7 @@ import { resolveCapabilities } from "@/lib/capabilities/cache";
 const problemPatchSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().optional(),
-  sequenceNumber: z.number().int().min(1).nullable().optional(),
+  sequenceNumber: z.number().int().min(0).nullable().optional(),
   problemType: z.enum(["auto", "manual"]).optional(),
   timeLimitMs: z.number().int().min(100).max(30000).optional(),
   memoryLimitMb: z.number().int().min(16).max(1024).optional(),
