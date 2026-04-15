@@ -17,7 +17,7 @@ vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) => (key: string) => {
     const translations: Record<string, Record<string, string>> = {
       auth: {
-        signUpDescription: "Create a public student account",
+        signUpDescription: "Create a public user account",
       },
       common: {
         appName: "JudgeKit",
@@ -57,7 +57,7 @@ describe("SignupPage", () => {
     render(await SignupPage());
 
     expect(screen.getByText("JudgeKit")).toBeInTheDocument();
-    expect(screen.getByText("Create a public student account")).toBeInTheDocument();
+    expect(screen.getByText("Create a public user account")).toBeInTheDocument();
     expect(screen.getByText("signup-form")).toBeInTheDocument();
   });
 
