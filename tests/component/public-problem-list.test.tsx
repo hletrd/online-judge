@@ -18,13 +18,20 @@ describe("PublicProblemList", () => {
         problemTitleLabel="Title"
         difficultyLabel="Difficulty"
         tagLabel="Tags"
+        solverCountLabel="Solved by"
+        successRateLabel="Success"
+        createdAtLabel="Added"
         problems={[
           {
             id: "problem-1",
             sequenceNumber: 1000,
             title: "A + B",
-            difficultyLabel: "Difficulty: 1.00 / 10",
+            difficultyLabel: "1.00",
             tags: [{ name: "math", color: null }],
+            solverCount: 42,
+            submissionCount: 100,
+            successRate: 42.0,
+            createdAt: "Jan 1, 2026",
           },
         ]}
       />
@@ -33,7 +40,43 @@ describe("PublicProblemList", () => {
     expect(screen.getByText("Public problem catalog")).toBeInTheDocument();
     expect(screen.getByText("A + B")).toBeInTheDocument();
     expect(screen.getByText("1000")).toBeInTheDocument();
-    expect(screen.getByText("Difficulty: 1.00 / 10")).toBeInTheDocument();
+    expect(screen.getByText("1.00")).toBeInTheDocument();
     expect(screen.getByText("math")).toBeInTheDocument();
+    expect(screen.getByText("42")).toBeInTheDocument();
+    expect(screen.getByText("42.0%")).toBeInTheDocument();
+    expect(screen.getByText("Jan 1, 2026")).toBeInTheDocument();
+  });
+
+  it("shows dashes when no submission data", () => {
+    render(
+      <PublicProblemList
+        title="Catalog"
+        description="Browse"
+        noProblemsLabel="None"
+        numberLabel="#"
+        problemTitleLabel="Title"
+        difficultyLabel="Difficulty"
+        tagLabel="Tags"
+        solverCountLabel="Solved by"
+        successRateLabel="Success"
+        createdAtLabel="Added"
+        problems={[
+          {
+            id: "problem-2",
+            sequenceNumber: null,
+            title: "Empty problem",
+            difficultyLabel: null,
+            tags: [],
+            solverCount: 0,
+            submissionCount: 0,
+            successRate: null,
+            createdAt: null,
+          },
+        ]}
+      />
+    );
+
+    const dashes = screen.getAllByText("-");
+    expect(dashes.length).toBeGreaterThanOrEqual(3); // solver, rate, difficulty, date
   });
 });

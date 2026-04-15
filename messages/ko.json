@@ -2314,6 +2314,10 @@
       "memoryLimit": "메모리 제한: {value}MB",
       "tryInPlayground": "플레이그라운드에서 실행",
       "signInToSubmit": "로그인 후 제출",
+      "solverCount": "정답자",
+      "successRate": "정답률",
+      "createdAt": "등록일",
+      "problemTab": "문제",
       "discussion": {
         "title": "문제 토론",
         "description": "풀이 방법이나 궁금한 점을 자유롭게 나눠 보세요.",

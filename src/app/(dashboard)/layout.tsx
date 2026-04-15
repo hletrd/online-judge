@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getTranslations } from "next-intl/server";
@@ -88,7 +89,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <header className="flex h-14 items-center gap-2 px-4">
             <SidebarTrigger />
             <div className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold">{settings.siteTitle}</span>
+              <Link href="/" className="block truncate text-sm font-semibold hover:text-primary transition-colors">{settings.siteTitle}</Link>
             </div>
             <div className="ml-auto flex items-center gap-1">
               {canUseLectureMode && <LectureModeToggle />}

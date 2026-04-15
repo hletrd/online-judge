@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { asc, count, eq } from "drizzle-orm";
+import { asc, count, eq, sql } from "drizzle-orm";
 import { getLocale, getTranslations } from "next-intl/server";
 import { db } from "@/lib/db";
-import { problems } from "@/lib/db/schema";
+import { problems, submissions } from "@/lib/db/schema";
 import { PublicProblemList } from "../_components/public-problem-list";
 import { JsonLd } from "@/components/seo/json-ld";
 import { PaginationControls } from "@/components/pagination-controls";
@@ -71,6 +71,13 @@ export default async function PracticePage({
 
   const publicProblems = await db.query.problems.findMany({
     where: whereClause,
+    columns: {
+      id: true,
+      sequenceNumber: true,
+      title: true,
+      difficulty: true,
+      createdAt: true,
+    },
     with: {
       problemTags: {
         with: {
@@ -84,6 +91,31 @@ export default async function PracticePage({
     limit: PAGE_SIZE,
     offset,
   });
+
+  // Aggregate submission stats per problem
+  const problemIds = publicProblems.map((p) => p.id);
+  const statsMap = new Map<string, { solverCount: number; submissionCount: number; acceptedCount: number }>();
+
+  if (problemIds.length > 0) {
+    const stats = await db
+      .select({
+        problemId: submissions.problemId,
+        submissionCount: count(),
+        solverCount: sql<number>`count(distinct case when ${submissions.status} = 'accepted' then ${submissions.userId} end)`,
+        acceptedCount: sql<number>`count(case when ${submissions.status} = 'accepted' then 1 end)`,
+      })
+      .from(submissions)
+      .where(sql`${submissions.problemId} = any(${problemIds})`)
+      .groupBy(submissions.problemId);
+
+    for (const row of stats) {
+      statsMap.set(row.problemId, {
+        solverCount: Number(row.solverCount),
+        submissionCount: Number(row.submissionCount),
+        acceptedCount: Number(row.acceptedCount),
+      });
+    }
+  }
 
   const practiceJsonLd = {
     "@context": "https://schema.org",
@@ -114,18 +146,34 @@ export default async function PracticePage({
         problemTitleLabel={tProblems("table.title")}
         difficultyLabel={tProblems("table.difficulty")}
         tagLabel={tProblems("table.tags")}
-        problems={publicProblems.map((problem) => ({
-          id: problem.id,
-          sequenceNumber: problem.sequenceNumber ?? null,
-          title: problem.title,
-          difficultyLabel: problem.difficulty != null
-            ? tProblems("badges.difficulty", { value: problem.difficulty.toFixed(2).replace(/\.?0+$/, "") })
-            : null,
-          tags: problem.problemTags.map((entry) => ({
-            name: entry.tag.name,
-            color: entry.tag.color,
-          })),
-        }))}
+        solverCountLabel={t("practice.solverCount")}
+        successRateLabel={t("practice.successRate")}
+        createdAtLabel={t("practice.createdAt")}
+        problems={publicProblems.map((problem) => {
+          const stats = statsMap.get(problem.id);
+          const submissionCount = stats?.submissionCount ?? 0;
+          const acceptedCount = stats?.acceptedCount ?? 0;
+          const successRate = submissionCount > 0 ? (acceptedCount / submissionCount) * 100 : null;
+
+          return {
+            id: problem.id,
+            sequenceNumber: problem.sequenceNumber ?? null,
+            title: problem.title,
+            difficultyLabel: problem.difficulty != null
+              ? tProblems("badges.difficulty", { value: problem.difficulty.toFixed(2).replace(/\.?0+$/, "") })
+              : null,
+            tags: problem.problemTags.map((entry) => ({
+              name: entry.tag.name,
+              color: entry.tag.color,
+            })),
+            solverCount: stats?.solverCount ?? 0,
+            submissionCount,
+            successRate,
+            createdAt: problem.createdAt
+              ? problem.createdAt.toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })
+              : null,
+          };
+        })}
       />
       <PaginationControls
         currentPage={clampedPage}

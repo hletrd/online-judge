@@ -2314,6 +2314,10 @@
       "memoryLimit": "Memory limit: {value}MB",
       "tryInPlayground": "Try in playground",
       "signInToSubmit": "Sign in to submit",
+      "solverCount": "Solved by",
+      "successRate": "Success",
+      "createdAt": "Added",
+      "problemTab": "Problem",
       "discussion": {
         "title": "Problem discussion",
         "description": "Discuss approaches and ask clarifying questions about this problem.",
