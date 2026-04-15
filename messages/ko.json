@@ -1883,6 +1883,7 @@
       "cancel": "취소",
       "createSuccess": "초대를 만들었습니다",
       "createError": "초대를 만들지 못했습니다",
+      "emailAlreadyInvited": "이 이메일로 이미 초대가 생성되어 있습니다.",
       "noInvitations": "아직 초대가 없습니다.",
       "searchPlaceholder": "이름 또는 이메일로 검색...",
       "filterAll": "전체",

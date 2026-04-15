@@ -1883,6 +1883,7 @@
       "cancel": "Cancel",
       "createSuccess": "Invitation created",
       "createError": "Failed to create invitation",
+      "emailAlreadyInvited": "An invitation with this email already exists for this contest.",
       "noInvitations": "No invitations yet.",
       "searchPlaceholder": "Search by name or email...",
       "filterAll": "All",

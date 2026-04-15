@@ -155,7 +155,17 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
         toast.success(t("createSuccess"));
         fetchData();
       } else {
-        toast.error(t("createError"));
+        try {
+          const json = await res.json();
+          const code = json.error ?? json.code ?? "";
+          if (code === "emailAlreadyInvited") {
+            toast.error(t("emailAlreadyInvited"));
+          } else {
+            toast.error(t("createError"));
+          }
+        } catch {
+          toast.error(t("createError"));
+        }
       }
     } finally {
       setCreating(false);
