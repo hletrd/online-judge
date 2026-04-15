@@ -2,17 +2,19 @@ import { getTranslations, getLocale } from "next-intl/server";
 import { PublicHeader } from "@/components/layout/public-header";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { PublicHomePage } from "@/app/(public)/_components/public-home-page";
+import { auth } from "@/lib/auth";
 
 function pick(defaultVal: string, override?: string): string {
   return override && override.trim() ? override : defaultVal;
 }
 
 export default async function HomePage() {
-  const [tCommon, tAuth, tShell, locale] = await Promise.all([
+  const [tCommon, tAuth, tShell, locale, session] = await Promise.all([
     getTranslations("common"),
     getTranslations("auth"),
     getTranslations("publicShell"),
     getLocale(),
+    auth(),
   ]);
 
   const settings = await getResolvedSystemSettings({
@@ -36,6 +38,7 @@ export default async function HomePage() {
           { href: "/dashboard", label: tShell("nav.workspace") },
           { href: "/login", label: tAuth("signIn") },
         ]}
+        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.workspace") } : null}
       />
       <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         <PublicHomePage

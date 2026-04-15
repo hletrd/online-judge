@@ -15,6 +15,11 @@ type PublicHeaderProps = {
   siteTitle: string;
   items: HeaderItem[];
   actions: HeaderItem[];
+  loggedInUser?: {
+    name: string;
+    href: string;
+    label: string;
+  } | null;
 };
 
 function isActivePath(pathname: string, href: string) {
@@ -22,7 +27,7 @@ function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function PublicHeader({ siteTitle, items, actions }: PublicHeaderProps) {
+export function PublicHeader({ siteTitle, items, actions, loggedInUser }: PublicHeaderProps) {
   const pathname = usePathname();
 
   return (
@@ -51,20 +56,29 @@ export function PublicHeader({ siteTitle, items, actions }: PublicHeaderProps) {
         <div className="ml-auto flex items-center gap-1">
           <ThemeToggle className="hidden sm:inline-flex" />
           <LocaleSwitcher />
-          {actions.map((action, index) => (
+          {loggedInUser ? (
             <Link
-              key={action.href}
-              href={action.href}
-              className={cn(
-                "rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                index === actions.length - 1
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              )}
+              href={loggedInUser.href}
+              className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              {action.label}
+              {loggedInUser.label}
             </Link>
-          ))}
+          ) : (
+            actions.map((action, index) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                className={cn(
+                  "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  index === actions.length - 1
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                {action.label}
+              </Link>
+            ))
+          )}
         </div>
       </div>
     </header>

@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { nanoid } from "nanoid";
-import { hashPassword } from "@/lib/security/password-hash";
+import { hashPassword, verifyPassword } from "@/lib/security/password-hash";
 import { getPasswordValidationError } from "@/lib/security/password";
 import { db } from "@/lib/db";
 import {
@@ -241,10 +241,48 @@ export async function redeemRecruitingToken(
 
       if (!invitation) return { ok: false as const, error: "invalidToken" };
 
-      // Already redeemed — the original invite URL is claim-only and can no
-      // longer be reused as a login credential.
+      // Already redeemed — verify password for re-entry
       if (invitation.status === "redeemed" && invitation.userId) {
-        return { ok: false as const, error: "alreadyRedeemed" };
+        if (!accountPassword) return { ok: false as const, error: "accountPasswordRequired" };
+
+        const [existingUser] = await tx
+          .select({ id: users.id, passwordHash: users.passwordHash, isActive: users.isActive })
+          .from(users)
+          .where(eq(users.id, invitation.userId))
+          .limit(1);
+
+        if (!existingUser || !existingUser.passwordHash || !existingUser.isActive) {
+          return { ok: false as const, error: "invalidToken" };
+        }
+
+        const { valid } = await verifyPassword(accountPassword, existingUser.passwordHash);
+        if (!valid) {
+          return { ok: false as const, error: "accountPasswordIncorrect" };
+        }
+
+        // Verify assignment still exists and isn't closed
+        const [assignment] = await tx
+          .select({
+            id: assignments.id,
+            groupId: assignments.groupId,
+            deadline: assignments.deadline,
+          })
+          .from(assignments)
+          .where(eq(assignments.id, invitation.assignmentId))
+          .limit(1);
+
+        if (!assignment) return { ok: false as const, error: "assignmentNotFound" };
+        if (assignment.deadline && assignment.deadline < new Date()) {
+          return { ok: false as const, error: "contestClosed" };
+        }
+
+        return {
+          ok: true as const,
+          userId: existingUser.id,
+          assignmentId: assignment.id,
+          groupId: assignment.groupId,
+          alreadyRedeemed: true,
+        };
       }
 
       if (invitation.status === "revoked") return { ok: false as const, error: "tokenRevoked" };

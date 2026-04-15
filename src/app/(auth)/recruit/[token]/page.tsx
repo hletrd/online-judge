@@ -127,20 +127,32 @@ export default async function RecruitPage({
   }
 
   if (isRedeemed && !resumeWithCurrentSession) {
+    // Show re-entry form with password — link stays valid for returning users
     return (
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">{t("claimed")}</CardTitle>
-          <CardDescription>{t("claimedDescription")}</CardDescription>
+          <CardTitle className="text-2xl">{t("title")}</CardTitle>
+          <CardDescription>
+            {t("welcome", { name: invitation.candidateName })}
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">{t("accountPasswordLoginNotice")}</p>
-          <a
-            href={`/login?callbackUrl=${encodeURIComponent(`/dashboard/contests/${assignment.id}`)}`}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-          >
-            {t("goToLogin")}
-          </a>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <p className="text-lg font-semibold text-center text-foreground">{assignment.title}</p>
+            {assignment.description && (
+              <p className="text-sm text-muted-foreground">{assignment.description}</p>
+            )}
+            <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 space-y-1 text-sm dark:border-sky-900 dark:bg-sky-950/30">
+              <p className="text-sky-800 dark:text-sky-200">{t("accountPasswordLoginNotice")}</p>
+            </div>
+          </div>
+          <RecruitStartForm
+            token={token}
+            assignmentId={assignment.id}
+            isReentry
+            resumeWithCurrentSession={false}
+            requiresAccountPassword
+          />
         </CardContent>
       </Card>
     );

@@ -27,7 +27,7 @@ export function PublicHomePage({
     <div className="space-y-10">
       <section className="rounded-3xl border bg-background px-6 py-10 shadow-sm sm:px-10">
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">{eyebrow}</p>
-        <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">{title}</h1>
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">{title}</h1>
         <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">{description}</p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href={primaryCta.href} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">

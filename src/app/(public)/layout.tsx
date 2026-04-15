@@ -1,12 +1,14 @@
 import { getTranslations } from "next-intl/server";
 import { PublicHeader } from "@/components/layout/public-header";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
+import { auth } from "@/lib/auth";
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const [tCommon, tAuth, tShell] = await Promise.all([
+  const [tCommon, tAuth, tShell, session] = await Promise.all([
     getTranslations("common"),
     getTranslations("auth"),
     getTranslations("publicShell"),
+    auth(),
   ]);
   const settings = await getResolvedSystemSettings({
     siteTitle: tCommon("appName"),
@@ -27,6 +29,7 @@ export default async function PublicLayout({ children }: { children: React.React
           { href: "/workspace", label: tShell("nav.workspace") },
           { href: "/login", label: tAuth("signIn") },
         ]}
+        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.workspace") } : null}
       />
       <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">{children}</main>
     </div>
