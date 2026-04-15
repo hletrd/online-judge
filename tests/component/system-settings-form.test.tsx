@@ -81,6 +81,9 @@ function renderForm(initialTimeZone = "UTC") {
       currentTimeZone={initialTimeZone}
       currentPlatformMode="homework"
       initialAiAssistantEnabled
+      initialPublicSignupEnabled={false}
+      initialSignupHcaptchaEnabled={false}
+      signupHcaptchaAvailable={true}
     />
   );
 }
@@ -104,6 +107,8 @@ describe("SystemSettingsForm", () => {
         expect.objectContaining({
           siteTitle: "JudgeKit Updated",
           timeZone: "UTC",
+          publicSignupEnabled: false,
+          signupHcaptchaEnabled: false,
           defaultLanguage: "python",
         })
       );

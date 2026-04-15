@@ -120,6 +120,16 @@ describe("systemSettingsSchema", () => {
     expect(result.data?.platformMode).toBe("recruiting");
   });
 
+  it("accepts public sign-up booleans", () => {
+    const result = systemSettingsSchema.safeParse({
+      publicSignupEnabled: true,
+      signupHcaptchaEnabled: false,
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.publicSignupEnabled).toBe(true);
+    expect(result.data?.signupHcaptchaEnabled).toBe(false);
+  });
+
   it("rejects an invalid platformMode", () => {
     const result = systemSettingsSchema.safeParse({ platformMode: "invalid-mode" });
     expect(result.success).toBe(false);

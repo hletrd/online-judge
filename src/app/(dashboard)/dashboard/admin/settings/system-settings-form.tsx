@@ -34,6 +34,9 @@ type SystemSettingsFormProps = {
   currentTimeZone: string;
   currentPlatformMode: PlatformMode;
   initialAiAssistantEnabled: boolean;
+  initialPublicSignupEnabled: boolean;
+  initialSignupHcaptchaEnabled: boolean;
+  signupHcaptchaAvailable: boolean;
 };
 
 function isValidTimeZone(value: string) {
@@ -58,6 +61,9 @@ export function SystemSettingsForm({
   currentTimeZone,
   currentPlatformMode,
   initialAiAssistantEnabled,
+  initialPublicSignupEnabled,
+  initialSignupHcaptchaEnabled,
+  signupHcaptchaAvailable,
   initialDefaultLanguage,
 }: SystemSettingsFormProps) {
   const router = useRouter();
@@ -68,6 +74,8 @@ export function SystemSettingsForm({
   const [timeZone, setTimeZone] = useState(initialTimeZone);
   const [platformMode, setPlatformMode] = useState<PlatformMode>(initialPlatformMode);
   const [aiAssistantEnabled, setAiAssistantEnabled] = useState(initialAiAssistantEnabled);
+  const [publicSignupEnabled, setPublicSignupEnabled] = useState(initialPublicSignupEnabled);
+  const [signupHcaptchaEnabled, setSignupHcaptchaEnabled] = useState(initialSignupHcaptchaEnabled);
   const [defaultLanguage, setDefaultLanguage] = useState(initialDefaultLanguage);
   const [isLoading, setIsLoading] = useState(false);
   const platformPolicy = useMemo(() => getPlatformModePolicy(platformMode), [platformMode]);
@@ -99,6 +107,8 @@ export function SystemSettingsForm({
         timeZone: normalizedTimeZone,
         platformMode,
         aiAssistantEnabled,
+        publicSignupEnabled,
+        signupHcaptchaEnabled,
         defaultLanguage: normalizedDefaultLanguage || undefined,
       });
 
@@ -226,6 +236,35 @@ export function SystemSettingsForm({
           placeholder="python"
         />
         <p className="text-xs text-muted-foreground">{t("defaultLanguageHint")}</p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="public-signup-enabled">{t("publicSignupTitle")}</Label>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            id="public-signup-enabled"
+            checked={publicSignupEnabled}
+            onCheckedChange={(checked) => setPublicSignupEnabled(checked === true)}
+          />
+          <span>{t("publicSignupEnabled")}</span>
+        </label>
+        <p className="text-xs text-muted-foreground">{t("publicSignupEnabledHint")}</p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="signup-hcaptcha-enabled">{t("signupHcaptchaTitle")}</Label>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            id="signup-hcaptcha-enabled"
+            checked={signupHcaptchaEnabled}
+            disabled={!signupHcaptchaAvailable && !signupHcaptchaEnabled}
+            onCheckedChange={(checked) => setSignupHcaptchaEnabled(checked === true)}
+          />
+          <span>{t("signupHcaptchaEnabled")}</span>
+        </label>
+        <p className="text-xs text-muted-foreground">
+          {signupHcaptchaAvailable ? t("signupHcaptchaEnabledHint") : t("signupHcaptchaUnavailable")}
+        </p>
       </div>
 
       <Button type="submit" disabled={isLoading}>

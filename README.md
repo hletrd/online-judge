@@ -15,7 +15,8 @@
 
 <p align="center">
   A secure, cross-platform code evaluation platform for programming assignments.<br/>
-  Docker-sandboxed execution for <a href="docs/languages.md">120 language variants</a> on both AMD64 and ARM64.
+  Docker-sandboxed execution for <a href="docs/languages.md">120 language variants</a> on both AMD64 and ARM64.<br/>
+  Demo: <a href="https://algo.xylolabs.com/">https://algo.xylolabs.com/</a>
 </p>
 
 ---

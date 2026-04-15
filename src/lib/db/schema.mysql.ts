@@ -478,6 +478,8 @@ export const systemSettings = mysqlTable("system_settings", {
   defaultLanguage: varchar("default_language", { length: 255 }),
   platformMode: varchar("platform_mode", { length: 255 }).$type<PlatformMode>().notNull().default("homework"),
   aiAssistantEnabled: boolean("ai_assistant_enabled").notNull().default(true),
+  publicSignupEnabled: boolean("public_signup_enabled").notNull().default(false),
+  signupHcaptchaEnabled: boolean("signup_hcaptcha_enabled").notNull().default(false),
   // Rate Limiting (Login)
   loginRateLimitMaxAttempts: int("login_rate_limit_max_attempts"),
   loginRateLimitWindowMs: int("login_rate_limit_window_ms"),

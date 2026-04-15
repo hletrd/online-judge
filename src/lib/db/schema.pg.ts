@@ -499,6 +499,8 @@ export const systemSettings = pgTable("system_settings", {
   timeZone: text("time_zone"),
   platformMode: text("platform_mode").$type<PlatformMode>().notNull().default("homework"),
   aiAssistantEnabled: boolean("ai_assistant_enabled").notNull().default(true),
+  publicSignupEnabled: boolean("public_signup_enabled").notNull().default(false),
+  signupHcaptchaEnabled: boolean("signup_hcaptcha_enabled").notNull().default(false),
   // Rate Limiting (Login)
   loginRateLimitMaxAttempts: integer("login_rate_limit_max_attempts"),
   loginRateLimitWindowMs: integer("login_rate_limit_window_ms"),

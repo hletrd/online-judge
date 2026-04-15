@@ -6,6 +6,13 @@ import { getTokenAuthenticatedAtSeconds } from "@/lib/auth/session-security";
 import { getActiveAuthUserById, getTokenUserId } from "@/lib/api/auth";
 import { getValidatedAuthSecret } from "@/lib/security/env";
 import { recordAuditEvent, buildAuditRequestContext } from "@/lib/audit/events";
+import {
+  DEFAULT_LOCALE,
+  LOCALE_COOKIE_NAME,
+  LOCALE_QUERY_PARAM,
+  SUPPORTED_LOCALES,
+  type SupportedLocale,
+} from "@/lib/i18n/constants";
 
 // In-process FIFO cache for proxy auth lookups (Map preserves insertion order;
 // eviction deletes the oldest entry first, making this FIFO rather than LRU).
@@ -66,11 +73,64 @@ function clearAuthSessionCookies(response: NextResponse) {
   return response;
 }
 
+function isSupportedLocale(value: string | null | undefined): value is SupportedLocale {
+  return Boolean(value && (SUPPORTED_LOCALES as readonly string[]).includes(value));
+}
+
+function getPreferredLocaleFromAcceptLanguage(value: string | null): SupportedLocale {
+  const preferred = value?.split(",")[0]?.split("-")[0]?.trim();
+  return preferred === "ko" ? "ko" : DEFAULT_LOCALE;
+}
+
+function resolveExplicitLocale(request: NextRequest): SupportedLocale | null {
+  const locale = request.nextUrl.searchParams.get(LOCALE_QUERY_PARAM);
+  return isSupportedLocale(locale) ? locale : null;
+}
+
+function resolveRequestLocale(request: NextRequest): SupportedLocale {
+  const explicitLocale = resolveExplicitLocale(request);
+  if (explicitLocale) {
+    return explicitLocale;
+  }
+
+  const cookieLocale = request.cookies.get(LOCALE_COOKIE_NAME)?.value;
+  if (isSupportedLocale(cookieLocale)) {
+    return cookieLocale;
+  }
+
+  return getPreferredLocaleFromAcceptLanguage(request.headers.get("accept-language"));
+}
+
+function appendVaryHeader(headers: Headers, value: string) {
+  const current = headers.get("Vary");
+  if (!current) {
+    headers.set("Vary", value);
+    return;
+  }
+
+  const parts = current
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (!parts.includes(value)) {
+    headers.set("Vary", [...parts, value].join(", "));
+  }
+}
+
 function createSecuredNextResponse(request: NextRequest) {
   const nonce = createNonce();
   const isDev = process.env.NODE_ENV === "development";
+  const isSignupPage = request.nextUrl.pathname === "/signup";
+  const explicitLocale = resolveExplicitLocale(request);
+  const resolvedLocale = resolveRequestLocale(request);
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
+  if (explicitLocale) {
+    requestHeaders.set("x-locale-override", explicitLocale);
+  } else {
+    requestHeaders.delete("x-locale-override");
+  }
   // Next.js 16 RSC bug: X-Forwarded-Host from nginx corrupts RSC streaming
   // during client-side navigation, causing React #300/#310 errors.
   // Auth routes (/api/auth/) are NOT in the proxy matcher, so they keep
@@ -81,18 +141,31 @@ function createSecuredNextResponse(request: NextRequest) {
       headers: requestHeaders,
     },
   });
+  response.headers.set("Content-Language", resolvedLocale);
+  appendVaryHeader(response.headers, "Accept-Language");
+  appendVaryHeader(response.headers, "Cookie");
+  if (explicitLocale) {
+    response.cookies.set(LOCALE_COOKIE_NAME, explicitLocale, {
+      path: "/",
+      sameSite: "lax",
+      secure: request.nextUrl.protocol === "https:",
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
 
+  const hcaptchaDomains = "https://js.hcaptcha.com https://hcaptcha.com https://*.hcaptcha.com";
   const scriptSrc = isDev
-    ? `'self' 'nonce-${nonce}' 'unsafe-eval'`
-    : `'self' 'nonce-${nonce}'`;
+    ? `'self' 'nonce-${nonce}' 'unsafe-eval'${isSignupPage ? ` ${hcaptchaDomains}` : ""}`
+    : `'self' 'nonce-${nonce}'${isSignupPage ? ` ${hcaptchaDomains}` : ""}`;
 
   const csp = [
     "default-src 'self'",
     `script-src ${scriptSrc}`,
-    `style-src 'self' 'unsafe-inline'`,
+    `style-src 'self' 'unsafe-inline'${isSignupPage ? " https://hcaptcha.com https://*.hcaptcha.com" : ""}`,
     "font-src 'self' data:",
     "img-src 'self' data: blob:",
-    "connect-src 'self'",
+    `connect-src 'self'${isSignupPage ? " https://hcaptcha.com https://*.hcaptcha.com" : ""}`,
+    `frame-src 'self'${isSignupPage ? " https://hcaptcha.com https://*.hcaptcha.com" : ""}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -121,7 +194,7 @@ export async function proxy(request: NextRequest) {
     secureCookie: shouldUseSecureAuthCookie(),
   });
 
-  const isAuthPage = pathname.startsWith("/login");
+  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
   const isChangePasswordPage = pathname === "/change-password";
   const isApiRoute = pathname.startsWith("/api/v1");
   const isPublicLanguagesRoute = pathname === "/api/v1/languages";
@@ -225,6 +298,7 @@ export const config = {
     "/community/:path*",
     "/api/v1/:path*",
     "/login",
+    "/signup",
     "/change-password",
     "/recruit/:path*",
   ],

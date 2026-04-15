@@ -1,10 +1,11 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { systemSettings } from "@/lib/db/schema";
 import { DEFAULT_PLATFORM_MODE, getSystemSettings, GLOBAL_SETTINGS_ID } from "@/lib/system-settings";
 import { invalidateSettingsCache } from "@/lib/system-settings-config";
+import { isHcaptchaConfigured } from "@/lib/security/hcaptcha";
 import { systemSettingsSchema } from "@/lib/validators/system-settings";
 import { recordAuditEvent } from "@/lib/audit/events";
 
@@ -22,7 +23,21 @@ export const PUT = createApiHandler({
   auth: { capabilities: ["system.settings"] },
   schema: systemSettingsSchema,
   handler: async (req: NextRequest, { user, body }) => {
-    const { siteTitle, siteDescription, timeZone, platformMode, aiAssistantEnabled, allowedHosts, ...restConfig } = body;
+    const {
+      siteTitle,
+      siteDescription,
+      timeZone,
+      platformMode,
+      aiAssistantEnabled,
+      publicSignupEnabled,
+      signupHcaptchaEnabled,
+      allowedHosts,
+      ...restConfig
+    } = body;
+
+    if (signupHcaptchaEnabled && !isHcaptchaConfigured()) {
+      return NextResponse.json({ error: "signupHcaptchaUnavailable" }, { status: 400 });
+    }
 
     // Explicitly enumerate allowed numeric config keys to prevent arbitrary field injection
     const allowedConfigKeys = [
@@ -48,6 +63,8 @@ export const PUT = createApiHandler({
       timeZone: timeZone ?? null,
       platformMode: platformMode ?? DEFAULT_PLATFORM_MODE,
       aiAssistantEnabled: aiAssistantEnabled ?? true,
+      publicSignupEnabled: publicSignupEnabled ?? false,
+      signupHcaptchaEnabled: signupHcaptchaEnabled ?? false,
       updatedAt: new Date(),
     };
 
@@ -86,6 +103,8 @@ export const PUT = createApiHandler({
         timeZone: timeZone ?? null,
         platformMode: platformMode ?? DEFAULT_PLATFORM_MODE,
         aiAssistantEnabled: aiAssistantEnabled ?? true,
+        publicSignupEnabled: publicSignupEnabled ?? false,
+        signupHcaptchaEnabled: signupHcaptchaEnabled ?? false,
       },
       request: req,
     });

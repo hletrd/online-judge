@@ -28,7 +28,7 @@ const homePageCardSchema = z.object({
   description: z.string().max(300).optional(),
 });
 
-const homePageLocaleSchema = z.object({
+export const homePageLocaleSchema = z.object({
   eyebrow: z.string().max(100).optional(),
   title: z.string().max(200).optional(),
   description: z.string().max(500).optional(),
@@ -61,6 +61,8 @@ export const systemSettingsSchema = z.object({
   ),
   platformMode: z.enum(platformModeValues).optional(),
   aiAssistantEnabled: z.boolean().optional(),
+  publicSignupEnabled: z.boolean().optional(),
+  signupHcaptchaEnabled: z.boolean().optional(),
   defaultLanguage: z.preprocess(
     normalizeOptionalString,
     z.string().max(50, "defaultLanguageTooLong").optional()

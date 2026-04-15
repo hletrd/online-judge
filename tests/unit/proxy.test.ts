@@ -189,6 +189,7 @@ describe("proxy", () => {
           "/community/:path*",
           "/api/v1/:path*",
           "/login",
+          "/signup",
           "/change-password",
         ])
       );
@@ -200,7 +201,7 @@ describe("proxy", () => {
   // =========================================================================
   describe("public routes", () => {
     it("allows unauthenticated access to the new public shell routes", async () => {
-      const routes = ["/", "/practice", "/playground", "/contests", "/community"];
+      const routes = ["/", "/practice", "/playground", "/contests", "/community", "/signup"];
 
       for (const route of routes) {
         const response = await proxy(makeRequest(route));

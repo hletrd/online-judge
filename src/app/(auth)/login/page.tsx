@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
@@ -19,6 +20,14 @@ export default async function LoginPage() {
       </CardHeader>
       <CardContent>
         <LoginForm />
+        {settings.publicSignupEnabled ? (
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            {t("needAccount")}{" "}
+            <Link href="/signup" className="font-medium text-primary hover:underline">
+              {t("createAccount")}
+            </Link>
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

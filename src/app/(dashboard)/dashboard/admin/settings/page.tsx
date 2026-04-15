@@ -18,6 +18,7 @@ import { DatabaseBackupRestore } from "./database-backup-restore";
 import { DatabaseInfo } from "./database-info";
 import { SettingsTabs } from "./settings-tabs";
 import { getAuthUrlObject, normalizeHostForComparison } from "@/lib/security/env";
+import { isHcaptchaConfigured } from "@/lib/security/hcaptcha";
 import { pool } from "@/lib/db";
 import { countTablesQuery } from "@/lib/db/queries";
 
@@ -124,6 +125,11 @@ export default async function AdminSettingsPage() {
   const stored = storedSettings as Record<string, unknown> | undefined;
   const initialAiAssistantEnabled =
     typeof stored?.aiAssistantEnabled === "boolean" ? stored.aiAssistantEnabled : true;
+  const initialPublicSignupEnabled =
+    typeof stored?.publicSignupEnabled === "boolean" ? stored.publicSignupEnabled : false;
+  const initialSignupHcaptchaEnabled =
+    typeof stored?.signupHcaptchaEnabled === "boolean" ? stored.signupHcaptchaEnabled : false;
+  const signupHcaptchaAvailable = isHcaptchaConfigured();
   const dbInfo = await getDbInfo();
 
   type LocaleOverride = {
@@ -179,6 +185,9 @@ export default async function AdminSettingsPage() {
                 currentTimeZone={resolvedSettings.timeZone}
                 currentPlatformMode={resolvedSettings.platformMode}
                 initialAiAssistantEnabled={initialAiAssistantEnabled}
+                initialPublicSignupEnabled={initialPublicSignupEnabled}
+                initialSignupHcaptchaEnabled={initialSignupHcaptchaEnabled}
+                signupHcaptchaAvailable={signupHcaptchaAvailable}
               />
             </CardContent>
           </Card>

@@ -28,6 +28,7 @@ export default async function PublicLayout({ children }: { children: React.React
         actions={[
           { href: "/workspace", label: tShell("nav.workspace") },
           { href: "/login", label: tAuth("signIn") },
+          ...(settings.publicSignupEnabled ? [{ href: "/signup", label: tAuth("signUp") }] : []),
         ]}
         loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.workspace") } : null}
       />

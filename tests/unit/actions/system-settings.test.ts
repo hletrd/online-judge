@@ -50,6 +50,10 @@ vi.mock("@/lib/system-settings-config", () => ({
   invalidateSettingsCache: mocks.invalidateSettingsCache,
 }));
 
+vi.mock("@/lib/security/hcaptcha", () => ({
+  isHcaptchaConfigured: vi.fn(() => true),
+}));
+
 vi.mock("next/cache", () => ({
   revalidatePath: mocks.revalidatePath,
 }));
@@ -104,6 +108,8 @@ const validInput = {
   timeZone: "UTC",
   platformMode: "contest" as const,
   aiAssistantEnabled: true,
+  publicSignupEnabled: false,
+  signupHcaptchaEnabled: false,
 };
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -199,6 +205,20 @@ describe("updateSystemSettings", () => {
     });
     expect(result.success).toBe(false);
     expect(result.error).toBe("invalidTimeZone");
+  });
+
+  it("rejects enabling sign-up hCaptcha when credentials are unavailable", async () => {
+    const { updateSystemSettings } = await import("@/lib/actions/system-settings");
+    const { isHcaptchaConfigured } = await import("@/lib/security/hcaptcha");
+    vi.mocked(isHcaptchaConfigured).mockReturnValue(false);
+    setupAuthorizedAdmin();
+
+    const result = await updateSystemSettings({
+      publicSignupEnabled: true,
+      signupHcaptchaEnabled: true,
+    });
+
+    expect(result).toEqual({ success: false, error: "signupHcaptchaUnavailable" });
   });
 
   it("successfully updates settings and returns success", async () => {

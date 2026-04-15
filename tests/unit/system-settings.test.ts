@@ -168,7 +168,10 @@ describe("getResolvedSystemSettings", () => {
       timeZone: "Asia/Tokyo",
       platformMode: "contest",
       aiAssistantEnabled: false,
+      publicSignupEnabled: false,
+      signupHcaptchaEnabled: false,
       defaultLanguage: null,
+      homePageContent: null,
     });
   });
 
@@ -183,7 +186,10 @@ describe("getResolvedSystemSettings", () => {
       timeZone: "Europe/London",
       platformMode: "homework",
       aiAssistantEnabled: true,
+      publicSignupEnabled: false,
+      signupHcaptchaEnabled: false,
       defaultLanguage: null,
+      homePageContent: null,
     });
   });
 

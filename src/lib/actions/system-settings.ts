@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { systemSettings } from "@/lib/db/schema";
 import { DEFAULT_PLATFORM_MODE, GLOBAL_SETTINGS_ID } from "@/lib/system-settings";
 import { invalidateSettingsCache } from "@/lib/system-settings-config";
+import { isHcaptchaConfigured } from "@/lib/security/hcaptcha";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
 import {
@@ -75,7 +76,22 @@ export async function updateSystemSettings(
     };
   }
 
-  const { siteTitle, siteDescription, timeZone, platformMode, aiAssistantEnabled, defaultLanguage, allowedHosts, homePageContent } = parsedInput.data;
+  const {
+    siteTitle,
+    siteDescription,
+    timeZone,
+    platformMode,
+    aiAssistantEnabled,
+    publicSignupEnabled,
+    signupHcaptchaEnabled,
+    defaultLanguage,
+    allowedHosts,
+    homePageContent,
+  } = parsedInput.data;
+
+  if (signupHcaptchaEnabled && !isHcaptchaConfigured()) {
+    return { success: false, error: "signupHcaptchaUnavailable" };
+  }
 
   // Build config fields — undefined means "not provided", null means "clear to default"
   const configValues: Record<string, number | null> = {};
@@ -93,6 +109,8 @@ export async function updateSystemSettings(
     timeZone: timeZone ?? null,
     platformMode: platformMode ?? DEFAULT_PLATFORM_MODE,
     aiAssistantEnabled: aiAssistantEnabled ?? true,
+    publicSignupEnabled: publicSignupEnabled ?? false,
+    signupHcaptchaEnabled: signupHcaptchaEnabled ?? false,
     defaultLanguage: defaultLanguage ?? null,
     homePageContent: homePageContent ?? null,
     ...configValues,
@@ -131,6 +149,8 @@ export async function updateSystemSettings(
       timeZone: timeZone ?? null,
       platformMode: platformMode ?? DEFAULT_PLATFORM_MODE,
       aiAssistantEnabled: aiAssistantEnabled ?? true,
+      publicSignupEnabled: publicSignupEnabled ?? false,
+      signupHcaptchaEnabled: signupHcaptchaEnabled ?? false,
       defaultLanguage: defaultLanguage ?? null,
       ...configValues,
     },
@@ -139,6 +159,7 @@ export async function updateSystemSettings(
 
   revalidatePath("/", "layout");
   revalidatePath("/login");
+  revalidatePath("/signup");
   revalidatePath("/dashboard", "layout");
   revalidatePath("/dashboard/admin/settings");
 

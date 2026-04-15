@@ -6,10 +6,11 @@ export default getRequestConfig(async () => {
   const cookieStore = await cookies();
   const headerStore = await headers();
 
+  const localeOverride = headerStore.get("x-locale-override");
   const cookieLocale = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
   const acceptLanguage = headerStore.get("accept-language");
 
-  let locale = cookieLocale;
+  let locale = localeOverride || cookieLocale;
 
   if (!locale && acceptLanguage) {
     const preferred = acceptLanguage.split(",")[0]?.split("-")[0]?.trim();
