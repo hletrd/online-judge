@@ -21,6 +21,14 @@ JudgeKit needs a public SEO system that is:
 
 - 2026-04-15 — Phase 0 route policy codified in `src/lib/public-route-seo.ts`.
 - 2026-04-15 — Phase 1 started: submissions surfaces moved to `noindex` policy and `robots.txt` disallow list expanded to include `/submissions`.
+- 2026-04-15 — Phase 2 completed: public indexable routes now use deterministic locale handling (`?locale=ko`) and preserve locale across header/footer/navigation flows.
+- 2026-04-15 — Phase 3 completed: paginated public metadata now self-canonicalizes with explicit page URLs, while personal search/filter surfaces remain noindex.
+- 2026-04-15 — Phase 4 completed: sitemap coverage now includes rankings, localized public URLs, and batched collection loading instead of low arbitrary caps.
+- 2026-04-15 — Phase 5 completed: root fallback metadata now uses large-image social cards, and entity pages feed richer OG badge/meta context into `/og`.
+- 2026-04-15 — Phase 6 completed: rankings JSON-LD added, homepage organization schema added, and public detail pages now emit breadcrumb structured data.
+- 2026-04-15 — Phase 7 completed: helper, robots, sitemap, proxy-locale, route-metadata, and public component regression tests were expanded and verified.
+- 2026-04-15 — Architect follow-up fix completed: deterministic public locale rendering now ignores admin default-locale fallback unless an explicit locale URL is present, and paginated public metadata clamps to the same last page that rendering/JSON-LD use.
+- 2026-04-15 — Final verification follow-up: proxy matcher now explicitly covers `/rankings` and `/submissions`, keeping deterministic locale behavior aligned with the SEO route policy and regression tests.
 
 ### Public Route SEO Matrix
 
@@ -44,31 +52,31 @@ JudgeKit needs a public SEO system that is:
 ### Crawlability / Indexability
 - [x] All personal/authenticated public-surface routes are `noindex, nofollow`
 - [x] `robots.txt` disallows all non-indexable public-auth routes, including `/submissions`
-- [ ] Every intentionally indexable public page has explicit metadata ownership
+- [x] Every intentionally indexable public page has explicit metadata ownership
 
 ### Locale SEO
-- [ ] Public locale variants resolve from deterministic crawlable URLs, not only cookie/header state
-- [ ] `hreflang` / alternates point to the true crawlable locale URLs
-- [ ] sitemap includes locale-aware URLs for all indexable public pages
+- [x] Public locale variants resolve from deterministic crawlable URLs, not only cookie/header state
+- [x] `hreflang` / alternates point to the true crawlable locale URLs
+- [x] sitemap includes locale-aware URLs for all indexable public pages
 
 ### Canonical Strategy
-- [ ] Paginated collection pages have an explicit canonical policy
-- [ ] Search/filter states are either `noindex, follow` or emit canonical URLs that match the intended index target
-- [ ] No page-2/page-3 collection silently canonicalizes to page 1 by accident
+- [x] Paginated collection pages have an explicit canonical policy
+- [x] Search/filter states are either `noindex, follow` or emit canonical URLs that match the intended index target
+- [x] No page-2/page-3 collection silently canonicalizes to page 1 by accident
 
 ### Social Previews
-- [ ] Root fallback metadata includes large-image OG/Twitter coverage
-- [ ] Major public entity pages (home, problem, contest, community thread) render strong route-specific OG images
-- [ ] OG/Twitter metadata remains correct in both `en` and `ko`
+- [x] Root fallback metadata includes large-image OG/Twitter coverage
+- [x] Major public entity pages (home, problem, contest, community thread) render strong route-specific OG images
+- [x] OG/Twitter metadata remains correct in both `en` and `ko`
 
 ### Structured Data
-- [ ] All intentionally indexable public listings/details emit appropriate JSON-LD
-- [ ] Breadcrumb/site-level schema is added where it improves clarity without overfitting
+- [x] All intentionally indexable public listings/details emit appropriate JSON-LD
+- [x] Breadcrumb/site-level schema is added where it improves clarity without overfitting
 
 ### Verification
-- [ ] Unit tests cover metadata helper, robots, sitemap, locale alternates, and noindex rules
-- [ ] Component/page-level tests assert key metadata behavior on critical public routes
-- [ ] Manual verification checklist exists for live preview cards and locale variants
+- [x] Unit tests cover metadata helper, robots, sitemap, locale alternates, and noindex rules
+- [x] Component/page-level tests assert key metadata behavior on critical public routes
+- [x] Manual verification checklist exists for live preview cards and locale variants
 
 ---
 
@@ -132,7 +140,7 @@ Create a route-class matrix listing each public pathname bucket and whether it s
 **Verification:**
 - unit test asserts new disallow rules
 
-**Status:** in progress — code change landed, tests still pending in the SEO regression pass.
+**Status:** complete — robots coverage expanded and regression-tested.
 
 ---
 
@@ -198,6 +206,8 @@ Keep `?locale=ko`, but make public SEO pages canonicalize/render only from expli
 - request `/practice` in default locale and verify English canonical
 - request localized variant and verify Korean canonical/hreflang/html `lang`
 
+**Status:** complete — `src/proxy.ts` and `src/i18n/request.ts` now treat indexable public routes as deterministic locale surfaces while preserving locale-aware auth routes.
+
 ---
 
 ## Phase 3 — Correct canonical handling for pagination and search states
@@ -226,6 +236,8 @@ Keep `?locale=ko`, but make public SEO pages canonicalize/render only from expli
 **Verification:**
 - unit tests for page 1 vs page 2 canonical output
 - unit tests for filtered state `robots` behavior
+
+**Status:** complete — public submissions history/detail pages are noindex and paginated public listings emit page-aware canonical metadata.
 
 ---
 
@@ -262,6 +274,8 @@ Keep `?locale=ko`, but make public SEO pages canonicalize/render only from expli
 **Verification:**
 - unit tests cover locale entries and missing-page additions
 - manual check of `/sitemap.xml`
+
+**Status:** complete — sitemap batching replaced the old 500/500/200 caps and localized URLs are emitted for every indexable public entity.
 
 ---
 
@@ -325,6 +339,8 @@ Support richer preview inputs such as:
 **Constraint:**
 Do not add decorative schema that the actual UI/content does not support.
 
+**Status:** complete — homepage now emits `Organization` schema and detail pages emit `BreadcrumbList` entries tied to real route hierarchy.
+
 ---
 
 ## Phase 7 — Repair and expand SEO regression coverage
@@ -356,6 +372,16 @@ Do not add decorative schema that the actual UI/content does not support.
 - verify `/submissions` emits noindex
 - verify `/sitemap.xml` and `/robots.txt`
 - verify shared links render correct cards in Slack/Discord/X preview tools
+
+**Status:** checklist present below; automated verification executed in this implementation pass.
+
+### Manual Verification Checklist
+
+- [x] Inspect rendered metadata via `generateMetadata()`-backed unit tests for practice, rankings, submissions, and helper output
+- [x] Verify locale-specific URLs preserve `?locale=ko` through header/footer/navigation tests
+- [x] Verify `robots.txt` blocks `/submissions`
+- [x] Verify `sitemap.xml` now covers `/rankings` and Korean locale variants via unit tests
+- [ ] Verify live OG cards in external preview tools (recommended post-deploy)
 
 ---
 

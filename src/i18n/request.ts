@@ -10,10 +10,12 @@ export default getRequestConfig(async () => {
   const localeOverride = headerStore.get("x-locale-override");
   const cookieLocale = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
   const acceptLanguage = headerStore.get("accept-language");
+  const publicLocaleMode = headerStore.get("x-public-locale-mode");
+  const deterministicPublicLocale = publicLocaleMode === "deterministic";
 
-  let locale = localeOverride || cookieLocale;
+  let locale = localeOverride || (deterministicPublicLocale ? DEFAULT_LOCALE : cookieLocale);
 
-  if (!locale && acceptLanguage) {
+  if (!locale && !deterministicPublicLocale && acceptLanguage) {
     const preferred = acceptLanguage.split(",")[0]?.split("-")[0]?.trim();
     if (preferred === "ko") {
       locale = "ko";

@@ -18,21 +18,40 @@ function normalizePage(value?: string) {
   return Math.floor(parsed);
 }
 
-export async function generateMetadata(): Promise<Metadata> {
-  const [tCommon, tShell, locale] = await Promise.all([
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+} = {}): Promise<Metadata> {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const requestedPage = normalizePage(resolvedSearchParams?.page);
+
+  const [tCommon, tShell, locale, countRows] = await Promise.all([
     getTranslations("common"),
     getTranslations("publicShell"),
     getLocale(),
+    db.select({ total: count() }).from(problems).where(eq(problems.visibility, "public")),
   ]);
   const settings = await getResolvedSystemSettings({
     siteTitle: tCommon("appName"),
     siteDescription: tCommon("appDescription"),
   });
+  const totalCount = Number(countRows[0]?.total ?? 0);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
+
+  const pageLabel = currentPage > 1 ? tCommon("paginationPage", { page: currentPage }) : null;
+  const title = currentPage > 1
+    ? `${tShell("practice.catalogTitle")} · ${pageLabel}`
+    : tShell("practice.catalogTitle");
+  const description = currentPage > 1
+    ? `${tShell("practice.catalogDescription")} ${pageLabel}.`
+    : tShell("practice.catalogDescription");
 
   return buildPublicMetadata({
-    title: tShell("practice.catalogTitle"),
-    description: tShell("practice.catalogDescription"),
-    path: "/practice",
+    title,
+    description,
+    path: currentPage > 1 ? `/practice?page=${currentPage}` : "/practice",
     siteTitle: settings.siteTitle,
     locale,
     keywords: [
@@ -122,7 +141,7 @@ export default async function PracticePage({
     "@type": "CollectionPage",
     name: t("practice.catalogTitle"),
     description: t("practice.catalogDescription"),
-    url: buildAbsoluteUrl(buildLocalePath("/practice", locale)),
+    url: buildAbsoluteUrl(buildLocalePath(clampedPage > 1 ? `/practice?page=${clampedPage}` : "/practice", locale)),
     inLanguage: locale,
     mainEntity: {
       "@type": "ItemList",
@@ -157,6 +176,7 @@ export default async function PracticePage({
 
           return {
             id: problem.id,
+            href: buildLocalePath(`/practice/problems/${problem.id}`, locale),
             sequenceNumber: problem.sequenceNumber ?? null,
             title: problem.title,
             difficultyLabel: problem.difficulty != null
@@ -178,7 +198,7 @@ export default async function PracticePage({
       <PaginationControls
         currentPage={clampedPage}
         totalPages={totalPages}
-        buildHref={(page) => page > 1 ? `${PAGE_PATH}?page=${page}` : PAGE_PATH}
+        buildHref={(page) => buildLocalePath(page > 1 ? `${PAGE_PATH}?page=${page}` : PAGE_PATH, locale)}
       />
     </>
   );

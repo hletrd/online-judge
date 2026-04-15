@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { formatRelativeTimeFromNow } from "@/lib/datetime";
 import { PaginationControls } from "@/components/pagination-controls";
+import { JsonLd } from "@/components/seo/json-ld";
 import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { getLocale as getLocaleServer } from "next-intl/server";
@@ -20,21 +21,50 @@ import { getLocale as getLocaleServer } from "next-intl/server";
 const PAGE_SIZE = 50;
 const PAGE_PATH = "/rankings";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const [tCommon, t, locale] = await Promise.all([
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+} = {}): Promise<Metadata> {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const requestedPage = Math.max(1, Math.floor(Number(resolvedSearchParams?.page ?? "1")) || 1);
+
+  const [tCommon, t, locale, countRow] = await Promise.all([
     getTranslations("common"),
     getTranslations("rankings"),
     getLocaleServer(),
+    rawQueryOne<{ total: number }>(`
+      WITH first_accepts AS (
+        SELECT
+          user_id,
+          problem_id,
+          MIN(submitted_at) as first_accepted_at
+        FROM submissions
+        WHERE status = 'accepted'
+        GROUP BY user_id, problem_id
+      )
+      SELECT COUNT(DISTINCT fa.user_id)::int as total
+      FROM first_accepts fa
+      INNER JOIN users u ON u.id = fa.user_id
+      WHERE u.is_active = true
+    `),
   ]);
   const settings = await getResolvedSystemSettings({
     siteTitle: tCommon("appName"),
     siteDescription: tCommon("appDescription"),
   });
+  const totalCount = countRow?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
+
+  const pageLabel = currentPage > 1 ? tCommon("paginationPage", { page: currentPage }) : null;
+  const title = currentPage > 1 ? `${t("title")} · ${pageLabel}` : t("title");
+  const description = currentPage > 1 ? `${t("description")} ${pageLabel}.` : t("description");
 
   return buildPublicMetadata({
-    title: t("title"),
-    description: t("description"),
-    path: PAGE_PATH,
+    title,
+    description,
+    path: currentPage > 1 ? `${PAGE_PATH}?page=${currentPage}` : PAGE_PATH,
     siteTitle: settings.siteTitle,
     locale,
   });
@@ -107,9 +137,26 @@ export default async function RankingsPage({
     `,
     { limit: PAGE_SIZE, offset: clampedOffset }
   );
+  const rankingsJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: t("title"),
+    description: t("description"),
+    url: buildAbsoluteUrl(buildLocalePath(clampedPage > 1 ? `${PAGE_PATH}?page=${clampedPage}` : PAGE_PATH, locale)),
+    inLanguage: locale,
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: rankingRows.map((row, index) => ({
+        "@type": "ListItem",
+        position: clampedOffset + index + 1,
+        name: `${row.name} (${row.username})`,
+      })),
+    },
+  };
 
   return (
     <div className="space-y-6">
+      <JsonLd data={rankingsJsonLd} />
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{t("description")}</p>
@@ -171,7 +218,7 @@ export default async function RankingsPage({
       <PaginationControls
         currentPage={clampedPage}
         totalPages={totalPages}
-        buildHref={(page) => page > 1 ? `${PAGE_PATH}?page=${page}` : PAGE_PATH}
+        buildHref={(page) => buildLocalePath(page > 1 ? `${PAGE_PATH}?page=${page}` : PAGE_PATH, locale)}
       />
     </div>
   );
