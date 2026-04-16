@@ -40,7 +40,7 @@ export const GET = createApiHandler({
     const cached = analyticsCache.get(cacheKey);
     if (cached) return apiSuccess(cached);
 
-    const analytics = await computeContestAnalytics(assignmentId);
+    const analytics = await computeContestAnalytics(assignmentId, true);
     analyticsCache.set(cacheKey, analytics);
     return apiSuccess(analytics);
   },

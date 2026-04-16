@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScoreTimelineChart } from "@/components/contest/score-timeline-chart";
 
 type HistogramBucket = { label: string; count: number };
 type ProblemSolveRate = {
@@ -43,6 +44,11 @@ type AnalyticsData = {
   problemSolveRates: ProblemSolveRate[];
   problemSolveTimes: ProblemSolveTime[];
   cheatSummary: CheatSummary;
+  studentProgressions?: Array<{
+    userId: string;
+    name: string;
+    points: Array<{ timestamp: number; totalScore: number }>;
+  }>;
 };
 
 interface AnalyticsChartsProps {
@@ -725,6 +731,23 @@ export function AnalyticsCharts({ assignmentId }: AnalyticsChartsProps) {
           </Card>
         )}
       </div>
+
+      {data.studentProgressions && data.studentProgressions.length > 0 ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{t("scoreProgression")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScoreTimelineChart
+              title={t("scoreProgression")}
+              participantLabel={t("students")}
+              noDataLabel={t("noData")}
+              scoreLabel={t("score")}
+              progressions={data.studentProgressions}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }
