@@ -18,6 +18,10 @@ const judgeResultItemSchema = z.object({
   actualOutput: z.string().optional(),
   executionTimeMs: z.number().int().nonnegative().optional(),
   memoryUsedKb: z.number().int().nonnegative().optional(),
+  runtimeErrorType: z.preprocess(
+    normalizeOptionalString,
+    z.string().min(1, "invalidJudgeResult").optional()
+  ),
 });
 
 export const judgeStatusReportSchema = z.object({

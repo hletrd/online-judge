@@ -8,7 +8,33 @@ type JudgeResultInput = {
   actualOutput?: string;
   executionTimeMs?: number;
   memoryUsedKb?: number;
+  runtimeErrorType?: string;
 };
+
+export function extractFinalJudgeDetail(results: JudgeResultInput[] | undefined) {
+  if (!Array.isArray(results) || results.length === 0) {
+    return {
+      failedTestCaseIndex: null,
+      runtimeErrorType: null,
+    };
+  }
+
+  const firstFailureIndex = results.findIndex((result) => result.status !== "accepted");
+  if (firstFailureIndex < 0) {
+    return {
+      failedTestCaseIndex: null,
+      runtimeErrorType: null,
+    };
+  }
+
+  return {
+    failedTestCaseIndex: firstFailureIndex,
+    runtimeErrorType:
+      results[firstFailureIndex]?.status === "runtime_error"
+        ? results[firstFailureIndex]?.runtimeErrorType ?? null
+        : null,
+  };
+}
 
 export function computeFinalJudgeMetrics(results: JudgeResultInput[] | undefined) {
   let score: number | null = null;

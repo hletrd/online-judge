@@ -13,6 +13,7 @@ import { isJudgeAuthorized } from "@/lib/judge/auth";
 import {
   buildSubmissionResultRows,
   computeFinalJudgeMetrics,
+  extractFinalJudgeDetail,
   IN_PROGRESS_JUDGE_STATUSES,
 } from "@/lib/judge/verdict";
 import { isSubmissionStatus } from "@/lib/security/constants";
@@ -42,6 +43,8 @@ export async function POST(request: NextRequest) {
       return apiError("invalidJudgeResult", 400);
     }
 
+    const { failedTestCaseIndex, runtimeErrorType } = extractFinalJudgeDetail(results);
+
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
       columns: {
@@ -60,6 +63,8 @@ export async function POST(request: NextRequest) {
           .set({
             status,
             judgeClaimedAt: new Date(),
+            failedTestCaseIndex,
+            runtimeErrorType,
           })
           .where(
             and(eq(submissions.id, submissionId), eq(submissions.judgeClaimToken, claimToken))
@@ -123,6 +128,8 @@ export async function POST(request: NextRequest) {
           score,
           executionTimeMs: maxExecutionTimeMs,
           memoryUsedKb: maxMemoryUsedKb,
+          failedTestCaseIndex,
+          runtimeErrorType,
           judgedAt: new Date(),
         }).where(
           and(eq(submissions.id, submissionId), eq(submissions.judgeClaimToken, claimToken))

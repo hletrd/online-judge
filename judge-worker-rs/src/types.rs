@@ -259,6 +259,8 @@ pub struct TestResult {
     pub execution_time_ms: u64,
     #[serde(rename = "memoryUsedKb")]
     pub memory_used_kb: u64,
+    #[serde(rename = "runtimeErrorType", skip_serializing_if = "Option::is_none")]
+    pub runtime_error_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -12,6 +12,7 @@ import {
   IN_PROGRESS_JUDGE_STATUSES,
   buildSubmissionResultRows,
   computeFinalJudgeMetrics,
+  extractFinalJudgeDetail,
 } from "@/lib/judge/verdict";
 
 describe("IN_PROGRESS_JUDGE_STATUSES", () => {
@@ -207,5 +208,26 @@ describe("buildSubmissionResultRows", () => {
 
     expect(rows.map((r) => r.id)).toEqual(["uid-a", "uid-b", "uid-c"]);
     expect(nanoidMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+
+describe("extractFinalJudgeDetail", () => {
+  it("returns null detail when there are no failures", () => {
+    expect(extractFinalJudgeDetail([{ testCaseId: "tc1", status: "accepted" }])).toEqual({
+      failedTestCaseIndex: null,
+      runtimeErrorType: null,
+    });
+  });
+
+  it("returns the first failing test case index and runtime error type", () => {
+    expect(extractFinalJudgeDetail([
+      { testCaseId: "tc1", status: "accepted" },
+      { testCaseId: "tc2", status: "runtime_error", runtimeErrorType: "SIGSEGV" },
+      { testCaseId: "tc3", status: "wrong_answer" },
+    ])).toEqual({
+      failedTestCaseIndex: 1,
+      runtimeErrorType: "SIGSEGV",
+    });
   });
 });

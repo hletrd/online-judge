@@ -152,11 +152,13 @@ describe("judgeStatusReportSchema", () => {
           actualOutput: "42\n",
           executionTimeMs: 100,
           memoryUsedKb: 1024,
+          runtimeErrorType: "SIGSEGV",
         },
       ],
     });
     expect(parsed.results).toHaveLength(1);
     expect(parsed.results?.[0]?.testCaseId).toBe("tc-1");
+    expect(parsed.results?.[0]?.runtimeErrorType).toBe("SIGSEGV");
   });
 
   it("trims whitespace in result testCaseId and status", () => {
@@ -193,6 +195,7 @@ describe("judgeStatusReportSchema", () => {
     });
     expect(parsed.results?.[0]?.executionTimeMs).toBeUndefined();
     expect(parsed.results?.[0]?.memoryUsedKb).toBeUndefined();
+    expect(parsed.results?.[0]?.runtimeErrorType).toBeUndefined();
   });
 
   it("rejects negative executionTimeMs", () => {

@@ -45,6 +45,23 @@ fn reported_memory_used_kb(
     memory_peak_kb.unwrap_or(0).min(memory_limit_kb)
 }
 
+fn runtime_error_type(stderr: &str, exit_code: Option<i32>) -> Option<String> {
+    let stderr_lower = stderr.to_ascii_lowercase();
+    if stderr_lower.contains("stack overflow") {
+        return Some("stack_overflow".to_string());
+    }
+
+    match exit_code {
+        Some(134) => Some("SIGABRT".to_string()),
+        Some(136) => Some("SIGFPE".to_string()),
+        Some(137) => Some("SIGKILL".to_string()),
+        Some(139) => Some("SIGSEGV".to_string()),
+        Some(152) => Some("SIGXCPU".to_string()),
+        Some(code) if code >= 128 => Some(format!("signal_{}", code - 128)),
+        _ => None,
+    }
+}
+
 async fn prune_dead_letter_dir(dead_letter_dir: &Path, max_files: usize) {
     let mut entries = match fs::read_dir(dead_letter_dir).await {
         Ok(entries) => entries,
@@ -345,6 +362,11 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
             actual_output,
             execution_time_ms: execution.duration_ms,
             memory_used_kb: memory_used_kb.into(),
+            runtime_error_type: if verdict == Verdict::RuntimeError {
+                runtime_error_type(&execution.stderr, execution.exit_code)
+            } else {
+                None
+            },
         });
 
         if verdict != Verdict::Accepted {
@@ -376,7 +398,7 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
 mod tests {
     use super::{
         compile_timeout_ms_for_submission, prune_dead_letter_dir, reported_memory_used_kb,
-        COMPILATION_TIMEOUT_MS, MIN_COMPILE_TIMEOUT_MS,
+        runtime_error_type, COMPILATION_TIMEOUT_MS, MIN_COMPILE_TIMEOUT_MS,
     };
     use tempfile::tempdir;
     use tokio::fs;
@@ -408,6 +430,13 @@ mod tests {
     #[test]
     fn compile_timeout_is_capped_for_huge_time_limits() {
         assert_eq!(compile_timeout_ms_for_submission(400_000), COMPILATION_TIMEOUT_MS);
+    }
+
+    #[test]
+    fn runtime_error_type_maps_known_exit_codes_and_stack_overflow() {
+        assert_eq!(runtime_error_type("", Some(139)).as_deref(), Some("SIGSEGV"));
+        assert_eq!(runtime_error_type("", Some(136)).as_deref(), Some("SIGFPE"));
+        assert_eq!(runtime_error_type("stack overflow", Some(1)).as_deref(), Some("stack_overflow"));
     }
 
     #[tokio::test]
