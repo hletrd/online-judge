@@ -84,7 +84,6 @@ function renderForm(initialTimeZone = "UTC") {
       initialAiAssistantEnabled
       initialPublicSignupEnabled={false}
       initialSignupHcaptchaEnabled={false}
-      signupHcaptchaAvailable={true}
       initialHcaptchaSiteKey=""
       initialHcaptchaSecretMasked=""
     />

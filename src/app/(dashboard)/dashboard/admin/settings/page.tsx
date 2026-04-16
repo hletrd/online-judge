@@ -19,7 +19,6 @@ import { DatabaseBackupRestore } from "./database-backup-restore";
 import { DatabaseInfo } from "./database-info";
 import { SettingsTabs } from "./settings-tabs";
 import { getAuthUrlObject, normalizeHostForComparison } from "@/lib/security/env";
-import { isHcaptchaConfigured } from "@/lib/security/hcaptcha";
 import { pool } from "@/lib/db";
 import { countTablesQuery } from "@/lib/db/queries";
 
@@ -132,7 +131,6 @@ export default async function AdminSettingsPage() {
     typeof stored?.signupHcaptchaEnabled === "boolean" ? stored.signupHcaptchaEnabled : false;
   const initialHcaptchaSiteKey = (stored?.hcaptchaSiteKey as string) ?? "";
   const initialHcaptchaSecretMasked = (stored?.hcaptchaSecret as string) ? "••••••••" : "";
-  const signupHcaptchaAvailable = await isHcaptchaConfigured();
   const dbInfo = await getDbInfo();
 
   type LocaleOverride = {
@@ -197,7 +195,6 @@ export default async function AdminSettingsPage() {
                 initialAiAssistantEnabled={initialAiAssistantEnabled}
                 initialPublicSignupEnabled={initialPublicSignupEnabled}
                 initialSignupHcaptchaEnabled={initialSignupHcaptchaEnabled}
-                signupHcaptchaAvailable={signupHcaptchaAvailable}
                 initialHcaptchaSiteKey={initialHcaptchaSiteKey}
                 initialHcaptchaSecretMasked={initialHcaptchaSecretMasked}
               />

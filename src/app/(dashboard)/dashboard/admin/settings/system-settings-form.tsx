@@ -37,7 +37,6 @@ type SystemSettingsFormProps = {
   initialAiAssistantEnabled: boolean;
   initialPublicSignupEnabled: boolean;
   initialSignupHcaptchaEnabled: boolean;
-  signupHcaptchaAvailable: boolean;
   initialHcaptchaSiteKey: string;
   initialHcaptchaSecretMasked: string;
 };
@@ -66,7 +65,6 @@ export function SystemSettingsForm({
   initialAiAssistantEnabled,
   initialPublicSignupEnabled,
   initialSignupHcaptchaEnabled,
-  signupHcaptchaAvailable,
   initialHcaptchaSiteKey,
   initialHcaptchaSecretMasked,
   initialDefaultLanguage,
