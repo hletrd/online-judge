@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { PaginationControls } from "@/components/pagination-controls";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { PublicProblemSetList } from "@/components/problem/public-problem-set-list";
 import { buildLocalePath, buildPublicMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { countPublicProblemSets, listPublicProblemSets } from "@/lib/problem-sets/public";
 import { normalizePage } from "@/lib/pagination";
+import { normalizePracticeSearch } from "@/lib/practice/search";
 
 const PAGE_PATH = "/practice/sets";
 const PAGE_SIZE = 20;
@@ -34,21 +37,50 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PracticeSetsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; search?: string }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const currentPage = normalizePage(resolvedSearchParams?.page);
+  const searchQuery = normalizePracticeSearch(resolvedSearchParams?.search);
   const locale = await getLocale();
   const t = await getTranslations("publicShell");
 
-  const totalCount = await countPublicProblemSets();
+  const totalCount = await countPublicProblemSets(searchQuery);
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const clampedPage = Math.min(currentPage, totalPages);
   const offset = (clampedPage - 1) * PAGE_SIZE;
-  const items = await listPublicProblemSets({ limit: PAGE_SIZE, offset });
+  const items = await listPublicProblemSets({ limit: PAGE_SIZE, offset, search: searchQuery });
+
+  function buildHref(page: number) {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set("search", searchQuery);
+    if (page > 1) params.set("page", String(page));
+    const query = params.toString();
+    return query ? `${PAGE_PATH}?${query}` : PAGE_PATH;
+  }
 
   return (
     <div className="space-y-6">
+      <form className="flex flex-col gap-3 md:flex-row md:items-end" method="get">
+        <div className="flex-1 space-y-1.5">
+          <label className="block text-sm font-medium" htmlFor="problem-set-search">
+            {t("practice.sets.searchLabel")}
+          </label>
+          <Input
+            id="problem-set-search"
+            name="search"
+            type="search"
+            defaultValue={searchQuery}
+            placeholder={t("practice.sets.searchPlaceholder")}
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button type="submit">{t("practice.applyFilters")}</Button>
+          <a href={PAGE_PATH}>
+            <Button type="button" variant="outline">{t("practice.resetFilters")}</Button>
+          </a>
+        </div>
+      </form>
       <PublicProblemSetList
         title={t("practice.sets.title")}
         description={t("practice.sets.description")}
@@ -67,7 +99,7 @@ export default async function PracticeSetsPage({
         currentPage={clampedPage}
         totalPages={totalPages}
         pageSize={PAGE_SIZE}
-        buildHref={(page) => page > 1 ? `${PAGE_PATH}?page=${page}` : PAGE_PATH}
+        buildHref={buildHref}
       />
     </div>
   );

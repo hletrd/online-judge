@@ -2610,6 +2610,8 @@
       "sets": {
         "title": "문제집",
         "description": "공개 문제집을 둘러보고 순서대로 풀어 보세요.",
+        "searchLabel": "문제집 검색",
+        "searchPlaceholder": "제목 또는 설명으로 검색",
         "empty": "공개된 문제집이 아직 없습니다.",
         "open": "문제집 열기",
         "problemCount": "문제 {count}개",

@@ -2610,6 +2610,8 @@
       "sets": {
         "title": "Problem Sets",
         "description": "Browse curated public problem sets and solve them in order.",
+        "searchLabel": "Search sets",
+        "searchPlaceholder": "Search by title or description…",
         "empty": "No public problem sets yet.",
         "open": "Open set",
         "problemCount": "{count} problems",

@@ -1,6 +1,7 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, like, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { problemSets, submissions } from "@/lib/db/schema";
+import { escapePracticeLike, normalizePracticeSearch } from "@/lib/practice/search";
 
 export type PublicProblemSetListItem = {
   id: string;
@@ -25,18 +26,36 @@ export type PublicProblemSetDetail = {
   }>;
 };
 
-export async function countPublicProblemSets() {
+function buildPublicProblemSetSearchFilter(search?: string) {
+  const normalizedSearch = normalizePracticeSearch(search);
+
+  if (!normalizedSearch) {
+    return eq(problemSets.isPublic, true);
+  }
+
+  const escapedSearch = `%${escapePracticeLike(normalizedSearch)}%`;
+
+  return and(
+    eq(problemSets.isPublic, true),
+    or(
+      like(problemSets.name, escapedSearch),
+      like(problemSets.description, escapedSearch),
+    ),
+  );
+}
+
+export async function countPublicProblemSets(search?: string) {
   const [row] = await db
     .select({ total: count() })
     .from(problemSets)
-    .where(eq(problemSets.isPublic, true));
+    .where(buildPublicProblemSetSearchFilter(search));
 
   return Number(row?.total ?? 0);
 }
 
-export async function listPublicProblemSets(options: { limit?: number; offset?: number } = {}): Promise<PublicProblemSetListItem[]> {
+export async function listPublicProblemSets(options: { limit?: number; offset?: number; search?: string } = {}): Promise<PublicProblemSetListItem[]> {
   const rows = await db.query.problemSets.findMany({
-    where: eq(problemSets.isPublic, true),
+    where: buildPublicProblemSetSearchFilter(options.search),
     with: {
       problems: {
         with: {
