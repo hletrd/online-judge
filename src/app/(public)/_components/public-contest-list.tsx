@@ -28,13 +28,13 @@ type PublicContestListProps = {
 function getStatusBorderClass(status: PublicContestListProps["contests"][number]["statusKey"]) {
   switch (status) {
     case "upcoming":
-      return "border-l-4 border-l-blue-500";
+      return "border-l-4 border-l-blue-500 dark:border-l-blue-400";
     case "open":
     case "in_progress":
-      return "border-l-4 border-l-green-500";
+      return "border-l-4 border-l-green-500 dark:border-l-green-400";
     case "expired":
     case "closed":
-      return "border-l-4 border-l-gray-400";
+      return "border-l-4 border-l-gray-400 dark:border-l-gray-500";
   }
 }
 
@@ -57,7 +57,7 @@ export function PublicContestList({
       ) : (
         <div className="space-y-2">
           {contests.map((contest) => (
-            <Link key={contest.id} href={contest.href} className="block">
+            <Link key={contest.id} href={contest.href} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
               <Card className={getStatusBorderClass(contest.statusKey)}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
@@ -82,10 +82,10 @@ export function PublicContestList({
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <Badge variant="outline">{contest.statusLabel}</Badge>
-                      <Badge className={`text-xs ${contest.modeKey === "windowed" ? "bg-purple-500 text-white" : "bg-blue-500 text-white"}`}>
+                      <Badge className={`text-xs ${contest.modeKey === "windowed" ? "bg-purple-600 text-white dark:bg-purple-500" : "bg-blue-600 text-white dark:bg-blue-500"}`}>
                         {contest.modeLabel}
                       </Badge>
-                      <Badge className={`text-xs ${contest.scoringKey === "icpc" ? "bg-orange-500 text-white" : "bg-teal-500 text-white"}`}>
+                      <Badge className={`text-xs ${contest.scoringKey === "icpc" ? "bg-orange-600 text-white dark:bg-orange-500" : "bg-teal-600 text-white dark:bg-teal-500"}`}>
                         {contest.scoringLabel}
                       </Badge>
                     </div>
