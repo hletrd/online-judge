@@ -1,21 +1,42 @@
 const HCAPTCHA_VERIFY_URL = "https://api.hcaptcha.com/siteverify";
 
-export function getHcaptchaSiteKey() {
+function envSiteKey() {
   const value = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY?.trim();
   return value && value.length > 0 ? value : null;
 }
 
-export function getHcaptchaSecret() {
+function envSecret() {
   const value = process.env.HCAPTCHA_SECRET?.trim();
   return value && value.length > 0 ? value : null;
 }
 
-export function isHcaptchaConfigured() {
-  return Boolean(getHcaptchaSiteKey() && getHcaptchaSecret());
+async function getDbHcaptchaFields() {
+  const { getSystemSettings } = await import("@/lib/system-settings");
+  const settings = await getSystemSettings();
+  if (!settings) return { siteKey: null, secret: null };
+  return {
+    siteKey: (settings as Record<string, unknown>).hcaptchaSiteKey as string | null ?? null,
+    secret: (settings as Record<string, unknown>).hcaptchaSecret as string | null ?? null,
+  };
+}
+
+export async function getHcaptchaSiteKey() {
+  const db = await getDbHcaptchaFields();
+  return db.siteKey || envSiteKey();
+}
+
+export async function getHcaptchaSecret() {
+  const db = await getDbHcaptchaFields();
+  return db.secret || envSecret();
+}
+
+export async function isHcaptchaConfigured() {
+  const [siteKey, secret] = await Promise.all([getHcaptchaSiteKey(), getHcaptchaSecret()]);
+  return Boolean(siteKey && secret);
 }
 
 export async function verifyHcaptchaToken(token: string, remoteIp?: string | null) {
-  const secret = getHcaptchaSecret();
+  const secret = await getHcaptchaSecret();
   if (!secret) {
     return {
       success: false,

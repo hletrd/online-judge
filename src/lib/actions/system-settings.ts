@@ -84,6 +84,8 @@ export async function updateSystemSettings(
     aiAssistantEnabled,
     publicSignupEnabled,
     signupHcaptchaEnabled,
+    hcaptchaSiteKey,
+    hcaptchaSecret,
     defaultLanguage,
     allowedHosts,
     homePageContent,
@@ -91,7 +93,9 @@ export async function updateSystemSettings(
     defaultLocale,
   } = parsedInput.data;
 
-  if (signupHcaptchaEnabled && !isHcaptchaConfigured()) {
+  // hCaptcha is considered configured if new keys are provided in this request OR already stored in DB / env
+  const hasNewKeys = (hcaptchaSiteKey && hcaptchaSiteKey.length > 0) || (hcaptchaSecret && hcaptchaSecret.length > 0);
+  if (signupHcaptchaEnabled && !hasNewKeys && !(await isHcaptchaConfigured())) {
     return { success: false, error: "signupHcaptchaUnavailable" };
   }
 
@@ -133,6 +137,12 @@ export async function updateSystemSettings(
   if (hasOwnInput("signupHcaptchaEnabled")) {
     baseValues.signupHcaptchaEnabled = signupHcaptchaEnabled ?? false;
   }
+  if (hasOwnInput("hcaptchaSiteKey")) {
+    baseValues.hcaptchaSiteKey = hcaptchaSiteKey ?? null;
+  }
+  if (hasOwnInput("hcaptchaSecret")) {
+    baseValues.hcaptchaSecret = hcaptchaSecret ?? null;
+  }
   if (hasOwnInput("defaultLanguage")) {
     baseValues.defaultLanguage = defaultLanguage ?? null;
   }
@@ -165,7 +175,9 @@ export async function updateSystemSettings(
 
   const auditDetails = JSON.parse(JSON.stringify(
     Object.fromEntries(
-      Object.entries(baseValues).filter(([key]) => key !== "updatedAt")
+      Object.entries(baseValues)
+        .filter(([key]) => key !== "updatedAt")
+        .map(([key, val]) => [key, key === "hcaptchaSecret" && typeof val === "string" && val.length > 0 ? "••••••••" : val])
     )
   ));
 

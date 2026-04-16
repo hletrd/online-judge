@@ -63,6 +63,14 @@ export const systemSettingsSchema = z.object({
   aiAssistantEnabled: z.boolean().optional(),
   publicSignupEnabled: z.boolean().optional(),
   signupHcaptchaEnabled: z.boolean().optional(),
+  hcaptchaSiteKey: z.preprocess(
+    normalizeOptionalString,
+    z.string().max(255, "hcaptchaSiteKeyTooLong").optional()
+  ),
+  hcaptchaSecret: z.preprocess(
+    normalizeOptionalString,
+    z.string().max(255, "hcaptchaSecretTooLong").optional()
+  ),
   defaultLanguage: z.preprocess(
     normalizeOptionalString,
     z.string().max(50, "defaultLanguageTooLong").optional()

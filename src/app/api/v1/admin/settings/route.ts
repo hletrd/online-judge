@@ -15,6 +15,10 @@ export const GET = createApiHandler({
     void req;
     void user;
     const settings = await getSystemSettings();
+    // Never expose the full secret in API responses
+    if (settings && (settings as Record<string, unknown>).hcaptchaSecret) {
+      (settings as Record<string, unknown>).hcaptchaSecret = "••••••••";
+    }
     return apiSuccess(settings ?? {});
   },
 });
@@ -31,11 +35,14 @@ export const PUT = createApiHandler({
       aiAssistantEnabled,
       publicSignupEnabled,
       signupHcaptchaEnabled,
+      hcaptchaSiteKey,
+      hcaptchaSecret,
       allowedHosts,
       ...restConfig
     } = body;
 
-    if (signupHcaptchaEnabled && !isHcaptchaConfigured()) {
+    const hasNewKeys = (hcaptchaSiteKey && hcaptchaSiteKey.length > 0) || (hcaptchaSecret && hcaptchaSecret.length > 0);
+    if (signupHcaptchaEnabled && !hasNewKeys && !(await isHcaptchaConfigured())) {
       return NextResponse.json({ error: "signupHcaptchaUnavailable" }, { status: 400 });
     }
 
@@ -65,6 +72,8 @@ export const PUT = createApiHandler({
       aiAssistantEnabled: aiAssistantEnabled ?? true,
       publicSignupEnabled: publicSignupEnabled ?? false,
       signupHcaptchaEnabled: signupHcaptchaEnabled ?? false,
+      hcaptchaSiteKey: hcaptchaSiteKey ?? null,
+      hcaptchaSecret: hcaptchaSecret ?? null,
       updatedAt: new Date(),
     };
 
@@ -105,11 +114,17 @@ export const PUT = createApiHandler({
         aiAssistantEnabled: aiAssistantEnabled ?? true,
         publicSignupEnabled: publicSignupEnabled ?? false,
         signupHcaptchaEnabled: signupHcaptchaEnabled ?? false,
+        hcaptchaSiteKey: hcaptchaSiteKey ?? null,
+        hcaptchaSecret: typeof hcaptchaSecret === "string" && hcaptchaSecret.length > 0 ? "••••••••" : null,
       },
       request: req,
     });
 
     const updated = await getSystemSettings();
+    // Never expose the full secret in API responses
+    if (updated && (updated as Record<string, unknown>).hcaptchaSecret) {
+      (updated as Record<string, unknown>).hcaptchaSecret = "••••••••";
+    }
     return apiSuccess(updated ?? {});
   },
 });

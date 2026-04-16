@@ -130,7 +130,9 @@ export default async function AdminSettingsPage() {
     typeof stored?.publicSignupEnabled === "boolean" ? stored.publicSignupEnabled : false;
   const initialSignupHcaptchaEnabled =
     typeof stored?.signupHcaptchaEnabled === "boolean" ? stored.signupHcaptchaEnabled : false;
-  const signupHcaptchaAvailable = isHcaptchaConfigured();
+  const initialHcaptchaSiteKey = (stored?.hcaptchaSiteKey as string) ?? "";
+  const initialHcaptchaSecretMasked = (stored?.hcaptchaSecret as string) ? "••••••••" : "";
+  const signupHcaptchaAvailable = await isHcaptchaConfigured();
   const dbInfo = await getDbInfo();
 
   type LocaleOverride = {
@@ -196,6 +198,8 @@ export default async function AdminSettingsPage() {
                 initialPublicSignupEnabled={initialPublicSignupEnabled}
                 initialSignupHcaptchaEnabled={initialSignupHcaptchaEnabled}
                 signupHcaptchaAvailable={signupHcaptchaAvailable}
+                initialHcaptchaSiteKey={initialHcaptchaSiteKey}
+                initialHcaptchaSecretMasked={initialHcaptchaSecretMasked}
               />
             </CardContent>
           </Card>
