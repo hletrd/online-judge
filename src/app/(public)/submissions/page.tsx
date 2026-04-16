@@ -213,7 +213,8 @@ export default async function SubmissionsPage({
             </p>
           )}
 
-          <div className="overflow-x-auto">
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -277,6 +278,48 @@ export default async function SubmissionsPage({
             </TableBody>
           </Table>
           </div>
+          {/* Mobile cards */}
+          <ul className="md:hidden divide-y" role="list">
+            {visibleSubmissions.map((sub) => (
+              <li key={sub.id} className="flex items-start gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Link href={buildLocalePath(`/submissions/${sub.id}`, locale)} className="font-mono text-xs text-primary hover:underline">
+                      {formatSubmissionIdPrefix(sub.id)}
+                    </Link>
+                    <SubmissionStatusBadge
+                      label={statusLabels[sub.status as keyof typeof statusLabels] ?? sub.status}
+                      status={sub.status}
+                      compileOutput={sub.compileOutput}
+                      executionTimeMs={sub.executionTimeMs}
+                      memoryUsedKb={sub.memoryUsedKb}
+                      score={sub.score}
+                    />
+                  </div>
+                  <div className="mt-1 text-sm">
+                    {sub.problem ? (
+                      <Link href={buildLocalePath(`/practice/problems/${sub.problem.id}`, locale)} className="font-medium hover:underline">
+                        {sub.problem.title}
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground">{tCommon("unknown")}</span>
+                    )}
+                  </div>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{getLanguageDisplayLabel(sub.language)}</span>
+                    {sub.score !== null && <span>{Math.round(sub.score * 100) / 100}pt</span>}
+                    {sub.submittedAt && <span>{formatDateTimeInTimeZone(sub.submittedAt, locale, timeZone)}</span>}
+                  </div>
+                </div>
+                <Link href={buildLocalePath(`/submissions/${sub.id}`, locale)} className="shrink-0">
+                  <Button variant="outline" size="sm">{tCommon("view")}</Button>
+                </Link>
+              </li>
+            ))}
+            {visibleSubmissions.length === 0 && (
+              <li className="px-4 py-6 text-center text-sm text-muted-foreground">{t("noSubmissions")}</li>
+            )}
+          </ul>
         </CardContent>
       </Card>
 
