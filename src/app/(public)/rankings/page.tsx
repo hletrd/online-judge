@@ -169,7 +169,9 @@ export default async function RankingsPage({
               {t("noRankings")}
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -212,6 +214,29 @@ export default async function RankingsPage({
                 </TableBody>
               </Table>
             </div>
+            {/* Mobile cards */}
+            <ul className="md:hidden divide-y" role="list">
+              {rankingRows.map((row, index) => (
+                <li key={row.userId} className="flex items-center gap-3 px-4 py-3">
+                  <Badge variant={clampedOffset + index < 3 ? "default" : "secondary"} aria-label={`Rank ${clampedOffset + index + 1}`}>
+                    {clampedOffset + index + 1}
+                  </Badge>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{row.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      @{row.username}{row.className ? ` · ${row.className}` : ""}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="font-semibold" aria-label={`${row.solvedCount} solved`}>{row.solvedCount}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatRelativeTimeFromNow(new Date(row.lastSolveTime), locale)}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            </>
           )}
         </CardContent>
       </Card>
