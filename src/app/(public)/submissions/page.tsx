@@ -12,7 +12,7 @@ import {
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { db } from "@/lib/db";
 import { problems, submissions, users } from "@/lib/db/schema";
-import { and, count, desc, eq, gte, like, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, like, or } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import { buildLocalePath, NO_INDEX_METADATA } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { LogInIcon } from "lucide-react";
 import { normalizePage, normalizePageSize, setPaginationParams } from "@/lib/pagination";
+import { FilterSelect } from "@/components/filter-select";
 
 const PAGE_PATH = "/submissions";
 
@@ -107,7 +108,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SubmissionsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; search?: string; status?: string; period?: string; pageSize?: string; scope?: string }>;
+  searchParams?: Promise<{ page?: string; search?: string; status?: string; period?: string; pageSize?: string; scope?: string; language?: string }>;
 }) {
   const session = await auth();
   const t = await getTranslations("submissions");
@@ -151,6 +152,16 @@ export default async function SubmissionsPage({
   const currentScope: ScopeFilter = SCOPE_FILTER_VALUES.includes(rawScope as ScopeFilter)
     ? (rawScope as ScopeFilter)
     : "all";
+  const rawLanguage = (resolvedSearchParams?.language ?? "").trim();
+
+  const availableLanguageRows = await db
+    .selectDistinct({ language: submissions.language })
+    .from(submissions)
+    .orderBy(asc(submissions.language));
+  const availableLanguages = availableLanguageRows
+    .map((row) => row.language)
+    .filter((language): language is string => Boolean(language));
+  const currentLanguage = rawLanguage && availableLanguages.includes(rawLanguage) ? rawLanguage : "all";
 
   const statusLabels = buildStatusLabels(t);
 
@@ -173,7 +184,10 @@ export default async function SubmissionsPage({
   const userFilter = currentScope === "mine"
     ? eq(submissions.userId, session.user.id)
     : undefined;
-  const filters = [userFilter, searchFilter, statusDbFilter, periodFilter].filter(Boolean);
+  const languageFilter = currentLanguage !== "all"
+    ? eq(submissions.language, currentLanguage)
+    : undefined;
+  const filters = [userFilter, searchFilter, statusDbFilter, periodFilter, languageFilter].filter(Boolean);
   const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
   const [countRow] = await db
@@ -225,6 +239,7 @@ export default async function SubmissionsPage({
     if (currentStatus !== "all") params.set("status", currentStatus);
     if (currentPeriod !== "all") params.set("period", currentPeriod);
     if (currentScope !== "all") params.set("scope", currentScope);
+    if (currentLanguage !== "all") params.set("language", currentLanguage);
     setPaginationParams(params, page, overridePageSize);
     const qs = params.toString();
     return qs ? `${PAGE_PATH}?${qs}` : PAGE_PATH;
@@ -269,6 +284,7 @@ export default async function SubmissionsPage({
           if (searchQuery) params.set("search", searchQuery);
           if (currentStatus !== "all") params.set("status", currentStatus);
           if (currentPeriod !== "all") params.set("period", currentPeriod);
+          if (currentLanguage !== "all") params.set("language", currentLanguage);
           if (filter !== "all") params.set("scope", filter);
           setPaginationParams(params, 1, pageSize);
           const qs = params.toString();
@@ -289,6 +305,7 @@ export default async function SubmissionsPage({
           if (searchQuery) params.set("search", searchQuery);
           if (filter !== "all") params.set("status", filter);
           if (currentPeriod !== "all") params.set("period", currentPeriod);
+          if (currentLanguage !== "all") params.set("language", currentLanguage);
           if (currentScope !== "all") params.set("scope", currentScope);
           setPaginationParams(params, 1, pageSize);
           const qs = params.toString();
@@ -309,6 +326,7 @@ export default async function SubmissionsPage({
           if (searchQuery) params.set("search", searchQuery);
           if (currentStatus !== "all") params.set("status", currentStatus);
           if (filter !== "all") params.set("period", filter);
+          if (currentLanguage !== "all") params.set("language", currentLanguage);
           if (currentScope !== "all") params.set("scope", currentScope);
           setPaginationParams(params, 1, pageSize);
           const qs = params.toString();
@@ -335,6 +353,23 @@ export default async function SubmissionsPage({
                 type="search"
                 defaultValue={searchQuery}
                 placeholder={t("searchPlaceholder")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium">
+                {t("languageFilterLabel")}
+              </label>
+              <FilterSelect
+                name="language"
+                defaultValue={currentLanguage}
+                placeholder={t("allLanguages")}
+                options={[
+                  { value: "all", label: t("allLanguages") },
+                  ...availableLanguages.map((language) => ({
+                    value: language,
+                    label: getLanguageDisplayLabel(language),
+                  })),
+                ]}
               />
             </div>
             {/* Preserve status, period, and scope filters */}

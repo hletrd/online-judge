@@ -532,6 +532,8 @@
     "search": "Search",
     "searchLabel": "Search submissions",
     "searchPlaceholder": "Search by problem title or user name...",
+    "languageFilterLabel": "Language",
+    "allLanguages": "All languages",
     "resetSearch": "Reset",
     "submissionId": "Submission #{id}",
     "sourceCode": "Source Code",

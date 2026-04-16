@@ -532,6 +532,8 @@
     "search": "검색",
     "searchLabel": "제출 검색",
     "searchPlaceholder": "문제 제목 또는 사용자 이름으로 검색",
+    "languageFilterLabel": "언어",
+    "allLanguages": "전체 언어",
     "resetSearch": "초기화",
     "submissionId": "제출 #{id}",
     "sourceCode": "소스 코드",
