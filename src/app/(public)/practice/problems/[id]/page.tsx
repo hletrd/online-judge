@@ -10,6 +10,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { listProblemDiscussionThreads, listProblemEditorials } from "@/lib/discussions/data";
 import { DiscussionThreadForm } from "@/components/discussions/discussion-thread-form";
 import { DiscussionThreadList } from "@/components/discussions/discussion-thread-list";
+import { AcceptedSolutions } from "@/components/problem/accepted-solutions";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
@@ -328,6 +329,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
           <TabsList>
             <TabsTrigger value="problem">{t("practice.problemTab")}</TabsTrigger>
             <TabsTrigger value="editorial">{t("practice.editorial.tab")}</TabsTrigger>
+            <TabsTrigger value="accepted-solutions">{t("practice.acceptedSolutions.title")}</TabsTrigger>
             {session?.user && (
               <TabsTrigger value="my-submissions">{t("practice.mySubmissionsTab")}</TabsTrigger>
             )}
@@ -501,6 +503,15 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                 signInHref=""
               />
             )}
+          </TabsContent>
+
+          <TabsContent value="accepted-solutions" className="mt-4 space-y-6">
+            <h2 className="text-lg font-semibold">{t("practice.acceptedSolutions.title")}</h2>
+            <p className="text-sm text-muted-foreground">{t("practice.acceptedSolutions.description")}</p>
+            <AcceptedSolutions
+              problemId={problem.id}
+              languages={enabledLanguages}
+            />
           </TabsContent>
 
           {/* My Submissions tab */}

@@ -2540,6 +2540,25 @@
           "success": "토론이 생성되었습니다",
           "signIn": "이 문제를 토론하려면 로그인하세요"
         }
+      },
+      "acceptedSolutions": {
+        "title": "맞은 사람 코드",
+        "description": "다른 참가자의 AC 코드를 보며 풀이를 비교해 보세요.",
+        "sortLabel": "정렬",
+        "sortNewest": "최신순",
+        "sortShortest": "최단 코드",
+        "sortFastest": "최빠른 코드",
+        "languageLabel": "언어",
+        "allLanguages": "전체 언어",
+        "loading": "맞은 사람 코드를 불러오는 중...",
+        "empty": "아직 공개된 AC 코드가 없습니다.",
+        "anonymousUser": "익명",
+        "codeLength": "코드 길이: {value}",
+        "executionTime": "실행 시간: {value}",
+        "memoryUsage": "메모리 사용량: {value}",
+        "expand": "펼치기",
+        "collapse": "접기",
+        "pagination": "{page} / {totalPages} 페이지"
       }
     },
     "playground": {

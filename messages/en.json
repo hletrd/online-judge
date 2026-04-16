@@ -2540,6 +2540,25 @@
           "success": "Discussion created",
           "signIn": "Sign in to discuss this problem"
         }
+      },
+      "acceptedSolutions": {
+        "title": "Accepted Solutions",
+        "description": "Browse accepted solutions from other solvers and compare approaches.",
+        "sortLabel": "Sort",
+        "sortNewest": "Newest",
+        "sortShortest": "Shortest",
+        "sortFastest": "Fastest",
+        "languageLabel": "Language",
+        "allLanguages": "All languages",
+        "loading": "Loading accepted solutions...",
+        "empty": "No accepted solutions available yet.",
+        "anonymousUser": "Anonymous",
+        "codeLength": "Code length: {value}",
+        "executionTime": "Execution time: {value}",
+        "memoryUsage": "Memory usage: {value}",
+        "expand": "Expand",
+        "collapse": "Collapse",
+        "pagination": "Page {page} of {totalPages}"
       }
     },
     "playground": {
