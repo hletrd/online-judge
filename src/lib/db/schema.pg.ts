@@ -451,6 +451,8 @@ export const submissions = pgTable(
     compileOutput: text("compile_output"),
     executionTimeMs: integer("execution_time_ms"),
     memoryUsedKb: integer("memory_used_kb"),
+    failedTestCaseIndex: integer("failed_test_case_index"),
+    runtimeErrorType: text("runtime_error_type"),
     score: doublePrecision("score"),
     judgedAt: timestamp("judged_at", { withTimezone: true }),
     ipAddress: text("ip_address"),

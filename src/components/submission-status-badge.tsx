@@ -23,6 +23,9 @@ type SubmissionStatusBadgeProps = {
   compileOutput?: string | null;
   executionTimeMs?: number | null;
   memoryUsedKb?: number | null;
+  failedTestCaseIndex?: number | null;
+  runtimeErrorType?: string | null;
+  timeLimitMs?: number | null;
   score?: number | null;
 };
 
@@ -42,13 +45,25 @@ function formatNumber(n: number): string {
   return n.toLocaleString("en-US");
 }
 
+const RUNTIME_ERROR_LABELS: Record<string, string> = {
+  SIGSEGV: "Segmentation fault",
+  SIGFPE: "Division by zero",
+  SIGABRT: "Abnormal termination",
+  SIGXCPU: "CPU time limit exceeded",
+  SIGKILL: "Process killed",
+  stack_overflow: "Stack overflow",
+};
+
 function TooltipBody({
   status,
   compileOutput,
   executionTimeMs,
   memoryUsedKb,
+  failedTestCaseIndex,
+  runtimeErrorType,
+  timeLimitMs,
   score,
-}: Pick<SubmissionStatusBadgeProps, "status" | "compileOutput" | "executionTimeMs" | "memoryUsedKb" | "score">) {
+}: Pick<SubmissionStatusBadgeProps, "status" | "compileOutput" | "executionTimeMs" | "memoryUsedKb" | "failedTestCaseIndex" | "runtimeErrorType" | "timeLimitMs" | "score">) {
   if (status === "compile_error" && compileOutput) {
     const truncated = compileOutput.length > 200
       ? compileOutput.slice(0, 200) + "..."
@@ -61,22 +76,40 @@ function TooltipBody({
   }
 
   return (
-    <div className="flex items-center gap-3 text-xs">
+    <div className="space-y-1 text-xs">
+      {/* Verdict-specific detail line */}
+      {status === "wrong_answer" && failedTestCaseIndex != null && (
+        <div className="text-muted-foreground">Failed on test case {failedTestCaseIndex + 1}</div>
+      )}
       {status === "wrong_answer" && score !== null && score !== undefined && (
         <span className="font-medium">Score: {Math.round(score * 100) / 100}</span>
       )}
-      {executionTimeMs !== null && executionTimeMs !== undefined && (
-        <span className="inline-flex items-center gap-1 text-muted-foreground">
-          <Timer aria-hidden="true" className="size-3 shrink-0" />
-          {formatNumber(executionTimeMs)} ms
-        </span>
+      {status === "time_limit" && executionTimeMs != null && (
+        <div className="text-muted-foreground">
+          {formatNumber(executionTimeMs)} ms / {timeLimitMs != null ? `${formatNumber(timeLimitMs)} ms` : "limit"}
+        </div>
       )}
-      {memoryUsedKb !== null && memoryUsedKb !== undefined && (
-        <span className="inline-flex items-center gap-1 text-muted-foreground">
-          <HardDrive aria-hidden="true" className="size-3 shrink-0" />
-          {formatNumber(memoryUsedKb)} KB
-        </span>
+      {status === "runtime_error" && (
+        <div className="text-muted-foreground">
+          {runtimeErrorType ? (RUNTIME_ERROR_LABELS[runtimeErrorType] ?? runtimeErrorType) : "Runtime error"}
+        </div>
       )}
+
+      {/* Resource usage */}
+      <div className="flex items-center gap-3">
+        {executionTimeMs !== null && executionTimeMs !== undefined && status !== "time_limit" && (
+          <span className="inline-flex items-center gap-1 text-muted-foreground">
+            <Timer aria-hidden="true" className="size-3 shrink-0" />
+            {formatNumber(executionTimeMs)} ms
+          </span>
+        )}
+        {memoryUsedKb !== null && memoryUsedKb !== undefined && (
+          <span className="inline-flex items-center gap-1 text-muted-foreground">
+            <HardDrive aria-hidden="true" className="size-3 shrink-0" />
+            {formatNumber(memoryUsedKb)} KB
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -90,6 +123,9 @@ export function SubmissionStatusBadge({
   compileOutput,
   executionTimeMs,
   memoryUsedKb,
+  failedTestCaseIndex,
+  runtimeErrorType,
+  timeLimitMs,
   score,
 }: SubmissionStatusBadgeProps) {
   const badge = (
@@ -111,6 +147,8 @@ export function SubmissionStatusBadge({
     compileOutput != null ||
     executionTimeMs != null ||
     memoryUsedKb != null ||
+    failedTestCaseIndex != null ||
+    runtimeErrorType != null ||
     score != null;
 
   if (!hasDetail || isActiveSubmissionStatus(status)) {
@@ -127,6 +165,9 @@ export function SubmissionStatusBadge({
             compileOutput={compileOutput}
             executionTimeMs={executionTimeMs}
             memoryUsedKb={memoryUsedKb}
+            failedTestCaseIndex={failedTestCaseIndex}
+            runtimeErrorType={runtimeErrorType}
+            timeLimitMs={timeLimitMs}
             score={score}
           />
         </TooltipContent>
