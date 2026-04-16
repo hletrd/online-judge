@@ -54,4 +54,23 @@ describe("dashboard language catalog", () => {
       "Rust",
     ]);
   });
+
+  it("keeps CPython as the primary Python environment even when PyPy is enabled", () => {
+    const catalog = buildJudgeLanguageCatalog([
+      makeLanguage({ language: "python", displayName: "Python", dockerImage: "judge-python:latest", compiler: "CPython 3.14" }),
+      makeLanguage({ language: "pypy", displayName: "PyPy", dockerImage: "judge-pypy:latest", compiler: "PyPy 3.10" }),
+    ]);
+
+    expect(catalog.featuredEnvironments).toEqual([
+      expect.objectContaining({
+        title: "Python",
+        runtime: expect.stringContaining("Python"),
+        compiler: "CPython 3.14",
+        variants: ["Python", "PyPy"],
+        languageCount: 2,
+      }),
+    ]);
+    expect(catalog.allLanguages.map((language) => language.label)).toEqual(["PyPy", "Python"]);
+    expect(catalog.additionalLanguageCount).toBe(0);
+  });
 });
