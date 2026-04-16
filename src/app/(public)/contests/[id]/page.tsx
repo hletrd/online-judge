@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { PublicContestDetail } from "@/app/(public)/_components/public-contest-detail";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getPublicContestById } from "@/lib/assignments/public-contests";
-import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata, NO_INDEX_METADATA, summarizeTextForMetadata } from "@/lib/seo";
+import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata, buildSocialImageUrl, NO_INDEX_METADATA, summarizeTextForMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import Link from "next/link";
 
@@ -38,10 +38,19 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     keywords: [
       "programming contest",
       contest.groupName,
+      contest.scoringModel === "icpc" ? "ICPC scoring" : "IOI scoring",
     ],
     section: tShell("nav.contests"),
-    socialBadge: contest.examMode === "scheduled" ? tShell("contests.modeScheduled") : tShell("contests.modeWindowed"),
-    socialMeta: contest.groupName,
+    socialBadge: tShell(`contests.status.${contest.status === "in_progress" ? "inProgress" : contest.status}`),
+    socialMeta: [
+      contest.groupName,
+      contest.examMode === "scheduled" ? tShell("contests.modeScheduled") : tShell("contests.modeWindowed"),
+      contest.scoringModel === "icpc" ? tShell("contests.scoringModelIcpc") : tShell("contests.scoringModelIoi"),
+    ].join(" • "),
+    socialFooter: [
+      tShell("contests.problemCount", { count: contest.problemCount }),
+      tShell("contests.publicProblemCount", { count: contest.publicProblemCount }),
+    ].join(" • "),
   });
 }
 
@@ -51,12 +60,16 @@ function formatDateLabel(value: Date | null, fallback: string, locale: string) {
 
 export default async function PublicContestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [t, tCommon, tProblems, session, locale] = await Promise.all([
+  const [t, tCommon, tProblems, session, locale, settings] = await Promise.all([
     getTranslations("publicShell"),
     getTranslations("common"),
     getTranslations("problems"),
     auth(),
     getLocale(),
+    getResolvedSystemSettings({
+      siteTitle: "JudgeKit",
+      siteDescription: "Online judge",
+    }),
   ]);
   const statusLabels = {
     upcoming: t("contests.status.upcoming"),
@@ -70,6 +83,23 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
   if (!contest) {
     notFound();
   }
+  const socialImageUrl = buildSocialImageUrl({
+    title: contest.title,
+    description: summarizeTextForMetadata(contest.description),
+    locale,
+    siteTitle: settings.siteTitle,
+    section: t("nav.contests"),
+    badge: statusLabels[contest.status],
+    meta: [
+      contest.groupName,
+      contest.examMode === "scheduled" ? t("contests.modeScheduled") : t("contests.modeWindowed"),
+      contest.scoringModel === "icpc" ? t("contests.scoringModelIcpc") : t("contests.scoringModelIoi"),
+    ].join(" • "),
+    footer: [
+      t("contests.problemCount", { count: contest.problemCount }),
+      t("contests.publicProblemCount", { count: contest.publicProblemCount }),
+    ].join(" • "),
+  });
 
   const eventJsonLd = {
     "@context": "https://schema.org",
@@ -78,10 +108,32 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
     description: summarizeTextForMetadata(contest.description),
     url: buildAbsoluteUrl(buildLocalePath(`/contests/${contest.id}`, locale)),
     inLanguage: locale,
+    image: [socialImageUrl],
     eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+    eventStatus: (() => {
+      switch (contest.status) {
+        case "upcoming":
+          return "https://schema.org/EventScheduled";
+        case "open":
+        case "in_progress":
+          return "https://schema.org/EventInProgress";
+        case "expired":
+        case "closed":
+          return "https://schema.org/EventCompleted";
+      }
+    })(),
+    location: {
+      "@type": "VirtualLocation",
+      url: buildAbsoluteUrl(buildLocalePath(`/contests/${contest.id}`, locale)),
+    },
+    isAccessibleForFree: true,
     organizer: {
       "@type": "Organization",
       name: contest.groupName,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: settings.siteTitle,
     },
     startDate: contest.startsAt?.toISOString(),
     endDate: contest.deadline?.toISOString(),

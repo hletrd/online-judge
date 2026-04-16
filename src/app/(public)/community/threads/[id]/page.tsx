@@ -10,7 +10,7 @@ import { DiscussionPostDeleteButton } from "@/components/discussions/discussion-
 import { JsonLd } from "@/components/seo/json-ld";
 import { canReadProblemDiscussion, getDiscussionThreadById } from "@/lib/discussions/data";
 import { canModerateDiscussions } from "@/lib/discussions/permissions";
-import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata, NO_INDEX_METADATA, summarizeTextForMetadata } from "@/lib/seo";
+import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata, buildSocialImageUrl, NO_INDEX_METADATA, summarizeTextForMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -50,17 +50,25 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         ? tShell("community.scopeGeneral")
         : tShell("community.scopeProblem"),
     socialMeta: [thread.author?.name, tShell("community.replyCount", { count: thread.posts.length })].filter(Boolean).join(" · "),
+    socialFooter: thread.scopeType === "problem"
+      ? thread.problem?.title ?? tShell("nav.community")
+      : tShell("nav.community"),
     type: "article",
   });
 }
 
 export default async function CommunityThreadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [t, session, thread, locale] = await Promise.all([
+  const [t, tCommon, session, thread, locale, settings] = await Promise.all([
     getTranslations("publicShell"),
+    getTranslations("common"),
     auth(),
     getDiscussionThreadById(id),
     getLocale(),
+    getResolvedSystemSettings({
+      siteTitle: "JudgeKit",
+      siteDescription: "Online judge",
+    }),
   ]);
 
   if (!thread) {
@@ -78,13 +86,25 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
   }
 
   const canModerate = session?.user ? await canModerateDiscussions(session.user.role) : false;
+  const socialImageUrl = buildSocialImageUrl({
+    title: thread.title,
+    description: summarizeTextForMetadata(thread.content),
+    locale,
+    siteTitle: settings.siteTitle,
+    section: thread.scopeType === "general" ? t("nav.community") : t("community.scopeProblem"),
+    badge: thread.scopeType === "general" ? t("community.scopeGeneral") : t("community.scopeProblem"),
+    meta: [thread.author?.name, t("community.replyCount", { count: thread.posts.length })].filter(Boolean).join(" · "),
+    footer: thread.scopeType === "problem" ? thread.problem?.title ?? t("nav.community") : t("nav.community"),
+  });
   const threadJsonLd = {
     "@context": "https://schema.org",
     "@type": "DiscussionForumPosting",
     headline: thread.title,
     articleBody: summarizeTextForMetadata(thread.content, 240),
     url: buildAbsoluteUrl(buildLocalePath(`/community/threads/${thread.id}`, locale)),
+    mainEntityOfPage: buildAbsoluteUrl(buildLocalePath(`/community/threads/${thread.id}`, locale)),
     inLanguage: locale,
+    image: [socialImageUrl],
     datePublished: thread.createdAt?.toISOString?.(),
     dateModified: thread.updatedAt?.toISOString?.(),
     author: thread.author?.name
@@ -93,7 +113,17 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
           name: thread.author.name,
         }
       : undefined,
+    publisher: {
+      "@type": "Organization",
+      name: settings.siteTitle,
+    },
     commentCount: thread.posts.length,
+    about: thread.scopeType === "problem" && thread.problem?.title
+      ? {
+          "@type": "Thing",
+          name: thread.problem.title,
+        }
+      : undefined,
   };
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -102,12 +132,18 @@ export default async function CommunityThreadDetailPage({ params }: { params: Pr
       {
         "@type": "ListItem",
         position: 1,
+        name: tCommon("appName"),
+        item: buildAbsoluteUrl(buildLocalePath("/", locale)),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
         name: t("nav.community"),
         item: buildAbsoluteUrl(buildLocalePath("/community", locale)),
       },
       {
         "@type": "ListItem",
-        position: 2,
+        position: 3,
         name: thread.title,
         item: buildAbsoluteUrl(buildLocalePath(`/community/threads/${thread.id}`, locale)),
       },
