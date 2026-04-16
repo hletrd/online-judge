@@ -19,6 +19,7 @@ type PublicProblemListItem = {
   sequenceNumber: number | null;
   title: string;
   difficultyLabel: string | null;
+  searchMatchLabels?: string[];
   tags: Array<{ name: string; color: string | null; href: string }>;
   solverCount: number;
   submissionCount: number;
@@ -127,6 +128,15 @@ export function PublicProblemList({
                         >
                           {problem.title}
                         </Link>
+                        {problem.searchMatchLabels && problem.searchMatchLabels.length > 0 ? (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {problem.searchMatchLabels.map((label) => (
+                              <Badge key={label} variant="outline" className="text-[11px] font-normal text-muted-foreground">
+                                {label}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : null}
                       </TableCell>
                       <TableCell className="text-center text-sm text-muted-foreground">
                         {problem.solverCount > 0 ? problem.solverCount : "-"}

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { and, asc, count, desc, eq, like, sql, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, like, or, sql, inArray } from "drizzle-orm";
 import { getLocale, getTranslations } from "next-intl/server";
 import { db } from "@/lib/db";
 import { problems, submissions, tags, problemTags } from "@/lib/db/schema";
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { FilterSelect } from "@/components/filter-select";
 import Link from "next/link";
 import { normalizePage, normalizePageSize, setPaginationParams } from "@/lib/pagination";
+import { escapePracticeLike, getPracticeSearchMatchKinds, normalizePracticeSearch, type PracticeSearchMatchKind } from "@/lib/practice/search";
 
 type ProblemProgress = "solved" | "attempted" | "untried";
 type ProgressFilter = "all" | "solved" | "unsolved" | "attempted";
@@ -26,12 +27,7 @@ const PROGRESS_FILTER_VALUES: readonly ProgressFilter[] = ["all", "solved", "uns
 const PAGE_PATH = "/practice";
 
 function normalizeSearch(value?: string) {
-  if (typeof value !== "string") return "";
-  return value.trim().slice(0, 200);
-}
-
-function escapeLike(value: string) {
-  return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
+  return normalizePracticeSearch(value);
 }
 
 function getProblemProgress(statuses: Array<string | null>): ProblemProgress {
@@ -134,6 +130,11 @@ export default async function PracticePage({
     getTranslations("problems"),
     getLocale(),
   ]);
+  const searchMatchLabelMap: Record<PracticeSearchMatchKind, string> = {
+    number: t("practice.searchMatches.number"),
+    title: t("practice.searchMatches.title"),
+    content: t("practice.searchMatches.content"),
+  };
 
   // Check auth for progress tracking
   const session = await auth();
@@ -150,7 +151,11 @@ export default async function PracticePage({
 
   // Search filter
   const searchFilter = searchQuery
-    ? like(problems.title, `%${escapeLike(searchQuery)}%`)
+    ? or(
+        like(problems.title, `%${escapePracticeLike(searchQuery)}%`),
+        like(problems.description, `%${escapePracticeLike(searchQuery)}%`),
+        sql`CAST(${problems.sequenceNumber} AS TEXT) LIKE ${`%${escapePracticeLike(searchQuery)}%`} ESCAPE '\\'`
+      )
     : undefined;
 
   // Tag filter
@@ -187,6 +192,7 @@ export default async function PracticePage({
     title: string;
     difficulty: number | null;
     createdAt: Date | null;
+    searchMatchLabels: string[];
     problemTags: Array<{ name: string; color: string | null }>;
     solverCount: number;
     submissionCount: number;
@@ -217,6 +223,7 @@ export default async function PracticePage({
           id: true,
           sequenceNumber: true,
           title: true,
+          description: true,
           difficulty: true,
           createdAt: true,
         },
@@ -285,6 +292,9 @@ export default async function PracticePage({
         title: p.title,
         difficulty: p.difficulty,
         createdAt: p.createdAt,
+        searchMatchLabels: searchQuery
+          ? getPracticeSearchMatchKinds(p, searchQuery).map((kind) => searchMatchLabelMap[kind])
+          : [],
         problemTags: p.problemTags.map((e) => ({ name: e.tag.name, color: e.tag.color })),
         solverCount: p.solverCount,
         submissionCount: p.submissionCount,
@@ -299,6 +309,7 @@ export default async function PracticePage({
           id: true,
           sequenceNumber: true,
           title: true,
+          description: true,
           difficulty: true,
           createdAt: true,
         },
@@ -361,6 +372,9 @@ export default async function PracticePage({
           title: problem.title,
           difficulty: problem.difficulty,
           createdAt: problem.createdAt,
+          searchMatchLabels: searchQuery
+            ? getPracticeSearchMatchKinds(problem, searchQuery).map((kind) => searchMatchLabelMap[kind])
+            : [],
           problemTags: problem.problemTags.map((e) => ({ name: e.tag.name, color: e.tag.color })),
           solverCount: stats?.solverCount ?? 0,
           submissionCount: stats?.submissionCount ?? 0,
@@ -373,7 +387,12 @@ export default async function PracticePage({
     // --- Path B: Progress filter active (requires auth) ---
     const allProblemRows = await db.query.problems.findMany({
       where: baseWhereClause,
-      columns: { id: true },
+      columns: {
+        id: true,
+        sequenceNumber: true,
+        title: true,
+        description: true,
+      },
     });
     const allIds = allProblemRows.map((p) => p.id);
 
@@ -412,6 +431,7 @@ export default async function PracticePage({
           id: true,
           sequenceNumber: true,
           title: true,
+          description: true,
           difficulty: true,
           createdAt: true,
         },
@@ -455,6 +475,9 @@ export default async function PracticePage({
             title: p.title,
             difficulty: p.difficulty,
             createdAt: p.createdAt,
+            searchMatchLabels: searchQuery
+              ? getPracticeSearchMatchKinds(p, searchQuery).map((kind) => searchMatchLabelMap[kind])
+              : [],
             problemTags: p.problemTags.map((e) => ({ name: e.tag.name, color: e.tag.color })),
             solverCount: stats?.solverCount ?? 0,
             submissionCount: stats?.submissionCount ?? 0,
@@ -623,6 +646,7 @@ export default async function PracticePage({
             difficultyLabel: problem.difficulty != null
               ? tProblems("badges.difficulty", { value: problem.difficulty.toFixed(2).replace(/\.?0+$/, "") })
               : null,
+            searchMatchLabels: problem.searchMatchLabels,
             tags: problem.problemTags.map((tag) => ({
               name: tag.name,
               color: tag.color,
