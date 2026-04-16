@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -58,6 +58,8 @@ export function ContestReplay({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState<(typeof PLAYBACK_SPEEDS)[number]>(1);
+  const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
+  const previousRowPositionsRef = useRef(new Map<string, number>());
 
   const safeIndex = Math.min(currentIndex, Math.max(snapshots.length - 1, 0));
   const selectedSnapshot = snapshots[safeIndex] ?? null;
@@ -82,6 +84,43 @@ export function ContestReplay({
     () => PLAYBACK_SPEEDS.map((value) => `${value}x`),
     [],
   );
+
+  useLayoutEffect(() => {
+    if (!selectedSnapshot) {
+      previousRowPositionsRef.current.clear();
+      return;
+    }
+
+    const nextPositions = new Map<string, number>();
+    for (const entry of selectedSnapshot.entries) {
+      const row = rowRefs.current.get(entry.userId);
+      if (!row) continue;
+      nextPositions.set(entry.userId, row.getBoundingClientRect().top);
+    }
+
+    for (const entry of selectedSnapshot.entries) {
+      const row = rowRefs.current.get(entry.userId);
+      if (!row) continue;
+
+      const previousTop = previousRowPositionsRef.current.get(entry.userId);
+      const nextTop = nextPositions.get(entry.userId);
+      if (previousTop == null || nextTop == null) continue;
+
+      const deltaY = previousTop - nextTop;
+      if (Math.abs(deltaY) < 1) continue;
+
+      row.style.transition = "none";
+      row.style.transform = `translateY(${deltaY}px)`;
+      row.getBoundingClientRect();
+
+      requestAnimationFrame(() => {
+        row.style.transition = "transform 450ms ease";
+        row.style.transform = "";
+      });
+    }
+
+    previousRowPositionsRef.current = nextPositions;
+  }, [selectedSnapshot]);
 
   if (snapshots.length === 0 || !selectedSnapshot) {
     return (
@@ -160,7 +199,16 @@ export function ContestReplay({
           </TableHeader>
           <TableBody>
             {selectedSnapshot.entries.map((entry) => (
-              <TableRow key={`${selectedSnapshot.label}-${entry.userId}`}>
+              <TableRow
+                key={entry.userId}
+                ref={(node) => {
+                  if (node) {
+                    rowRefs.current.set(entry.userId, node);
+                  } else {
+                    rowRefs.current.delete(entry.userId);
+                  }
+                }}
+              >
                 <TableCell className="text-center font-medium">{entry.rank}</TableCell>
                 <TableCell>{entry.name}</TableCell>
                 <TableCell className="text-center">{entry.totalScoreLabel}</TableCell>
