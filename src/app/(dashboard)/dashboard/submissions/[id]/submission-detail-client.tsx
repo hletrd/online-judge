@@ -31,6 +31,8 @@ type SubmissionDetailClientProps = {
   userRole: string;
   userId: string;
   capabilities: string[];
+  canViewSource?: boolean;
+  isOwner?: boolean;
 };
 
 export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
@@ -64,6 +66,8 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
 
   const canComment = props.capabilities.includes("submissions.comment");
   const canRejudge = props.capabilities.includes("submissions.rejudge");
+  const canViewSource = props.canViewSource ?? true;
+  const isOwner = props.isOwner ?? true;
   const isLive = ACTIVE_SUBMISSION_STATUSES.has(submission.status);
   const problemHref =
     submission.problem === null
@@ -209,7 +213,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
               {t("rejudge")}
             </Button>
           )}
-          {problemHref && (
+          {problemHref && isOwner && (
             <Button
               size="sm"
               variant="outline"
@@ -226,12 +230,16 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
           <CardTitle>{t("sourceCode")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <CodeViewer
-            ariaLabel={t("sourceCode")}
-            language={submission.language}
-            minHeight={260}
-            value={submission.sourceCode}
-          />
+          {canViewSource ? (
+            <CodeViewer
+              ariaLabel={t("sourceCode")}
+              language={submission.language}
+              minHeight={260}
+              value={submission.sourceCode}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("sourceHidden")}</p>
+          )}
         </CardContent>
       </Card>
 

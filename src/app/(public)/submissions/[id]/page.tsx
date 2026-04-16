@@ -70,12 +70,9 @@ export default async function PublicSubmissionDetailPage({ params, searchParams 
     notFound();
   }
 
-  // Public users can only view their own submissions
-  if (submission.userId !== session.user.id) {
-    notFound();
-  }
+  const isOwner = submission.userId === session.user.id;
 
-  // Fetch other submissions for the same problem by this user
+  // Fetch the viewer's own other submissions for the same problem
   const otherSubmissions = submission.problemId
     ? await db
         .select({
@@ -101,8 +98,9 @@ export default async function PublicSubmissionDetailPage({ params, searchParams 
         .limit(20)
     : [];
 
-  const showDetailedResults = submission.problem?.showDetailedResults ?? true;
-  const showRuntimeErrors = submission.problem?.showRuntimeErrors ?? true;
+  const showDetailedResults = isOwner && (submission.problem?.showDetailedResults ?? true);
+  const showRuntimeErrors = isOwner && (submission.problem?.showRuntimeErrors ?? true);
+  const showCompileOutput = isOwner && (submission.problem?.showCompileOutput ?? true);
 
   const filteredResults = submission.results.map((result) => {
     let executionTimeMs = result.executionTimeMs ?? null;
@@ -147,8 +145,8 @@ export default async function PublicSubmissionDetailPage({ params, searchParams 
           assignmentId: submission.assignmentId ?? null,
           language: submission.language,
           status: submission.status ?? "pending",
-          sourceCode: submission.sourceCode,
-          compileOutput: submission.compileOutput ?? null,
+          sourceCode: isOwner ? submission.sourceCode : "",
+          compileOutput: isOwner ? (submission.compileOutput ?? null) : null,
           executionTimeMs: submission.executionTimeMs ?? null,
           memoryUsedKb: submission.memoryUsedKb ?? null,
           score: submission.score ?? null,
@@ -166,16 +164,18 @@ export default async function PublicSubmissionDetailPage({ params, searchParams 
                 title: submission.problem.title,
               }
             : null,
-          results: filteredResults,
+          results: isOwner ? filteredResults : [],
         }}
         backHref={backHref}
         timeZone={timeZone}
-        showCompileOutput={submission.problem?.showCompileOutput ?? true}
+        showCompileOutput={showCompileOutput}
         showDetailedResults={showDetailedResults}
         showRuntimeErrors={showRuntimeErrors}
         userRole={session.user.role}
         userId={session.user.id}
         capabilities={[]}
+        canViewSource={isOwner}
+        isOwner={isOwner}
       />
 
       {/* Other submissions for this problem */}

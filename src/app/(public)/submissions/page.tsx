@@ -33,9 +33,11 @@ const PAGE_PATH = "/submissions";
 
 type StatusFilter = "all" | "accepted" | "wrong_answer" | "time_limit" | "memory_limit" | "runtime_error" | "compile_error";
 type PeriodFilter = "all" | "today" | "week" | "month";
+type ScopeFilter = "all" | "mine";
 
 const STATUS_FILTER_VALUES: readonly StatusFilter[] = ["all", "accepted", "wrong_answer", "time_limit", "memory_limit", "runtime_error", "compile_error"];
 const PERIOD_FILTER_VALUES: readonly PeriodFilter[] = ["all", "today", "week", "month"];
+const SCOPE_FILTER_VALUES: readonly ScopeFilter[] = ["all", "mine"];
 
 type SubmissionRow = {
   id: string;
@@ -105,7 +107,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SubmissionsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; search?: string; status?: string; period?: string; pageSize?: string }>;
+  searchParams?: Promise<{ page?: string; search?: string; status?: string; period?: string; pageSize?: string; scope?: string }>;
 }) {
   const session = await auth();
   const t = await getTranslations("submissions");
@@ -118,8 +120,7 @@ export default async function SubmissionsPage({
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{t("mySubmissions")}</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{tCommon("submissions")}</h1>
         </div>
         <Card>
           <CardContent className="flex flex-col items-center gap-4 py-12">
@@ -146,6 +147,10 @@ export default async function SubmissionsPage({
   const currentPeriod: PeriodFilter = PERIOD_FILTER_VALUES.includes(rawPeriod as PeriodFilter)
     ? (rawPeriod as PeriodFilter)
     : "all";
+  const rawScope = resolvedSearchParams?.scope ?? "all";
+  const currentScope: ScopeFilter = SCOPE_FILTER_VALUES.includes(rawScope as ScopeFilter)
+    ? (rawScope as ScopeFilter)
+    : "all";
 
   const statusLabels = buildStatusLabels(t);
 
@@ -165,7 +170,9 @@ export default async function SubmissionsPage({
     ? gte(submissions.submittedAt, periodStart)
     : undefined;
 
-  const userFilter = eq(submissions.userId, session.user.id);
+  const userFilter = currentScope === "mine"
+    ? eq(submissions.userId, session.user.id)
+    : undefined;
   const filters = [userFilter, searchFilter, statusDbFilter, periodFilter].filter(Boolean);
   const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
@@ -217,6 +224,7 @@ export default async function SubmissionsPage({
     if (searchQuery) params.set("search", searchQuery);
     if (currentStatus !== "all") params.set("status", currentStatus);
     if (currentPeriod !== "all") params.set("period", currentPeriod);
+    if (currentScope !== "all") params.set("scope", currentScope);
     setPaginationParams(params, page, overridePageSize);
     const qs = params.toString();
     return qs ? `${PAGE_PATH}?${qs}` : PAGE_PATH;
@@ -239,12 +247,40 @@ export default async function SubmissionsPage({
     month: t("periodFilter.month"),
   };
 
+  const scopeFilterLabels: Record<ScopeFilter, string> = {
+    all: t("scopeFilter.all"),
+    mine: t("scopeFilter.mine"),
+  };
+
+  const listCardTitle = currentScope === "mine" ? t("mySubmissions") : t("allSubmissions");
+  const emptyListMessage = currentScope === "mine" ? t("noSubmissions") : t("noSubmissionsAll");
+
   return (
     <div className="space-y-4">
       <SubmissionListAutoRefresh hasActiveSubmissions={hasActiveSubmissions} />
       <h1 className="text-3xl font-semibold tracking-tight">
-        {t("title")}
+        {tCommon("submissions")}
       </h1>
+
+      {/* Scope filter tabs */}
+      <div className="flex flex-wrap gap-2">
+        {SCOPE_FILTER_VALUES.map((filter) => {
+          const params = new URLSearchParams();
+          if (searchQuery) params.set("search", searchQuery);
+          if (currentStatus !== "all") params.set("status", currentStatus);
+          if (currentPeriod !== "all") params.set("period", currentPeriod);
+          if (filter !== "all") params.set("scope", filter);
+          setPaginationParams(params, 1, pageSize);
+          const qs = params.toString();
+          return (
+            <Link key={filter} href={qs ? `${PAGE_PATH}?${qs}` : PAGE_PATH}>
+              <Button variant={currentScope === filter ? "default" : "outline"} size="sm">
+                {scopeFilterLabels[filter]}
+              </Button>
+            </Link>
+          );
+        })}
+      </div>
 
       {/* Status filter tabs */}
       <div className="flex flex-wrap gap-2">
@@ -253,6 +289,7 @@ export default async function SubmissionsPage({
           if (searchQuery) params.set("search", searchQuery);
           if (filter !== "all") params.set("status", filter);
           if (currentPeriod !== "all") params.set("period", currentPeriod);
+          if (currentScope !== "all") params.set("scope", currentScope);
           setPaginationParams(params, 1, pageSize);
           const qs = params.toString();
           return (
@@ -272,6 +309,7 @@ export default async function SubmissionsPage({
           if (searchQuery) params.set("search", searchQuery);
           if (currentStatus !== "all") params.set("status", currentStatus);
           if (filter !== "all") params.set("period", filter);
+          if (currentScope !== "all") params.set("scope", currentScope);
           setPaginationParams(params, 1, pageSize);
           const qs = params.toString();
           return (
@@ -299,12 +337,15 @@ export default async function SubmissionsPage({
                 placeholder={t("searchPlaceholder")}
               />
             </div>
-            {/* Preserve status and period filters */}
+            {/* Preserve status, period, and scope filters */}
             {currentStatus !== "all" && (
               <input type="hidden" name="status" value={currentStatus} />
             )}
             {currentPeriod !== "all" && (
               <input type="hidden" name="period" value={currentPeriod} />
+            )}
+            {currentScope !== "all" && (
+              <input type="hidden" name="scope" value={currentScope} />
             )}
             <input type="hidden" name="pageSize" value={String(pageSize)} />
             <div className="flex gap-2 items-end">
@@ -318,7 +359,7 @@ export default async function SubmissionsPage({
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>{t("mySubmissions")}</CardTitle>
+          <CardTitle>{listCardTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           {visibleSubmissions.length > 0 && (
@@ -333,6 +374,7 @@ export default async function SubmissionsPage({
             <TableHeader>
               <TableRow>
                 <TableHead>{t("table.id")}</TableHead>
+                <TableHead>{t("table.student")}</TableHead>
                 <TableHead>{t("table.problem")}</TableHead>
                 <TableHead>{t("table.language")}</TableHead>
                 <TableHead>{t("table.status")}</TableHead>
@@ -349,6 +391,7 @@ export default async function SubmissionsPage({
                       {formatSubmissionIdPrefix(sub.id)}
                     </Link>
                   </TableCell>
+                  <TableCell>{sub.user?.name ?? tCommon("unknown")}</TableCell>
                   <TableCell>
                     {sub.problem ? (
                       <Link href={buildLocalePath(`/practice/problems/${sub.problem.id}`, locale)} className="text-primary hover:underline">
@@ -384,8 +427,8 @@ export default async function SubmissionsPage({
               ))}
               {visibleSubmissions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
-                    {t("noSubmissions")}
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                    {emptyListMessage}
                   </TableCell>
                 </TableRow>
               )}
@@ -420,6 +463,8 @@ export default async function SubmissionsPage({
                     )}
                   </div>
                   <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{sub.user?.name ?? tCommon("unknown")}</span>
+                    <span>·</span>
                     <span>{getLanguageDisplayLabel(sub.language)}</span>
                     {sub.score !== null && <span>{Math.round(sub.score * 100) / 100}pt</span>}
                     {sub.submittedAt && <span>{formatDateTimeInTimeZone(sub.submittedAt, locale, timeZone)}</span>}
@@ -431,7 +476,7 @@ export default async function SubmissionsPage({
               </li>
             ))}
             {visibleSubmissions.length === 0 && (
-              <li className="px-4 py-6 text-center text-sm text-muted-foreground">{t("noSubmissions")}</li>
+              <li className="px-4 py-6 text-center text-sm text-muted-foreground">{emptyListMessage}</li>
             )}
           </ul>
         </CardContent>
