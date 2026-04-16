@@ -12,7 +12,7 @@ import { ChevronDownIcon, CheckIcon, SearchIcon } from "lucide-react";
 const LANGUAGE_CATEGORIES: Record<string, string[]> = {
   "C / C++": ["c", "c89", "c99", "c11", "c17", "c23", "cpp", "cpp11", "cpp14", "cpp17", "cpp20", "cpp23", "cpp26", "clang_c23", "clang_cpp23", "clang_cpp26"],
   "Java / JVM": ["java", "java8", "java11", "java17", "java21", "java25", "kotlin", "scala", "groovy", "clojure"],
-  "Python": ["python", "python2", "python3", "pypy2", "pypy3", "micropython"],
+  "Python": ["python", "python2", "python3", "pypy", "pypy2", "pypy3", "micropython"],
   "JavaScript / TypeScript": ["javascript", "typescript", "nodejs", "deno_js", "deno_ts", "bun_js", "bun_ts", "coffeescript", "rescript", "elm"],
   "Rust": ["rust"],
   "Go": ["go"],

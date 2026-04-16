@@ -183,6 +183,8 @@ public class Main {
 }`,
   python: `a, b = map(int, input().split())
 print(a + b)`,
+  pypy: `a, b = map(int, input().split())
+print(a + b)`,
   javascript: `process.stdin.resume();
 process.stdin.setEncoding('utf8');
 let d = '';

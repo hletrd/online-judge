@@ -12,6 +12,7 @@ export const CODE_SURFACE_LANGUAGE_MAP = {
   systemverilog: "plaintext",
   vhdl: "plaintext",
   python: "python",
+  pypy: "python",
   rust: "rust",
   go: "go",
   swift: "swift",

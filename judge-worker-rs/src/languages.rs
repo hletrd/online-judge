@@ -46,6 +46,7 @@ static JAVA_COMPILE: &[&str] = &[
 static JAVA_RUN: &[&str] = &["java", "-Djava.io.tmpdir=/workspace", "-cp", "/workspace/out", "Main"];
 
 static PYTHON_RUN: &[&str] = &["python3", "/workspace/solution.py"];
+static PYPY_RUN: &[&str] = &["pypy3", "/workspace/solution.py"];
 
 static JAVASCRIPT_RUN: &[&str] = &["node", "/workspace/solution.js"];
 
@@ -271,6 +272,14 @@ static PYTHON_CONFIG: LanguageConfig = LanguageConfig {
     docker_image: "judge-python:latest",
     compile_command: None,
     run_command: PYTHON_RUN,
+    needs_exec_tmp: false,
+};
+
+static PYPY_CONFIG: LanguageConfig = LanguageConfig {
+    extension: ".py",
+    docker_image: "judge-pypy:latest",
+    compile_command: None,
+    run_command: PYPY_RUN,
     needs_exec_tmp: false,
 };
 
@@ -1519,6 +1528,7 @@ pub fn get_config(language: &Language) -> Option<&'static LanguageConfig> {
         Language::Cpp26 => Some(&CPP26_CONFIG),
         Language::Java => Some(&JAVA_CONFIG),
         Language::Python => Some(&PYTHON_CONFIG),
+        Language::Pypy => Some(&PYPY_CONFIG),
         Language::Javascript => Some(&JAVASCRIPT_CONFIG),
         Language::Typescript => Some(&TYPESCRIPT_CONFIG),
         Language::Plaintext => Some(&PLAINTEXT_CONFIG),
@@ -1657,6 +1667,7 @@ mod tests {
             Language::Cpp26,
             Language::Java,
             Language::Python,
+            Language::Pypy,
             Language::Javascript,
             Language::Typescript,
             Language::Plaintext,

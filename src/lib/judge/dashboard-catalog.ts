@@ -52,7 +52,7 @@ const FEATURED_LANGUAGE_GROUPS: FeaturedGroupConfig[] = [
   {
     key: "python",
     title: "Python",
-    languageIds: ["python", "micropython"],
+    languageIds: ["python", "pypy", "micropython"],
   },
   {
     key: "java-jvm",

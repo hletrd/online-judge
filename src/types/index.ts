@@ -33,6 +33,7 @@ export type Language =
   | "cpp26"
   | "java"
   | "python"
+  | "pypy"
   | "javascript"
   | "kotlin"
   | "typescript"

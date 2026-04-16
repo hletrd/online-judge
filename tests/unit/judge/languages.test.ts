@@ -17,7 +17,7 @@ describe("judge language definitions", () => {
     const supported = [
       "c17", "c23", "cpp20", "cpp23", "cpp26",
       "java", "kotlin",
-      "python", "javascript", "typescript", "plaintext", "verilog", "systemverilog", "vhdl",
+      "python", "pypy", "javascript", "typescript", "plaintext", "verilog", "systemverilog", "vhdl",
       "rust", "go", "swift", "csharp",
       "r", "perl", "php",
       "ruby", "lua", "haskell", "dart",
@@ -158,6 +158,16 @@ describe("judge language definitions", () => {
     expect(def?.dockerImage).toBe("judge-python:latest");
     expect(def?.compileCommand).toBeNull();
     expect(def?.runCommand).toEqual(["python3", "/workspace/solution.py"]);
+  });
+
+  it("pypy: exists as interpreted language with its dedicated runtime image", () => {
+    const def = getJudgeLanguageDefinition("pypy");
+    expect(def).not.toBeNull();
+    expect(def?.displayName).toBe("PyPy");
+    expect(def?.extension).toBe(".py");
+    expect(def?.dockerImage).toBe("judge-pypy:latest");
+    expect(def?.compileCommand).toBeNull();
+    expect(def?.runCommand).toEqual(["pypy3", "/workspace/solution.py"]);
   });
 
   it("javascript: exists as interpreted language with no compile command", () => {

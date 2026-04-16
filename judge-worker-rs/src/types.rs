@@ -61,6 +61,7 @@ pub enum Language {
     Cpp26,
     Java,
     Python,
+    Pypy,
     Javascript,
     Kotlin,
     Typescript,
