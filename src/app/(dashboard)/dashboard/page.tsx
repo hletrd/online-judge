@@ -8,6 +8,7 @@ import { StudentDashboard } from "./_components/student-dashboard";
 import { InstructorDashboard } from "./_components/instructor-dashboard";
 import { AdminDashboard } from "./_components/admin-dashboard";
 import { CandidateDashboard } from "./_components/candidate-dashboard";
+import { DashboardJudgeSystemSection } from "./_components/dashboard-judge-system-section";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 
 export default async function DashboardPage() {
@@ -95,6 +96,19 @@ export default async function DashboardPage() {
           }
         >
           <AdminDashboard />
+        </Suspense>
+      )}
+
+      {!isAdminView && (
+        <Suspense
+          fallback={
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-48" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          }
+        >
+          <DashboardJudgeSystemSection />
         </Suspense>
       )}
     </div>
