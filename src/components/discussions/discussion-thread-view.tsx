@@ -1,3 +1,4 @@
+import { AssistantMarkdown } from "@/components/assistant-markdown";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ReactNode } from "react";
 
@@ -32,7 +33,7 @@ export function DiscussionThreadView({ title, content, authorName, scopeLabel, r
           <CardDescription>{authorName}</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="whitespace-pre-wrap text-sm leading-7 text-foreground/90">{content}</p>
+          <AssistantMarkdown className="text-sm leading-7 text-foreground/90" content={content} />
         </CardContent>
       </Card>
 
@@ -53,7 +54,7 @@ export function DiscussionThreadView({ title, content, authorName, scopeLabel, r
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="whitespace-pre-wrap text-sm leading-7 text-foreground/90">{post.content}</p>
+                  <AssistantMarkdown className="text-sm leading-7 text-foreground/90" content={post.content} />
                 </CardContent>
               </Card>
             ))}
