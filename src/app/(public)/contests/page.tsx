@@ -39,8 +39,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PublicContestsPage() {
-  const [t, locale] = await Promise.all([
+  const [t, tContests, locale] = await Promise.all([
     getTranslations("publicShell"),
+    getTranslations("contests"),
     getLocale(),
   ]);
   const statusLabels = {
@@ -88,10 +89,13 @@ export default async function PublicContestsPage() {
           statusKey: contest.status,
           problemCountLabel: t("contests.problemCount", { count: contest.problemCount }),
           publicProblemCountLabel: t("contests.publicProblemCount", { count: contest.publicProblemCount }),
-          modeLabel: contest.examMode === "scheduled" ? t("contests.modeScheduled") : t("contests.modeWindowed"),
+          modeLabel: contest.examMode === "scheduled" ? tContests("modeScheduled") : tContests("modeWindowed"),
           modeKey: contest.examMode === "scheduled" ? "scheduled" : "windowed",
-          scoringLabel: contest.scoringModel === "icpc" ? t("contests.scoringModelIcpc") : t("contests.scoringModelIoi"),
+          scoringLabel: contest.scoringModel === "icpc" ? tContests("scoringModelIcpc") : tContests("scoringModelIoi"),
           scoringKey: contest.scoringModel === "icpc" ? "icpc" : "ioi",
+          archiveGroupLabel: contest.startsAt
+            ? String(contest.startsAt.getFullYear())
+            : t("contests.archiveUndated"),
           startsAtLabel: t("contests.startsAt", {
             value: formatDateLabel(contest.startsAt, t("contests.notScheduled"), locale),
           }),
