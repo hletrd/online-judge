@@ -17,6 +17,8 @@ type AuthUserRecord = {
   mustChangePassword: boolean;
   preferredLanguage?: string | null;
   preferredTheme?: string | null;
+  shareAcceptedSolutions?: boolean;
+  acceptedSolutionsAnonymous?: boolean;
   editorTheme?: string | null;
   editorFontSize?: string | null;
   editorFontFamily?: string | null;
@@ -60,6 +62,8 @@ export async function authorizeRecruitingToken(
     mustChangePassword: false,
     preferredLanguage: user.preferredLanguage,
     preferredTheme: user.preferredTheme,
+    shareAcceptedSolutions: user.shareAcceptedSolutions,
+    acceptedSolutionsAnonymous: user.acceptedSolutionsAnonymous,
     editorTheme: user.editorTheme,
     editorFontSize: user.editorFontSize,
     editorFontFamily: user.editorFontFamily,

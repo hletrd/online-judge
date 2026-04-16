@@ -63,6 +63,8 @@ export const GET = createApiHandler({
         executionTimeMs: submissions.executionTimeMs,
         memoryUsedKb: submissions.memoryUsedKb,
         submittedAt: submissions.submittedAt,
+        shareAcceptedSolutions: users.shareAcceptedSolutions,
+        acceptedSolutionsAnonymous: users.acceptedSolutionsAnonymous,
       })
       .from(submissions)
       .innerJoin(users, eq(submissions.userId, users.id))
@@ -72,10 +74,20 @@ export const GET = createApiHandler({
       .offset(offset);
 
     return apiSuccess({
-      solutions: solutions.map((solution) => ({
-        ...solution,
-        isAnonymous: false,
-      })),
+      solutions: solutions
+        .filter((solution) => solution.shareAcceptedSolutions)
+        .map((solution) => ({
+          submissionId: solution.submissionId,
+          userId: solution.userId,
+          username: solution.acceptedSolutionsAnonymous ? "" : solution.username,
+          language: solution.language,
+          sourceCode: solution.sourceCode,
+          codeLength: solution.codeLength,
+          executionTimeMs: solution.executionTimeMs,
+          memoryUsedKb: solution.memoryUsedKb,
+          submittedAt: solution.submittedAt,
+          isAnonymous: Boolean(solution.acceptedSolutionsAnonymous),
+        })),
       total,
       page,
       pageSize,

@@ -32,6 +32,8 @@ export const users = mysqlTable("users", {
   image: text("image"),
   preferredLanguage: varchar("preferred_language", { length: 255 }),
   preferredTheme: varchar("preferred_theme", { length: 255 }),
+  shareAcceptedSolutions: boolean("share_accepted_solutions").notNull().default(true),
+  acceptedSolutionsAnonymous: boolean("accepted_solutions_anonymous").notNull().default(false),
   editorTheme: varchar("editor_theme", { length: 255 }),
   editorFontSize: varchar("editor_font_size", { length: 255 }),
   editorFontFamily: varchar("editor_font_family", { length: 255 }),

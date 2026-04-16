@@ -46,6 +46,8 @@ export async function updateProfile(
       className: true,
       preferredLanguage: true,
       preferredTheme: true,
+      shareAcceptedSolutions: true,
+      acceptedSolutionsAnonymous: true,
       editorTheme: true,
       editorFontSize: true,
       editorFontFamily: true,
@@ -56,7 +58,17 @@ export async function updateProfile(
     return { success: false, error: "notAuthenticated" };
   }
 
-  const { name, className, preferredLanguage, preferredTheme, editorTheme, editorFontSize, editorFontFamily } = parsedInput.data;
+  const {
+    name,
+    className,
+    preferredLanguage,
+    preferredTheme,
+    shareAcceptedSolutions,
+    acceptedSolutionsAnonymous,
+    editorTheme,
+    editorFontSize,
+    editorFontFamily,
+  } = parsedInput.data;
   const normalizedClassName = className ?? null;
   const normalizedPreferredLanguage = preferredLanguage ?? null;
   const normalizedPreferredTheme = preferredTheme ?? null;
@@ -68,6 +80,8 @@ export async function updateProfile(
     currentUser.className !== normalizedClassName ? "className" : null,
     currentUser.preferredLanguage !== normalizedPreferredLanguage ? "preferredLanguage" : null,
     currentUser.preferredTheme !== normalizedPreferredTheme ? "preferredTheme" : null,
+    currentUser.shareAcceptedSolutions !== (shareAcceptedSolutions ?? true) ? "shareAcceptedSolutions" : null,
+    currentUser.acceptedSolutionsAnonymous !== (acceptedSolutionsAnonymous ?? false) ? "acceptedSolutionsAnonymous" : null,
     currentUser.editorTheme !== normalizedEditorTheme ? "editorTheme" : null,
     currentUser.editorFontSize !== normalizedEditorFontSize ? "editorFontSize" : null,
     currentUser.editorFontFamily !== normalizedEditorFontFamily ? "editorFontFamily" : null,
@@ -80,6 +94,8 @@ export async function updateProfile(
         className: normalizedClassName,
         preferredLanguage: normalizedPreferredLanguage,
         preferredTheme: normalizedPreferredTheme,
+        shareAcceptedSolutions: shareAcceptedSolutions ?? true,
+        acceptedSolutionsAnonymous: acceptedSolutionsAnonymous ?? false,
         editorTheme: normalizedEditorTheme,
         editorFontSize: normalizedEditorFontSize,
         editorFontFamily: normalizedEditorFontFamily,
@@ -96,6 +112,8 @@ export async function updateProfile(
       className: normalizedClassName,
       preferredLanguage: normalizedPreferredLanguage,
       preferredTheme: normalizedPreferredTheme,
+      shareAcceptedSolutions: shareAcceptedSolutions ?? true,
+      acceptedSolutionsAnonymous: acceptedSolutionsAnonymous ?? false,
       editorTheme: normalizedEditorTheme,
       editorFontSize: normalizedEditorFontSize,
       editorFontFamily: normalizedEditorFontFamily,

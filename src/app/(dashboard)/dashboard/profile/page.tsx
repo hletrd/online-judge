@@ -82,6 +82,8 @@ export default async function ProfilePage() {
             initialClassName={session.user.className || ""}
             initialPreferredLanguage={session.user.preferredLanguage || ""}
             initialPreferredTheme={session.user.preferredTheme || "system"}
+            initialShareAcceptedSolutions={session.user.shareAcceptedSolutions ?? true}
+            initialAcceptedSolutionsAnonymous={session.user.acceptedSolutionsAnonymous ?? false}
             initialEditorFontSize={session.user.editorFontSize || "14"}
             initialEditorFontFamily={session.user.editorFontFamily || "system"}
             languages={enabledLanguages}

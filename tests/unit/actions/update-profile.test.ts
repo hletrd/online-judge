@@ -57,6 +57,8 @@ vi.mock("@/lib/db/schema", () => ({
     username: "users.username",
     name: "users.name",
     className: "users.className",
+    shareAcceptedSolutions: "users.shareAcceptedSolutions",
+    acceptedSolutionsAnonymous: "users.acceptedSolutionsAnonymous",
   },
 }));
 
@@ -95,6 +97,8 @@ const testUser = {
   className: "CS101",
   preferredLanguage: null,
   preferredTheme: null,
+  shareAcceptedSolutions: true,
+  acceptedSolutionsAnonymous: false,
   editorTheme: null,
   editorFontSize: null,
   editorFontFamily: null,
@@ -216,6 +220,27 @@ describe("updateProfile", () => {
     expect(mocks.unstable_update).toHaveBeenCalledWith(
       expect.objectContaining({
         user: expect.objectContaining({ name: "Alice Updated", className: "CS202" }),
+      })
+    );
+  });
+
+  it("updates accepted-solution sharing preferences", async () => {
+    const { updateProfile } = await import("@/lib/actions/update-profile");
+    setupAuthenticatedUser();
+
+    const result = await updateProfile({
+      name: "Alice Smith",
+      shareAcceptedSolutions: false,
+      acceptedSolutionsAnonymous: true,
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(mocks.unstable_update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user: expect.objectContaining({
+          shareAcceptedSolutions: false,
+          acceptedSolutionsAnonymous: true,
+        }),
       })
     );
   });

@@ -48,6 +48,8 @@ type AuthUserRecord = {
   mustChangePassword: boolean | null;
   preferredLanguage?: string | null;
   preferredTheme?: string | null;
+  shareAcceptedSolutions?: boolean;
+  acceptedSolutionsAnonymous?: boolean;
   editorTheme?: string | null;
   editorFontSize?: string | null;
   editorFontFamily?: string | null;
@@ -97,6 +99,8 @@ function syncTokenWithUser(
   token.mustChangePassword = user.mustChangePassword ?? false;
   token.preferredLanguage = user.preferredLanguage ?? null;
   token.preferredTheme = user.preferredTheme ?? null;
+  token.shareAcceptedSolutions = user.shareAcceptedSolutions ?? true;
+  token.acceptedSolutionsAnonymous = user.acceptedSolutionsAnonymous ?? false;
   token.editorTheme = user.editorTheme ?? null;
   token.editorFontSize = user.editorFontSize ?? null;
   token.editorFontFamily = user.editorFontFamily ?? null;
@@ -338,6 +342,8 @@ export const authConfig: NextAuthConfig = {
           mustChangePassword: user.mustChangePassword ?? false,
           preferredLanguage: user.preferredLanguage ?? null,
           preferredTheme: user.preferredTheme ?? null,
+          shareAcceptedSolutions: user.shareAcceptedSolutions ?? true,
+          acceptedSolutionsAnonymous: user.acceptedSolutionsAnonymous ?? false,
           editorTheme: user.editorTheme ?? null,
           editorFontSize: user.editorFontSize ?? null,
           editorFontFamily: user.editorFontFamily ?? null,
@@ -377,6 +383,8 @@ export const authConfig: NextAuthConfig = {
           tokenInvalidatedAt: true,
           preferredLanguage: true,
           preferredTheme: true,
+          shareAcceptedSolutions: true,
+          acceptedSolutionsAnonymous: true,
           editorTheme: true,
           editorFontSize: true,
           editorFontFamily: true,
@@ -404,6 +412,8 @@ export const authConfig: NextAuthConfig = {
         mustChangePassword: freshUser.mustChangePassword ?? false,
         preferredLanguage: freshUser.preferredLanguage,
         preferredTheme: freshUser.preferredTheme,
+        shareAcceptedSolutions: freshUser.shareAcceptedSolutions,
+        acceptedSolutionsAnonymous: freshUser.acceptedSolutionsAnonymous,
         editorTheme: freshUser.editorTheme,
         editorFontSize: freshUser.editorFontSize,
         editorFontFamily: freshUser.editorFontFamily,
@@ -424,6 +434,8 @@ export const authConfig: NextAuthConfig = {
         session.user.mustChangePassword = token.mustChangePassword ?? false;
         session.user.preferredLanguage = token.preferredLanguage ?? null;
         session.user.preferredTheme = token.preferredTheme ?? null;
+        session.user.shareAcceptedSolutions = token.shareAcceptedSolutions ?? true;
+        session.user.acceptedSolutionsAnonymous = token.acceptedSolutionsAnonymous ?? false;
         session.user.editorTheme = token.editorTheme ?? null;
         session.user.editorFontSize = token.editorFontSize ?? null;
         session.user.editorFontFamily = token.editorFontFamily ?? null;

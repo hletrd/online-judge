@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,6 +23,8 @@ export default function ProfileForm({
   initialClassName,
   initialPreferredLanguage,
   initialPreferredTheme,
+  initialShareAcceptedSolutions,
+  initialAcceptedSolutionsAnonymous,
   initialEditorFontSize,
   initialEditorFontFamily,
   languages,
@@ -31,6 +34,8 @@ export default function ProfileForm({
   initialClassName: string;
   initialPreferredLanguage: string;
   initialPreferredTheme: string;
+  initialShareAcceptedSolutions: boolean;
+  initialAcceptedSolutionsAnonymous: boolean;
   initialEditorFontSize: string;
   initialEditorFontFamily: string;
   languages: LanguageOption[];
@@ -46,6 +51,8 @@ export default function ProfileForm({
   const [preferredLanguage, setPreferredLanguage] = useState(initialPreferredLanguage);
   const languageLabelMap = Object.fromEntries(languages.map((l) => [l.value, l.label]));
   const [preferredTheme, setPreferredTheme] = useState(initialPreferredTheme || "system");
+  const [shareAcceptedSolutions, setShareAcceptedSolutions] = useState(initialShareAcceptedSolutions);
+  const [acceptedSolutionsAnonymous, setAcceptedSolutionsAnonymous] = useState(initialAcceptedSolutionsAnonymous);
   const [editorFontSize, setEditorFontSize] = useState(initialEditorFontSize || String(DEFAULT_EDITOR_FONT_SIZE));
   const [editorFontFamily, setEditorFontFamily] = useState(initialEditorFontFamily || DEFAULT_EDITOR_FONT_FAMILY);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,6 +70,8 @@ export default function ProfileForm({
         className: canEditClassName ? className : undefined,
         preferredLanguage: preferredLanguage || undefined,
         preferredTheme: (preferredTheme as "light" | "dark" | "system") || undefined,
+        shareAcceptedSolutions,
+        acceptedSolutionsAnonymous,
         editorFontSize: editorFontSize || undefined,
         editorFontFamily: editorFontFamily || undefined,
       });
@@ -132,6 +141,31 @@ export default function ProfileForm({
             <SelectItem value="system" label={t("themeSystem")}>{t("themeSystem")}</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+      <div className="space-y-3 rounded-lg border p-4">
+        <div className="flex items-start gap-3">
+          <Checkbox
+            id="shareAcceptedSolutions"
+            checked={shareAcceptedSolutions}
+            onCheckedChange={setShareAcceptedSolutions}
+          />
+          <div className="space-y-1">
+            <Label htmlFor="shareAcceptedSolutions">{t("shareAcceptedSolutions")}</Label>
+            <p className="text-sm text-muted-foreground">{t("shareAcceptedSolutionsDesc")}</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <Checkbox
+            id="acceptedSolutionsAnonymous"
+            checked={acceptedSolutionsAnonymous}
+            onCheckedChange={setAcceptedSolutionsAnonymous}
+            disabled={!shareAcceptedSolutions}
+          />
+          <div className="space-y-1">
+            <Label htmlFor="acceptedSolutionsAnonymous">{t("acceptedSolutionsAnonymous")}</Label>
+            <p className="text-sm text-muted-foreground">{t("acceptedSolutionsAnonymousDesc")}</p>
+          </div>
+        </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="editorFontSize">{t("editorFontSize")}</Label>

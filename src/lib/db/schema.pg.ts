@@ -34,6 +34,8 @@ export const users = pgTable(
     image: text("image"),
     preferredLanguage: text("preferred_language"),
     preferredTheme: text("preferred_theme"),
+    shareAcceptedSolutions: boolean("share_accepted_solutions").notNull().default(true),
+    acceptedSolutionsAnonymous: boolean("accepted_solutions_anonymous").notNull().default(false),
     editorTheme: text("editor_theme"),
     editorFontSize: text("editor_font_size"),
     editorFontFamily: text("editor_font_family"),

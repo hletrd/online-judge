@@ -81,6 +81,8 @@ describe("GET /api/v1/problems/[id]/accepted-solutions", () => {
           executionTimeMs: 12,
           memoryUsedKb: 128,
           submittedAt: new Date("2026-04-16T00:00:00.000Z"),
+          shareAcceptedSolutions: true,
+          acceptedSolutionsAnonymous: false,
         },
       ]));
   });
@@ -107,5 +109,62 @@ describe("GET /api/v1/problems/[id]/accepted-solutions", () => {
         pageSize: 10,
       },
     });
+  });
+
+  it("hides usernames for anonymous shared solutions and skips opted-out users", async () => {
+    selectMock.mockReset();
+    const countChain = {
+      from: vi.fn(),
+      where: vi.fn(),
+    };
+    countChain.from.mockReturnValue(countChain);
+    countChain.where.mockResolvedValue([{ total: 2 }]);
+
+    selectMock
+      .mockReturnValueOnce(countChain)
+      .mockReturnValueOnce(createChain([
+        {
+          submissionId: "submission-1",
+          userId: "user-1",
+          username: "alice",
+          language: "python",
+          sourceCode: "print(1)",
+          codeLength: 8,
+          executionTimeMs: 12,
+          memoryUsedKb: 128,
+          submittedAt: new Date("2026-04-16T00:00:00.000Z"),
+          shareAcceptedSolutions: true,
+          acceptedSolutionsAnonymous: true,
+        },
+        {
+          submissionId: "submission-2",
+          userId: "user-2",
+          username: "bob",
+          language: "python",
+          sourceCode: "print(2)",
+          codeLength: 8,
+          executionTimeMs: 11,
+          memoryUsedKb: 120,
+          submittedAt: new Date("2026-04-16T00:00:00.000Z"),
+          shareAcceptedSolutions: false,
+          acceptedSolutionsAnonymous: false,
+        },
+      ]));
+
+    const { GET } = await import("@/app/api/v1/problems/[id]/accepted-solutions/route");
+    const response = await GET(
+      new NextRequest("http://localhost:3000/api/v1/problems/problem-1/accepted-solutions"),
+      { params: Promise.resolve({ id: "problem-1" }) }
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.data.solutions).toEqual([
+      expect.objectContaining({
+        submissionId: "submission-1",
+        username: "",
+        isAnonymous: true,
+      }),
+    ]);
   });
 });

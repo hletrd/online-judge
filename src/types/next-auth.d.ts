@@ -14,6 +14,8 @@ declare module "next-auth" {
       image?: string | null;
       preferredLanguage?: string | null;
       preferredTheme?: string | null;
+      shareAcceptedSolutions?: boolean;
+      acceptedSolutionsAnonymous?: boolean;
       editorTheme?: string | null;
       editorFontSize?: string | null;
       editorFontFamily?: string | null;
@@ -33,6 +35,8 @@ declare module "next-auth" {
     mustChangePassword?: boolean;
     preferredLanguage?: string | null;
     preferredTheme?: string | null;
+    shareAcceptedSolutions?: boolean;
+    acceptedSolutionsAnonymous?: boolean;
     editorTheme?: string | null;
     editorFontSize?: string | null;
     editorFontFamily?: string | null;
@@ -54,6 +58,8 @@ declare module "next-auth/jwt" {
     uaHash?: string;
     preferredLanguage?: string | null;
     preferredTheme?: string | null;
+    shareAcceptedSolutions?: boolean;
+    acceptedSolutionsAnonymous?: boolean;
     editorTheme?: string | null;
     editorFontSize?: string | null;
     editorFontFamily?: string | null;

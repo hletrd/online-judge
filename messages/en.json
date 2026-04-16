@@ -1595,7 +1595,11 @@
     "editorFontSizePlaceholder": "Select font size",
     "editorFontFamily": "Editor Font Family",
     "editorFontFamilyPlaceholder": "Select font family",
-    "editorFontDefault": "System Default"
+    "editorFontDefault": "System Default",
+    "shareAcceptedSolutions": "Share accepted solutions",
+    "shareAcceptedSolutionsDesc": "Allow your accepted submissions to appear in the public accepted-solutions viewer for public problems.",
+    "acceptedSolutionsAnonymous": "Show me anonymously in accepted solutions",
+    "acceptedSolutionsAnonymousDesc": "Hide your username and show your accepted solutions as anonymous while still sharing the code."
   },
   "changePassword": {
     "title": "Change Password",

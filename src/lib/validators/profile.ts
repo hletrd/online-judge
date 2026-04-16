@@ -15,6 +15,8 @@ export const updateProfileSchema = z.object({
     normalizeOptionalString,
     z.string().max(50).optional()
   ),
+  shareAcceptedSolutions: z.boolean().optional(),
+  acceptedSolutionsAnonymous: z.boolean().optional(),
   preferredTheme: z.preprocess(
     normalizeOptionalString,
     z.enum(["light", "dark", "system"]).optional()
