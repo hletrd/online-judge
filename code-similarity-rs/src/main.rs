@@ -2,10 +2,10 @@ mod similarity;
 mod types;
 
 use axum::{
+    Json, Router,
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
-    Json, Router,
 };
 use std::net::SocketAddr;
 use tokio::signal;
@@ -99,13 +99,11 @@ async fn shutdown_signal() {
 async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
         .init();
 
-    let host =
-        std::env::var("CODE_SIMILARITY_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let host = std::env::var("CODE_SIMILARITY_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port: u16 = std::env::var("CODE_SIMILARITY_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
@@ -115,12 +113,10 @@ async fn main() {
         .route("/health", get(health))
         .route("/compute", post(compute));
 
-    let addr: SocketAddr = format!("{host}:{port}")
-        .parse()
-        .unwrap_or_else(|_| {
-            tracing::warn!("invalid host/port, falling back to 127.0.0.1:{port}");
-            SocketAddr::from(([127, 0, 0, 1], port))
-        });
+    let addr: SocketAddr = format!("{host}:{port}").parse().unwrap_or_else(|_| {
+        tracing::warn!("invalid host/port, falling back to 127.0.0.1:{port}");
+        SocketAddr::from(([127, 0, 0, 1], port))
+    });
 
     info!(%addr, "code-similarity starting");
 
