@@ -16,13 +16,14 @@ type CodeEditorProps = {
   id?: string;
   language?: string | null;
   minHeight?: number;
+  onSubmitShortcut?: () => void;
   onValueChange: (value: string) => void;
   placeholder?: string;
   value: string;
 };
 
 export function CodeEditor(props: CodeEditorProps) {
-  const { minHeight, onValueChange, ...surfaceProps } = props;
+  const { minHeight, onSubmitShortcut, onValueChange, ...surfaceProps } = props;
   const height = minHeight ?? 300;
 
   if (props.language && RAW_TEXTAREA_LANGUAGES.has(props.language)) {
@@ -39,6 +40,12 @@ export function CodeEditor(props: CodeEditorProps) {
         placeholder={props.placeholder}
         value={props.value}
         onChange={(e) => onValueChange(e.target.value)}
+        onKeyDown={(e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            onSubmitShortcut?.();
+          }
+        }}
         autoCapitalize="off"
         autoCorrect="off"
         spellCheck={false}
@@ -50,6 +57,7 @@ export function CodeEditor(props: CodeEditorProps) {
     <CodeSurface
       {...surfaceProps}
       minHeight={height}
+      onSubmitShortcut={onSubmitShortcut}
       onValueChangeAction={onValueChange}
     />
   );

@@ -38,6 +38,7 @@ type CodeSurfaceProps = {
   id?: string;
   language?: string | null;
   minHeight?: number;
+  onSubmitShortcut?: () => void;
   onValueChangeAction?: (value: string) => void;
   placeholder?: string;
   readOnly?: boolean;
@@ -289,6 +290,7 @@ export function CodeSurface({
   id,
   language,
   minHeight = 220,
+  onSubmitShortcut,
   onValueChangeAction,
   placeholder: placeholderText,
   readOnly = false,
@@ -300,6 +302,7 @@ export function CodeSurface({
   const editorHostRef = useRef<HTMLDivElement | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
   const onValueChangeRef = useRef(onValueChangeAction);
+  const onSubmitShortcutRef = useRef(onSubmitShortcut);
   const isSyncingRef = useRef(false);
   const { language: languageCompartmentRef, highlight: highlightCompartmentRef, minHeight: minHeightCompartmentRef, editability: editabilityCompartmentRef, placeholderComp: placeholderCompartmentRef, contentAttributes: contentAttributesCompartmentRef, customTheme: customThemeCompartmentRef } = useEditorCompartments();
   const [initialEditorConfig] = useState(() => ({
@@ -321,6 +324,10 @@ export function CodeSurface({
   }, [onValueChangeAction]);
 
   useEffect(() => {
+    onSubmitShortcutRef.current = onSubmitShortcut;
+  }, [onSubmitShortcut]);
+
+  useEffect(() => {
     if (!editorHostRef.current) {
       return undefined;
     }
@@ -329,6 +336,13 @@ export function CodeSurface({
       doc: initialEditorConfig.value,
       extensions: [
         ...baseExtensions,
+        keymap.of([{
+          key: "Mod-Enter",
+          run: () => {
+            onSubmitShortcutRef.current?.();
+            return true;
+          },
+        }]),
         languageCompartmentRef.current.of([]),
         highlightCompartmentRef.current.of(
           getHighlightExtension(initialEditorConfig.resolvedTheme === "dark")

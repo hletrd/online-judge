@@ -191,8 +191,8 @@ export function ProblemSubmissionForm({
     }
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleSubmit(event?: React.FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
 
     if (!sourceCode) {
       toast.error(translateSubmissionError("sourceCode is required"));
@@ -284,6 +284,7 @@ export function ProblemSubmissionForm({
           language={language}
           editorTheme={editorTheme}
           onValueChange={setSourceCode}
+          onSubmitShortcut={() => void handleSubmit()}
         />
       </div>
       <div className="space-y-2">
@@ -317,7 +318,7 @@ export function ProblemSubmissionForm({
           {isRunning ? t("running") : t("run")}
         </Button>
         <Button type="submit" className="flex-1" disabled={isSubmitting || isRunning}>
-          {isSubmitting ? tCommon("loading") : tCommon("submit")}
+          {isSubmitting ? tCommon("loading") : `${tCommon("submit")} (Ctrl+Enter)`}
         </Button>
       </div>
       {runResult && (
