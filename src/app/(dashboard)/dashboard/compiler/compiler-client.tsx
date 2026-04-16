@@ -8,8 +8,9 @@ import { LanguageSelector } from "@/components/language-selector";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api/client";
-import { Loader2, Play, AlertTriangle, Maximize2 } from "lucide-react";
+import { Loader2, Play, AlertTriangle, Maximize2, Plus, X } from "lucide-react";
 
 // Layout constants
 const LAYOUT_CONSTANTS = {
@@ -34,6 +35,14 @@ type CompilerResult = {
   executionTimeMs: number;
   timedOut: boolean;
   compileOutput: string | null;
+};
+
+type CompilerTestCase = {
+  id: string;
+  name: string;
+  stdin: string;
+  result: CompilerResult | null;
+  error: string | null;
 };
 
 type CompilerClientProps = {
@@ -76,6 +85,10 @@ function resolveInitialCompilerLanguage(
   );
 }
 
+function buildDefaultTestCaseName(index: number) {
+  return `TC ${index}`;
+}
+
 // Component for truncated output display
 function TruncatedOutput({ content, className }: { content: string; className?: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -104,12 +117,20 @@ function TruncatedOutput({ content, className }: { content: string; className?: 
 export function CompilerClient({ languages, title, description, preferredLanguage, runEndpoint = "/api/v1/compiler/run" }: CompilerClientProps) {
   const t = useTranslations("compiler");
   const initialLanguage = resolveInitialCompilerLanguage(languages, preferredLanguage);
+  const initialTestCaseRef = useRef<CompilerTestCase>({
+    id: "tc-1",
+    name: buildDefaultTestCaseName(1),
+    stdin: "",
+    result: null,
+    error: null,
+  });
+  const nextTestCaseIndexRef = useRef(2);
 
   const [language, setLanguage] = useState(initialLanguage);
   const [sourceCode, setSourceCode] = useState(() => getDefaultCode(initialLanguage));
-  const [stdin, setStdin] = useState("");
-  const [result, setResult] = useState<CompilerResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [testCases, setTestCases] = useState<CompilerTestCase[]>([initialTestCaseRef.current]);
+  const [activeTestCaseId, setActiveTestCaseId] = useState(initialTestCaseRef.current.id);
+  const [activeTab, setActiveTab] = useState("stdout");
 
   // HIGH FIX: Use ref to track isRunning for stale closure protection
   const isRunningRef = useRef(false);
@@ -117,6 +138,16 @@ export function CompilerClient({ languages, title, description, preferredLanguag
   const abortControllerRef = useRef<AbortController | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const hydratedPreferenceRef = useRef(false);
+
+  const activeTestCase = testCases.find((testCase) => testCase.id === activeTestCaseId) ?? testCases[0] ?? initialTestCaseRef.current;
+  const result = activeTestCase.result;
+  const error = activeTestCase.error;
+
+  const updateTestCase = useCallback((testCaseId: string, updater: (testCase: CompilerTestCase) => CompilerTestCase) => {
+    setTestCases((currentCases) =>
+      currentCases.map((testCase) => (testCase.id === testCaseId ? updater(testCase) : testCase))
+    );
+  }, []);
 
   useEffect(() => {
     if (hydratedPreferenceRef.current) return;
@@ -135,8 +166,13 @@ export function CompilerClient({ languages, title, description, preferredLanguag
     setSourceCode((currentSource) =>
       currentSource === currentDefault ? getDefaultCode(savedLanguage) : currentSource
     );
-    setResult(null);
-    setError(null);
+    setTestCases((currentCases) =>
+      currentCases.map((testCase) => ({
+        ...testCase,
+        result: null,
+        error: null,
+      }))
+    );
   }, [initialLanguage, language, languages]);
 
   // Persist language preference
@@ -152,11 +188,40 @@ export function CompilerClient({ languages, title, description, preferredLanguag
         setSourceCode(getDefaultCode(newLang));
       }
       setLanguage(newLang);
-      setResult(null);
-      setError(null);
+      setTestCases((currentCases) =>
+        currentCases.map((testCase) => ({
+          ...testCase,
+          result: null,
+          error: null,
+        }))
+      );
     },
     [language, sourceCode]
   );
+
+  const handleAddTestCase = useCallback(() => {
+    const nextIndex = nextTestCaseIndexRef.current++;
+    const nextTestCase: CompilerTestCase = {
+      id: `tc-${nextIndex}`,
+      name: buildDefaultTestCaseName(nextIndex),
+      stdin: "",
+      result: null,
+      error: null,
+    };
+    setTestCases((currentCases) => [...currentCases, nextTestCase]);
+    setActiveTestCaseId(nextTestCase.id);
+    setActiveTab("stdout");
+  }, []);
+
+  const handleRemoveActiveTestCase = useCallback(() => {
+    if (testCases.length <= 1) return;
+
+    const activeIndex = testCases.findIndex((testCase) => testCase.id === activeTestCase.id);
+    const fallbackCase = testCases[activeIndex - 1] ?? testCases[activeIndex + 1] ?? testCases[0];
+    setTestCases((currentCases) => currentCases.filter((testCase) => testCase.id !== activeTestCase.id));
+    setActiveTestCaseId(fallbackCase.id);
+    setActiveTab("stdout");
+  }, [activeTestCase.id, testCases]);
 
   const handleRun = useCallback(async () => {
     // HIGH FIX: Check ref to prevent concurrent runs
@@ -172,8 +237,12 @@ export function CompilerClient({ languages, title, description, preferredLanguag
 
     isRunningRef.current = true;
     setIsRunning(true);
-    setResult(null);
-    setError(null);
+    const runningTestCaseId = activeTestCase.id;
+    updateTestCase(runningTestCaseId, (testCase) => ({
+      ...testCase,
+      result: null,
+      error: null,
+    }));
 
     // Create new abort controller for this request
     const abortController = new AbortController();
@@ -183,7 +252,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
       const res = await apiFetch(runEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ language, sourceCode, stdin }),
+        body: JSON.stringify({ language, sourceCode, stdin: activeTestCase.stdin }),
         signal: abortController.signal,
       });
 
@@ -191,23 +260,32 @@ export function CompilerClient({ languages, title, description, preferredLanguag
 
       if (!res.ok) {
         const errorMessage = data.error || data.message || "Request failed";
-        setError(errorMessage);
-        // MEDIUM FIX: Add toast notification for errors
+        updateTestCase(runningTestCaseId, (testCase) => ({
+          ...testCase,
+          error: errorMessage,
+          result: null,
+        }));
         toast.error(t("runFailed", { defaultValue: "Failed to run code" }), {
           description: errorMessage,
         });
         return;
       }
 
-      setResult(data.data as CompilerResult);
+      updateTestCase(runningTestCaseId, (testCase) => ({
+        ...testCase,
+        result: data.data as CompilerResult,
+        error: null,
+      }));
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
-        // Request was aborted, no error to show
         return;
       }
       const errorMessage = err instanceof Error ? err.message : "Network error";
-      setError(errorMessage);
-      // MEDIUM FIX: Add toast notification for network errors
+      updateTestCase(runningTestCaseId, (testCase) => ({
+        ...testCase,
+        error: errorMessage,
+        result: null,
+      }));
       toast.error(t("networkError", { defaultValue: "Network error" }), {
         description: errorMessage,
       });
@@ -216,7 +294,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
       abortControllerRef.current = null;
       setIsRunning(false);
     }
-  }, [language, runEndpoint, sourceCode, stdin, t]);
+  }, [activeTestCase.id, activeTestCase.stdin, language, runEndpoint, sourceCode, t, updateTestCase]);
 
   // Keyboard shortcut: Ctrl/Cmd+Enter to run
   useEffect(() => {
@@ -246,17 +324,17 @@ export function CompilerClient({ languages, title, description, preferredLanguag
     }
   }, [result]);
 
-  const [activeTab, setActiveTab] = useState("stdout");
-
-  // Auto-select the most relevant tab when a new result arrives
+  // Auto-select the most relevant tab when a new result arrives or the active case changes
   useEffect(() => {
-    if (!result) return;
+    if (!result) {
+      setActiveTab("stdout");
+      return;
+    }
     if (result.compileOutput) setActiveTab("compileOutput");
     else if (result.stderr) setActiveTab("stderr");
     else setActiveTab("stdout");
   }, [result]);
 
-  // MEDIUM FIX: Show loading state when languages are empty
   if (languages.length === 0) {
     return (
       <div className="flex h-full items-center justify-center p-6">
@@ -270,13 +348,11 @@ export function CompilerClient({ languages, title, description, preferredLanguag
 
   return (
     <div className="flex h-full flex-col gap-4 p-4 md:p-6">
-      {/* Header */}
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold">{title}</h1>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
 
-      {/* Top bar: language + run */}
       <div className="flex items-center gap-3">
         <div style={{ width: LAYOUT_CONSTANTS.SELECTOR_WIDTH }}>
           <LanguageSelector
@@ -306,9 +382,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
         </Button>
       </div>
 
-      {/* Main editor area */}
       <div className="grid flex-1 gap-4 lg:grid-cols-2">
-        {/* Left: Code editor + stdin */}
         <div className="flex min-h-0 flex-col gap-3">
           <div className="flex-1 min-h-0">
             <CodeEditor
@@ -319,27 +393,95 @@ export function CompilerClient({ languages, title, description, preferredLanguag
               ariaLabel={t("codeEditorLabel", { defaultValue: "Code editor" })}
             />
           </div>
-          <div className="flex flex-col gap-1">
-            {/* HIGH FIX: Add proper label association */}
-            <Label htmlFor="stdin-input" className="text-xs font-medium text-muted-foreground">
-              {t("stdin", { defaultValue: "Standard Input" })}
-            </Label>
-            <textarea
-              id="stdin-input"
-              className="w-full rounded-lg border bg-transparent p-3 font-mono text-sm leading-relaxed focus:border-ring focus:ring-3 focus:ring-ring/15 focus:outline-none"
-              style={{ minHeight: LAYOUT_CONSTANTS.STDIN_MIN_HEIGHT, resize: "vertical", tabSize: 4 }}
-              value={stdin}
-              onChange={(e) => setStdin(e.target.value)}
-              placeholder="1 2"
-              spellCheck={false}
-              autoCapitalize="off"
-              autoCorrect="off"
-              aria-label={t("stdin", { defaultValue: "Standard input" })}
-            />
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="stdin-input" className="text-xs font-medium text-muted-foreground">
+                {t("stdin", { defaultValue: "Standard Input" })}
+              </Label>
+              <div className="flex items-center gap-2">
+                {testCases.length > 1 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRemoveActiveTestCase}
+                    aria-label={t("removeTestCase", { defaultValue: "Remove test case" })}
+                  >
+                    <X className="size-3.5" />
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddTestCase}
+                  aria-label={t("addTestCase", { defaultValue: "Add test case" })}
+                >
+                  <Plus className="size-3.5" />
+                  {t("addTestCase", { defaultValue: "Add test case" })}
+                </Button>
+              </div>
+            </div>
+
+            <Tabs value={activeTestCase.id} onValueChange={setActiveTestCaseId} className="flex flex-col gap-3">
+              <TabsList className="flex h-auto w-full flex-wrap justify-start">
+                {testCases.map((testCase) => (
+                  <TabsTrigger key={testCase.id} value={testCase.id}>
+                    {testCase.name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="stdin-case-name" className="text-xs font-medium text-muted-foreground">
+                  {t("testCaseLabel", { defaultValue: "Test case label" })}
+                </Label>
+                <Input
+                  id="stdin-case-name"
+                  value={activeTestCase.name}
+                  onChange={(event) => {
+                    const nextName = event.target.value;
+                    updateTestCase(activeTestCase.id, (testCase) => ({
+                      ...testCase,
+                      name: nextName,
+                    }));
+                  }}
+                  onBlur={() => {
+                    if (activeTestCase.name.trim()) return;
+                    const activeIndex = testCases.findIndex((entry) => entry.id === activeTestCase.id);
+                    updateTestCase(activeTestCase.id, (testCase) => ({
+                      ...testCase,
+                      name: buildDefaultTestCaseName(activeIndex + 1),
+                    }));
+                  }}
+                />
+              </div>
+
+              {testCases.map((testCase) => (
+                <TabsContent key={testCase.id} value={testCase.id} className="m-0">
+                  <textarea
+                    id={testCase.id === activeTestCase.id ? "stdin-input" : undefined}
+                    className="w-full rounded-lg border bg-transparent p-3 font-mono text-sm leading-relaxed focus:border-ring focus:ring-3 focus:ring-ring/15 focus:outline-none"
+                    style={{ minHeight: LAYOUT_CONSTANTS.STDIN_MIN_HEIGHT, resize: "vertical", tabSize: 4 }}
+                    value={testCase.stdin}
+                    onChange={(event) =>
+                      updateTestCase(testCase.id, (currentTestCase) => ({
+                        ...currentTestCase,
+                        stdin: event.target.value,
+                      }))
+                    }
+                    placeholder="1 2"
+                    spellCheck={false}
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    aria-label={t("stdin", { defaultValue: "Standard input" })}
+                  />
+                </TabsContent>
+              ))}
+            </Tabs>
           </div>
         </div>
 
-        {/* Right: Output */}
         <div className="flex min-h-0 flex-col">
           {error && (
             <div
@@ -361,7 +503,6 @@ export function CompilerClient({ languages, title, description, preferredLanguag
 
           {result && (
             <div className="flex flex-1 flex-col gap-2 overflow-hidden">
-              {/* Status bar */}
               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 {result.timedOut && (
                   <span className="font-medium text-yellow-600">
@@ -381,7 +522,6 @@ export function CompilerClient({ languages, title, description, preferredLanguag
                 </span>
               </div>
 
-              {/* Output tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
                 <TabsList>
                   <TabsTrigger value="stdout">{t("stdout", { defaultValue: "Output" })}</TabsTrigger>

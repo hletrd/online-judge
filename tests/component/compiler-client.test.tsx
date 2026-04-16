@@ -7,7 +7,7 @@ const { apiFetchMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string, values?: Record<string, string>) =>
+  useTranslations: () => (key: string, values?: Record<string, string | number>) =>
     values?.defaultValue ?? key,
 }));
 
@@ -63,6 +63,72 @@ describe("CompilerClient", () => {
     await waitFor(() => {
       expect(screen.getByTestId("language-selector")).toHaveTextContent("javascript");
       expect(screen.getByTestId("code-editor")).toHaveAttribute("data-language", "javascript");
+    });
+  });
+
+  it("supports multiple stdin test-case tabs with per-case names and results", async () => {
+    apiFetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            stdout: "case-one",
+            stderr: "",
+            exitCode: 0,
+            executionTimeMs: 5,
+            timedOut: false,
+            compileOutput: null,
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            stdout: "case-two",
+            stderr: "",
+            exitCode: 0,
+            executionTimeMs: 7,
+            timedOut: false,
+            compileOutput: null,
+          },
+        }),
+      });
+
+    render(
+      <CompilerClient
+        languages={languages}
+        title="Compiler"
+        description="Run code"
+        preferredLanguage="python"
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText(/standard input/i), { target: { value: "1 2" } });
+    fireEvent.click(screen.getByRole("button", { name: /run code/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("case-one")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /add test case/i }));
+    fireEvent.change(screen.getByLabelText(/test case label/i), { target: { value: "Edge case" } });
+    fireEvent.change(screen.getByLabelText(/standard input/i), { target: { value: "5 7" } });
+    fireEvent.click(screen.getByRole("button", { name: /run code/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("case-two")).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Edge case" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: /TC 1/i }));
+    await waitFor(() => {
+      expect(screen.getByText("case-one")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Edge case" }));
+    await waitFor(() => {
+      expect(screen.getByText("case-two")).toBeInTheDocument();
     });
   });
 
