@@ -42,4 +42,27 @@ describe("PublicProblemDetail", () => {
     expect(screen.getByText("Try in playground")).toBeInTheDocument();
     expect(screen.getByText("Sign in to submit")).toBeInTheDocument();
   });
+
+  it("renders a custom submit action instead of the sign-in link when provided", () => {
+    render(
+      <PublicProblemDetail
+        backHref="/practice"
+        backLabel="Back"
+        title="A + B"
+        description="Add two integers."
+        authorLabel="Author: JudgeKit"
+        tags={[{ name: "math", color: null }]}
+        timeLimitLabel="Time Limit: 2000 ms"
+        memoryLimitLabel="Memory Limit: 256 MB"
+        playgroundHref="/playground"
+        playgroundLabel="Try in playground"
+        signInHref="/login"
+        signInLabel="Sign in to submit"
+        submitAction={<button type="button">Quick submit</button>}
+      />
+    );
+
+    expect(screen.getByText("Quick submit")).toBeInTheDocument();
+    expect(screen.queryByText("Sign in to submit")).toBeNull();
+  });
 });

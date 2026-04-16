@@ -4,7 +4,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { problems, submissions, problemTags } from "@/lib/db/schema";
+import { languageConfigs, problems, submissions, problemTags } from "@/lib/db/schema";
 import { PublicProblemDetail } from "@/app/(public)/_components/public-problem-detail";
 import { JsonLd } from "@/components/seo/json-ld";
 import { listProblemDiscussionThreads, listProblemEditorials } from "@/lib/discussions/data";
@@ -19,11 +19,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PublicQuickSubmit } from "@/components/problem/public-quick-submit";
 import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata, buildSocialImageUrl, NO_INDEX_METADATA, summarizeTextForMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { TierBadge } from "@/components/tier-badge";
 import { getProblemTierInfo } from "@/lib/problem-tiers";
+import { getJudgeLanguageDefinition } from "@/lib/judge/languages";
 import { ProblemKeyboardNav } from "./problem-keyboard-nav";
 import { formatSubmissionIdPrefix } from "@/lib/submissions/format";
 import Link from "next/link";
@@ -119,6 +121,21 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
   const settings = await getResolvedSystemSettings({
     siteTitle: tCommon("appName"),
     siteDescription: tCommon("appDescription"),
+  });
+  const langs = await db.select().from(languageConfigs).where(eq(languageConfigs.isEnabled, true));
+  const enabledLanguages = langs.flatMap((language) => {
+    const definition = getJudgeLanguageDefinition(language.language);
+
+    if (!definition) {
+      return [];
+    }
+
+    return [{
+      id: language.id,
+      language: language.language,
+      displayName: definition.displayName,
+      standard: definition.standard,
+    }];
   });
   const threads = await listProblemDiscussionThreads(problem.id);
   const editorials = await listProblemEditorials(problem.id);
@@ -294,7 +311,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
   const problemPageHref = buildLocalePath(`/practice/problems/${problem.id}`, locale);
   const contestlessPlaygroundHref = buildLocalePath("/playground", locale);
   const signInHref = buildLocalePath(
-    `/login?callbackUrl=${encodeURIComponent(buildLocalePath(`/dashboard/problems/${problem.id}`, locale))}`,
+    `/login?callbackUrl=${encodeURIComponent(buildLocalePath(`/practice/problems/${problem.id}`, locale))}`,
     locale,
   );
 
@@ -332,6 +349,18 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                   ? problem.difficulty.toFixed(2).replace(/\.?0+$/, "")
                   : null
               }
+              submitAction={session?.user ? (
+                <PublicQuickSubmit
+                  userId={session.user.id}
+                  problemId={problem.id}
+                  problemTitle={problem.title}
+                  languages={enabledLanguages}
+                  preferredLanguage={session.user.preferredLanguage ?? null}
+                  problemDefaultLanguage={problem.defaultLanguage ?? null}
+                  siteDefaultLanguage={settings.defaultLanguage ?? null}
+                  editorTheme={session.user.editorTheme ?? null}
+                />
+              ) : null}
               playgroundHref={contestlessPlaygroundHref}
               playgroundLabel={t("practice.tryInPlayground")}
               signInHref={signInHref}

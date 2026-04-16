@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ProblemDescription } from "@/components/problem-description";
 import { TierBadge } from "@/components/tier-badge";
 import type { ProblemTierInfo } from "@/lib/problem-tiers";
+import type { ReactNode } from "react";
 
 type PublicProblemDetailProps = {
   backHref: string;
@@ -22,6 +23,7 @@ type PublicProblemDetailProps = {
   playgroundLabel: string;
   signInHref: string;
   signInLabel: string;
+  submitAction?: ReactNode;
 };
 
 export function PublicProblemDetail({
@@ -39,6 +41,7 @@ export function PublicProblemDetail({
   playgroundLabel,
   signInHref,
   signInLabel,
+  submitAction = null,
 }: PublicProblemDetailProps) {
   return (
     <div className="space-y-6">
@@ -59,9 +62,11 @@ export function PublicProblemDetail({
               <Link href={playgroundHref}>
                 <Button variant="outline">{playgroundLabel}</Button>
               </Link>
-              <Link href={signInHref}>
-                <Button>{signInLabel}</Button>
-              </Link>
+              {submitAction ?? (
+                <Link href={signInHref}>
+                  <Button>{signInLabel}</Button>
+                </Link>
+              )}
             </div>
           </div>
           <div className="mb-4 flex flex-wrap gap-2 text-sm text-muted-foreground">

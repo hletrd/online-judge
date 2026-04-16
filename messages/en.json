@@ -2414,6 +2414,7 @@
       "memoryLimit": "Memory limit: {value}MB",
       "tryInPlayground": "Try in playground",
       "signInToSubmit": "Sign in to submit",
+      "quickSubmitDescription": "Write and submit a solution for {title} without leaving this page.",
       "solverCount": "Solved by",
       "successRate": "Success",
       "createdAt": "Added",

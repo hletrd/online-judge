@@ -14,10 +14,10 @@ import {
 } from "@/lib/assignments/submissions";
 import { formatRelativeTimeFromNow } from "@/lib/datetime";
 import { ProblemDescription } from "@/components/problem-description";
+import { ProblemSubmissionForm } from "@/components/problem/problem-submission-form";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { CountdownTimer } from "@/components/exam/countdown-timer";
 import { AntiCheatMonitor } from "@/components/exam/anti-cheat-monitor";
-import { ProblemSubmissionForm } from "./problem-submission-form";
 import { ProblemLectureWrapper } from "./problem-lecture-wrapper";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";

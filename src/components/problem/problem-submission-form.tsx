@@ -14,7 +14,7 @@ import { DEFAULT_TEMPLATES, isTemplateLike } from "@/lib/judge/code-templates";
 import { useSourceDraft } from "@/hooks/use-source-draft";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { useEditorContent } from "@/contexts/editor-content-context";
-import { ChevronDown, ChevronRight, Play, Loader2, RotateCcw } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Play, RotateCcw } from "lucide-react";
 
 type SubmissionLanguage = {
   id: string;
@@ -32,6 +32,8 @@ type ProblemSubmissionFormProps = {
   problemDefaultLanguage?: string | null;
   siteDefaultLanguage?: string | null;
   editorTheme?: string | null;
+  submissionHrefBuilder?: (submissionId: string) => string;
+  onSubmitted?: (submissionId: string) => void;
 };
 
 export function ProblemSubmissionForm({
@@ -43,6 +45,8 @@ export function ProblemSubmissionForm({
   problemDefaultLanguage = null,
   siteDefaultLanguage = null,
   editorTheme = null,
+  submissionHrefBuilder = (submissionId) => `/dashboard/submissions/${submissionId}?from=problem`,
+  onSubmitted,
 }: ProblemSubmissionFormProps) {
   const router = useRouter();
   const t = useTranslations("problems");
@@ -64,7 +68,6 @@ export function ProblemSubmissionForm({
   const { allowNextNavigation } = useUnsavedChangesGuard({ isDirty });
   const { setContent } = useEditorContent();
 
-  // Auto-load language template when language changes and editor is empty/template-like
   const prevLanguageRef = useRef(language);
   useEffect(() => {
     if (prevLanguageRef.current !== language) {
@@ -76,7 +79,6 @@ export function ProblemSubmissionForm({
     }
   }, [language, sourceCode, setSourceCode]);
 
-  // Adaptive code snapshots: 10s after a change, backs off to 60s if idle
   const lastSnapshotRef = useRef<string>("");
   const lastChangeRef = useRef<number>(0);
   const snapshotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -86,11 +88,14 @@ export function ProblemSubmissionForm({
     lastChangeRef.current = Date.now();
   }, [sourceCode, assignmentId]);
 
-  // Use refs for values that change frequently to avoid resetting the timer
   const sourceCodeRef = useRef(sourceCode);
   const languageRef = useRef(language);
-  useEffect(() => { sourceCodeRef.current = sourceCode; }, [sourceCode]);
-  useEffect(() => { languageRef.current = language; }, [language]);
+  useEffect(() => {
+    sourceCodeRef.current = sourceCode;
+  }, [sourceCode]);
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
 
   useEffect(() => {
     if (!assignmentId) return;
@@ -109,13 +114,15 @@ export function ProblemSubmissionForm({
         }).catch(() => {});
       }
 
-      // Next check: 10s if recently changed, up to 60s if idle
       const nextDelay = sinceLastChange < 30000 ? 10000 : 60000;
       snapshotTimerRef.current = setTimeout(tick, nextDelay);
     }
     snapshotTimerRef.current = setTimeout(tick, 10000);
-    return () => { if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current); };
+    return () => {
+      if (snapshotTimerRef.current) clearTimeout(snapshotTimerRef.current);
+    };
   }, [assignmentId, problemId]);
+
   const [isRunning, setIsRunning] = useState(false);
   const [stdinOpen, setStdinOpen] = useState(false);
   const [stdin, setStdin] = useState("");
@@ -139,7 +146,7 @@ export function ProblemSubmissionForm({
       "problemId is required": "submissionErrors.problemRequired",
       "language is required": "submissionErrors.languageRequired",
       "sourceCode is required": "submissionErrors.sourceCodeRequired",
-      [`sourceCode exceeds the 65536-byte limit`]: "submissionErrors.sourceCodeTooLarge",
+      "sourceCode exceeds the 65536-byte limit": "submissionErrors.sourceCodeTooLarge",
       "Internal server error": "submissionErrors.submissionCreateFailed",
     };
 
@@ -178,7 +185,6 @@ export function ProblemSubmissionForm({
     }
   }, [assignmentId, sourceCode, language, stdin, tCommon, translateSubmissionError]);
 
-  // Publish editor content for AI chat widget (read-only bridge)
   useEffect(() => {
     setContent({ code: sourceCode, language });
     return () => {
@@ -243,8 +249,12 @@ export function ProblemSubmissionForm({
       }
 
       allowNextNavigation();
-      router.push(`/dashboard/submissions/${submissionId}?from=problem`);
       clearAllDrafts();
+      if (onSubmitted) {
+        onSubmitted(submissionId);
+      } else {
+        router.push(submissionHrefBuilder(submissionId));
+      }
     } catch {
       toast.error(tCommon("error"));
     } finally {
@@ -316,7 +326,7 @@ export function ProblemSubmissionForm({
       <div className="space-y-2">
         <button
           type="button"
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
           onClick={() => setStdinOpen((prev) => !prev)}
         >
           {stdinOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
@@ -348,7 +358,7 @@ export function ProblemSubmissionForm({
         </Button>
       </div>
       {runResult && (
-        <div className="rounded-md border bg-muted/50 p-4 space-y-3 text-sm">
+        <div className="space-y-3 rounded-md border bg-muted/50 p-4 text-sm">
           <div className="flex items-center justify-between">
             <span className="font-medium">{t("runResult")}</span>
             <span className="text-xs text-muted-foreground">
