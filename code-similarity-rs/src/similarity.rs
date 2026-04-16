@@ -111,6 +111,159 @@ pub fn normalize_source(source: &str) -> String {
     result
 }
 
+const SIMILARITY_KEYWORDS: &[&str] = &[
+    "and",
+    "as",
+    "asm",
+    "auto",
+    "await",
+    "bool",
+    "break",
+    "case",
+    "catch",
+    "char",
+    "class",
+    "const",
+    "constexpr",
+    "continue",
+    "crate",
+    "default",
+    "def",
+    "define",
+    "delete",
+    "do",
+    "double",
+    "elif",
+    "else",
+    "endif",
+    "enum",
+    "error",
+    "except",
+    "export",
+    "extends",
+    "extern",
+    "false",
+    "final",
+    "finally",
+    "float",
+    "fn",
+    "for",
+    "friend",
+    "from",
+    "goto",
+    "if",
+    "ifdef",
+    "ifndef",
+    "impl",
+    "import",
+    "include",
+    "inline",
+    "in",
+    "int",
+    "interface",
+    "let",
+    "long",
+    "macro_rules",
+    "match",
+    "mod",
+    "module",
+    "mut",
+    "namespace",
+    "new",
+    "None",
+    "not",
+    "null",
+    "operator",
+    "or",
+    "package",
+    "pragma",
+    "private",
+    "protected",
+    "pub",
+    "public",
+    "register",
+    "restrict",
+    "return",
+    "self",
+    "Self",
+    "short",
+    "signed",
+    "sizeof",
+    "static",
+    "struct",
+    "super",
+    "switch",
+    "template",
+    "this",
+    "throw",
+    "trait",
+    "true",
+    "try",
+    "type",
+    "typedef",
+    "typename",
+    "undef",
+    "union",
+    "unsafe",
+    "unsigned",
+    "use",
+    "using",
+    "var",
+    "virtual",
+    "void",
+    "volatile",
+    "warning",
+    "where",
+    "while",
+    "yield",
+];
+
+fn is_identifier_start(byte: u8) -> bool {
+    byte.is_ascii_alphabetic() || byte == b'_'
+}
+
+fn is_identifier_char(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || byte == b'_'
+}
+
+pub fn normalize_identifiers_for_similarity(source: &str) -> String {
+    let bytes = source.as_bytes();
+    let len = bytes.len();
+    let mut i = 0;
+    let mut result = String::with_capacity(source.len());
+    let mut next_placeholder_id = 1usize;
+    let mut identifiers = HashMap::<String, String>::new();
+
+    while i < len {
+        if !is_identifier_start(bytes[i]) {
+            result.push(bytes[i] as char);
+            i += 1;
+            continue;
+        }
+
+        let start = i;
+        i += 1;
+        while i < len && is_identifier_char(bytes[i]) {
+            i += 1;
+        }
+
+        let token = &source[start..i];
+        if SIMILARITY_KEYWORDS.contains(&token) {
+            result.push_str(token);
+            continue;
+        }
+
+        let replacement = identifiers.entry(token.to_string()).or_insert_with(|| {
+            let placeholder = format!("v{}", next_placeholder_id);
+            next_placeholder_id += 1;
+            placeholder
+        });
+        result.push_str(replacement);
+    }
+
+    result
+}
+
 /// Check if a # at position `pos` starts a C preprocessor directive.
 fn is_preprocessor_directive(bytes: &[u8], pos: usize) -> bool {
     let rest = &bytes[pos + 1..]; // skip the #
@@ -161,11 +314,7 @@ pub fn jaccard_similarity(a: &AHashSet<u64>, b: &AHashSet<u64>) -> f64 {
     }
 
     // Iterate over the smaller set for efficiency
-    let (smaller, larger) = if a.len() <= b.len() {
-        (a, b)
-    } else {
-        (b, a)
-    };
+    let (smaller, larger) = if a.len() <= b.len() { (a, b) } else { (b, a) };
 
     let intersection = smaller.iter().filter(|x| larger.contains(x)).count();
     let union = a.len() + b.len() - intersection;
@@ -203,7 +352,8 @@ pub fn compute_similarity(
             let ngrams: Vec<(&str, AHashSet<u64>)> = subs
                 .iter()
                 .map(|s| {
-                    let normalized = normalize_source(&s.source_code);
+                    let normalized =
+                        normalize_identifiers_for_similarity(&normalize_source(&s.source_code));
                     let ng = generate_ngrams(&normalized, ngram_size);
                     (s.user_id.as_str(), ng)
                 })
@@ -291,7 +441,11 @@ mod tests {
     fn collapses_whitespace() {
         let src = "int   x   =   1;";
         let result = normalize_source(src);
-        assert!(!result.contains("  "), "Should not have consecutive spaces: '{}'", result);
+        assert!(
+            !result.contains("  "),
+            "Should not have consecutive spaces: '{}'",
+            result
+        );
     }
 
     #[test]
@@ -299,6 +453,32 @@ mod tests {
         let src = "INT X = HELLO;";
         let result = normalize_source(src);
         assert_eq!(result, "INT X = HELLO;");
+    }
+
+    #[test]
+    fn normalizes_renamed_identifiers_to_the_same_placeholder_stream() {
+        let left = normalize_identifiers_for_similarity(&normalize_source(
+            "int total = left + right; return total;",
+        ));
+        let right = normalize_identifiers_for_similarity(&normalize_source(
+            "int answer = alpha + beta; return answer;",
+        ));
+
+        assert_eq!(left, "int v1 = v2 + v3; return v1;");
+        assert_eq!(right, left);
+    }
+
+    #[test]
+    fn preserves_keywords_and_preprocessor_directives_when_normalizing_identifiers() {
+        let normalized = normalize_identifiers_for_similarity(&normalize_source(
+            "#include <stdio.h>
+for (int i = 0; i < n; i++) return value;",
+        ));
+
+        assert!(normalized.contains("#include"));
+        assert!(normalized.contains("for"));
+        assert!(normalized.contains("int"));
+        assert!(normalized.contains("return"));
     }
 
     #[test]
@@ -314,11 +494,14 @@ mod tests {
     // -------------------------------------------------------------------------
 
     fn str_set(items: &[&str]) -> AHashSet<u64> {
-        items.iter().map(|s| {
-            let mut hasher = ahash::AHasher::default();
-            s.hash(&mut hasher);
-            hasher.finish()
-        }).collect()
+        items
+            .iter()
+            .map(|s| {
+                let mut hasher = ahash::AHasher::default();
+                s.hash(&mut hasher);
+                hasher.finish()
+            })
+            .collect()
     }
 
     #[test]
@@ -387,7 +570,9 @@ mod tests {
             Submission {
                 user_id: "user3".to_string(),
                 problem_id: "prob1".to_string(),
-                source_code: "completely different code with no overlap whatsoever unique tokens here".to_string(),
+                source_code:
+                    "completely different code with no overlap whatsoever unique tokens here"
+                        .to_string(),
             },
         ];
 
@@ -424,26 +609,11 @@ mod tests {
     #[test]
     fn cross_validate_normalize_with_ts_expected_outputs() {
         let cases = vec![
-            (
-                "int x = 1; // comment\nint y = 2;",
-                "int x = 1; int y = 2;",
-            ),
-            (
-                "int x; /* block\ncomment */ int y;",
-                "int x; int y;",
-            ),
-            (
-                "x = 1\n# python comment\ny = 2",
-                "x = 1 y = 2",
-            ),
-            (
-                "INT X = HELLO;",
-                "INT X = HELLO;",
-            ),
-            (
-                "int   x   =   1;",
-                "int x = 1;",
-            ),
+            ("int x = 1; // comment\nint y = 2;", "int x = 1; int y = 2;"),
+            ("int x; /* block\ncomment */ int y;", "int x; int y;"),
+            ("x = 1\n# python comment\ny = 2", "x = 1 y = 2"),
+            ("INT X = HELLO;", "INT X = HELLO;"),
+            ("int   x   =   1;", "int x = 1;"),
         ];
 
         for (input, expected) in cases {
@@ -546,7 +716,12 @@ mod tests {
     fn normalize_preserves_all_preprocessor_types() {
         // Test the remaining preprocessor directives
         let cases = [
-            "#else", "#elif", "#undef FOO", "#if 1", "#error msg", "#warning msg",
+            "#else",
+            "#elif",
+            "#undef FOO",
+            "#if 1",
+            "#error msg",
+            "#warning msg",
         ];
         for directive in &cases {
             let result = normalize_source(directive);
@@ -554,7 +729,9 @@ mod tests {
             assert!(
                 result.contains(keyword),
                 "Directive '{}' lost keyword '{}', got '{}'",
-                directive, keyword, result
+                directive,
+                keyword,
+                result
             );
         }
     }
@@ -669,12 +846,12 @@ mod tests {
             Submission {
                 user_id: "user1".to_string(),
                 problem_id: "prob1".to_string(),
-                source_code: "alpha beta gamma delta epsilon".to_string(),
+                source_code: "int solve() { int total = left + right; return total; }".to_string(),
             },
             Submission {
                 user_id: "user2".to_string(),
                 problem_id: "prob1".to_string(),
-                source_code: "zeta eta theta iota kappa".to_string(),
+                source_code: "while (value < limit) { value--; }".to_string(),
             },
         ];
         let pairs = compute_similarity(submissions, 0.85, 3);

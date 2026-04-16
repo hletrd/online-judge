@@ -99,6 +99,67 @@ export function normalizeSource(source: string): string {
   return result.trimEnd();
 }
 
+const SIMILARITY_KEYWORDS = new Set([
+  "and", "as", "asm", "auto", "await", "bool", "break", "case", "catch", "char", "class",
+  "const", "constexpr", "continue", "crate", "default", "def", "define", "delete", "do",
+  "double", "elif", "else", "endif", "enum", "error", "except", "export", "extends", "extern",
+  "false", "final", "finally", "float", "fn", "for", "friend", "from", "goto", "if", "ifdef",
+  "ifndef", "impl", "import", "include", "inline", "in", "int", "interface", "let", "long",
+  "macro_rules", "match", "mod", "module", "mut", "namespace", "new", "None", "not", "null",
+  "operator", "or", "package", "pragma", "private", "protected", "pub", "public", "register",
+  "restrict", "return", "self", "Self", "short", "signed", "sizeof", "static", "struct",
+  "super", "switch", "template", "this", "throw", "trait", "true", "try", "type", "typedef",
+  "typename", "undef", "union", "unsafe", "unsigned", "use", "using", "var", "virtual", "void",
+  "volatile", "warning", "where", "while", "yield",
+]);
+
+function isIdentifierStart(char: string) {
+  return /[A-Za-z_]/.test(char);
+}
+
+function isIdentifierChar(char: string) {
+  return /[A-Za-z0-9_]/.test(char);
+}
+
+export function normalizeIdentifiersForSimilarity(source: string): string {
+  let result = "";
+  let index = 0;
+  let nextPlaceholderId = 1;
+  const identifierMap = new Map<string, string>();
+
+  while (index < source.length) {
+    const current = source[index];
+
+    if (!isIdentifierStart(current)) {
+      result += current;
+      index += 1;
+      continue;
+    }
+
+    const start = index;
+    index += 1;
+    while (index < source.length && isIdentifierChar(source[index])) {
+      index += 1;
+    }
+
+    const token = source.slice(start, index);
+    if (SIMILARITY_KEYWORDS.has(token)) {
+      result += token;
+      continue;
+    }
+
+    let normalizedToken = identifierMap.get(token);
+    if (!normalizedToken) {
+      normalizedToken = `v${nextPlaceholderId++}`;
+      identifierMap.set(token, normalizedToken);
+    }
+
+    result += normalizedToken;
+  }
+
+  return result;
+}
+
 const PREPROCESSOR_DIRECTIVES = [
   "include",
   "define",
@@ -187,7 +248,7 @@ async function runSimilarityCheckTS(
   // Group by problemId
   const byProblem = new Map<string, { userId: string; ngrams: Set<string> }[]>();
   for (const row of rows) {
-    const normalized = normalizeSource(row.sourceCode);
+    const normalized = normalizeIdentifiersForSimilarity(normalizeSource(row.sourceCode));
     const ngrams = generateNgrams(normalized, ngramSize);
     const arr = byProblem.get(row.problemId) ?? [];
     arr.push({ userId: row.userId, ngrams });

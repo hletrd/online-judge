@@ -1,4 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  MAX_SUBMISSIONS_FOR_SIMILARITY,
+  runAndStoreSimilarityCheck,
+  runSimilarityCheck,
+} from "@/lib/assignments/code-similarity";
 
 const { rawQueryAllMock, computeSimilarityRustMock, dbDeleteMock, dbInsertMock, dbTransactionMock } = vi.hoisted(() => ({
   rawQueryAllMock: vi.fn(),
@@ -43,7 +48,6 @@ describe("code similarity status reporting", () => {
 
   it("returns not_run when there are no submissions", async () => {
     rawQueryAllMock.mockResolvedValue([]);
-    const { runSimilarityCheck } = await import("@/lib/assignments/code-similarity");
 
     const result = await runSimilarityCheck("assignment-1");
 
@@ -64,7 +68,6 @@ describe("code similarity status reporting", () => {
       }))
     );
     computeSimilarityRustMock.mockResolvedValue(null);
-    const { MAX_SUBMISSIONS_FOR_SIMILARITY, runSimilarityCheck } = await import("@/lib/assignments/code-similarity");
 
     const result = await runSimilarityCheck("assignment-1");
 
@@ -87,12 +90,41 @@ describe("code similarity status reporting", () => {
       { userId1: "u1", userId2: "u2", problemId: "p1", similarity: 0.99 },
     ]);
 
-    const { runAndStoreSimilarityCheck } = await import("@/lib/assignments/code-similarity");
     const result = await runAndStoreSimilarityCheck("assignment-1");
 
     expect(result.status).toBe("completed");
     expect(result.flaggedPairs).toBe(1);
     expect(dbDeleteMock).toHaveBeenCalled();
     expect(dbInsertMock).toHaveBeenCalled();
+  });
+
+  it("still flags renamed-variable solutions when the TypeScript fallback runs", async () => {
+    rawQueryAllMock.mockResolvedValue([
+      {
+        userId: "u1",
+        problemId: "p1",
+        sourceCode: "int solve() { int total = left + right; return total; }",
+      },
+      {
+        userId: "u2",
+        problemId: "p1",
+        sourceCode: "int solve() { int answer = alpha + beta; return answer; }",
+      },
+    ]);
+    computeSimilarityRustMock.mockResolvedValue(null);
+
+    const result = await runSimilarityCheck("assignment-1", 0.85, 3);
+
+    expect(result).toMatchObject({
+      status: "completed",
+      reason: null,
+      flaggedPairs: 1,
+      submissionCount: 2,
+    });
+    expect(result.pairs[0]).toMatchObject({
+      userId1: "u1",
+      userId2: "u2",
+      problemId: "p1",
+    });
   });
 });
