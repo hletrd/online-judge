@@ -29,6 +29,8 @@ describe("remaining route capability consistency guards", () => {
         expect(source).toContain(capabilitySnippet);
       }
       expect(source).not.toContain("isAdmin(user.role)");
+      // Allow apiError("forbidden", 403) for business logic checks, just not for auth
+      // The code-snapshots route uses it for canViewAssignmentSubmissions check
     }
   });
 });

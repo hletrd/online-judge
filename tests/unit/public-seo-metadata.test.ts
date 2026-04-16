@@ -67,8 +67,6 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/db/schema", () => ({
   problems: {},
-  tags: {},
-  problemTags: {},
   submissions: {},
   users: {},
 }));

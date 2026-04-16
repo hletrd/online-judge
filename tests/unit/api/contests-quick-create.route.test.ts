@@ -31,33 +31,25 @@ vi.mock("@/lib/api/responses", () => ({
     NextResponse.json({ error }, { status }),
 }));
 
-vi.mock("@/lib/api/handler", () => ({
-  createApiHandler:
-    ({ handler }: { handler: (req: NextRequest, ctx: { user: unknown; body: any; params: Record<string, string> }) => Promise<Response> }) =>
-    async (req: NextRequest, routeCtx?: { params?: Promise<Record<string, string>> }) => {
-      const rateLimited = consumeApiRateLimitMock();
-      if (rateLimited) return rateLimited;
+vi.mock("@/lib/api/handler", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api/handler")>("@/lib/api/handler");
+  return {
+    ...actual,
+    isAdmin: (role: string) => role === "admin" || role === "super_admin",
+  };
+});
 
-      const user = await getApiUserMock();
-      if (!user) {
-        return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-      }
-
-      return await handler(req, {
-        user,
-        body: await req.json(),
-        params: routeCtx?.params ? await routeCtx.params : {},
-      });
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: async (role: string) => ({
+    has: (cap: string) => {
+      if (role === "admin" || role === "super_admin") return true;
+      return false;
     },
+  }),
 }));
 
 vi.mock("@/lib/db", () => ({
   db: {
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn().mockResolvedValue([{ id: "problem-1" }]),
-      })),
-    })),
     transaction: transactionMock,
   },
 }));
@@ -66,7 +58,8 @@ vi.mock("@/lib/db/schema", () => ({
   groups: {},
   assignments: {},
   assignmentProblems: {},
-  problems: { id: "problems.id" },
+  problems: {},
+  roles: {},
 }));
 
 vi.mock("@/lib/audit/events", () => ({

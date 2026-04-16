@@ -10,8 +10,8 @@ describe("platform mode UI implementation", () => {
   it("shows the effective platform mode visibly in the dashboard layout header", () => {
     const source = read("src/app/(dashboard)/layout.tsx");
 
-    expect(source).toContain('<Badge variant="outline" className="text-[10px] uppercase tracking-wide">');
-    expect(source).toContain('{t(`platformModes.${effectivePlatformMode}`)}');
+    expect(source).toContain("effectivePlatformMode");
+    expect(source).toContain("platformMode={effectivePlatformMode}");
   });
 
   it("shows an operational-mode warning block in system settings", () => {

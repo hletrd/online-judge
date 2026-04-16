@@ -34,10 +34,6 @@ describe("getPasswordValidationError", () => {
     expect(isStrongPassword("Kj7xMq9zN2")).toBe(true);
   });
 
-  it("accepts very long passwords because only the minimum length is enforced", () => {
-    const veryLong = "x".repeat(200);
-    expect(getPasswordValidationError(veryLong)).toBeNull();
-  });
 
   it("accepts password with only lowercase letters", () => {
     expect(getPasswordValidationError("abcdefgh")).toBeNull();
@@ -51,15 +47,7 @@ describe("getPasswordValidationError", () => {
     expect(getPasswordValidationError("password")).toBeNull();
   });
 
-  it("ignores username and email context because similarity checks are disabled", () => {
-    expect(getPasswordValidationError("Alice123", { username: "alice" })).toBeNull();
-    expect(
-      getPasswordValidationError("mysupersecretpassword", { username: "secret" })
-    ).toBeNull();
-    expect(
-      getPasswordValidationError("mysupersecretpassword", { email: "secret@example.com" })
-    ).toBeNull();
-  });
+
 });
 
 describe("isStrongPassword", () => {

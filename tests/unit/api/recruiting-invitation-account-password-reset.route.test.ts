@@ -1,45 +1,57 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const {
   getInvitationMock,
   resetAccountPasswordMock,
-  getContestAssignmentMock,
-  canManageContestMock,
   recordAuditEventMock,
 } = vi.hoisted(() => ({
   getInvitationMock: vi.fn(),
   resetAccountPasswordMock: vi.fn(),
-  getContestAssignmentMock: vi.fn(),
-  canManageContestMock: vi.fn(),
   recordAuditEventMock: vi.fn(),
 }));
 
-vi.mock("@/lib/api/handler", () => ({
-  createApiHandler:
-    ({ handler }: { handler: (req: NextRequest, ctx: { user: any; body: any; params: Record<string, string> }) => Promise<Response> }) =>
-    async (req: NextRequest, ctx?: { params?: Promise<Record<string, string>> }) =>
-      handler(req, {
-        user: { id: "admin-1", role: "admin", username: "admin" },
-        body: req.method === "PATCH" ? await req.json() : undefined,
-        params: (await ctx?.params) ?? { assignmentId: "assignment-1", invitationId: "invite-1" },
-      }),
+vi.mock("@/lib/api/auth", () => ({
+  getApiUser: vi.fn(() => Promise.resolve({ id: "admin-1", role: "admin", username: "admin" })),
+  csrfForbidden: vi.fn(() => null),
+  unauthorized: () => NextResponse.json({ error: "unauthorized" }, { status: 401 }),
+  forbidden: () => NextResponse.json({ error: "forbidden" }, { status: 403 }),
+  notFound: (resource: string) => NextResponse.json({ error: "notFound", resource }, { status: 404 }),
+}));
+
+vi.mock("@/lib/api/responses", () => ({
+  apiSuccess: (data: unknown) => NextResponse.json({ data }, { status: 200 }),
+  apiError: (error: string, status: number) => NextResponse.json({ error }, { status }),
+}));
+
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: async () => ({
+    has: () => true,
+  }),
 }));
 
 vi.mock("@/lib/assignments/recruiting-invitations", () => ({
   getRecruitingInvitation: getInvitationMock,
   updateRecruitingInvitation: vi.fn(),
   deleteRecruitingInvitation: vi.fn(),
+  resetRecruitingInvitationResumeCode: vi.fn(),
   resetRecruitingInvitationAccountPassword: resetAccountPasswordMock,
 }));
 
 vi.mock("@/lib/assignments/contests", () => ({
-  getContestAssignment: getContestAssignmentMock,
-  canManageContest: canManageContestMock,
+  getContestAssignment: vi.fn(() => Promise.resolve({ id: "assignment-1", examMode: "scheduled", instructorId: "admin-1" })),
+  canManageContest: vi.fn(() => Promise.resolve(true)),
 }));
 
 vi.mock("@/lib/audit/events", () => ({
   recordAuditEvent: recordAuditEventMock,
+}));
+
+vi.mock("@/lib/db", () => ({
+  db: {
+    update: vi.fn(() => ({ where: vi.fn(), set: vi.fn(() => ({ then: vi.fn(cb => cb([])) })) })),
+    delete: vi.fn(() => ({ where: vi.fn(() => ({ then: vi.fn(cb => cb()) })) })),
+  },
 }));
 
 function makePatchRequest(body: unknown) {
@@ -56,8 +68,6 @@ function makePatchRequest(body: unknown) {
 describe("PATCH /api/v1/contests/[assignmentId]/recruiting-invitations/[invitationId] account password reset", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getContestAssignmentMock.mockResolvedValue({ id: "assignment-1", instructorId: "admin-1" });
-    canManageContestMock.mockResolvedValue(true);
     getInvitationMock.mockResolvedValue({
       id: "invite-1",
       assignmentId: "assignment-1",

@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
-const { getContestAssignmentMock, canManageContestMock, runAndStoreSimilarityCheckMock, mockUser } = vi.hoisted(() => ({
+const { getContestAssignmentMock, runAndStoreSimilarityCheckMock, mockUser } = vi.hoisted(() => ({
   getContestAssignmentMock: vi.fn(),
-  canManageContestMock: vi.fn(),
   runAndStoreSimilarityCheckMock: vi.fn(),
   mockUser: {
     id: "admin-1",
@@ -44,7 +43,7 @@ vi.mock("@/lib/api/responses", () => ({
 
 vi.mock("@/lib/assignments/contests", () => ({
   getContestAssignment: getContestAssignmentMock,
-  canManageContest: canManageContestMock,
+  canManageContest: vi.fn(() => true),
 }));
 
 vi.mock("@/lib/assignments/code-similarity", () => ({
@@ -73,7 +72,6 @@ describe("POST /api/v1/contests/[assignmentId]/similarity-check", () => {
       examMode: "scheduled",
       instructorId: "admin-1",
     });
-    canManageContestMock.mockResolvedValue(true);
     dbWhereMock.mockResolvedValue([]);
     dbFromMock.mockReturnValue({ where: dbWhereMock });
     dbSelectMock.mockReturnValue({ from: dbFromMock });

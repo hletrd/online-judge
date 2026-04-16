@@ -33,8 +33,8 @@ vi.mock("@/lib/auth/permissions", () => ({
 }));
 
 vi.mock("@/lib/assignments/submissions", () => ({
-  getRequiredAssignmentContextsForProblem: getStudentAssignmentContextsForProblemMock,
   getStudentAssignmentContextsForProblem: getStudentAssignmentContextsForProblemMock,
+  getRequiredAssignmentContextsForProblem: getStudentAssignmentContextsForProblemMock,
   validateAssignmentSubmission: validateAssignmentSubmissionMock,
 }));
 

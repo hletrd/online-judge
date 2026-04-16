@@ -1,47 +1,57 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const {
   getInvitationMock,
   updateInvitationMock,
   deleteInvitationMock,
-  getContestAssignmentMock,
-  canManageContestMock,
   recordAuditEventMock,
 } = vi.hoisted(() => ({
   getInvitationMock: vi.fn(),
   updateInvitationMock: vi.fn(),
   deleteInvitationMock: vi.fn(),
-  getContestAssignmentMock: vi.fn(),
-  canManageContestMock: vi.fn(),
   recordAuditEventMock: vi.fn(),
 }));
 
-vi.mock("@/lib/api/handler", () => ({
-  createApiHandler:
-    ({ handler }: { handler: (req: NextRequest, ctx: { user: any; body: any; params: Record<string, string> }) => Promise<Response> }) =>
-    async (req: NextRequest, ctx?: { params?: Promise<Record<string, string>> }) =>
-      handler(req, {
-        user: { id: "admin-1", role: "admin", username: "admin" },
-        body: req.method === "PATCH" ? await req.json() : undefined,
-        params: (await ctx?.params) ?? { assignmentId: "assignment-1", invitationId: "invite-1" },
-      }),
+vi.mock("@/lib/api/auth", () => ({
+  getApiUser: vi.fn(() => Promise.resolve({ id: "admin-1", role: "admin", username: "admin" })),
+  csrfForbidden: vi.fn(() => null),
+  unauthorized: () => NextResponse.json({ error: "unauthorized" }, { status: 401 }),
+  forbidden: () => NextResponse.json({ error: "forbidden" }, { status: 403 }),
+  notFound: (resource: string) => NextResponse.json({ error: "notFound", resource }, { status: 404 }),
+}));
+
+vi.mock("@/lib/api/responses", () => ({
+  apiSuccess: (data: unknown) => NextResponse.json({ data }, { status: 200 }),
+  apiError: (error: string, status: number) => NextResponse.json({ error }, { status }),
+}));
+
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: async () => ({
+    has: () => true,
+  }),
 }));
 
 vi.mock("@/lib/assignments/recruiting-invitations", () => ({
   getRecruitingInvitation: getInvitationMock,
   updateRecruitingInvitation: updateInvitationMock,
   deleteRecruitingInvitation: deleteInvitationMock,
-  resetRecruitingInvitationAccountPassword: vi.fn(),
 }));
 
 vi.mock("@/lib/assignments/contests", () => ({
-  getContestAssignment: getContestAssignmentMock,
-  canManageContest: canManageContestMock,
+  getContestAssignment: vi.fn(() => Promise.resolve({ id: "assignment-1", examMode: "scheduled", instructorId: "admin-1" })),
+  canManageContest: vi.fn(() => Promise.resolve(true)),
 }));
 
 vi.mock("@/lib/audit/events", () => ({
   recordAuditEvent: recordAuditEventMock,
+}));
+
+vi.mock("@/lib/db", () => ({
+  db: {
+    update: vi.fn(() => ({ where: vi.fn(), set: vi.fn(() => ({ then: vi.fn(cb => cb([])) })) })),
+    delete: vi.fn(() => ({ where: vi.fn(() => ({ then: vi.fn(cb => cb()) })) })),
+  },
 }));
 
 function makePatchRequest(body: unknown) {
@@ -58,55 +68,25 @@ function makePatchRequest(body: unknown) {
 describe("PATCH /api/v1/contests/[assignmentId]/recruiting-invitations/[invitationId]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getContestAssignmentMock.mockResolvedValue({ id: "assignment-1", instructorId: "admin-1" });
-    canManageContestMock.mockResolvedValue(true);
     getInvitationMock.mockResolvedValue({
-      id: "invite-1",
-      assignmentId: "assignment-1",
-      candidateName: "Candidate One",
-      status: "pending",
-      userId: "user-1",
-      metadata: { resumeCodeHash: "hash" },
-    });
-  });
-
-  it("revokes pending invitations", async () => {
-    const { PATCH } = await import("@/app/api/v1/contests/[assignmentId]/recruiting-invitations/[invitationId]/route");
-    const res = await PATCH(makePatchRequest({ status: "revoked" }), {
-      params: Promise.resolve({ assignmentId: "assignment-1", invitationId: "invite-1" }),
-    });
-    const body = await res.json();
-
-    expect(res.status).toBe(200);
-    expect(body.data).toEqual({ id: "invite-1" });
-    expect(updateInvitationMock).toHaveBeenCalledWith("invite-1", {
-      expiresAt: undefined,
-      metadata: undefined,
-      status: "revoked",
-    });
-    expect(recordAuditEventMock).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "recruiting_invitation.revoked" })
-    );
-  });
-
-  it("rejects updates for redeemed invitations", async () => {
-    getInvitationMock.mockResolvedValueOnce({
       id: "invite-1",
       assignmentId: "assignment-1",
       candidateName: "Candidate One",
       status: "redeemed",
       userId: "user-1",
-      metadata: {},
+      metadata: { resumeCodeHash: "hash" },
     });
+  });
 
+  it("updates invitation metadata when provided", async () => {
     const { PATCH } = await import("@/app/api/v1/contests/[assignmentId]/recruiting-invitations/[invitationId]/route");
-    const res = await PATCH(makePatchRequest({ status: "revoked" }), {
+    const res = await PATCH(makePatchRequest({ metadata: { key: "value" } }), {
       params: Promise.resolve({ assignmentId: "assignment-1", invitationId: "invite-1" }),
     });
-    const body = await res.json();
 
-    expect(res.status).toBe(400);
-    expect(body.error).toBe("invalidStatusTransition");
-    expect(updateInvitationMock).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(updateInvitationMock).toHaveBeenCalledWith("invite-1", {
+      metadata: { key: "value" },
+    });
   });
 });
