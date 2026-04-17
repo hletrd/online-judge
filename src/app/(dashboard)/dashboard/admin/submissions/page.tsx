@@ -189,6 +189,17 @@ export default async function AdminSubmissionsPage({
     return qs ? `/dashboard/admin/submissions?${qs}` : "/dashboard/admin/submissions";
   };
 
+  const buildExportHref = () => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set("search", searchQuery);
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (languageFilter) params.set("language", languageFilter);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    const qs = params.toString();
+    return qs ? `/api/v1/admin/submissions/export?${qs}` : "/api/v1/admin/submissions/export";
+  };
+
   function getSortHref(column: string) {
     const params = new URLSearchParams();
     if (searchQuery) params.set("search", searchQuery);
@@ -302,6 +313,9 @@ export default async function AdminSubmissionsPage({
               <Button type="submit">{tCommon("search")}</Button>
               <Link href="/dashboard/admin/submissions">
                 <Button type="button" variant="outline">{t("resetSearch")}</Button>
+              </Link>
+              <Link href={buildExportHref()} prefetch={false}>
+                <Button type="button" variant="outline">{t("exportCsv")}</Button>
               </Link>
             </div>
           </form>

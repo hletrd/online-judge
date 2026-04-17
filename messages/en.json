@@ -1078,6 +1078,7 @@
       "searchLabel": "Search submissions",
       "searchPlaceholder": "Search by user name or problem title...",
       "resetSearch": "Reset",
+      "exportCsv": "Export CSV",
       "dateFromLabel": "From date",
       "dateToLabel": "To date"
     },

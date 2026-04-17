@@ -1078,6 +1078,7 @@
       "searchLabel": "제출 검색",
       "searchPlaceholder": "사용자 이름 또는 문제 제목으로 검색",
       "resetSearch": "초기화",
+      "exportCsv": "CSV 내보내기",
       "dateFromLabel": "시작일",
       "dateToLabel": "종료일"
     },
