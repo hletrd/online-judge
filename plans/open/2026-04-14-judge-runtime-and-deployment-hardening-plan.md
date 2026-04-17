@@ -26,6 +26,7 @@ Repair the current judge/worker/deploy invariants so long-running jobs, split-ho
 - production docker-proxy now exposes the image/build/post/delete verbs required by the worker-mediated admin contract
 - macOS deploy rsync now uses protected-arg sync and proactively removes legacy escaped route-group directories before remote builds, preventing stale `\(public\)`-style trees from breaking Next route generation
 - dedicated worker docker-proxy build/delete/image verbs are now opt-in instead of on-by-default, and non-container runner defaults now bind to loopback unless deployments widen them explicitly
+- runner shell-command validation now rejects common shell metacharacter chains and is covered by Rust unit tests
 
 ## Workstream A — Claim freshness and worker-capacity accounting
 **Targets**

@@ -116,8 +116,11 @@ fn validate_shell_command(cmd: &str) -> bool {
     if cmd.contains('\0') {
         return false;
     }
-    // Block command/process substitution and eval
-    let dangerous_patterns = ["`", "$(", "${", "<(", ">("];
+    // Block shell metacharacters, command/process substitution, and eval.
+    // The runner intentionally supports only simple one-command invocations.
+    let dangerous_patterns = [
+        "`", "$(", "${", "<(", ">(", "&&", "||", ";", "|", ">", "<", "\n", "\r",
+    ];
     for pat in &dangerous_patterns {
         if cmd.contains(pat) {
             return false;
@@ -128,6 +131,43 @@ fn validate_shell_command(cmd: &str) -> bool {
         return false;
     }
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_shell_command;
+
+    #[test]
+    fn accepts_simple_commands() {
+        assert!(validate_shell_command("python3 /workspace/main.py"));
+        assert!(validate_shell_command("HOME=/tmp mono /workspace/solution.exe"));
+        assert!(validate_shell_command("java -cp /workspace Main"));
+    }
+
+    #[test]
+    fn rejects_shell_metacharacters() {
+        for cmd in [
+            "python3 main.py; rm -rf /",
+            "python3 main.py && echo hi",
+            "python3 main.py || echo hi",
+            "python3 main.py | cat",
+            "python3 main.py > out.txt",
+            "python3 main.py < in.txt",
+            "python3 $(printf hi)",
+            "python3 `printf hi`",
+            "python3 main.py\ncat /etc/passwd",
+        ] {
+            assert!(
+                !validate_shell_command(cmd),
+                "expected command to be rejected: {cmd}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_eval_even_without_other_metacharacters() {
+        assert!(!validate_shell_command("eval python3 /workspace/main.py"));
+    }
 }
 
 async fn run_command(
