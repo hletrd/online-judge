@@ -35,6 +35,7 @@ Close the remaining object-level authorization gaps and remove the last places w
   - platform-mode context resolution now records server-derived assignment mismatches, the chat API rejects forged problem/assignment combinations explicitly, and compiler runs derive their effective mode from the server-resolved assignment context instead of trusting the request body
   - assignment submission visibility and generic permission helpers now rely on capabilities instead of built-in admin/instructor role-name checks, while still honoring group-instructor scope for roles that only have `assignments.view_status`
   - server-side user-management actions now require `users.*` capabilities directly and compare actor/target role levels instead of relying on built-in instructor shortcuts
+  - admin user add/edit dialogs and the bulk-create API now rely on capability-shaped role options instead of built-in instructor/admin fallback branches
 
 ## Workstream A — Problem-set visibility and scope isolation
 **Targets**

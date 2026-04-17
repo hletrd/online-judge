@@ -17,7 +17,7 @@ interface RoleOption {
   level: number;
 }
 
-export default function AddUserDialog({ actorRole, availableRoles }: { actorRole?: string; availableRoles?: RoleOption[] }) {
+export default function AddUserDialog({ availableRoles }: { availableRoles: RoleOption[] }) {
   const t = useTranslations("admin.users");
   const tCommon = useTranslations("common");
   const router = useRouter();
@@ -106,25 +106,13 @@ export default function AddUserDialog({ actorRole, availableRoles }: { actorRole
                   <SelectValue>{builtinRoleLabels[role] || role}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {availableRoles ? (
-                    availableRoles
-                      .filter((r) => r.name !== "super_admin")
-                      .map((r) => (
-                        <SelectItem key={r.name} value={r.name} label={builtinRoleLabels[r.name] ?? r.displayName}>
-                          {builtinRoleLabels[r.name] ?? r.displayName}
-                        </SelectItem>
-                      ))
-                  ) : (
-                    <>
-                      <SelectItem value="student" label={builtinRoleLabels.student}>{builtinRoleLabels.student}</SelectItem>
-                      {(!actorRole || actorRole === "admin" || actorRole === "super_admin") && (
-                        <>
-                          <SelectItem value="instructor" label={builtinRoleLabels.instructor}>{builtinRoleLabels.instructor}</SelectItem>
-                          <SelectItem value="admin" label={builtinRoleLabels.admin}>{builtinRoleLabels.admin}</SelectItem>
-                        </>
-                      )}
-                    </>
-                  )}
+                  {availableRoles
+                    .filter((r) => r.name !== "super_admin")
+                    .map((r) => (
+                      <SelectItem key={r.name} value={r.name} label={builtinRoleLabels[r.name] ?? r.displayName}>
+                        {builtinRoleLabels[r.name] ?? r.displayName}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

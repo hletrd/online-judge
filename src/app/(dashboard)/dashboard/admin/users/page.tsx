@@ -158,7 +158,7 @@ export default async function UserManagementPage({
           {canCreateUsers ? (
             <>
               <BulkCreateDialog />
-              <AddUserDialog actorRole={session.user.role} availableRoles={createRoleOptions} />
+              <AddUserDialog availableRoles={createRoleOptions} />
             </>
           ) : null}
         </div>
@@ -251,7 +251,7 @@ export default async function UserManagementPage({
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2 items-center">
-                      <EditUserDialog actorRole={session.user.role} availableRoles={availableRoles} roleOptions={availableRoles.filter((role) => role.name === user.role || manageableRoleNames.has(role.name))} canEditRole={user.role !== "super_admin" && canEditUsers} user={{
+                      <EditUserDialog roleOptions={availableRoles.filter((role) => role.name === user.role || manageableRoleNames.has(role.name))} canEditRole={user.role !== "super_admin" && canEditUsers} user={{
                         id: user.id,
                         username: user.username,
                         email: user.email,

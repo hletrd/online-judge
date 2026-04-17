@@ -26,8 +26,6 @@ vi.mock("@/lib/api/handler", () => ({
       params: {},
     }),
   forbidden: () => new Response(JSON.stringify({ error: "forbidden" }), { status: 403 }),
-  isAdmin: (role: string) => role === "admin" || role === "super_admin",
-  isInstructor: (role: string) => role === "instructor" || role === "admin" || role === "super_admin",
 }));
 
 vi.mock("@/lib/api/responses", () => ({
@@ -135,6 +133,27 @@ describe("POST /api/v1/users/bulk", () => {
     }));
 
     expect(res.status).toBe(201);
+  });
+
+  it("rejects instructors who lack users.create instead of applying a built-in shortcut", async () => {
+    getApiUserMock.mockResolvedValue({
+      id: "instructor-1",
+      role: "instructor",
+      username: "instructor",
+      email: "instructor@example.com",
+      name: "Instructor",
+      className: null,
+      mustChangePassword: false,
+    });
+    resolveCapabilitiesMock.mockResolvedValue(new Set());
+
+    const { POST } = await import("@/app/api/v1/users/bulk/route");
+    const res = await POST(makeRequest({
+      users: [{ username: "student2", name: "Student Two", password: "StrongPass123!" }],
+    }));
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toEqual({ error: "forbidden" });
   });
 
   it("allows assigning a valid custom role during bulk creation", async () => {

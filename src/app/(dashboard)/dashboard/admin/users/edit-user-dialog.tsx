@@ -26,13 +26,11 @@ interface EditUserDialogProps {
     className?: string | null;
     role: string;
   };
-  actorRole?: string;
-  availableRoles?: RoleOption[];
-  roleOptions?: RoleOption[];
+  roleOptions: RoleOption[];
   canEditRole?: boolean;
 }
 
-export default function EditUserDialog({ user, actorRole, availableRoles, roleOptions, canEditRole = true }: EditUserDialogProps) {
+export default function EditUserDialog({ user, roleOptions, canEditRole = true }: EditUserDialogProps) {
   const t = useTranslations("admin.users");
   const tCommon = useTranslations("common");
   const router = useRouter();
@@ -115,26 +113,13 @@ export default function EditUserDialog({ user, actorRole, availableRoles, roleOp
                 <SelectValue>{builtinRoleLabels[role] || role}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {roleOptions ?? availableRoles ? (
-                  (roleOptions ?? availableRoles ?? [])
-                    .filter((r) => r.name !== "super_admin" || user.role === "super_admin")
-                    .map((r) => (
-                      <SelectItem key={r.name} value={r.name} label={builtinRoleLabels[r.name] ?? r.displayName}>
-                        {builtinRoleLabels[r.name] ?? r.displayName}
-                      </SelectItem>
-                    ))
-                ) : (
-                  <>
-                    <SelectItem value="student" label={builtinRoleLabels.student}>{builtinRoleLabels.student}</SelectItem>
-                    {(!actorRole || actorRole === "admin" || actorRole === "super_admin") && (
-                      <>
-                        <SelectItem value="instructor" label={builtinRoleLabels.instructor}>{builtinRoleLabels.instructor}</SelectItem>
-                        <SelectItem value="admin" label={builtinRoleLabels.admin}>{builtinRoleLabels.admin}</SelectItem>
-                      </>
-                    )}
-                    {user.role === "super_admin" && <SelectItem value="super_admin" label={builtinRoleLabels.super_admin}>{builtinRoleLabels.super_admin}</SelectItem>}
-                  </>
-                )}
+                {roleOptions
+                  .filter((r) => r.name !== "super_admin" || user.role === "super_admin")
+                  .map((r) => (
+                    <SelectItem key={r.name} value={r.name} label={builtinRoleLabels[r.name] ?? r.displayName}>
+                      {builtinRoleLabels[r.name] ?? r.displayName}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>

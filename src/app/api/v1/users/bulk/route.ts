@@ -3,7 +3,7 @@ import { apiError } from "@/lib/api/responses";
 import { execTransaction } from "@/lib/db";
 import { sql } from "drizzle-orm";
 import { users } from "@/lib/db/schema";
-import { forbidden, isInstructor, createApiHandler } from "@/lib/api/handler";
+import { forbidden, createApiHandler } from "@/lib/api/handler";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { nanoid } from "nanoid";
 import { bulkUserCreateSchema } from "@/lib/validators/bulk-users";
@@ -15,8 +15,7 @@ export const POST = createApiHandler({
   rateLimit: "users:bulk-create",
   handler: async (req: NextRequest, { user }) => {
     const caps = await resolveCapabilities(user.role);
-    const canBulkCreate = caps.has("users.create") || user.role === "instructor";
-    if (!canBulkCreate) return forbidden();
+    if (!caps.has("users.create")) return forbidden();
 
     const body = await req.json();
     const parsed = bulkUserCreateSchema.safeParse(body);
@@ -33,17 +32,6 @@ export const POST = createApiHandler({
       const roleError = await validateRoleChangeAsync(user.role, requestedRole);
       if (roleError) {
         return apiError(roleError, 403);
-      }
-    }
-
-    // Intentional built-in carve-out: instructors retain legacy student-only
-    // bulk-create access even without users.create. Custom roles should rely
-    // on the users.create capability instead of inheriting this exception.
-    if (isInstructor(user.role) && !caps.has("users.create")) {
-      for (const entry of userList) {
-        if (entry.role && entry.role !== "student") {
-          return apiError("unauthorized", 403);
-        }
       }
     }
 

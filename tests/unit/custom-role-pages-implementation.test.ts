@@ -77,6 +77,7 @@ describe("custom-role page/runtime implementation guards", () => {
 
   it("keeps admin user-management affordances capability-aware for custom roles", () => {
     const usersPage = read("src/app/(dashboard)/dashboard/admin/users/page.tsx");
+    const addDialog = read("src/app/(dashboard)/dashboard/admin/users/add-user-dialog.tsx");
     const userActions = read("src/app/(dashboard)/dashboard/admin/users/user-actions.tsx");
     const editDialog = read("src/app/(dashboard)/dashboard/admin/users/edit-user-dialog.tsx");
 
@@ -89,8 +90,12 @@ describe("custom-role page/runtime implementation guards", () => {
     expect(userActions).toContain("actorCanDelete");
     expect(userActions).not.toContain('actorRole === "admin"');
 
+    expect(addDialog).toContain("availableRoles");
+    expect(addDialog).not.toContain("actorRole");
+
     expect(editDialog).toContain("canEditRole");
     expect(editDialog).toContain("roleOptions");
+    expect(editDialog).not.toContain("actorRole");
     expect(editDialog).not.toContain('actorRole === "instructor"');
   });
 });
