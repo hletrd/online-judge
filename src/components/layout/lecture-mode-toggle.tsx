@@ -13,7 +13,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useSyncExternalStore } from "react";
+
+function subscribeToHydration() {
+  return () => {};
+}
 
 const colorSchemeOptions = [
   { value: "dark", labelKey: "lectureDark" },
@@ -38,6 +44,11 @@ type LectureFontScale = (typeof fontScaleOptions)[number]["value"];
 export function LectureModeToggle({ className }: { className?: string }) {
   const t = useTranslations("common");
   const { active, toggle, fontScale, setFontScale, colorScheme, setColorScheme } = useLectureMode();
+  const mounted = useSyncExternalStore(subscribeToHydration, () => true, () => false);
+
+  if (!mounted) {
+    return <Skeleton className={cn("h-9 w-9 rounded-md", className)} role="status" aria-busy="true" aria-label={t("lectureMode")} />;
+  }
 
   return (
     <DropdownMenu>

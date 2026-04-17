@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LectureModeProvider } from "@/components/lecture/lecture-mode-provider";
 import { LectureModeToggle } from "@/components/layout/lecture-mode-toggle";
 import { LectureToolbar } from "@/components/lecture/lecture-toolbar";
+import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { updatePreferences } from "@/lib/actions/update-preferences";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -73,7 +74,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       persistAction={updatePreferences}
     >
       <SidebarProvider>
-        <SkipToContent targetId="dashboard-main-content" label={t("skipToContent")} />
+        <SkipToContent targetId="main-content" label={t("skipToContent")} />
         <AppSidebar
           user={session.user}
           siteTitle={settings.siteTitle}
@@ -94,7 +95,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <LocaleSwitcher />
             </div>
           </header>
-          <main id="dashboard-main-content" className="min-w-0 flex-1 p-6">
+          <main id="main-content" className="min-w-0 flex-1 p-6">
+            <Breadcrumb className="mb-4" />
             {children}
           </main>
         </SidebarInset>

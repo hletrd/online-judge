@@ -61,7 +61,7 @@ export default async function ControlLayout({ children }: { children: React.Reac
           <ThemeToggle />
           <LocaleSwitcher />
         </header>
-        <main className="p-6">{children}</main>
+        <main id="main-content" className="p-6">{children}</main>
       </div>
       <Toaster />
     </div>

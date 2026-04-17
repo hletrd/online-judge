@@ -45,7 +45,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
           <ThemeToggle />
           <LocaleSwitcher />
         </header>
-        <main className="p-6">{children}</main>
+        <main id="main-content" className="p-6">{children}</main>
       </div>
       <Toaster />
     </div>

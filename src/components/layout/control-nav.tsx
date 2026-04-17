@@ -25,12 +25,12 @@ export function ControlNav({ siteTitle, sectionLabel, userLabel, items }: Contro
   const pathname = usePathname();
 
   return (
-    <aside className="border-r bg-slate-950 text-slate-100">
-      <div className="sticky top-0 flex h-full w-full min-w-72 flex-col p-4">
+    <aside className="border-r bg-background text-foreground">
+      <div className="sticky top-0 flex h-full w-full min-w-64 flex-col p-4">
         <div className="mb-6">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">{sectionLabel}</p>
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{sectionLabel}</p>
           <p className="mt-2 text-lg font-semibold tracking-tight">{siteTitle}</p>
-          <p className="mt-1 text-sm text-slate-400">{userLabel}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{userLabel}</p>
         </div>
         <nav className="space-y-1">
           {items.map((item) => {
@@ -41,13 +41,13 @@ export function ControlNav({ siteTitle, sectionLabel, userLabel, items }: Contro
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "block rounded-lg px-3 py-3 transition-colors hover:bg-slate-900",
-                  active ? "bg-slate-900 ring-1 ring-slate-800" : ""
+                  "block rounded-lg px-3 py-3 transition-colors hover:bg-accent",
+                  active ? "border-l-2 border-primary bg-accent font-medium" : "border-l-2 border-transparent"
                 )}
               >
-                <div className="text-sm font-medium text-slate-50">{item.label}</div>
+                <div className="text-sm font-medium text-foreground">{item.label}</div>
                 {item.description ? (
-                  <div className="mt-1 text-xs text-slate-400">{item.description}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{item.description}</div>
                 ) : null}
               </Link>
             );

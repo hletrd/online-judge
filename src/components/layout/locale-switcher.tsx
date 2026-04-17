@@ -10,15 +10,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Languages } from "lucide-react";
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, LOCALE_QUERY_PARAM } from "@/lib/i18n/constants";
 import { forceNavigate } from "@/lib/navigation/client";
+import { useSyncExternalStore } from "react";
 
-export function LocaleSwitcher() {
+function subscribeToHydration() {
+  return () => {};
+}
+
+export function LocaleSwitcher({ className }: { className?: string }) {
   const t = useTranslations("common");
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentLocale = useLocale();
+  const mounted = useSyncExternalStore(subscribeToHydration, () => true, () => false);
+
+  if (!mounted) {
+    return <Skeleton className="h-9 w-9 rounded-md" role="status" aria-busy="true" aria-label={t("language")} />;
+  }
 
   function setLocale(locale: string) {
     if (locale === currentLocale) {

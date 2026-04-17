@@ -27,7 +27,7 @@ export default function ContestsLayout({ children }: { children: React.ReactNode
       window.location.href = href;
     };
 
-    const main = document.getElementById("dashboard-main-content");
+    const main = document.getElementById("main-content");
     const sidebar = document.querySelector("[data-slot='sidebar']");
     main?.addEventListener("click", handler, true);
     sidebar?.addEventListener("click", handler, true);

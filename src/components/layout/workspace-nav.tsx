@@ -26,7 +26,7 @@ export function WorkspaceNav({ siteTitle, sectionLabel, userLabel, items }: Work
 
   return (
     <aside className="border-r bg-muted/30">
-      <div className="sticky top-0 flex h-full w-full min-w-56 flex-col p-4 sm:min-w-72">
+      <div className="sticky top-0 flex h-full w-full min-w-64 flex-col p-4">
         <div className="mb-6">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{sectionLabel}</p>
           <p className="mt-2 text-lg font-semibold tracking-tight">{siteTitle}</p>
@@ -42,7 +42,7 @@ export function WorkspaceNav({ siteTitle, sectionLabel, userLabel, items }: Work
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "block rounded-lg border px-3 py-3 transition-colors hover:bg-accent hover:text-accent-foreground",
-                  active ? "border-primary/30 bg-background shadow-sm" : "border-transparent"
+                  active ? "border-l-primary border-l-2 bg-accent font-medium" : "border-transparent"
                 )}
               >
                 <div className="text-sm font-medium">{item.label}</div>

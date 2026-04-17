@@ -61,19 +61,27 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
         toggleRef.current?.focus();
       }
 
-      // Focus trap: keep Tab within the panel
+      // Focus trap: keep Tab within the panel (handles Shift+Tab wraparound)
       if (e.key === "Tab" && panelRef.current) {
         const focusableSelector = 'a[href], button, [tabindex]:not([tabindex="-1"])';
-        const focusableEls = panelRef.current.querySelectorAll<HTMLElement>(focusableSelector);
+        const focusableEls = Array.from(panelRef.current.querySelectorAll<HTMLElement>(focusableSelector));
         if (focusableEls.length === 0) return;
 
         const first = focusableEls[0];
         const last = focusableEls[focusableEls.length - 1];
 
-        if (e.shiftKey && document.activeElement === first) {
+        // Determine which focusable element (or its descendant) is currently active
+        const activeEl = document.activeElement;
+        const activeIndex = focusableEls.findIndex(
+          (el) => el === activeEl || el.contains(activeEl),
+        );
+
+        if (e.shiftKey && (activeIndex <= 0 || activeIndex === -1)) {
+          // Shift+Tab on first item (or unknown/external element) → wrap to last
           e.preventDefault();
           last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
+        } else if (!e.shiftKey && (activeIndex === focusableEls.length - 1 || activeIndex === -1)) {
+          // Tab on last item (or unknown/external element) → wrap to first
           e.preventDefault();
           first.focus();
         }
