@@ -496,15 +496,17 @@ info "Starting database container..."
 remote "cd ${REMOTE_DIR} && (docker compose -f docker-compose.production.yml --env-file .env.production up -d db 2>/dev/null || docker-compose -f docker-compose.production.yml --env-file .env.production up -d db)"
 
 info "Waiting for database to be healthy..."
+DB_BECAME_HEALTHY=0
 for i in $(seq 1 30); do
     if remote "docker inspect --format='{{.State.Health.Status}}' judgekit-db 2>/dev/null" | grep -q "healthy"; then
+        DB_BECAME_HEALTHY=1
         break
-    fi
-    if [[ $i -eq 30 ]]; then
-        warn "Database did not become healthy in 30s — attempting migration anyway"
     fi
     sleep 1
 done
+if [[ "${DB_BECAME_HEALTHY}" != "1" ]]; then
+    die "Database did not become healthy in 30s — aborting deploy before migrations"
+fi
 success "Database is ready"
 
 # ---------------------------------------------------------------------------

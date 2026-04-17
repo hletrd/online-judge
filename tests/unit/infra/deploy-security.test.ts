@@ -18,6 +18,8 @@ describe("deployment security defaults", () => {
     expect(deployDocker).toContain("-e POSTGRES_PASSWORD -e PGPASSWORD -e DATABASE_URL");
     expect(deployDocker).not.toContain('escaped_dirname=$(printf');
     expect(deployDocker).toContain("legacy escaped route-group directories");
+    expect(deployDocker).toContain("DB_BECAME_HEALTHY=0");
+    expect(deployDocker).toContain("Database did not become healthy in 30s — aborting deploy before migrations");
   });
 
   it("uses https AUTH_URL defaults for deploy scripts", () => {
