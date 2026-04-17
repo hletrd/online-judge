@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { apiSuccess, apiError } from "@/lib/api/responses";
-import { eq, desc } from "drizzle-orm";
+import { apiPaginated, apiSuccess, apiError } from "@/lib/api/responses";
+import { eq, desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { assignments } from "@/lib/db/schema";
 import { recordAuditEvent } from "@/lib/audit/events";
@@ -14,6 +14,7 @@ import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/
 import { canAccessGroup } from "@/lib/auth/permissions";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { logger } from "@/lib/logger";
+import { parsePagination } from "@/lib/api/pagination";
 
 export async function GET(
   request: NextRequest,
@@ -34,9 +35,24 @@ export async function GET(
     const hasAccess = await canAccessGroup(id, user.id, user.role);
     if (!hasAccess) return forbidden();
 
+    const { page, limit, offset } = parsePagination(request.nextUrl.searchParams, {
+      defaultLimit: 50,
+      maxLimit: 200,
+    });
+
+    const whereClause = eq(assignments.groupId, id);
+
+    const [totalRow] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(assignments)
+      .where(whereClause);
+    const total = Number(totalRow?.count ?? 0);
+
     const groupAssignments = await db.query.assignments.findMany({
-      where: eq(assignments.groupId, id),
+      where: whereClause,
       orderBy: [desc(assignments.createdAt)],
+      limit,
+      offset,
       with: {
         assignmentProblems: {
           with: {
@@ -48,7 +64,7 @@ export async function GET(
       },
     });
 
-    return apiSuccess(groupAssignments);
+    return apiPaginated(groupAssignments, page, limit, total);
   } catch (error) {
     logger.error({ err: error }, "GET /api/v1/groups/[id]/assignments error");
     return apiError("assignmentLoadFailed", 500);

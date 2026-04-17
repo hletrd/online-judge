@@ -10,9 +10,10 @@ import { updateGroupSchema } from "@/lib/validators/groups";
 import { withUpdatedAt } from "@/lib/db/helpers";
 import { execTransaction } from "@/lib/db";
 import { createApiHandler, notFound, forbidden } from "@/lib/api/handler";
+import { parsePagination } from "@/lib/api/pagination";
 
 export const GET = createApiHandler({
-  handler: async (_req: NextRequest, { user, params }) => {
+  handler: async (req: NextRequest, { user, params }) => {
     const { id } = params;
     const group = await db.query.groups.findFirst({
       where: eq(groups.id, id),
@@ -29,40 +30,41 @@ export const GET = createApiHandler({
         instructor: {
           columns: { id: true, name: true, email: true },
         },
-        enrollments: {
-          columns: {
-            id: true,
-            userId: true,
-            groupId: true,
-            enrolledAt: true,
-          },
-          with: {
-            user: {
-              columns: { id: true, name: true, email: true },
-            },
-          },
-        },
       },
     });
 
     if (!group) return notFound("Group");
 
     const hasAccess = await canAccessGroup(id, user.id, user.role);
-
     if (!hasAccess) return forbidden();
 
-    // Get total member count for pagination
-    const memberCountResult = await db
-      .select({ count: sql<number>`count(${enrollments.id})` })
+    const { page, limit, offset } = parsePagination(req.nextUrl.searchParams, {
+      defaultLimit: 100,
+      maxLimit: 500,
+    });
+
+    const [totalRow] = await db
+      .select({ count: sql<number>`count(*)` })
       .from(enrollments)
       .where(eq(enrollments.groupId, id));
-    const memberCount = Number(memberCountResult[0]?.count ?? 0);
-    const returnedEnrollmentCount = group.enrollments.length;
-    const enrollmentsMeta = {
-      totalCount: memberCount,
-      returnedCount: returnedEnrollmentCount,
-      isComplete: returnedEnrollmentCount >= memberCount,
-    };
+    const total = Number(totalRow?.count ?? 0);
+
+    const groupEnrollments = await db.query.enrollments.findMany({
+      where: eq(enrollments.groupId, id),
+      columns: {
+        id: true,
+        userId: true,
+        groupId: true,
+        enrolledAt: true,
+      },
+      with: {
+        user: {
+          columns: { id: true, name: true, email: true },
+        },
+      },
+      limit,
+      offset,
+    });
 
     const canViewEmails = await canManageGroupResourcesAsync(
       group.instructorId,
@@ -73,16 +75,19 @@ export const GET = createApiHandler({
 
     return apiSuccess({
       ...group,
-      memberCount,
-      membersTruncated: !enrollmentsMeta.isComplete,
-      enrollmentsMeta,
+      memberCount: total,
+      enrollmentsMeta: {
+        page,
+        limit,
+        total,
+      },
       instructor: group.instructor
         ? {
             ...group.instructor,
             email: canViewEmails ? group.instructor.email : null,
           }
         : null,
-      enrollments: group.enrollments.map((enrollment) => ({
+      enrollments: groupEnrollments.map((enrollment) => ({
         ...enrollment,
         user: {
           ...enrollment.user,

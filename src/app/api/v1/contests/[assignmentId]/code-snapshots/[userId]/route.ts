@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { codeSnapshots, problems } from "@/lib/db/schema";
-import { and, eq, asc } from "drizzle-orm";
+import { and, eq, asc, sql } from "drizzle-orm";
 import { createApiHandler } from "@/lib/api/handler";
-import { apiError, apiSuccess } from "@/lib/api/responses";
+import { apiError, apiPaginated } from "@/lib/api/responses";
 import { canViewAssignmentSubmissions } from "@/lib/assignments/submissions";
+import { parsePagination } from "@/lib/api/pagination";
 
 export const GET = createApiHandler({
   auth: { capabilities: ["contests.view_analytics"] },
@@ -15,8 +16,11 @@ export const GET = createApiHandler({
       return apiError("forbidden", 403);
     }
 
-    const url = new URL(req.url);
-    const problemId = url.searchParams.get("problemId");
+    const problemId = req.nextUrl.searchParams.get("problemId");
+    const { page, limit, offset } = parsePagination(req.nextUrl.searchParams, {
+      defaultLimit: 50,
+      maxLimit: 200,
+    });
 
     const conditions = [
       eq(codeSnapshots.userId, userId),
@@ -25,6 +29,14 @@ export const GET = createApiHandler({
     if (problemId) {
       conditions.push(eq(codeSnapshots.problemId, problemId));
     }
+
+    const whereClause = and(...conditions);
+
+    const [totalRow] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(codeSnapshots)
+      .where(whereClause);
+    const total = Number(totalRow?.count ?? 0);
 
     const snapshots = await db
       .select({
@@ -38,9 +50,11 @@ export const GET = createApiHandler({
       })
       .from(codeSnapshots)
       .leftJoin(problems, eq(problems.id, codeSnapshots.problemId))
-      .where(and(...conditions))
-      .orderBy(asc(codeSnapshots.createdAt));
+      .where(whereClause)
+      .orderBy(asc(codeSnapshots.createdAt))
+      .limit(limit)
+      .offset(offset);
 
-    return apiSuccess(snapshots);
+    return apiPaginated(snapshots, page, limit, total);
   },
 });
