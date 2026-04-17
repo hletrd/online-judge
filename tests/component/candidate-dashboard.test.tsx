@@ -20,10 +20,19 @@ vi.mock("next-intl/server", () => ({
       solvedChallenges: "Solved challenges",
       totalAttempts: "Total attempts",
       candidateTimeRemaining: "Time remaining",
+      candidateResultsTitle: "Assessment status",
+      candidateResultsPending:
+        "Results continue to update as your submissions finish and active assessment windows remain open.",
+      candidateResultsAssignments: `${values?.count ?? 0} assignments in scope`,
+      candidateResultsCompletedAssignments: `${values?.count ?? 0} assignments completed or closed`,
+      candidateResultsClosedAssignments: `${values?.count ?? 0} windows closed`,
       recentAttempts: "Recent attempts",
       supportedLanguages: "Supported languages",
       supportedLanguagesDescription: "Supported languages description",
       candidateProgressTitle: "Progress snapshot",
+      candidateAssignmentActive: "In progress",
+      candidateAssignmentComplete: "All attempted",
+      candidateAssignmentClosed: "Window closed",
       candidateProblemBreakdownTitle: "Per-problem progress",
       candidateProblemSolved: "Solved",
       candidateProblemAttempted: "Attempted",
@@ -132,7 +141,7 @@ describe("CandidateDashboard", () => {
           {
             assignmentId: "assign-2",
             title: "Round 2",
-            deadline: new Date("2099-01-03T00:00:00.000Z"),
+            deadline: new Date("2000-01-03T00:00:00.000Z"),
           },
         ])
       )
@@ -184,6 +193,12 @@ describe("CandidateDashboard", () => {
     );
 
     expect(screen.getByText("Solved challenges")).toBeInTheDocument();
+    expect(screen.getByText("Assessment status")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Results continue to update as your submissions finish and active assessment windows remain open."
+      )
+    ).toBeInTheDocument();
     expect(screen.getByText("1 solved • 2 attempted • 4 total")).toBeInTheDocument();
     expect(screen.getByText("Progress snapshot")).toBeInTheDocument();
     expect(screen.getAllByText("Per-problem progress")).toHaveLength(2);
@@ -196,6 +211,8 @@ describe("CandidateDashboard", () => {
     expect(screen.getAllByText("Solved").length).toBeGreaterThan(0);
     expect(screen.getByText("Attempted")).toBeInTheDocument();
     expect(screen.getByText("Untried")).toBeInTheDocument();
+    expect(screen.getByText("In progress")).toBeInTheDocument();
+    expect(screen.getByText("Window closed")).toBeInTheDocument();
     expect(screen.getByTestId("countdown-timer")).toBeInTheDocument();
     expect(screen.getAllByText("Open assessment")).toHaveLength(2);
   });

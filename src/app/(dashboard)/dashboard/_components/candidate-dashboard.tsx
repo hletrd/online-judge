@@ -44,6 +44,8 @@ type AssignmentProblemProgressItem = {
   progress: "solved" | "attempted" | "untried";
 };
 
+type CandidateAssignmentState = "active" | "complete" | "closed";
+
 export async function CandidateDashboard({
   userId,
   role,
@@ -338,6 +340,25 @@ export async function CandidateDashboard({
     .map((assignment) => assignment.deadline)
     .filter((deadline): deadline is Date => Boolean(deadline && deadline.getTime() > Date.now()))
     .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+  const assignmentStateMap = new Map<string, CandidateAssignmentState>();
+  for (const assignment of assignmentProgress) {
+    const isClosed = Boolean(assignment.deadline && assignment.deadline.getTime() <= Date.now());
+    const isComplete = assignment.problemCount > 0 && assignment.attemptedCount >= assignment.problemCount;
+    assignmentStateMap.set(
+      assignment.assignmentId,
+      isClosed ? "closed" : isComplete ? "complete" : "active"
+    );
+  }
+  const closedAssignmentCount = [...assignmentStateMap.values()].filter(
+    (state) => state === "closed"
+  ).length;
+  const completeAssignmentCount = [...assignmentStateMap.values()].filter(
+    (state) => state === "complete"
+  ).length;
+  const resultsSummaryMessage =
+    assignmentProgress.length > 0 && closedAssignmentCount === assignmentProgress.length
+      ? t("candidateResultsReady")
+      : t("candidateResultsPending");
 
   return (
     <div className="space-y-6">
@@ -409,6 +430,30 @@ export async function CandidateDashboard({
       {assignmentProgress.length > 0 && (
         <Card>
           <CardHeader>
+            <CardTitle>{t("candidateResultsTitle")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline">
+                {t("candidateResultsAssignments", { count: assignmentProgress.length })}
+              </Badge>
+              <Badge variant="outline">
+                {t("candidateResultsCompletedAssignments", {
+                  count: completeAssignmentCount + closedAssignmentCount,
+                })}
+              </Badge>
+              <Badge variant="outline">
+                {t("candidateResultsClosedAssignments", { count: closedAssignmentCount })}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">{resultsSummaryMessage}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {assignmentProgress.length > 0 && (
+        <Card>
+          <CardHeader>
             <CardTitle>{t("candidateProgressTitle")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -435,9 +480,18 @@ export async function CandidateDashboard({
                         </div>
                       )}
                     </div>
-                    <Link href={`/dashboard/contests/${assignment.assignmentId}`}>
-                      <Badge variant="secondary">{t("viewChallengeProgress")}</Badge>
-                    </Link>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge variant="secondary">
+                        {assignmentStateMap.get(assignment.assignmentId) === "closed"
+                          ? t("candidateAssignmentClosed")
+                          : assignmentStateMap.get(assignment.assignmentId) === "complete"
+                            ? t("candidateAssignmentComplete")
+                            : t("candidateAssignmentActive")}
+                      </Badge>
+                      <Link href={`/dashboard/contests/${assignment.assignmentId}`}>
+                        <Badge variant="secondary">{t("viewChallengeProgress")}</Badge>
+                      </Link>
+                    </div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
                     <Badge variant="outline">
