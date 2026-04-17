@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -89,10 +90,15 @@ export const POST = createApiHandler({
   },
 });
 
+const deleteGroupSchema = z.object({
+  groupId: z.string().min(1).max(100),
+});
+
 export const DELETE = createApiHandler({
   auth: { capabilities: ["problem_sets.assign_groups"] },
   rateLimit: "problem-sets:unassign",
-  handler: async (req: NextRequest, { user, params }) => {
+  schema: deleteGroupSchema,
+  handler: async (_req: NextRequest, { user, params, body }) => {
     const { id } = params;
     const existing = await db.query.problemSets.findFirst({
       where: eq(problemSets.id, id),
@@ -116,12 +122,7 @@ export const DELETE = createApiHandler({
       return forbidden();
     }
 
-    const body = await req.json();
-    const groupId = body?.groupId;
-
-    if (!groupId || typeof groupId !== "string") {
-      return apiError("problemSetGroupRequired", 400);
-    }
+    const groupId = body.groupId;
 
     const inaccessibleGroupIds = await findInaccessibleGroupIdsForProblemSetUser(
       [groupId],
@@ -141,7 +142,7 @@ export const DELETE = createApiHandler({
       resourceLabel: existing.name,
       summary: `Removed group from problem set "${existing.name}"`,
       details: { groupId },
-      request: req,
+      request: _req,
     });
 
     return apiSuccess({ id, groupId });

@@ -146,7 +146,7 @@ export const GET = createApiHandler({
     const userIdFilter = searchParams.get("userId");
     const eventTypeFilter = searchParams.get("eventType");
     const limit = Math.max(1, Math.min(Number(searchParams.get("limit") ?? 100), 500));
-    const offset = Number(searchParams.get("offset") ?? 0);
+    const offset = Math.max(0, Number(searchParams.get("offset") ?? 0) || 0);
 
     // Build filters using Drizzle
     const filters = [eq(antiCheatEvents.assignmentId, assignmentId)];

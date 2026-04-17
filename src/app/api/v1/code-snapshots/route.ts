@@ -18,6 +18,7 @@ const snapshotSchema = z.object({
 });
 
 export const POST = createApiHandler({
+  auth: true,
   rateLimit: "code-snapshot",
   schema: snapshotSchema,
   handler: async (_req: NextRequest, { user, body }) => {
