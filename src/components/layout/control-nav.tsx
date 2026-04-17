@@ -32,7 +32,7 @@ export function ControlNav({ siteTitle, sectionLabel, userLabel, items }: Contro
           <p className="mt-2 text-lg font-semibold tracking-tight">{siteTitle}</p>
           <p className="mt-1 text-sm text-muted-foreground">{userLabel}</p>
         </div>
-        <nav className="space-y-1">
+        <nav className="space-y-1" aria-label={sectionLabel}>
           {items.map((item) => {
             const active = isActivePath(pathname, item.href);
             return (

@@ -307,8 +307,8 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {similarityPairs.map((pair, idx) => (
-                  <TableRow key={idx}>
+                {similarityPairs.map((pair) => (
+                  <TableRow key={`${pair.userId1}-${pair.userId2}`}>
                     <TableCell className="text-sm">{pair.user1Name}</TableCell>
                     <TableCell className="text-sm">{pair.user2Name}</TableCell>
                     <TableCell className="text-right">
