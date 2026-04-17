@@ -28,6 +28,7 @@ Close the remaining object-level authorization gaps and remove the last places w
   - problem detail contest-start access now honors custom privileged roles via capability checks
   - admin user-management affordances now derive create/edit/delete options from capabilities and manageable role levels instead of built-in admin role-name checks
   - bulk user creation now preserves valid custom requested roles instead of narrowing inserts to built-in student/instructor values
+  - admin API-key creation UI now lists manageable custom roles instead of only hard-coded built-in admin/instructor targets
 
 ## Workstream A — Problem-set visibility and scope isolation
 **Targets**

@@ -43,6 +43,11 @@ const translations: Record<string, string> = {
   copied: "Copied!",
   maskedKeyPreviewCopied: "Masked key preview copied",
   done: "Done",
+  roleOptionSuperAdmin: "Super Admin",
+  roleOptionAdmin: "Admin",
+  roleOptionInstructor: "Instructor",
+  roleOptionAssistant: "Assistant",
+  roleOptionStudent: "Student",
   deactivateSuccess: "API key deactivated",
   activateSuccess: "API key activated",
   deleteConfirmTitle: "Delete API Key?",
@@ -208,5 +213,29 @@ describe("ApiKeysClient", () => {
       expect(clipboardWriteTextSpy).toHaveBeenCalledWith("jk_test_••••••••••••");
       expect(toast.success).toHaveBeenCalledWith("Masked key preview copied");
     });
+  });
+
+  it("renders manageable custom role options in the create dialog", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: [] }),
+    });
+
+    render(
+      <ApiKeysClient
+        roleOptions={[
+          { name: "admin", displayName: "Admin", level: 3 },
+          { name: "custom_reviewer", displayName: "Custom Reviewer", level: 2 },
+        ]}
+      />
+    );
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Create API Key" }));
+    const dialog = await screen.findByRole("dialog");
+    const roleCombobox = within(dialog).getAllByRole("combobox")[0];
+    await user.click(roleCombobox);
+
+    expect(await screen.findByText("Custom Reviewer")).toBeInTheDocument();
   });
 });

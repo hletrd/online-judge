@@ -65,6 +65,12 @@ interface ApiKey {
   hasEncryptedKey?: boolean;
 }
 
+interface RoleOption {
+  name: string;
+  displayName: string;
+  level: number;
+}
+
 type CreatedKey = {
   id: string;
   key: string;
@@ -76,7 +82,7 @@ function buildMaskedApiKeyPreview(keyPrefix: string) {
   return `${keyPrefix}••••••••••••`;
 }
 
-export function ApiKeysClient() {
+export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
   const t = useTranslations("admin.apiKeys");
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,15 +104,22 @@ export function ApiKeysClient() {
   // Create dialog state
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState("");
-  const [createRole, setCreateRole] = useState("admin");
+  const [createRole, setCreateRole] = useState(roleOptions?.[0]?.name ?? "admin");
   const [createExpiry, setCreateExpiry] = useState("none");
   const [creating, setCreating] = useState(false);
   const fetchFailedMessage = t("fetchFailed");
   const roleLabels: Record<string, string> = {
-    super_admin: "Super Admin",
-    admin: "Admin",
-    instructor: "Instructor",
+    super_admin: t("roleOptionSuperAdmin"),
+    admin: t("roleOptionAdmin"),
+    instructor: t("roleOptionInstructor"),
+    assistant: t("roleOptionAssistant"),
+    student: t("roleOptionStudent"),
   };
+  const createRoleOptions = roleOptions ?? [
+    { name: "super_admin", displayName: roleLabels.super_admin, level: 4 },
+    { name: "admin", displayName: roleLabels.admin, level: 3 },
+    { name: "instructor", displayName: roleLabels.instructor, level: 2 },
+  ];
   const expiryLabels: Record<string, string> = {
     none: t("expiryNone"),
     "30d": t("expiry30d"),
@@ -159,7 +172,7 @@ export function ApiKeysClient() {
         const json = await res.json();
         setCreateOpen(false);
         setCreateName("");
-        setCreateRole("admin");
+        setCreateRole(createRoleOptions[0]?.name ?? "admin");
         setCreateExpiry("none");
         setCreatedKey(json.data ?? null);
         setCreatedKeyCopied(false);
@@ -350,9 +363,15 @@ export function ApiKeysClient() {
                     <SelectValue>{roleLabels[createRole] || createRole}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="super_admin" label="Super Admin">Super Admin</SelectItem>
-                    <SelectItem value="admin" label="Admin">Admin</SelectItem>
-                    <SelectItem value="instructor" label="Instructor">Instructor</SelectItem>
+                    {createRoleOptions.map((roleOption) => (
+                      <SelectItem
+                        key={roleOption.name}
+                        value={roleOption.name}
+                        label={roleLabels[roleOption.name] ?? roleOption.displayName}
+                      >
+                        {roleLabels[roleOption.name] ?? roleOption.displayName}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
