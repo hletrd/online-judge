@@ -87,7 +87,14 @@ export function RecruiterCandidatesPanel({ assignmentId }: { assignmentId: strin
   });
 
   function handleCsvDownload() {
-    window.open(`/api/v1/contests/${assignmentId}/export?format=csv`, "_blank");
+    window.open(`/api/v1/contests/${assignmentId}/export?format=csv&download=1`, "_blank");
+  }
+
+  function handleAnonymizedCsvDownload() {
+    window.open(
+      `/api/v1/contests/${assignmentId}/export?format=csv&anonymized=1&download=1`,
+      "_blank"
+    );
   }
 
   if (loading) {
@@ -107,6 +114,10 @@ export function RecruiterCandidatesPanel({ assignmentId }: { assignmentId: strin
           <CardTitle>{t("title")}</CardTitle>
           <div className="flex gap-2">
             <Badge variant="secondary">{t("candidateCount", { count: candidates.length })}</Badge>
+            <Button variant="outline" size="sm" onClick={handleAnonymizedCsvDownload}>
+              <Download className="mr-1 size-4" />
+              {t("exportAnonymizedCsv")}
+            </Button>
             <Button variant="outline" size="sm" onClick={handleCsvDownload}>
               <Download className="mr-1 size-4" />
               {t("exportCsv")}

@@ -2162,6 +2162,7 @@
       "title": "Candidate Overview",
       "candidateCount": "{count} candidates",
       "exportCsv": "Export CSV",
+      "exportAnonymizedCsv": "Export anonymized CSV",
       "searchPlaceholder": "Search by name or username...",
       "name": "Name",
       "score": "Score",

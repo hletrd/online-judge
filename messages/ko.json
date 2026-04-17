@@ -2162,6 +2162,7 @@
       "title": "지원자 현황",
       "candidateCount": "{count}명의 지원자",
       "exportCsv": "CSV 내보내기",
+      "exportAnonymizedCsv": "익명 CSV 내보내기",
       "searchPlaceholder": "이름 또는 사용자명으로 검색",
       "name": "이름",
       "score": "점수",

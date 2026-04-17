@@ -5,6 +5,7 @@ import { canViewAssignmentSubmissions } from "@/lib/assignments/submissions";
 import { computeContestRanking } from "@/lib/assignments/contest-scoring";
 import { getLeaderboardProblems } from "@/lib/assignments/leaderboard";
 import { rawQueryOne, rawQueryAll } from "@/lib/db/queries";
+import { recordAuditEvent } from "@/lib/audit/events";
 
 function sanitizeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9_\- ]/g, "_").slice(0, 100);
@@ -63,6 +64,8 @@ export const GET = createApiHandler({
     }
 
     const format = req.nextUrl.searchParams.get("format") ?? "csv";
+    const anonymized = req.nextUrl.searchParams.get("anonymized") === "1";
+    const isDownload = req.nextUrl.searchParams.get("download") === "1" || format === "csv";
     const problems = await getLeaderboardProblems(assignmentId);
     const { scoringModel, entries } = await computeContestRanking(assignmentId);
 
@@ -81,8 +84,18 @@ export const GET = createApiHandler({
     );
     const ipMap = new Map(ipRows.map((r) => [r.userId, r.ips]));
 
+    const exportedEntries = entries.map((entry) => {
+      if (!anonymized) return entry;
+      return {
+        ...entry,
+        name: `Candidate ${entry.rank}`,
+        username: "",
+        className: null,
+      };
+    });
+
     if (format === "json") {
-      const data = entries.map((entry) => ({
+      const data = exportedEntries.map((entry) => ({
         rank: entry.rank,
         name: entry.name,
         username: entry.username,
@@ -101,13 +114,26 @@ export const GET = createApiHandler({
           };
         }),
         antiCheatEventCount: cheatCountMap.get(entry.userId) ?? 0,
-        ipAddresses: ipMap.get(entry.userId) ?? "",
+        ipAddresses: anonymized ? "" : (ipMap.get(entry.userId) ?? ""),
       }));
 
       const safeName = sanitizeFilename(assignment.title);
+      if (isDownload) {
+        recordAuditEvent({
+          actorId: user.id,
+          actorRole: user.role,
+          action: anonymized ? "contest.export_downloaded_anonymized" : "contest.export_downloaded",
+          resourceType: "assignment",
+          resourceId: assignmentId,
+          resourceLabel: assignment.title,
+          summary: `${anonymized ? "Downloaded anonymized" : "Downloaded"} contest export for "${assignment.title}"`,
+          details: { format, anonymized },
+          request: req,
+        });
+      }
       return NextResponse.json(data, {
         headers: {
-          "Content-Disposition": `attachment; filename="${safeName}-export.json"`,
+          "Content-Disposition": `attachment; filename="${safeName}${anonymized ? "-anonymized" : ""}-export.json"`,
         },
       });
     }
@@ -126,7 +152,7 @@ export const GET = createApiHandler({
       "IP Addresses",
     ];
 
-    const rows = entries.map((entry) => {
+    const rows = exportedEntries.map((entry) => {
       const row: (string | number)[] = [
         entry.rank,
         entry.name,
@@ -143,7 +169,7 @@ export const GET = createApiHandler({
           return pr?.attempts ?? 0;
         }),
         cheatCountMap.get(entry.userId) ?? 0,
-        ipMap.get(entry.userId) ?? "",
+        anonymized ? "" : (ipMap.get(entry.userId) ?? ""),
       ];
       return row;
     });
@@ -154,10 +180,21 @@ export const GET = createApiHandler({
     ];
 
     const safeName = sanitizeFilename(assignment.title);
+    recordAuditEvent({
+      actorId: user.id,
+      actorRole: user.role,
+      action: anonymized ? "contest.export_downloaded_anonymized" : "contest.export_downloaded",
+      resourceType: "assignment",
+      resourceId: assignmentId,
+      resourceLabel: assignment.title,
+      summary: `${anonymized ? "Downloaded anonymized" : "Downloaded"} contest export for "${assignment.title}"`,
+      details: { format, anonymized },
+      request: req,
+    });
     return new NextResponse(csvLines.join("\n"), {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${safeName}-export.csv"`,
+        "Content-Disposition": `attachment; filename="${safeName}${anonymized ? "-anonymized" : ""}-export.csv"`,
       },
     });
   },
