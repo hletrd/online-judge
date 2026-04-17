@@ -29,6 +29,7 @@ Close the remaining object-level authorization gaps and remove the last places w
   - admin user-management affordances now derive create/edit/delete options from capabilities and manageable role levels instead of built-in admin role-name checks
   - bulk user creation now preserves valid custom requested roles instead of narrowing inserts to built-in student/instructor values
   - admin API-key creation UI now lists manageable custom roles instead of only hard-coded built-in admin/instructor targets
+  - capability-cache bootstrap now restores the built-in assistant role even when the roles table is empty or stale
 
 ## Workstream A — Problem-set visibility and scope isolation
 **Targets**

@@ -38,7 +38,7 @@ async function loadRolesFromDb(): Promise<void> {
   }
 
   // Ensure built-in roles exist in cache even if not yet in DB (bootstrap)
-  for (const builtinName of ["student", "instructor", "admin", "super_admin"] as const) {
+  for (const builtinName of ["student", "assistant", "instructor", "admin", "super_admin"] as const) {
     if (!cache.has(builtinName)) {
       cache.set(builtinName, {
         capabilities: new Set(DEFAULT_ROLE_CAPABILITIES[builtinName]),
