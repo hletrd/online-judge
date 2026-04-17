@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const { dbSelectMock, consumeInMemoryRateLimitMock } = vi.hoisted(() => ({
+const { dbSelectMock, consumeApiRateLimitMock } = vi.hoisted(() => ({
   dbSelectMock: vi.fn(),
-  consumeInMemoryRateLimitMock: vi.fn(),
+  consumeApiRateLimitMock: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -12,18 +12,14 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-vi.mock("@/lib/security/in-memory-rate-limit", () => ({
-  consumeInMemoryRateLimit: consumeInMemoryRateLimitMock,
-}));
-
-vi.mock("@/lib/security/ip", () => ({
-  extractClientIp: () => "127.0.0.1",
+vi.mock("@/lib/security/api-rate-limit", () => ({
+  consumeApiRateLimit: consumeApiRateLimitMock,
 }));
 
 describe("POST /api/v1/recruiting/validate", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    consumeInMemoryRateLimitMock.mockReturnValue({ limited: false });
+    consumeApiRateLimitMock.mockResolvedValue(null);
 
     dbSelectMock
       .mockReturnValueOnce({
@@ -124,5 +120,24 @@ describe("POST /api/v1/recruiting/validate", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: "invalidToken" });
+  });
+
+  it("returns the authoritative rate-limit response before touching the database", async () => {
+    consumeApiRateLimitMock.mockResolvedValueOnce(
+      NextResponse.json({ error: "rateLimited" }, { status: 429 })
+    );
+
+    const { POST } = await import("@/app/api/v1/recruiting/validate/route");
+    const response = await POST(
+      new NextRequest("http://localhost/api/v1/recruiting/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: "token-1" }),
+      })
+    );
+
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toEqual({ error: "rateLimited" });
+    expect(dbSelectMock).not.toHaveBeenCalled();
   });
 });

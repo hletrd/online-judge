@@ -1,22 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { recruitingInvitations, assignments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { consumeInMemoryRateLimit } from "@/lib/security/in-memory-rate-limit";
-import { extractClientIp } from "@/lib/security/ip";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { validateRecruitingTokenSchema } from "@/lib/validators/recruiting-invitations";
 
-export async function POST(req: Request) {
-  // Rate limit: 10 attempts per minute per IP
-  const ip = extractClientIp(req.headers);
-  const { limited } = consumeInMemoryRateLimit(
-    { headers: req.headers },
-    `recruiting:validate:${ip}`,
-    10,
-    60000
-  );
-  if (limited) {
-    return NextResponse.json({ error: "rateLimited" }, { status: 429 });
+export async function POST(req: NextRequest) {
+  const rateLimitResponse = await consumeApiRateLimit(req, "recruiting:validate");
+  if (rateLimitResponse) {
+    return rateLimitResponse;
   }
 
   const body = await req.json().catch(() => null);
