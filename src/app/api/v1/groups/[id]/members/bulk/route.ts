@@ -6,11 +6,12 @@ import { enrollments } from "@/lib/db/schema";
 import { canManageGroupMembersAsync } from "@/lib/assignments/management";
 import { bulkEnrollmentSchema } from "@/lib/validators/groups";
 import { forbidden, notFound, createApiHandler } from "@/lib/api/handler";
-import { apiSuccess, apiError } from "@/lib/api/responses";
+import { apiSuccess } from "@/lib/api/responses";
 
 export const POST = createApiHandler({
   rateLimit: "members:bulk-add",
-  handler: async (req: NextRequest, { user, params }) => {
+  schema: bulkEnrollmentSchema,
+  handler: async (req: NextRequest, { user, params, body }) => {
     const { id } = params;
     const group = await db.query.groups.findFirst({
       where: (groups, { eq: equals }) => equals(groups.id, id),
@@ -28,14 +29,7 @@ export const POST = createApiHandler({
 
     if (!canManage) return forbidden();
 
-    const body = await req.json();
-    const parsedInput = bulkEnrollmentSchema.safeParse(body);
-
-    if (!parsedInput.success) {
-      return apiError(parsedInput.error.issues[0]?.message ?? "bulkEnrollFailed", 400);
-    }
-
-    const { userIds } = parsedInput.data;
+    const { userIds } = body;
     const uniqueRequestedUserIds = Array.from(new Set(userIds));
 
     // Validate all users exist, are active, and have student role in a single query
