@@ -11,7 +11,10 @@ import { db } from "@/lib/db";
 import { problems, chatMessages } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
 import { nanoid } from "nanoid";
-import { isAiAssistantEnabledForContext } from "@/lib/platform-mode-context";
+import {
+  isAiAssistantEnabledForContext,
+  resolvePlatformModeAssignmentContextDetails,
+} from "@/lib/platform-mode-context";
 
 const MAX_TOOL_ITERATIONS = 5;
 const STREAM_HEADERS = {
@@ -217,10 +220,29 @@ export const POST = createApiHandler({
 
     const sessionId = context?.sessionId || generateSessionId();
 
+    const assignmentContext = await resolvePlatformModeAssignmentContextDetails({
+      userId: session.user.id,
+      assignmentId: context?.assignmentId ?? null,
+      problemId: context?.problemId ?? null,
+    });
+    if (assignmentContext.mismatch) {
+      logger.warn(
+        {
+          userId: session.user.id,
+          problemId: context?.problemId ?? null,
+          providedAssignmentId: assignmentContext.mismatch.providedAssignmentId,
+          resolvedAssignmentId: assignmentContext.mismatch.resolvedAssignmentId,
+          reason: assignmentContext.mismatch.reason,
+        },
+        "Chat API rejected mismatched assignment context"
+      );
+      return NextResponse.json({ error: "assignmentContextMismatch" }, { status: 400 });
+    }
+
     // Check global AI assistant toggle
     const globalEnabled = await isAiAssistantEnabledForContext({
       userId: session.user.id,
-      assignmentId: context?.assignmentId ?? null,
+      assignmentId: assignmentContext.assignmentId,
       problemId: context?.problemId ?? null,
     });
     if (!globalEnabled) {
@@ -307,7 +329,7 @@ export const POST = createApiHandler({
       userId: session.user.id,
       userRole: session.user.role,
       problemId: context?.problemId ?? undefined,
-      assignmentId: context?.assignmentId ?? undefined,
+      assignmentId: assignmentContext.assignmentId ?? undefined,
       editorCode: context?.editorCode ?? undefined,
       editorLanguage: context?.editorLanguage ?? undefined,
     };

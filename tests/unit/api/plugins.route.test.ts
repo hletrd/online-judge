@@ -11,6 +11,7 @@ const {
   getPluginStateMock,
   checkServerActionRateLimitMock,
   isAiAssistantEnabledForContextMock,
+  resolvePlatformModeAssignmentContextDetailsMock,
   getResolvedPlatformModeMock,
   getSystemSettingsMock,
   problemsFindFirstMock,
@@ -30,6 +31,7 @@ const {
   getPluginStateMock: vi.fn(),
   checkServerActionRateLimitMock: vi.fn(),
   isAiAssistantEnabledForContextMock: vi.fn(),
+  resolvePlatformModeAssignmentContextDetailsMock: vi.fn(),
   getResolvedPlatformModeMock: vi.fn(),
   getSystemSettingsMock: vi.fn(),
   problemsFindFirstMock: vi.fn(),
@@ -73,6 +75,8 @@ vi.mock("@/lib/system-settings", () => ({
 
 vi.mock("@/lib/platform-mode-context", () => ({
   isAiAssistantEnabledForContext: isAiAssistantEnabledForContextMock,
+  resolvePlatformModeAssignmentContextDetails:
+    resolvePlatformModeAssignmentContextDetailsMock,
 }));
 
 vi.mock("@/lib/plugins/chat-widget/providers", () => ({
@@ -190,6 +194,10 @@ beforeEach(() => {
   getPluginStateMock.mockResolvedValue({ config: PLUGIN_CONFIG });
   checkServerActionRateLimitMock.mockReturnValue(null); // not rate limited
   isAiAssistantEnabledForContextMock.mockResolvedValue(true);
+  resolvePlatformModeAssignmentContextDetailsMock.mockImplementation(
+    ({ assignmentId }: { assignmentId?: string | null }) =>
+      Promise.resolve({ assignmentId: assignmentId ?? null, mismatch: null })
+  );
   getResolvedPlatformModeMock.mockResolvedValue("homework");
   getSystemSettingsMock.mockResolvedValue({ aiAssistantEnabled: true });
   problemsFindFirstMock.mockResolvedValue(null);
@@ -293,6 +301,37 @@ describe("POST /api/v1/plugins/chat-widget/chat", () => {
       assignmentId: null,
       problemId: null,
     });
+  });
+
+  it("returns 400 when the request assignment context mismatches the server-derived problem scope", async () => {
+    resolvePlatformModeAssignmentContextDetailsMock.mockResolvedValue({
+      assignmentId: "assignment-2",
+      mismatch: {
+        providedAssignmentId: "assignment-1",
+        resolvedAssignmentId: "assignment-2",
+        reason: "problem_scope",
+      },
+    });
+
+    const res = await chatPOST(
+      makeChatRequest({
+        messages: [{ role: "user", content: "Help!" }],
+        context: { problemId: "prob-1", assignmentId: "assignment-1" },
+      })
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({ error: "assignmentContextMismatch" });
+    expect(isAiAssistantEnabledForContextMock).not.toHaveBeenCalled();
+    expect(loggerWarnMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "student-1",
+        problemId: "prob-1",
+        providedAssignmentId: "assignment-1",
+        resolvedAssignmentId: "assignment-2",
+      }),
+      "Chat API rejected mismatched assignment context"
+    );
   });
 
   it("returns 403 when AI is disabled for the specific problem", async () => {

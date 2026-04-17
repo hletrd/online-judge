@@ -12,6 +12,17 @@ export type PlatformModeContextOptions = {
   problemId?: string | null;
 };
 
+export type ResolvedPlatformModeAssignmentContext = {
+  assignmentId: string | null;
+  mismatch:
+    | {
+        providedAssignmentId: string;
+        resolvedAssignmentId: string;
+        reason: "problem_scope" | "active_restricted_scope";
+      }
+    | null;
+};
+
 async function hasRedeemedRecruitingAccess({
   userId,
   assignmentId,
@@ -85,6 +96,34 @@ async function findRestrictedAssignmentIdForProblem(
   return row?.assignmentId ?? null;
 }
 
+async function findAccessibleAssignmentIdForProblem(
+  userId: string,
+  problemId: string,
+  assignmentId: string
+): Promise<string | null> {
+  const row = await rawQueryOne<AssignmentContextRow>(
+    `SELECT a.id AS "assignmentId"
+     FROM assignments a
+     INNER JOIN assignment_problems ap ON ap.assignment_id = a.id
+     WHERE a.id = @assignmentId
+       AND ap.problem_id = @problemId
+       AND (
+         EXISTS (
+           SELECT 1 FROM enrollments e
+           WHERE e.group_id = a.group_id AND e.user_id = @userId
+         )
+         OR EXISTS (
+           SELECT 1 FROM contest_access_tokens cat
+           WHERE cat.assignment_id = a.id AND cat.user_id = @userId
+         )
+       )
+     LIMIT 1`,
+    { assignmentId, problemId, userId }
+  );
+
+  return row?.assignmentId ?? null;
+}
+
 async function findActiveRestrictedAssignmentIdForUser(
   userId: string
 ): Promise<string | null> {
@@ -129,16 +168,73 @@ async function findActiveRestrictedAssignmentIdForUser(
 export async function resolvePlatformModeAssignmentContext(
   options: PlatformModeContextOptions = {}
 ): Promise<string | null> {
-  if (options.assignmentId) return options.assignmentId;
-  if (!options.userId) return null;
-  if (options.problemId) {
-    const assignmentId = await findRestrictedAssignmentIdForProblem(
-      options.userId,
-      options.problemId
-    );
-    if (assignmentId) return assignmentId;
+  return (await resolvePlatformModeAssignmentContextDetails(options)).assignmentId;
+}
+
+export async function resolvePlatformModeAssignmentContextDetails(
+  options: PlatformModeContextOptions = {}
+): Promise<ResolvedPlatformModeAssignmentContext> {
+  const providedAssignmentId = options.assignmentId ?? null;
+  if (!options.userId) {
+    return { assignmentId: providedAssignmentId, mismatch: null };
   }
-  return findActiveRestrictedAssignmentIdForUser(options.userId);
+
+  let problemScopeMismatch: ResolvedPlatformModeAssignmentContext["mismatch"] = null;
+
+  if (options.problemId) {
+    const [accessibleProvidedAssignmentId, restrictedProblemAssignmentId] = await Promise.all([
+      providedAssignmentId
+        ? findAccessibleAssignmentIdForProblem(
+            options.userId,
+            options.problemId,
+            providedAssignmentId
+          )
+        : Promise.resolve<string | null>(null),
+      findRestrictedAssignmentIdForProblem(options.userId, options.problemId),
+    ]);
+
+    if (restrictedProblemAssignmentId) {
+      return {
+        assignmentId: restrictedProblemAssignmentId,
+        mismatch:
+          providedAssignmentId && providedAssignmentId !== restrictedProblemAssignmentId
+            ? {
+                providedAssignmentId,
+                resolvedAssignmentId: restrictedProblemAssignmentId,
+                reason: "problem_scope",
+              }
+            : null,
+      };
+    }
+
+    if (providedAssignmentId && !accessibleProvidedAssignmentId) {
+      problemScopeMismatch = {
+        providedAssignmentId,
+        resolvedAssignmentId: providedAssignmentId,
+        reason: "problem_scope",
+      };
+    }
+  }
+
+  const activeRestrictedAssignmentId = await findActiveRestrictedAssignmentIdForUser(options.userId);
+  if (activeRestrictedAssignmentId) {
+    return {
+      assignmentId: activeRestrictedAssignmentId,
+      mismatch:
+        providedAssignmentId && providedAssignmentId !== activeRestrictedAssignmentId
+          ? {
+              providedAssignmentId,
+              resolvedAssignmentId: activeRestrictedAssignmentId,
+              reason: "active_restricted_scope",
+            }
+          : null,
+    };
+  }
+
+  return {
+    assignmentId: problemScopeMismatch ? null : providedAssignmentId,
+    mismatch: problemScopeMismatch,
+  };
 }
 
 export async function getEffectivePlatformMode(

@@ -35,4 +35,20 @@ describe("assignment-context requirement implementation", () => {
     expect(sidebarSource).toContain('capsSet.has("submissions.view_all")');
     expect(sidebarSource).toContain('capsSet.has("assignments.view_status")');
   });
+
+  it("routes AI and compiler context through the server-derived assignment helper", () => {
+    const platformContextSource = read("src/lib/platform-mode-context.ts");
+    const chatRouteSource = read("src/app/api/v1/plugins/chat-widget/chat/route.ts");
+    const compilerRouteSource = read("src/app/api/v1/compiler/run/route.ts");
+
+    expect(platformContextSource).toContain(
+      "export async function resolvePlatformModeAssignmentContextDetails("
+    );
+    expect(chatRouteSource).toContain("resolvePlatformModeAssignmentContextDetails");
+    expect(chatRouteSource).toContain('error: "assignmentContextMismatch"');
+    expect(chatRouteSource).toContain("assignmentId: assignmentContext.assignmentId");
+
+    expect(compilerRouteSource).toContain("resolvePlatformModeAssignmentContextDetails");
+    expect(compilerRouteSource).toContain("assignmentId: assignmentContext.assignmentId");
+  });
 });

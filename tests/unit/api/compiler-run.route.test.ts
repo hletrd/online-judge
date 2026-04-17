@@ -6,11 +6,15 @@ const {
   consumeApiRateLimitMock,
   resolveCapabilitiesMock,
   getEffectivePlatformModeMock,
+  resolvePlatformModeAssignmentContextDetailsMock,
+  loggerWarnMock,
 } = vi.hoisted(() => ({
   getApiUserMock: vi.fn(),
   consumeApiRateLimitMock: vi.fn(),
   resolveCapabilitiesMock: vi.fn(),
   getEffectivePlatformModeMock: vi.fn(),
+  resolvePlatformModeAssignmentContextDetailsMock: vi.fn(),
+  loggerWarnMock: vi.fn(),
 }));
 
 vi.mock("@/lib/api/auth", () => ({
@@ -40,6 +44,8 @@ vi.mock("@/lib/capabilities", () => ({
 
 vi.mock("@/lib/platform-mode-context", () => ({
   getEffectivePlatformMode: getEffectivePlatformModeMock,
+  resolvePlatformModeAssignmentContextDetails:
+    resolvePlatformModeAssignmentContextDetailsMock,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -63,6 +69,15 @@ vi.mock("@/lib/compiler/execute", () => ({
   executeCompilerRun: vi.fn(),
 }));
 
+vi.mock("@/lib/logger", () => ({
+  logger: {
+    warn: loggerWarnMock,
+    error: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
 describe("POST /api/v1/compiler/run", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -78,6 +93,10 @@ describe("POST /api/v1/compiler/run", () => {
     consumeApiRateLimitMock.mockResolvedValue(null);
     resolveCapabilitiesMock.mockResolvedValue(new Set(["content.submit_solutions"]));
     getEffectivePlatformModeMock.mockResolvedValue("homework");
+    resolvePlatformModeAssignmentContextDetailsMock.mockImplementation(
+      ({ assignmentId }: { assignmentId?: string | null }) =>
+        Promise.resolve({ assignmentId: assignmentId ?? null, mismatch: null })
+    );
   });
 
   it("blocks standalone compiler in recruiting mode even when the global site is permissive", async () => {
@@ -105,5 +124,45 @@ describe("POST /api/v1/compiler/run", () => {
       userId: "student-1",
       assignmentId: "assignment-1",
     });
+  });
+
+  it("derives compiler mode from the server-resolved assignment context instead of the forged request value", async () => {
+    resolvePlatformModeAssignmentContextDetailsMock.mockResolvedValue({
+      assignmentId: "assignment-2",
+      mismatch: {
+        providedAssignmentId: "assignment-1",
+        resolvedAssignmentId: "assignment-2",
+        reason: "active_restricted_scope",
+      },
+    });
+    getEffectivePlatformModeMock.mockResolvedValue("exam");
+    const { POST } = await import("@/app/api/v1/compiler/run/route");
+
+    const request = new NextRequest("http://localhost:3000/api/v1/compiler/run", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: JSON.stringify({
+        language: "python",
+        sourceCode: "print(1)",
+        stdin: "",
+        assignmentId: "assignment-1",
+      }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: "compilerDisabledInCurrentMode" });
+    expect(resolvePlatformModeAssignmentContextDetailsMock).toHaveBeenCalledWith({
+      userId: "student-1",
+      assignmentId: "assignment-1",
+    });
+    expect(getEffectivePlatformModeMock).toHaveBeenCalledWith({
+      userId: "student-1",
+      assignmentId: "assignment-2",
+    });
+    expect(loggerWarnMock).toHaveBeenCalledOnce();
   });
 });

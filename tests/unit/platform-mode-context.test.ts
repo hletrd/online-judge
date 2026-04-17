@@ -61,4 +61,82 @@ describe("platform mode context derivation", () => {
       })
     ).resolves.toBe("contest");
   });
+
+  it("prefers the server-derived restricted problem assignment over a forged assignmentId", async () => {
+    rawQueryOneMock.mockImplementation((query: string, params: Record<string, string>) => {
+      if (query.includes("WHERE a.id = @assignmentId")) {
+        return Promise.resolve(null);
+      }
+      if (params.problemId === "problem-1") {
+        return Promise.resolve({ assignmentId: "assignment-1" });
+      }
+      return Promise.resolve(null);
+    });
+
+    const { resolvePlatformModeAssignmentContextDetails } = await import(
+      "@/lib/platform-mode-context"
+    );
+    await expect(
+      resolvePlatformModeAssignmentContextDetails({
+        userId: "student-1",
+        assignmentId: "forged-assignment",
+        problemId: "problem-1",
+      })
+    ).resolves.toEqual({
+      assignmentId: "assignment-1",
+      mismatch: {
+        providedAssignmentId: "forged-assignment",
+        resolvedAssignmentId: "assignment-1",
+        reason: "problem_scope",
+      },
+    });
+  });
+
+  it("drops an invalid problem-scoped assignmentId instead of trusting it", async () => {
+    rawQueryOneMock.mockImplementation((query: string) => {
+      if (query.includes("WHERE a.id = @assignmentId")) {
+        return Promise.resolve(null);
+      }
+      return Promise.resolve(null);
+    });
+
+    const { resolvePlatformModeAssignmentContextDetails } = await import(
+      "@/lib/platform-mode-context"
+    );
+    await expect(
+      resolvePlatformModeAssignmentContextDetails({
+        userId: "student-1",
+        assignmentId: "forged-assignment",
+        problemId: "problem-1",
+      })
+    ).resolves.toEqual({
+      assignmentId: null,
+      mismatch: {
+        providedAssignmentId: "forged-assignment",
+        resolvedAssignmentId: "forged-assignment",
+        reason: "problem_scope",
+      },
+    });
+  });
+
+  it("prefers an active restricted assignment over a forged compiler assignmentId", async () => {
+    rawQueryOneMock.mockResolvedValue({ assignmentId: "assignment-2" });
+
+    const { resolvePlatformModeAssignmentContextDetails } = await import(
+      "@/lib/platform-mode-context"
+    );
+    await expect(
+      resolvePlatformModeAssignmentContextDetails({
+        userId: "student-1",
+        assignmentId: "forged-assignment",
+      })
+    ).resolves.toEqual({
+      assignmentId: "assignment-2",
+      mismatch: {
+        providedAssignmentId: "forged-assignment",
+        resolvedAssignmentId: "assignment-2",
+        reason: "active_restricted_scope",
+      },
+    });
+  });
 });

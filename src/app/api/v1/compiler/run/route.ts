@@ -9,7 +9,11 @@ import { isJudgeLanguage, getJudgeLanguageDefinition, serializeJudgeCommand } fr
 import { executeCompilerRun } from "@/lib/compiler/execute";
 import { resolveCapabilities } from "@/lib/capabilities";
 import { getPlatformModePolicy } from "@/lib/platform-mode";
-import { getEffectivePlatformMode } from "@/lib/platform-mode-context";
+import {
+  getEffectivePlatformMode,
+  resolvePlatformModeAssignmentContextDetails,
+} from "@/lib/platform-mode-context";
+import { logger } from "@/lib/logger";
 
 const MAX_SOURCE_CODE_LENGTH = 64 * 1024; // 64KB
 const MAX_STDIN_LENGTH = 64 * 1024; // 64KB
@@ -26,9 +30,25 @@ export const POST = createApiHandler({
   rateLimit: "compiler:run",
   schema: compilerRunSchema,
   handler: async (_req, { user, body }) => {
-    const platformMode = await getEffectivePlatformMode({
+    const assignmentContext = await resolvePlatformModeAssignmentContextDetails({
       userId: user.id,
       assignmentId: body.assignmentId ?? null,
+    });
+    if (assignmentContext.mismatch) {
+      logger.warn(
+        {
+          userId: user.id,
+          providedAssignmentId: assignmentContext.mismatch.providedAssignmentId,
+          resolvedAssignmentId: assignmentContext.mismatch.resolvedAssignmentId,
+          reason: assignmentContext.mismatch.reason,
+        },
+        "Compiler run derived a more restrictive assignment context than the client provided"
+      );
+    }
+
+    const platformMode = await getEffectivePlatformMode({
+      userId: user.id,
+      assignmentId: assignmentContext.assignmentId,
     });
     if (getPlatformModePolicy(platformMode).restrictStandaloneCompiler) {
       return apiError("compilerDisabledInCurrentMode", 403);
