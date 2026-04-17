@@ -706,6 +706,8 @@
     "availableStudentsLabel": "Available users",
     "availableStudentsPlaceholder": "Select a user",
     "availableStudentsEmpty": "All active users are already enrolled in this group.",
+    "availableStudentsSearchPlaceholder": "Filter available users...",
+    "availableStudentsSearchEmpty": "No available users match the current filter.",
     "addMember": "Add member",
     "removeMember": "Remove",
     "removeMemberDialogTitle": "Remove this member from the group?",

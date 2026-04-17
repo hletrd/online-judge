@@ -706,6 +706,8 @@
     "availableStudentsLabel": "등록 가능한 사용자",
     "availableStudentsPlaceholder": "사용자를 선택하세요",
     "availableStudentsEmpty": "활성 상태인 사용자가 모두 이 그룹에 등록되어 있습니다.",
+    "availableStudentsSearchPlaceholder": "등록 가능한 사용자를 필터링하세요",
+    "availableStudentsSearchEmpty": "현재 필터와 일치하는 등록 가능한 사용자가 없습니다.",
     "addMember": "구성원 추가",
     "removeMember": "제거",
     "removeMemberDialogTitle": "이 구성원을 그룹에서 제거할까요?",

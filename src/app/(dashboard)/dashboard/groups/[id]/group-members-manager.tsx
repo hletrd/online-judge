@@ -8,6 +8,7 @@ import { DestructiveActionDialog } from "@/components/destructive-action-dialog"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -61,10 +62,20 @@ export function GroupMembersManager({
   const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState(availableStudents[0]?.id ?? "");
   const [selectedBulkIds, setSelectedBulkIds] = useState<Set<string>>(new Set());
+  const [studentSearchQuery, setStudentSearchQuery] = useState("");
   const [currentMembers, setCurrentMembers] = useState(sortMembers(members));
   const [currentAvailableStudents, setCurrentAvailableStudents] = useState(
     sortStudents(availableStudents)
   );
+  const normalizedStudentSearch = studentSearchQuery.trim().toLowerCase();
+  const filteredAvailableStudents = normalizedStudentSearch
+    ? currentAvailableStudents.filter((student) =>
+        [student.name, student.username, student.className ?? ""]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedStudentSearch)
+      )
+    : currentAvailableStudents;
   const selectedStudent = currentAvailableStudents.find((student) => student.id === selectedStudentId);
   const selectedStudentLabel = selectedStudent
     ? `${selectedStudent.name} (@${selectedStudent.username})`
@@ -241,10 +252,19 @@ export function GroupMembersManager({
   }
 
   function toggleSelectAll() {
-    if (selectedBulkIds.size === currentAvailableStudents.length) {
-      setSelectedBulkIds(new Set());
+    const filteredIds = filteredAvailableStudents.map((s) => s.id);
+    const allFilteredSelected = filteredIds.every((id) => selectedBulkIds.has(id));
+
+    if (allFilteredSelected) {
+      setSelectedBulkIds((prev) => {
+        const next = new Set(prev);
+        for (const id of filteredIds) {
+          next.delete(id);
+        }
+        return next;
+      });
     } else {
-      setSelectedBulkIds(new Set(currentAvailableStudents.map((s) => s.id)));
+      setSelectedBulkIds((prev) => new Set([...prev, ...filteredIds]));
     }
   }
 
@@ -261,13 +281,20 @@ export function GroupMembersManager({
         {canManage && (
           <div className="flex w-full flex-col gap-2 md:w-auto md:min-w-80">
             <Label htmlFor={`group-member-select-${groupId}`}>{t("availableStudentsLabel")}</Label>
+            <Input
+              id={`group-member-search-${groupId}`}
+              value={studentSearchQuery}
+              onChange={(event) => setStudentSearchQuery(event.target.value)}
+              placeholder={t("availableStudentsSearchPlaceholder")}
+              className="max-w-full"
+            />
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Select value={selectedStudentId} onValueChange={(value) => setSelectedStudentId(value ?? "")}>
                 <SelectTrigger id={`group-member-select-${groupId}`} className="min-w-48 max-w-72 sm:max-w-none h-8">
                   <SelectValue placeholder={t("availableStudentsPlaceholder")}>{selectedStudentLabel}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {currentAvailableStudents.map((student) => (
+                  {filteredAvailableStudents.map((student) => (
                     <SelectItem key={student.id} value={student.id} label={`${student.name} (@${student.username})`}>
                       {student.name} (@{student.username})
                     </SelectItem>
@@ -280,6 +307,9 @@ export function GroupMembersManager({
             </div>
             {currentAvailableStudents.length === 0 && (
               <p className="text-sm text-muted-foreground">{t("availableStudentsEmpty")}</p>
+            )}
+            {currentAvailableStudents.length > 0 && filteredAvailableStudents.length === 0 && (
+              <p className="text-sm text-muted-foreground">{t("availableStudentsSearchEmpty")}</p>
             )}
           </div>
         )}
@@ -294,9 +324,10 @@ export function GroupMembersManager({
                   variant="outline"
                   size="sm"
                   onClick={toggleSelectAll}
-                  disabled={isBulkAdding}
+                  disabled={isBulkAdding || filteredAvailableStudents.length === 0}
                 >
-                  {selectedBulkIds.size === currentAvailableStudents.length
+                  {filteredAvailableStudents.length > 0 &&
+                  filteredAvailableStudents.every((student) => selectedBulkIds.has(student.id))
                     ? tCommon("cancel")
                     : tCommon("done")}
                 </Button>
@@ -314,7 +345,7 @@ export function GroupMembersManager({
             </div>
             <div className="max-h-48 overflow-y-auto">
               <div className="flex flex-col gap-1">
-                {currentAvailableStudents.map((student) => (
+                {filteredAvailableStudents.map((student) => (
                   <label
                     key={student.id}
                     className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted"
