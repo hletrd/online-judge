@@ -122,12 +122,9 @@ export async function getContestsForUser(
 ): Promise<ContestEntry[]> {
   const caps = await resolveCapabilities(role);
   const canViewAllContests =
-    role === "super_admin" ||
-    role === "admin" ||
     caps.has("groups.view_all") ||
     caps.has("submissions.view_all");
   const canManageOwnedContests =
-    role === "instructor" ||
     caps.has("assignments.view_status") ||
     caps.has("contests.view_analytics") ||
     caps.has("anti_cheat.view_events") ||

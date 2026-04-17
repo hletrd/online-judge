@@ -145,6 +145,19 @@ describe("getContestsForUser", () => {
       { userId: "custom-1" }
     );
   });
+
+  it("uses the global contest query for a custom role with groups.view_all", async () => {
+    const { rawQueryAll } = await import("@/lib/db/queries");
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.view_all"]));
+    vi.mocked(rawQueryAll).mockResolvedValue([]);
+
+    await getContestsForUser("custom-1", "custom_manager");
+
+    expect(rawQueryAll).toHaveBeenCalledWith(
+      expect.not.stringContaining("group_instructors gi"),
+      { userId: "custom-1" }
+    );
+  });
 });
 
 describe("normalizeSource", () => {

@@ -36,6 +36,9 @@ describe("custom-role page/runtime implementation guards", () => {
     expect(contestsHelper).toContain("resolveCapabilities");
     expect(contestsHelper).toContain("group_instructors gi");
     expect(contestsHelper).toContain("groups.view_all");
+    expect(contestsHelper).not.toContain('role === "admin"');
+    expect(contestsHelper).not.toContain('role === "super_admin"');
+    expect(contestsHelper).not.toContain('role === "instructor"');
   });
 
   it("keeps problem and dashboard affordances capability-aware for custom roles", () => {
