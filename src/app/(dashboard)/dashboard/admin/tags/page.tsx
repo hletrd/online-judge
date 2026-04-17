@@ -17,6 +17,8 @@ import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { redirect } from "next/navigation";
 import { formatDateInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
+import { EmptyState } from "@/components/empty-state";
+import { TagIcon } from "lucide-react";
 import AddTagDialog from "./add-tag-dialog";
 import EditTagDialog from "./edit-tag-dialog";
 import DeleteTagDialog from "./delete-tag-dialog";
@@ -103,8 +105,8 @@ export default async function TagManagementPage() {
                 ))}
                 {tagList.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
-                      {t("noTags")}
+                    <TableCell colSpan={4}>
+                      <EmptyState icon={TagIcon} title={t("noTags")} />
                     </TableCell>
                   </TableRow>
                 )}

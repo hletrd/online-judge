@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, desc, eq, inArray, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, like, lte, or, sql, type SQL } from "drizzle-orm";
 import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { EmptyState } from "@/components/empty-state";
+import { InboxIcon } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { FilterSelect } from "@/components/filter-select";
@@ -29,7 +31,20 @@ const RESOURCE_FILTER_VALUES = [
   "submission",
 ] as const;
 
+const ACTION_FILTER_VALUES = [
+  "all",
+  "create",
+  "update",
+  "delete",
+  "login",
+  "submit",
+  "judge",
+  "import",
+  "export",
+] as const;
+
 type ResourceFilter = (typeof RESOURCE_FILTER_VALUES)[number];
+type ActionFilter = (typeof ACTION_FILTER_VALUES)[number];
 
 function normalizePage(value?: string) {
   const parsed = Number(value ?? "1");
@@ -49,6 +64,20 @@ function normalizeResourceFilter(value?: string): ResourceFilter {
   return "all";
 }
 
+function normalizeActionFilter(value?: string): ActionFilter {
+  if (ACTION_FILTER_VALUES.includes(value as ActionFilter)) {
+    return value as ActionFilter;
+  }
+
+  return "all";
+}
+
+function normalizeDateFilter(value?: string): string {
+  if (typeof value !== "string" || !value) return "";
+  const parsed = new Date(value);
+  return isNaN(parsed.getTime()) ? "" : value;
+}
+
 function normalizeSearchQuery(value?: string) {
   if (typeof value !== "string") {
     return "";
@@ -61,7 +90,7 @@ function escapeLikePattern(value: string) {
   return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
 }
 
-function buildPageHref(page: number, resourceType: ResourceFilter, search: string) {
+function buildPageHref(page: number, resourceType: ResourceFilter, search: string, actionType: ActionFilter, dateFrom: string, dateTo: string) {
   const params = new URLSearchParams();
 
   if (page > 1) {
@@ -74,6 +103,18 @@ function buildPageHref(page: number, resourceType: ResourceFilter, search: strin
 
   if (search) {
     params.set("search", search);
+  }
+
+  if (actionType !== "all") {
+    params.set("action", actionType);
+  }
+
+  if (dateFrom) {
+    params.set("dateFrom", dateFrom);
+  }
+
+  if (dateTo) {
+    params.set("dateTo", dateTo);
   }
 
   const queryString = params.toString();
@@ -435,8 +476,8 @@ export default async function AdminAuditLogsPage({
               ))}
               {visibleEvents.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    {t("noEvents")}
+                  <TableCell colSpan={6}>
+                    <EmptyState icon={InboxIcon} title={t("noEvents")} />
                   </TableCell>
                 </TableRow>
               )}
