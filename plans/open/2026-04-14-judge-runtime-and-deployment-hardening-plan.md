@@ -29,6 +29,7 @@ Repair the current judge/worker/deploy invariants so long-running jobs, split-ho
 - runner shell-command validation now rejects common shell metacharacter chains and is covered by Rust unit tests
 - worker config now rejects traversal-style seccomp/dead-letter override paths and covers that helper with Rust unit tests
 - runner/docker-admin endpoints now support a separate `RUNNER_AUTH_TOKEN` so deployments can split them from `JUDGE_AUTH_TOKEN`
+- Node compiler-run delegation now prefers `RUNNER_AUTH_TOKEN` for `/run` requests, and the local fallback rejects the same shell metacharacter chains that the Rust runner already blocks
 
 ## Workstream A — Claim freshness and worker-capacity accounting
 **Targets**

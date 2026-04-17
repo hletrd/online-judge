@@ -30,6 +30,14 @@ describe("compiler execute implementation", () => {
     expect(readme).toContain("ENABLE_COMPILER_LOCAL_FALLBACK=1");
   });
 
+  it("keeps runner auth and shell-command validation aligned with the Rust worker", () => {
+    const source = readFileSync(join(process.cwd(), "src/lib/compiler/execute.ts"), "utf8");
+
+    expect(source).toContain("const RUNNER_AUTH_TOKEN");
+    expect(source).toContain("process.env.RUNNER_AUTH_TOKEN || process.env.JUDGE_AUTH_TOKEN");
+    expect(source).toContain("&&|\\|\\||;|\\||>|<|\\n|\\r");
+  });
+
   it("caches seccomp profile availability instead of checking synchronously on every run", () => {
     const source = readFileSync(join(process.cwd(), "src/lib/compiler/execute.ts"), "utf8");
 

@@ -54,7 +54,7 @@ const WORKSPACE_BASE = process.env.COMPILER_WORKSPACE_DIR || tmpdir();
  * Set ENABLE_COMPILER_LOCAL_FALLBACK=1 to opt back in for development.
  */
 const COMPILER_RUNNER_URL = process.env.COMPILER_RUNNER_URL || "";
-const JUDGE_AUTH_TOKEN = process.env.JUDGE_AUTH_TOKEN || "";
+const RUNNER_AUTH_TOKEN = process.env.RUNNER_AUTH_TOKEN || process.env.JUDGE_AUTH_TOKEN || "";
 const LEGACY_DISABLE_LOCAL_FALLBACK = /^(1|true|yes|on)$/i.test(
   process.env.DISABLE_COMPILER_LOCAL_FALLBACK || "",
 );
@@ -112,8 +112,9 @@ interface DockerRunResult {
 function validateShellCommand(cmd: string): boolean {
   if (!cmd || cmd.length > 10_000) return false;
   if (cmd.includes("\0")) return false;
-  // Block command/process substitution and eval
-  const dangerous = /`|\$\(|\$\{|[<>]\(|\beval\b/;
+  // Match the Rust runner's restrictions so the local fallback doesn't accept
+  // shell chains that the dedicated runner correctly rejects.
+  const dangerous = /`|\$\(|\$\{|[<>]\(|&&|\|\||;|\||>|<|\n|\r|\beval\b/;
   return !dangerous.test(cmd);
 }
 
@@ -383,7 +384,7 @@ async function runDocker(opts: {
 async function tryRustRunner(
   options: CompilerRunOptions,
 ): Promise<CompilerRunResult | null> {
-  if (!COMPILER_RUNNER_URL || !JUDGE_AUTH_TOKEN) return null;
+  if (!COMPILER_RUNNER_URL || !RUNNER_AUTH_TOKEN) return null;
 
   try {
     const settings = getConfiguredSettings();
@@ -393,7 +394,7 @@ async function tryRustRunner(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${JUDGE_AUTH_TOKEN}`,
+        Authorization: `Bearer ${RUNNER_AUTH_TOKEN}`,
       },
       body: JSON.stringify({
         sourceCode: options.sourceCode,
