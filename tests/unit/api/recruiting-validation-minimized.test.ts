@@ -8,6 +8,8 @@ describe("recruiting validation route — minimized response", () => {
   it("does not include status: invitation.status in any response", () => {
     const source = readFileSync(join(process.cwd(), ROUTE_PATH), "utf8");
     expect(source).not.toContain("status: invitation.status");
+    expect(source).not.toContain("candidateName:");
+    expect(source).not.toContain("userId:");
   });
 
   it("does not leak expiresAt in any response", () => {

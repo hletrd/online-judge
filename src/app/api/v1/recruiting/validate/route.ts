@@ -4,6 +4,7 @@ import { recruitingInvitations, assignments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { consumeInMemoryRateLimit } from "@/lib/security/in-memory-rate-limit";
 import { extractClientIp } from "@/lib/security/ip";
+import { validateRecruitingTokenSchema } from "@/lib/validators/recruiting-invitations";
 
 export async function POST(req: Request) {
   // Rate limit: 10 attempts per minute per IP
@@ -19,21 +20,19 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => null);
-  if (!body?.token || typeof body.token !== "string") {
+  const parsed = validateRecruitingTokenSchema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json({ error: "invalidToken" }, { status: 400 });
   }
 
   const [invitation] = await db
     .select({
-      id: recruitingInvitations.id,
       status: recruitingInvitations.status,
-      candidateName: recruitingInvitations.candidateName,
       expiresAt: recruitingInvitations.expiresAt,
       assignmentId: recruitingInvitations.assignmentId,
-      userId: recruitingInvitations.userId,
     })
     .from(recruitingInvitations)
-    .where(eq(recruitingInvitations.token, body.token))
+    .where(eq(recruitingInvitations.token, parsed.data.token))
     .limit(1);
 
   // Return a uniform invalid response for any failure case to avoid

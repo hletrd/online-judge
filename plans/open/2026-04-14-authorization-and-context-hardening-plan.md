@@ -40,6 +40,7 @@ Close the remaining object-level authorization gaps and remove the last places w
   - contest discovery now derives global-vs-owned contest visibility from capabilities instead of built-in admin/instructor role-name checks
   - group-resource management no longer grants cross-group control through plain `assignments.edit`; owner/co-instructor scope or a true global capability is now required
   - group assignment-authoring problem pickers now use `problems.view_all` for true global visibility instead of built-in admin-only branching
+  - recruiting token validation now parses through the shared schema and only loads the minimal invitation fields needed to answer `{ valid: true|false }`
 
 ## Workstream A — Problem-set visibility and scope isolation
 **Targets**

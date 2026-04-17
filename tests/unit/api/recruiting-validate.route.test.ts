@@ -76,4 +76,53 @@ describe("POST /api/v1/recruiting/validate", () => {
       },
     });
   });
+
+  it("returns the same { valid: false } shape for revoked invitations", async () => {
+    dbSelectMock.mockReset();
+    dbSelectMock
+      .mockReturnValueOnce({
+        from: () => ({
+          where: () => ({
+            limit: () =>
+              Promise.resolve([
+                {
+                  status: "revoked",
+                  expiresAt: new Date("2026-05-01T00:00:00.000Z"),
+                  assignmentId: "assignment-1",
+                },
+              ]),
+          }),
+        }),
+      });
+
+    const { POST } = await import("@/app/api/v1/recruiting/validate/route");
+    const response = await POST(
+      new NextRequest("http://localhost/api/v1/recruiting/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: "token-1" }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: {
+        valid: false,
+      },
+    });
+  });
+
+  it("returns 400 for structurally invalid token payloads", async () => {
+    const { POST } = await import("@/app/api/v1/recruiting/validate/route");
+    const response = await POST(
+      new NextRequest("http://localhost/api/v1/recruiting/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: "" }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "invalidToken" });
+  });
 });
