@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { computeDiff, toSideBySide, type DiffLine, type SideBySidePair } from "@/lib/diff";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
