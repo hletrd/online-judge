@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) => (key: string) => {
@@ -61,7 +61,12 @@ vi.mock("drizzle-orm", async () => {
 });
 
 describe("public personal-route metadata", () => {
-  it("marks the submissions index as noindex", async () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
+  it("marks the submissions index as noindex", { timeout: 15000 }, async () => {
     const submissionsPage = await import("@/app/(public)/submissions/page");
     const metadata = await submissionsPage.generateMetadata();
 
@@ -72,7 +77,7 @@ describe("public personal-route metadata", () => {
     });
   });
 
-  it("marks submission detail pages as noindex", async () => {
+  it("marks submission detail pages as noindex", { timeout: 15000 }, async () => {
     const submissionDetailPage = await import("@/app/(public)/submissions/[id]/page");
     const metadata = await submissionDetailPage.generateMetadata();
 

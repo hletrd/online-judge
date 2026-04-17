@@ -42,6 +42,18 @@ export const homePageLocaleSchema = z.object({
 
 export type HomePageLocaleContent = z.infer<typeof homePageLocaleSchema>;
 
+const footerLinkSchema = z.object({
+  label: z.string().max(100),
+  url: z.string().max(2048),
+});
+
+export const footerLocaleSchema = z.object({
+  copyrightText: z.string().max(200).optional(),
+  links: z.array(footerLinkSchema).max(20).optional(),
+});
+
+export type FooterLocaleContent = z.infer<typeof footerLocaleSchema>;
+
 export const systemSettingsSchema = z.object({
   siteTitle: z.preprocess(
     normalizeOptionalString,
@@ -126,9 +138,9 @@ export const systemSettingsSchema = z.object({
     .max(50, "tooManyAllowedHosts")
     .optional(),
   // Home Page Content (locale-keyed overrides)
-  homePageContent: z.any().nullable().optional(),
+  homePageContent: z.record(z.string(), homePageLocaleSchema).nullable().optional(),
   // Footer Content (locale-keyed overrides)
-  footerContent: z.any().nullable().optional(),
+  footerContent: z.record(z.string(), footerLocaleSchema).nullable().optional(),
 });
 
 export type SystemSettingsInput = z.infer<typeof systemSettingsSchema>;

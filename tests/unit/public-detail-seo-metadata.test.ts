@@ -108,6 +108,7 @@ vi.mock("@/lib/discussions/permissions", () => ({
 
 describe("public detail page SEO metadata", () => {
   beforeEach(() => {
+    vi.resetModules();
     vi.clearAllMocks();
     getResolvedSystemSettingsMock.mockResolvedValue({
       siteTitle: "JudgeKit",
