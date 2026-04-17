@@ -22,6 +22,12 @@ describe("CI suite completeness", () => {
     expect(ci).toContain("npm run test:integration");
   });
 
+  it("runs dependency vulnerability scans for Node and Rust", () => {
+    expect(ci).toContain("npm audit --audit-level=high");
+    expect(ci).toContain("cargo install cargo-audit --locked");
+    expect(ci).toContain("cargo audit");
+  });
+
   it("all three test steps belong to the quality job", () => {
     // The quality job block runs from the `quality:` key to the next top-level job key.
     // Top-level job keys in GitHub Actions YAML are indented with exactly 2 spaces.
@@ -33,5 +39,7 @@ describe("CI suite completeness", () => {
     expect(qualityBlock).toContain("npm run test:unit:coverage");
     expect(qualityBlock).toContain("npm run test:component");
     expect(qualityBlock).toContain("npm run test:integration");
+    expect(qualityBlock).toContain("npm audit --audit-level=high");
+    expect(qualityBlock).toContain("cargo audit");
   });
 });
