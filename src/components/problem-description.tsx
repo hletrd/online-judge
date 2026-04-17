@@ -1,8 +1,11 @@
 import { Children, isValidElement, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
+import rehypeKatex from "rehype-katex";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import "katex/dist/katex.min.css";
 import { CopyCodeButton } from "@/components/code/copy-code-button";
 import { getProblemCodeThemeStyle } from "@/lib/code/problem-code-themes";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
@@ -53,8 +56,8 @@ export function ProblemDescription({
   return (
     <div className={cn("problem-description", className)} style={themeStyle}>
       <ReactMarkdown
-        rehypePlugins={[rehypeHighlight]}
-        remarkPlugins={[remarkGfm, remarkBreaks]}
+        rehypePlugins={[rehypeHighlight, rehypeKatex]}
+        remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
         skipHtml
         components={{
           a: ({ ...props }) => (
