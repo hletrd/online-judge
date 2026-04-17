@@ -37,6 +37,8 @@ describe("lecture stats wiring implementation", () => {
     expect(overview).toContain("if (assignmentId) {");
     expect(overview).toContain('params.set("assignmentId", assignmentId);');
     expect(overview).toContain('includeSummary: "1"');
+    expect(overview).toContain('import { apiFetch } from "@/lib/api/client"');
+    expect(overview).not.toContain("await fetch(`/api/v1/submissions?");
     expect(submissionsRoute).toContain('const includeSummary = searchParams.get("includeSummary") === "1";');
     expect(submissionsRoute).toContain("const assignmentFilter = assignmentId ? eq(submissions.assignmentId, assignmentId) : undefined;");
     expect(submissionsRoute).toContain("groupBy(submissions.status)");

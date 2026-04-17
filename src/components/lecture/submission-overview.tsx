@@ -6,6 +6,7 @@ import { X, CheckCircle2, XCircle, AlertTriangle, Clock3, RefreshCw } from "luci
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
+import { apiFetch } from "@/lib/api/client";
 
 type SubmissionStats = {
   total: number;
@@ -71,9 +72,7 @@ export function SubmissionOverview({
       if (assignmentId) {
         params.set("assignmentId", assignmentId);
       }
-      const res = await fetch(`/api/v1/submissions?${params.toString()}`, {
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-      });
+      const res = await apiFetch(`/api/v1/submissions?${params.toString()}`);
       if (!res.ok) return;
       const json = await res.json();
       const submissions: Array<{ id: string; status: string; language: string; submittedAt: string; userId: string }> =
