@@ -26,7 +26,7 @@ pub struct Config {
     /// Defaults to true. Configurable via `RUNNER_ENABLED` env var.
     pub runner_enabled: bool,
     /// Host address for the runner HTTP server.
-    /// Defaults to `0.0.0.0`. Configurable via `RUNNER_HOST` env var.
+    /// Defaults to `127.0.0.1`. Configurable via `RUNNER_HOST` env var.
     pub runner_host: String,
     /// Port for the runner HTTP server.
     /// Defaults to 3001. Configurable via `RUNNER_PORT` env var.
@@ -206,7 +206,7 @@ impl Config {
             Err(_) => true,
         };
 
-        let runner_host = env::var("RUNNER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+        let runner_host = env::var("RUNNER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
 
         let runner_port: u16 = match env::var("RUNNER_PORT") {
             Ok(val) => val

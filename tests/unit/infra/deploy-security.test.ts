@@ -92,13 +92,18 @@ describe("deployment security defaults", () => {
   it("keeps upload persistence and docker-proxy capabilities aligned with the admin deployment contract", () => {
     const production = read("docker-compose.production.yml");
     const workerCompose = read("docker-compose.worker.yml");
+    const workerDocs = read("docs/judge-workers.md");
 
     expect(production).toContain("judgekit-app-data:/app/data");
     expect(production).toContain("judgekit-app-data:");
     expect(production).toContain("- IMAGES=1");
     expect(production).toContain("- BUILD=1");
-    expect(workerCompose).toContain("- IMAGES=1");
-    expect(workerCompose).toContain("- BUILD=1");
+    expect(workerCompose).toContain("WORKER_DOCKER_PROXY_IMAGES:-0");
+    expect(workerCompose).toContain("WORKER_DOCKER_PROXY_BUILD:-0");
+    expect(workerCompose).toContain("WORKER_DOCKER_PROXY_POST:-0");
+    expect(workerCompose).toContain("WORKER_DOCKER_PROXY_DELETE:-0");
     expect(workerCompose).toContain('127.0.0.1:${RUNNER_PORT:-3001}:3001');
+    expect(workerDocs).toContain("WORKER_DOCKER_PROXY_IMAGES=1");
+    expect(workerDocs).toContain("runner now defaults to `127.0.0.1`");
   });
 });

@@ -21,10 +21,10 @@ services:
     restart: unless-stopped
     environment:
       - CONTAINERS=1
-      - IMAGES=1
-      - BUILD=1
-      - POST=1
-      - DELETE=1
+      - IMAGES=${WORKER_DOCKER_PROXY_IMAGES:-0}
+      - BUILD=${WORKER_DOCKER_PROXY_BUILD:-0}
+      - POST=${WORKER_DOCKER_PROXY_POST:-0}
+      - DELETE=${WORKER_DOCKER_PROXY_DELETE:-0}
       - LOG_LEVEL=warning
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro

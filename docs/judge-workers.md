@@ -87,6 +87,15 @@ docker compose -f docker-compose.worker.yml up -d
 
 The dedicated worker compose file includes a local `docker-proxy` sidecar. The judge worker reaches Docker through `DOCKER_HOST=tcp://docker-proxy:2375` instead of mounting `/var/run/docker.sock` directly, which narrows direct daemon exposure. The worker container itself no longer needs `SYS_ADMIN` or AppArmor overrides to do that.
 
+By default, the dedicated worker compose file now enables only container lifecycle access on the proxy. If you intentionally want the remote worker to expose image/build management through the runner, opt in with:
+
+```bash
+WORKER_DOCKER_PROXY_IMAGES=1 \
+WORKER_DOCKER_PROXY_BUILD=1 \
+WORKER_DOCKER_PROXY_POST=1 \
+WORKER_DOCKER_PROXY_DELETE=1
+```
+
 It also publishes the Rust runner on host loopback:
 
 ```text
@@ -96,6 +105,8 @@ It also publishes the Rust runner on host loopback:
 That loopback port is useful for split app/worker topologies such as
 the app host reaching the worker runner through an SSH tunnel / host bridge
 path instead of running a co-located judge worker.
+
+Outside containerized deployments, the Rust runner now defaults to `127.0.0.1` unless `RUNNER_HOST` is set explicitly. The Docker compose files still set `RUNNER_HOST=0.0.0.0` where container port publishing is required.
 
 > **Important:** this horizontal scaling guidance applies to **judge workers**.
 > The main Next.js app now supports two realtime modes for the routes that need

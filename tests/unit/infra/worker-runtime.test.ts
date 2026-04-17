@@ -29,6 +29,15 @@ describe("judge worker runtime loops", () => {
     expect(source).toContain("running in unregistered mode because JUDGE_ALLOW_UNREGISTERED_MODE is enabled");
   });
 
+  it("defaults the runner host to loopback unless deployments opt into a wider bind", () => {
+    const configSource = readFileSync(join(process.cwd(), "judge-worker-rs/src/config.rs"), "utf8");
+    const workerCompose = readFileSync(join(process.cwd(), "docker-compose.worker.yml"), "utf8");
+
+    expect(configSource).toContain('Defaults to `127.0.0.1`');
+    expect(configSource).toContain('"127.0.0.1".to_string()');
+    expect(workerCompose).toContain("RUNNER_HOST=0.0.0.0");
+  });
+
   it("exposes internal docker-management endpoints through the runner router", () => {
     const runner = readFileSync(join(process.cwd(), "judge-worker-rs/src/runner.rs"), "utf8");
 
