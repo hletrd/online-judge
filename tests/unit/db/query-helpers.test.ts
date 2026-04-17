@@ -50,6 +50,17 @@ describe("Query Helpers", () => {
     );
   });
 
+  it("rawQueryOne fails closed when a named SQL parameter is missing", async () => {
+    const mockQuery = vi.fn();
+    vi.doMock("@/lib/db/index", () => ({ pool: { query: mockQuery } }));
+    const { rawQueryOne } = await import("@/lib/db/queries");
+
+    await expect(rawQueryOne("SELECT * FROM users WHERE id = @id AND role = @role", { id: "1" })).rejects.toThrow(
+      "Missing SQL parameter: role"
+    );
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
   it("rawQueryOne throws when the PostgreSQL pool is missing", async () => {
     vi.doMock("@/lib/db/index", () => ({ pool: null }));
     const { rawQueryOne } = await import("@/lib/db/queries");
@@ -64,6 +75,17 @@ describe("Query Helpers", () => {
     const result = await rawQueryAll("SELECT * FROM users WHERE team_id = @teamId", { teamId: "t-1" });
     expect(mockQuery).toHaveBeenCalledWith("SELECT * FROM users WHERE team_id = $1", ["t-1"]);
     expect(result).toEqual(rows);
+  });
+
+  it("rawQueryAll fails closed when a named SQL parameter is missing", async () => {
+    const mockQuery = vi.fn();
+    vi.doMock("@/lib/db/index", () => ({ pool: { query: mockQuery } }));
+    const { rawQueryAll } = await import("@/lib/db/queries");
+
+    await expect(rawQueryAll("SELECT * FROM users WHERE team_id = @teamId AND role = @role", { teamId: "t-1" })).rejects.toThrow(
+      "Missing SQL parameter: role"
+    );
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   it("getActiveDialect always returns postgresql", async () => {
