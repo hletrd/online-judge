@@ -14,5 +14,9 @@ describe("groups page implementation", () => {
     expect(source).toContain("const canEditGroups =");
     expect(source).toContain("<EditGroupDialog");
     expect(source).toContain('caps.has("groups.edit")');
+    expect(source).toContain('name="search"');
+    expect(source).toContain('t("searchLabel")');
+    expect(source).toContain('t("searchPlaceholder")');
+    expect(source).toContain('params.set("search", searchQuery)');
   });
 });

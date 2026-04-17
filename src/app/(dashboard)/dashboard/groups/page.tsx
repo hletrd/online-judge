@@ -23,6 +23,15 @@ import EditGroupDialog from "./edit-group-dialog";
 import { PaginationControls } from "@/components/pagination-controls";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
+import { Input } from "@/components/ui/input";
+
+function normalizeSearchQuery(value?: string) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim().slice(0, 100);
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("groups");
@@ -32,7 +41,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function GroupsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string }>;
+  searchParams?: Promise<{ page?: string; search?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -40,6 +49,8 @@ export default async function GroupsPage({
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const PAGE_SIZE = 25;
   const currentPage = Math.max(1, Math.floor(Number(resolvedSearchParams?.page ?? "1")) || 1);
+  const searchQuery = normalizeSearchQuery(resolvedSearchParams?.search);
+  const normalizedSearch = searchQuery.toLowerCase();
 
   const t = await getTranslations("groups");
   const tCommon = await getTranslations("common");
@@ -149,11 +160,20 @@ export default async function GroupsPage({
     myGroups = Array.from(visibleGroups.values());
   }
 
-  const totalCount = myGroups.length;
+  const filteredGroups = normalizedSearch
+    ? myGroups.filter((group) => {
+        const haystack = [group.name, group.description ?? "", group.instructor?.name ?? ""]
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(normalizedSearch);
+      })
+    : myGroups;
+
+  const totalCount = filteredGroups.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const clampedPage = Math.min(currentPage, totalPages);
   const offset = (clampedPage - 1) * PAGE_SIZE;
-  const pagedGroups = myGroups.slice(offset, offset + PAGE_SIZE);
+  const pagedGroups = filteredGroups.slice(offset, offset + PAGE_SIZE);
 
   return (
     <div>
@@ -163,6 +183,30 @@ export default async function GroupsPage({
           <CreateGroupDialog />
         )}
       </div>
+      <Card className="mb-4">
+        <CardContent>
+          <form className="flex flex-col gap-4 md:flex-row md:items-end" method="get">
+            <div className="flex-1 space-y-1.5">
+              <label className="block text-sm font-medium" htmlFor="groups-search">
+                {t("searchLabel")}
+              </label>
+              <Input
+                id="groups-search"
+                name="search"
+                type="search"
+                defaultValue={searchQuery}
+                placeholder={t("searchPlaceholder")}
+              />
+            </div>
+            <div className="flex gap-2 items-end">
+              <Button type="submit">{tCommon("search")}</Button>
+              <Link href="/dashboard/groups">
+                <Button type="button" variant="outline">{t("resetSearch")}</Button>
+              </Link>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
       <Card>
         <CardContent>
           <div className="overflow-x-auto">
@@ -225,7 +269,13 @@ export default async function GroupsPage({
       <PaginationControls
         currentPage={clampedPage}
         totalPages={totalPages}
-        buildHref={(page) => page > 1 ? `/dashboard/groups?page=${page}` : "/dashboard/groups"}
+        buildHref={(page) => {
+          const params = new URLSearchParams();
+          if (page > 1) params.set("page", String(page));
+          if (searchQuery) params.set("search", searchQuery);
+          const qs = params.toString();
+          return qs ? `/dashboard/groups?${qs}` : "/dashboard/groups";
+        }}
       />
     </div>
   );
