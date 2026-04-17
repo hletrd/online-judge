@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { formatSubmissionIdPrefix } from "@/lib/submissions/id";
+import { formatSubmissionIdPrefix } from "@/lib/submissions/format";
 import { db } from "@/lib/db";
 import {
   assignmentProblems,

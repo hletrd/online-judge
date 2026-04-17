@@ -23,6 +23,7 @@ Restore trust in the full repository quality gates by reconciling stale tests, s
   - setup/deploy language inventory presets now stay aligned with the source-referenced `judge-pypy` image set
   - the public playground run route once again matches the guest-playground contract expected by its tests and public docs
   - metadata and playground contract suites were hardened against full-suite import timing/cache drift so they reflect the same contract under whole-suite execution
+  - supporting helper cleanups (role bootstrap sync, deprecated DB/submission utility removals, and safer client state helpers) were verified against their contract tests
 - still open:
   - full-suite contract drift across built-in role tests, judge auth mocks, backup docs tests, and brittle source-grep inventories
 

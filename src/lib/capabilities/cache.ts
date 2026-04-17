@@ -29,7 +29,8 @@ async function loadRolesFromDb(): Promise<void> {
   const cache = new Map<string, { capabilities: Set<string>; level: number }>();
 
   for (const role of allRoles) {
-    const caps = (role.capabilities as string[] | null) ?? [];
+    const rawCaps = (role.capabilities as unknown[] | null) ?? [];
+    const caps = Array.isArray(rawCaps) ? rawCaps.filter((c): c is string => typeof c === "string") : [];
     cache.set(role.name, {
       capabilities: new Set(caps),
       level: role.level,

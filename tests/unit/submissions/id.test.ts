@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   generateSubmissionId,
-  formatSubmissionIdPrefix,
   SUBMISSION_ID_LENGTH,
   SUBMISSION_ID_VISIBLE_PREFIX_LENGTH,
 } from "@/lib/submissions/id";
+import { formatSubmissionIdPrefix } from "@/lib/submissions/format";
 
 describe("generateSubmissionId", () => {
   it("returns a hex string of SUBMISSION_ID_LENGTH characters", () => {

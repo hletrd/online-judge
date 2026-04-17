@@ -51,19 +51,9 @@ describe("DB Config", () => {
   });
 
   describe("convenience helpers", () => {
-    it("isSqlite always returns false", async () => {
-      const { isSqlite } = await import("@/lib/db/config");
-      expect(isSqlite()).toBe(false);
-    });
-
     it("isPostgresql always returns true", async () => {
       const { isPostgresql } = await import("@/lib/db/config");
       expect(isPostgresql()).toBe(true);
-    });
-
-    it("isMysql always returns false", async () => {
-      const { isMysql } = await import("@/lib/db/config");
-      expect(isMysql()).toBe(false);
     });
   });
 });

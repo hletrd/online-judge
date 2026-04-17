@@ -13,24 +13,10 @@ export function getDialect(): DbDialect {
 }
 
 /**
- * @deprecated Always returns false. Will be removed.
- */
-export function isSqlite(): boolean {
-  return false;
-}
-
-/**
  * Returns true — PostgreSQL is the only supported dialect.
  */
 export function isPostgresql(): boolean {
   return true;
-}
-
-/**
- * @deprecated Always returns false. Will be removed.
- */
-export function isMysql(): boolean {
-  return false;
 }
 
 export type ConnectionConfig = { dialect: "postgresql"; url: string };
@@ -44,11 +30,4 @@ export function getConnectionConfig(): ConnectionConfig {
     throw new Error("DATABASE_URL is required");
   }
   return { dialect: "postgresql", url };
-}
-
-/**
- * Reset cached dialect (for testing only).
- */
-export function _resetDialectCache(): void {
-  // no-op
 }

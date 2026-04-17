@@ -25,6 +25,14 @@ export async function ensureBuiltinRoles(): Promise<void> {
       capabilities: DEFAULT_ROLE_CAPABILITIES[roleName] as string[],
       createdAt: new Date(),
       updatedAt: new Date(),
-    }).onConflictDoNothing({ target: roles.name });
+    }).onConflictDoUpdate({
+      target: roles.name,
+      set: {
+        capabilities: DEFAULT_ROLE_CAPABILITIES[roleName] as string[],
+        level: DEFAULT_ROLE_LEVELS[roleName],
+        displayName: DEFAULT_ROLE_DISPLAY_NAMES[roleName],
+        updatedAt: new Date(),
+      },
+    });
   }
 }

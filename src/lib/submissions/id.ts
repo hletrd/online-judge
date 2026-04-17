@@ -16,6 +16,3 @@ export function generateSubmissionId(): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export function formatSubmissionIdPrefix(id: string): string {
-  return id.slice(0, SUBMISSION_ID_VISIBLE_PREFIX_LENGTH);
-}

@@ -1,14 +1,21 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 
 type ShortcutMap = Record<string, () => void>;
 
 /**
  * Register global keyboard shortcuts. Active only when no input/textarea
- * or CodeMirror editor has focus.
+ * or CodeMirror editor has focus. Uses a ref to avoid re-attaching the
+ * listener on every render when the shortcuts object changes identity.
  */
 export function useKeyboardShortcuts(shortcuts: ShortcutMap) {
+  const shortcutsRef = useRef(shortcuts);
+
+  useEffect(() => {
+    shortcutsRef.current = shortcuts;
+  }, [shortcuts]);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       // Ignore when typing in inputs, textareas, or CodeMirror editors
@@ -22,13 +29,13 @@ export function useKeyboardShortcuts(shortcuts: ShortcutMap) {
       // Ignore when modifier keys are pressed (except for our own shortcuts)
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-      const handler = shortcuts[e.key];
+      const handler = shortcutsRef.current[e.key];
       if (handler) {
         e.preventDefault();
         handler();
       }
     },
-    [shortcuts]
+    []
   );
 
   useEffect(() => {

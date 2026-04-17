@@ -12,5 +12,5 @@ const EVENT_TIERS: Record<string, AntiCheatReviewTier> = {
 };
 
 export function getAntiCheatReviewTier(eventType: string): AntiCheatReviewTier {
-  return EVENT_TIERS[eventType] ?? "signal";
+  return EVENT_TIERS[eventType] ?? "context";
 }

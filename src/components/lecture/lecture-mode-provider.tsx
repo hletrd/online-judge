@@ -23,26 +23,26 @@ type LectureModeContextValue = {
 
 const LectureModeContext = createContext<LectureModeContextValue | null>(null);
 
+// Module-level default with stable identity to prevent infinite re-renders
+// when destructured into useEffect/useCallback dependency arrays.
+const DEFAULT_LECTURE_MODE: LectureModeContextValue = {
+  active: false,
+  toggle: () => {},
+  fontScale: "1.5" as LectureFontScale,
+  setFontScale: () => {},
+  colorScheme: "dark" as LectureColorScheme,
+  setColorScheme: () => {},
+  panelLayout: "split" as const,
+  setPanelLayout: () => {},
+  statsAvailable: false,
+  setStatsAvailable: () => {},
+  showStats: false,
+  toggleStats: () => {},
+  closeStats: () => {},
+};
+
 export function useLectureMode() {
-  const ctx = useContext(LectureModeContext);
-  if (!ctx) {
-    return {
-      active: false,
-      toggle: () => {},
-      fontScale: "1.5" as LectureFontScale,
-      setFontScale: () => {},
-      colorScheme: "dark" as LectureColorScheme,
-      setColorScheme: () => {},
-      panelLayout: "split" as const,
-      setPanelLayout: () => {},
-      statsAvailable: false,
-      setStatsAvailable: () => {},
-      showStats: false,
-      toggleStats: () => {},
-      closeStats: () => {},
-    };
-  }
-  return ctx;
+  return useContext(LectureModeContext) ?? DEFAULT_LECTURE_MODE;
 }
 
 export function LectureModeProvider({
