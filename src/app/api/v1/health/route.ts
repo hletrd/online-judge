@@ -1,9 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
+import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Rate limit this endpoint to prevent abuse (e.g. from load balancer polls)
+  const rateLimitResponse = await consumeApiRateLimit(request, "health:check");
+  if (rateLimitResponse) return rateLimitResponse;
+
   const start = Date.now();
   let dbStatus: "ok" | "error" = "ok";
 
@@ -27,6 +32,9 @@ export async function GET() {
       uptime: Math.floor(process.uptime()),
       responseTimeMs: Date.now() - start,
     },
-    { status: status === "ok" ? 200 : 503 }
+    {
+      status: status === "ok" ? 200 : 503,
+      headers: { "Cache-Control": "no-store" },
+    }
   );
 }
