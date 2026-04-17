@@ -1939,6 +1939,7 @@
       "codePlaceholder": "Enter access code",
       "noCode": "No access code set",
       "generateSuccess": "Access code generated",
+      "copyFailed": "Could not copy to your clipboard",
       "revokeSuccess": "Access code revoked",
       "revokeConfirm": "Are you sure you want to revoke the access code? Existing participants will keep their access.",
       "joining": "Joining...",

@@ -1,4 +1,4 @@
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AntiCheatMonitor } from "@/components/exam/anti-cheat-monitor";
 
@@ -29,10 +29,17 @@ describe("AntiCheatMonitor", () => {
     vi.useRealTimers();
   });
 
-  it("sends an immediate heartbeat and does not suppress a different event right after it", async () => {
+  it("waits for privacy acknowledgement before sending heartbeat and monitoring events", async () => {
     render(<AntiCheatMonitor assignmentId="assignment-1" enabled />);
 
     await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(apiFetchMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "privacyNoticeAccept" }));
       await Promise.resolve();
     });
 
@@ -44,7 +51,7 @@ describe("AntiCheatMonitor", () => {
           eventType: "heartbeat",
           details: undefined,
         }),
-      }),
+      })
     );
 
     await act(async () => {
@@ -60,7 +67,7 @@ describe("AntiCheatMonitor", () => {
           eventType: "blur",
           details: undefined,
         }),
-      }),
+      })
     );
   });
 });

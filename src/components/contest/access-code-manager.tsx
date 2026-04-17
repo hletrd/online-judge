@@ -40,13 +40,8 @@ export function AccessCodeManager({ assignmentId }: AccessCodeManagerProps) {
     try {
       await navigator.clipboard.writeText(value);
     } catch {
-      // Fallback for insecure contexts
-      const textarea = document.createElement("textarea");
-      textarea.value = value;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
+      toast.error(t("copyFailed"));
+      return;
     }
 
     setCopied(true);

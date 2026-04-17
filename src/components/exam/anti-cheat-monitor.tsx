@@ -122,12 +122,12 @@ export function AntiCheatMonitor({
   );
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || showPrivacyNotice) return;
     void flushPendingEvents();
-  }, [enabled, flushPendingEvents]);
+  }, [enabled, flushPendingEvents, showPrivacyNotice]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || showPrivacyNotice) return;
 
     void reportEvent("heartbeat");
 
@@ -138,10 +138,10 @@ export function AntiCheatMonitor({
     }, HEARTBEAT_INTERVAL_MS);
 
     return () => clearInterval(heartbeatTimer);
-  }, [enabled, reportEvent]);
+  }, [enabled, reportEvent, showPrivacyNotice]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || showPrivacyNotice) return;
 
     function handleVisibilityChange() {
       if (document.hidden) {
@@ -220,7 +220,7 @@ export function AntiCheatMonitor({
         retryTimerRef.current = null;
       }
     };
-  }, [enabled, flushPendingEvents, reportEvent, resolvedWarningMessage]);
+  }, [enabled, flushPendingEvents, reportEvent, resolvedWarningMessage, showPrivacyNotice]);
 
   if (!enabled) return null;
 

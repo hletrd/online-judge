@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccessCodeManager } from "@/components/contest/access-code-manager";
@@ -15,6 +15,7 @@ const translations: Record<string, string> = {
   shareLink: "Share Link",
   noCode: "No access code set",
   generateSuccess: "Access code generated",
+  copyFailed: "Could not copy to your clipboard",
   revokeSuccess: "Access code revoked",
   revokeConfirm: "Are you sure?",
   error: "Error",
@@ -44,10 +45,6 @@ describe("AccessCodeManager", () => {
       value: {
         writeText: vi.fn().mockResolvedValue(undefined),
       },
-    });
-    Object.defineProperty(document, "execCommand", {
-      configurable: true,
-      value: vi.fn(() => true),
     });
   });
 
@@ -81,5 +78,29 @@ describe("AccessCodeManager", () => {
       expect(screen.getByRole("button", { name: /Copied!/i })).toBeInTheDocument();
       expect(toast.success).toHaveBeenCalledWith("Access code generated");
     });
+  });
+
+  it("shows an explicit error when clipboard access fails instead of using execCommand fallback", async () => {
+    apiFetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: { accessCode: "ABCD1234" } }),
+    });
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: vi.fn().mockRejectedValue(new Error("clipboard denied")),
+      },
+    });
+
+    render(<AccessCodeManager assignmentId="assignment-1" />);
+
+    expect(await screen.findByText("ABCD1234")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy Code" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Could not copy to your clipboard");
+    });
+    expect(screen.getByRole("button", { name: "Copy Code" })).toBeInTheDocument();
   });
 });

@@ -147,4 +147,24 @@ describe("CountdownTimer", () => {
 
     expect(screen.getByTestId("badge")).toHaveTextContent("00:59:00");
   });
+
+  it("aborts the server time-sync request if it hangs too long", () => {
+    const fetchMock = vi.fn(() => new Promise(() => {}));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const deadline = Date.now() + 3600 * 1000;
+    render(<CountdownTimer deadline={deadline} />);
+
+    const signal = (
+      fetchMock.mock.calls[0] as unknown as [string, RequestInit | undefined] | undefined
+    )?.[1]?.signal as AbortSignal | undefined;
+    expect(signal).toBeDefined();
+    expect(signal?.aborted).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(signal?.aborted).toBe(true);
+  });
 });

@@ -70,8 +70,10 @@ export function CountdownTimer({ deadline, label, onExpired }: CountdownTimerPro
   }, [expired]);
 
   useEffect(() => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
     const requestStart = Date.now();
-    fetch("/api/v1/time")
+    fetch("/api/v1/time", { signal: controller.signal })
       .then((res) => res.json())
       .then((data: { timestamp: number }) => {
         const roundTrip = Date.now() - requestStart;
@@ -79,7 +81,8 @@ export function CountdownTimer({ deadline, label, onExpired }: CountdownTimerPro
       })
       .catch(() => {
         // keep offset at 0 on error
-      });
+      })
+      .finally(() => clearTimeout(timeout));
   }, []);
 
   useEffect(() => {
