@@ -269,7 +269,6 @@ function SidebarTrigger({
       {...props}
     >
       <PanelLeftIcon aria-hidden="true" />
-      <span className="sr-only">{tCommon("toggleSidebar")}</span>
     </Button>
   )
 }
@@ -283,7 +282,6 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
       data-sidebar="rail"
       data-slot="sidebar-rail"
       aria-label={tCommon("toggleSidebar")}
-      tabIndex={-1}
       onClick={toggleSidebar}
       title={tCommon("toggleSidebar")}
       className={cn(

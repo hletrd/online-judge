@@ -39,7 +39,7 @@ export function CopyCodeButton({ value }: { value: string }) {
       type="button"
       variant="ghost"
       size="icon"
-      className="absolute right-1.5 top-1.5 z-10 h-7 w-7 rounded-md opacity-30 transition-opacity hover:opacity-80"
+      className="absolute right-1.5 top-1.5 z-10 h-7 w-7 rounded-md opacity-50 transition-opacity hover:opacity-80"
       onClick={handleCopy}
       aria-label={copied ? t("copied") : t("copyCode")}
     >

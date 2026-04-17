@@ -67,7 +67,7 @@ export function ThemeToggle({ className, dbTheme }: { className?: string; dbThem
   }, [mounted, dbTheme, theme, setTheme]);
 
   if (!mounted) {
-    return <Skeleton className={cn("h-9 w-9 rounded-md", className)} />;
+    return <Skeleton className={cn("h-9 w-9 rounded-md", className)} role="status" aria-busy="true" aria-label={t("theme")} />;
   }
 
   return (

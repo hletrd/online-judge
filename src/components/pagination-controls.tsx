@@ -15,10 +15,10 @@ interface PaginationControlsProps {
   buildHref: (page: number, pageSize: number) => string;
 }
 
-const navBtn = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground size-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-const navBtnDisabled = "inline-flex items-center justify-center rounded-md text-sm font-medium size-8 pointer-events-none opacity-40";
-const pageBtn = "inline-flex items-center justify-center rounded-md font-medium transition-colors hover:bg-accent hover:text-accent-foreground size-8 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-const pageBtnActive = "inline-flex items-center justify-center rounded-md font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 size-8 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const navBtn = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground size-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const navBtnDisabled = "inline-flex items-center justify-center rounded-md text-sm font-medium size-10 pointer-events-none opacity-40";
+const pageBtn = "inline-flex items-center justify-center rounded-md font-medium transition-colors hover:bg-accent hover:text-accent-foreground size-10 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const pageBtnActive = "inline-flex items-center justify-center rounded-md font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 size-10 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function getPageNumbers(current: number, total: number): (number | "...")[] {
   if (total <= 7) {

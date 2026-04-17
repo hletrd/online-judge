@@ -39,6 +39,7 @@ export function ControlNav({ siteTitle, sectionLabel, userLabel, items }: Contro
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "block rounded-lg px-3 py-3 transition-colors hover:bg-slate-900",
                   active ? "bg-slate-900 ring-1 ring-slate-800" : ""

@@ -32,13 +32,14 @@ export function WorkspaceNav({ siteTitle, sectionLabel, userLabel, items }: Work
           <p className="mt-2 text-lg font-semibold tracking-tight">{siteTitle}</p>
           <p className="mt-1 text-sm text-muted-foreground">{userLabel}</p>
         </div>
-        <nav className="space-y-1">
+        <nav aria-label="Workspace navigation" className="space-y-1">
           {items.map((item) => {
             const active = isActivePath(pathname, item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "block rounded-lg border px-3 py-3 transition-colors hover:bg-accent hover:text-accent-foreground",
                   active ? "border-primary/30 bg-background shadow-sm" : "border-transparent"
