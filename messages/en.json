@@ -1060,7 +1060,22 @@
       "filters": {
         "searchLabel": "Search",
         "searchPlaceholder": "Action, resource, actor, or summary",
-        "resourceTypeLabel": "Resource type"
+        "resourceTypeLabel": "Resource type",
+        "actionTypeLabel": "Action type",
+        "allActions": "All actions",
+        "dateFromLabel": "From date",
+        "dateToLabel": "To date"
+      },
+      "actionTypes": {
+        "all": "All actions",
+        "create": "Create",
+        "update": "Update",
+        "delete": "Delete",
+        "login": "Login",
+        "submit": "Submit",
+        "judge": "Judge",
+        "import": "Import",
+        "export": "Export"
       },
       "detailSections": {
         "payload": "Payload",
