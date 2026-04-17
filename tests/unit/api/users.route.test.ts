@@ -797,6 +797,21 @@ describe("PATCH /api/v1/users/[id]", () => {
     expect(res.status).toBe(200);
   });
 
+  it("rejects editing a user at or above the actor privilege level", async () => {
+    getApiUserMock.mockResolvedValue(adminUser);
+    dbSelectMock.mockReturnValue(makeSelectChain([{ ...safeUser, role: "admin" }]));
+
+    const req = makeRequest(
+      "http://localhost:3000/api/v1/users/student-id",
+      { method: "PATCH", body: { name: "Updated Name" } }
+    );
+    const res = await PATCH(req, makeCtx("student-id"));
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body.error).toBe("unauthorized");
+  });
+
   it("admin can update username", async () => {
     getApiUserMock.mockResolvedValue(adminUser);
     isUsernameTakenMock.mockResolvedValue(false);
@@ -1060,6 +1075,23 @@ describe("DELETE /api/v1/users/[id]", () => {
     const res = await DELETE(req, makeCtx("other-id"));
 
     expect(res.status).toBe(403);
+  });
+
+  it("rejects deleting a user at or above the actor privilege level", async () => {
+    getApiUserMock.mockResolvedValue(adminUser);
+    dbSelectMock.mockReturnValue(
+      makeSelectChain([{ ...safeUser, id: "peer-admin-id", role: "admin", username: "peer-admin" }])
+    );
+
+    const req = makeRequest(
+      "http://localhost:3000/api/v1/users/peer-admin-id",
+      { method: "DELETE" }
+    );
+    const res = await DELETE(req, makeCtx("peer-admin-id"));
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body.error).toBe("unauthorized");
   });
 
   it("returns 404 when user not found", async () => {

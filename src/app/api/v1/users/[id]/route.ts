@@ -100,6 +100,28 @@ async function findSafeUserById(userId: string) {
 
 type ExistingUserRecord = NonNullable<Awaited<ReturnType<typeof findSafeUserById>>>;
 
+async function ensureActorCanManageTarget(
+  actor: AuthUser,
+  found: ExistingUserRecord,
+  isAdminActor: boolean,
+  isSelf: boolean
+) {
+  if (!isAdminActor || isSelf) {
+    return null;
+  }
+
+  const [actorLevel, targetLevel] = await Promise.all([
+    getRoleLevel(actor.role),
+    getRoleLevel(found.role),
+  ]);
+
+  if (targetLevel >= actorLevel) {
+    return apiError("unauthorized", 403);
+  }
+
+  return null;
+}
+
 function applyBasicFieldUpdates(
   updates: UserUpdates,
   body: Record<string, unknown>,
@@ -287,6 +309,14 @@ export const PATCH = createApiHandler({
       return apiError("emailChangeNotAllowed", 403);
     }
 
+    const targetManagementError = await ensureActorCanManageTarget(
+      user,
+      found,
+      isAdminActor,
+      isSelf
+    );
+    if (targetManagementError) return targetManagementError;
+
     const updates: Record<string, unknown> = {};
     const { normalizedEmail } = applyBasicFieldUpdates(updates, body, isAdminActor);
 
@@ -392,6 +422,14 @@ export const DELETE = createApiHandler({
     if (found.role === "super_admin") {
       return apiError(permanent ? "cannotDeleteSuperAdmin" : "cannotDeactivateSuperAdmin", 403);
     }
+
+    const targetManagementError = await ensureActorCanManageTarget(
+      user,
+      found,
+      true,
+      false
+    );
+    if (targetManagementError) return targetManagementError;
 
     if (permanent) {
       // Require username confirmation for permanent deletion

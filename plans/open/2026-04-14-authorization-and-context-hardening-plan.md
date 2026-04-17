@@ -36,6 +36,7 @@ Close the remaining object-level authorization gaps and remove the last places w
   - assignment submission visibility and generic permission helpers now rely on capabilities instead of built-in admin/instructor role-name checks, while still honoring group-instructor scope for roles that only have `assignments.view_status`
   - server-side user-management actions now require `users.*` capabilities directly and compare actor/target role levels instead of relying on built-in instructor shortcuts
   - admin user add/edit dialogs and the bulk-create API now rely on capability-shaped role options instead of built-in instructor/admin fallback branches
+  - `/api/v1/users/[id]` mutations now enforce actor-vs-target role-level checks for patch/delete flows instead of relying only on super-admin special cases
 
 ## Workstream A — Problem-set visibility and scope isolation
 **Targets**
