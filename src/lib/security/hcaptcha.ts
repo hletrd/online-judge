@@ -1,3 +1,5 @@
+import { decrypt } from "@/lib/security/encryption";
+
 const HCAPTCHA_VERIFY_URL = "https://api.hcaptcha.com/siteverify";
 
 function envSiteKey() {
@@ -16,7 +18,9 @@ async function getDbHcaptchaFields() {
   if (!settings) return { siteKey: null, secret: null };
   return {
     siteKey: (settings as Record<string, unknown>).hcaptchaSiteKey as string | null ?? null,
-    secret: (settings as Record<string, unknown>).hcaptchaSecret as string | null ?? null,
+    secret: ((settings as Record<string, unknown>).hcaptchaSecret as string | null != null)
+      ? decrypt((settings as Record<string, unknown>).hcaptchaSecret as string)
+      : null,
   };
 }
 

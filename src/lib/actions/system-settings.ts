@@ -9,6 +9,7 @@ import { systemSettings } from "@/lib/db/schema";
 import { DEFAULT_PLATFORM_MODE, GLOBAL_SETTINGS_ID } from "@/lib/system-settings";
 import { invalidateSettingsCache } from "@/lib/system-settings-config";
 import { isHcaptchaConfigured } from "@/lib/security/hcaptcha";
+import { encrypt } from "@/lib/security/encryption";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
 import {
@@ -145,7 +146,7 @@ export async function updateSystemSettings(
     baseValues.hcaptchaSiteKey = hcaptchaSiteKey ?? null;
   }
   if (hasOwnInput("hcaptchaSecret")) {
-    baseValues.hcaptchaSecret = hcaptchaSecret ?? null;
+    baseValues.hcaptchaSecret = hcaptchaSecret ? encrypt(hcaptchaSecret) : null;
   }
   if (hasOwnInput("defaultLanguage")) {
     baseValues.defaultLanguage = defaultLanguage ?? null;
