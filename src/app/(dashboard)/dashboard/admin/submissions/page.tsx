@@ -12,7 +12,7 @@ import {
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { db } from "@/lib/db";
 import { submissions, users, problems } from "@/lib/db/schema";
-import { count, desc, eq, like, or } from "drizzle-orm";
+import { count, desc, eq, like, or, asc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { redirect } from "next/navigation";
@@ -26,6 +26,9 @@ import { formatSubmissionIdPrefix } from "@/lib/submissions/format";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
 import { SubmissionListAutoRefresh } from "@/components/submission-list-auto-refresh";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
+import { EmptyState } from "@/components/empty-state";
+import { formatScore } from "@/lib/formatting";
+import { InboxIcon } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("admin.submissions");
@@ -37,7 +40,7 @@ const PAGE_SIZE = 50;
 export default async function AdminSubmissionsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; search?: string }>;
+  searchParams?: Promise<{ page?: string; search?: string; sort?: string; dir?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -47,6 +50,10 @@ export default async function AdminSubmissionsPage({
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const currentPage = Math.max(1, Number(resolvedSearchParams?.page ?? "1") || 1);
   const searchQuery = (resolvedSearchParams?.search ?? "").trim().slice(0, 200);
+  const sortColumn = resolvedSearchParams?.sort ?? "submittedAt";
+  const sortDir = resolvedSearchParams?.dir === "asc" ? "asc" : "desc";
+  const validSortColumns = new Set(["submittedAt", "score", "status", "language"]);
+  const effectiveSort = validSortColumns.has(sortColumn) ? sortColumn : "submittedAt";
   const t = await getTranslations("admin.submissions");
   const tCommon = await getTranslations("common");
   const tSubmissions = await getTranslations("submissions");
@@ -99,7 +106,16 @@ export default async function AdminSubmissionsPage({
     .leftJoin(users, eq(submissions.userId, users.id))
     .leftJoin(problems, eq(submissions.problemId, problems.id))
     .where(searchWhereClause)
-    .orderBy(desc(submissions.submittedAt))
+    .orderBy(
+      ...(effectiveSort === "score"
+        ? [sortDir === "asc" ? asc(submissions.score) : desc(submissions.score)]
+        : effectiveSort === "status"
+          ? [sortDir === "asc" ? asc(submissions.status) : desc(submissions.status)]
+          : effectiveSort === "language"
+            ? [sortDir === "asc" ? asc(submissions.language) : desc(submissions.language)]
+            : [sortDir === "asc" ? asc(submissions.submittedAt) : desc(submissions.submittedAt)]
+      )
+    )
     .limit(PAGE_SIZE)
     .offset(clampedOffset);
 
@@ -113,9 +129,38 @@ export default async function AdminSubmissionsPage({
     const params = new URLSearchParams();
     if (page > 1) params.set("page", String(page));
     if (searchQuery) params.set("search", searchQuery);
+    if (effectiveSort !== "submittedAt") params.set("sort", effectiveSort);
+    if (sortDir === "asc") params.set("dir", "asc");
     const qs = params.toString();
     return qs ? `/dashboard/admin/submissions?${qs}` : "/dashboard/admin/submissions";
   };
+
+  function getSortHref(column: string) {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set("search", searchQuery);
+    if (column === effectiveSort) {
+      params.set("dir", sortDir === "desc" ? "asc" : "desc");
+    } else {
+      params.set("sort", column);
+      params.set("dir", "desc");
+    }
+    const qs = params.toString();
+    return qs ? `/dashboard/admin/submissions?${qs}` : "/dashboard/admin/submissions";
+  }
+
+  function SortableHeader({ column, label }: { column: string; label: string }) {
+    const isActive = column === effectiveSort;
+    return (
+      <TableHead>
+        <Link href={getSortHref(column)} className="inline-flex items-center gap-1 hover:text-foreground">
+          {label}
+          {isActive && (
+            <span className="text-xs">{sortDir === "asc" ? "↑" : "↓"}</span>
+          )}
+        </Link>
+      </TableHead>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -163,10 +208,10 @@ export default async function AdminSubmissionsPage({
                 <TableHead>{t("table.id")}</TableHead>
                 <TableHead>{t("table.user")}</TableHead>
                 <TableHead>{t("table.problem")}</TableHead>
-                <TableHead>{t("table.language")}</TableHead>
-                <TableHead>{t("table.status")}</TableHead>
-                <TableHead>{t("table.score")}</TableHead>
-                <TableHead>{t("table.submittedAt")}</TableHead>
+                <SortableHeader column="language" label={t("table.language")} />
+                <SortableHeader column="status" label={t("table.status")} />
+                <SortableHeader column="score" label={t("table.score")} />
+                <SortableHeader column="submittedAt" label={t("table.submittedAt")} />
                 <TableHead>{tCommon("action")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -207,7 +252,7 @@ export default async function AdminSubmissionsPage({
                       score={sub.score}
                     />
                   </TableCell>
-                  <TableCell>{sub.score !== null ? sub.score : "-"}</TableCell>
+                  <TableCell>{formatScore(sub.score)}</TableCell>
                   <TableCell>
                     {sub.submittedAt
                       ? formatDateTimeInTimeZone(sub.submittedAt, locale, timeZone)
@@ -222,8 +267,8 @@ export default async function AdminSubmissionsPage({
               ))}
               {visibleSubmissions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
-                    {t("noSubmissions")}
+                  <TableCell colSpan={8}>
+                    <EmptyState icon={InboxIcon} title={t("noSubmissions")} />
                   </TableCell>
                 </TableRow>
               )}
