@@ -670,6 +670,8 @@
     "myGroups": "My Groups",
     "searchLabel": "Search groups",
     "searchPlaceholder": "Search by group name, description, or instructor...",
+    "stateFilterLabel": "State",
+    "allStates": "All groups",
     "resetSearch": "Reset",
     "create": "Create Group",
     "createDialogTitle": "Create Group",

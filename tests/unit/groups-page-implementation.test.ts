@@ -18,5 +18,10 @@ describe("groups page implementation", () => {
     expect(source).toContain('t("searchLabel")');
     expect(source).toContain('t("searchPlaceholder")');
     expect(source).toContain('params.set("search", searchQuery)');
+    expect(source).toContain("GROUP_STATE_FILTER_VALUES");
+    expect(source).toContain('name="state"');
+    expect(source).toContain('t("stateFilterLabel")');
+    expect(source).toContain('t("allStates")');
+    expect(source).toContain('if (stateFilter !== "all") params.set("state", stateFilter)');
   });
 });

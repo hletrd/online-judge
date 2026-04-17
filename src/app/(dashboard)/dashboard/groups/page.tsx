@@ -24,6 +24,11 @@ import { PaginationControls } from "@/components/pagination-controls";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { Input } from "@/components/ui/input";
+import { FilterSelect } from "@/components/filter-select";
+
+const GROUP_STATE_FILTER_VALUES = ["all", "active", "archived"] as const;
+
+type GroupStateFilter = (typeof GROUP_STATE_FILTER_VALUES)[number];
 
 function normalizeSearchQuery(value?: string) {
   if (typeof value !== "string") {
@@ -31,6 +36,12 @@ function normalizeSearchQuery(value?: string) {
   }
 
   return value.trim().slice(0, 100);
+}
+
+function normalizeGroupStateFilter(value?: string): GroupStateFilter {
+  return GROUP_STATE_FILTER_VALUES.includes((value ?? "all") as GroupStateFilter)
+    ? ((value ?? "all") as GroupStateFilter)
+    : "all";
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -41,7 +52,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function GroupsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; search?: string }>;
+  searchParams?: Promise<{ page?: string; search?: string; state?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -50,6 +61,7 @@ export default async function GroupsPage({
   const PAGE_SIZE = 25;
   const currentPage = Math.max(1, Math.floor(Number(resolvedSearchParams?.page ?? "1")) || 1);
   const searchQuery = normalizeSearchQuery(resolvedSearchParams?.search);
+  const stateFilter = normalizeGroupStateFilter(resolvedSearchParams?.state);
   const normalizedSearch = searchQuery.toLowerCase();
 
   const t = await getTranslations("groups");
@@ -160,14 +172,23 @@ export default async function GroupsPage({
     myGroups = Array.from(visibleGroups.values());
   }
 
-  const filteredGroups = normalizedSearch
-    ? myGroups.filter((group) => {
-        const haystack = [group.name, group.description ?? "", group.instructor?.name ?? ""]
+  const filteredGroups = myGroups.filter((group) => {
+    const matchesSearch = normalizedSearch
+      ? [group.name, group.description ?? "", group.instructor?.name ?? ""]
           .join(" ")
-          .toLowerCase();
-        return haystack.includes(normalizedSearch);
-      })
-    : myGroups;
+          .toLowerCase()
+          .includes(normalizedSearch)
+      : true;
+
+    const matchesState =
+      stateFilter === "all"
+        ? true
+        : stateFilter === "archived"
+          ? Boolean(group.isArchived)
+          : !group.isArchived;
+
+    return matchesSearch && matchesState;
+  });
 
   const totalCount = filteredGroups.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -196,6 +217,25 @@ export default async function GroupsPage({
                 type="search"
                 defaultValue={searchQuery}
                 placeholder={t("searchPlaceholder")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium" htmlFor="groups-state">
+                {t("stateFilterLabel")}
+              </label>
+              <FilterSelect
+                name="state"
+                defaultValue={stateFilter}
+                placeholder={t("allStates")}
+                options={GROUP_STATE_FILTER_VALUES.map((value) => ({
+                  value,
+                  label:
+                    value === "all"
+                      ? t("allStates")
+                      : value === "active"
+                        ? t("active")
+                        : t("archived"),
+                }))}
               />
             </div>
             <div className="flex gap-2 items-end">
@@ -273,6 +313,7 @@ export default async function GroupsPage({
           const params = new URLSearchParams();
           if (page > 1) params.set("page", String(page));
           if (searchQuery) params.set("search", searchQuery);
+          if (stateFilter !== "all") params.set("state", stateFilter);
           const qs = params.toString();
           return qs ? `/dashboard/groups?${qs}` : "/dashboard/groups";
         }}
