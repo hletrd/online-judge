@@ -78,6 +78,6 @@ describe("public contest helpers", () => {
     const { getPublicContestById } = await import("@/lib/assignments/public-contests");
     const contest = await getPublicContestById("contest-1");
 
-    expect(contest?.publicProblems).toEqual([{ id: "problem-1", title: "A + B" }]);
+    expect(contest?.publicProblems).toEqual([{ id: "problem-1", title: "A + B", difficulty: null }]);
   });
 });

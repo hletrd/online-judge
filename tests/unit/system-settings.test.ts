@@ -165,6 +165,7 @@ describe("getResolvedSystemSettings", () => {
     expect(result).toEqual({
       siteTitle: "DB Title",
       siteDescription: "DB Description",
+      siteIconUrl: null,
       timeZone: "Asia/Tokyo",
       platformMode: "contest",
       aiAssistantEnabled: false,
@@ -185,6 +186,7 @@ describe("getResolvedSystemSettings", () => {
     expect(result).toEqual({
       siteTitle: "Default Title",
       siteDescription: "Default Description",
+      siteIconUrl: null,
       timeZone: "Europe/London",
       platformMode: "homework",
       aiAssistantEnabled: true,
