@@ -32,16 +32,7 @@ export async function generateMetadata({
       twitter: { card: "summary", title: t("claimed"), description },
     };
   }
-
-  const [assignment] = await db
-    .select({ title: assignments.title })
-    .from(assignments)
-    .where(eq(assignments.id, invitation.assignmentId))
-    .limit(1);
-
-  if (!assignment) return { title: t("invalidToken") };
-
-  const title = assignment.title;
+  const title = t("title");
   const description = t("ogDescription");
 
   return {
