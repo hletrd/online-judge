@@ -38,6 +38,7 @@ Close the remaining object-level authorization gaps and remove the last places w
   - admin user add/edit dialogs and the bulk-create API now rely on capability-shaped role options instead of built-in instructor/admin fallback branches
   - `/api/v1/users/[id]` mutations now enforce actor-vs-target role-level checks for patch/delete flows instead of relying only on super-admin special cases
   - contest discovery now derives global-vs-owned contest visibility from capabilities instead of built-in admin/instructor role-name checks
+  - group-resource management no longer grants cross-group control through plain `assignments.edit`; owner/co-instructor scope or a true global capability is now required
 
 ## Workstream A — Problem-set visibility and scope isolation
 **Targets**

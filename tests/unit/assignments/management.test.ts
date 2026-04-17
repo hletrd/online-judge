@@ -51,12 +51,20 @@ describe("group management helpers", () => {
     ).resolves.toBe(true);
   });
 
-  it("allows assignment editors through explicit capability", async () => {
-    resolveCapabilitiesMock.mockResolvedValue(new Set(["assignments.edit"]));
+  it("allows global group managers through groups.view_all capability", async () => {
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["groups.view_all"]));
 
     await expect(
       canManageGroupResourcesAsync("owner-1", "custom-1", "custom_manager", "group-1")
     ).resolves.toBe(true);
+  });
+
+  it("does not let plain assignment editors manage arbitrary groups without scope", async () => {
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["assignments.edit"]));
+
+    await expect(
+      canManageGroupResourcesAsync("owner-1", "custom-1", "custom_manager", "group-1")
+    ).resolves.toBe(false);
   });
 
   it("allows co-instructors to manage group resources", async () => {

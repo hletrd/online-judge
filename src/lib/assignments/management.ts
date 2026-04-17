@@ -57,7 +57,7 @@ export async function canManageGroupResourcesAsync(
 ): Promise<boolean> {
   if (canManageGroupResources(groupInstructorId, userId, role)) return true;
   const caps = await resolveCapabilities(role);
-  if (caps.has("assignments.edit")) return true;
+  if (caps.has("groups.view_all")) return true;
   if (groupId) {
     const assignedRole = await getGroupInstructorAssignmentRole(groupId, userId);
     if (assignedRole === "co_instructor") return true;
