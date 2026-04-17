@@ -19,11 +19,6 @@ export async function canAccessGroup(
     return true;
   }
 
-  // Built-in admin/super_admin fallback
-  if (role === "super_admin" || role === "admin") {
-    return true;
-  }
-
   const recruitingAccess = await getRecruitingAccessContext(userId);
   if (recruitingAccess.isRecruitingCandidate) {
     const enrollment = await db.query.enrollments.findFirst({
@@ -117,9 +112,6 @@ export async function canAccessProblem(
   const caps = await resolveCapabilities(role);
   if (caps.has("problems.view_all")) return true;
 
-  // Built-in admin/super_admin fallback
-  if (role === "super_admin" || role === "admin") return true;
-
   const recruitingAccess = await getRecruitingAccessContext(userId);
   if (recruitingAccess.isRecruitingCandidate) {
     return recruitingAccess.problemIds.includes(problemId);
@@ -160,11 +152,6 @@ export async function getAccessibleProblemIds(
   // Check capability: problems.view_all means all problems are accessible
   const caps = await resolveCapabilities(role);
   if (caps.has("problems.view_all")) {
-    return new Set(problemList.map((p) => p.id));
-  }
-
-  // Built-in admin/super_admin fallback
-  if (role === "super_admin" || role === "admin") {
     return new Set(problemList.map((p) => p.id));
   }
 
@@ -231,11 +218,6 @@ export async function canAccessSubmission(
   // Check capability: submissions.view_all bypasses ownership
   const caps = await resolveCapabilities(role);
   if (caps.has("submissions.view_all")) {
-    return true;
-  }
-
-  // Built-in admin/super_admin bypass
-  if (role === "super_admin" || role === "admin") {
     return true;
   }
 

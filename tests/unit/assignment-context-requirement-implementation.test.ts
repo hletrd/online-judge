@@ -9,13 +9,16 @@ function read(relativePath: string) {
 describe("assignment-context requirement implementation", () => {
   it("uses a shared helper instead of hard-coding the built-in student role", () => {
     const helperSource = read("src/lib/assignments/submissions.ts");
+    const permissionsSource = read("src/lib/auth/permissions.ts");
     const problemPage = read("src/app/(dashboard)/dashboard/problems/[id]/page.tsx");
     const submissionsRoute = read("src/app/api/v1/submissions/route.ts");
     const snapshotsRoute = read("src/app/api/v1/code-snapshots/route.ts");
 
     expect(helperSource).toContain("export async function getRequiredAssignmentContextsForProblem(");
-    expect(helperSource).toContain('if (isAdmin(role) || role === "instructor")');
+    expect(helperSource).toContain('caps.has("submissions.view_all")');
     expect(helperSource).toContain('caps.has("assignments.view_status")');
+    expect(helperSource).not.toContain('role === "instructor"');
+    expect(permissionsSource).not.toContain('role === "super_admin" || role === "admin"');
 
     expect(problemPage).toContain("getRequiredAssignmentContextsForProblem(");
     expect(problemPage).not.toContain('session.user.role === "student"');

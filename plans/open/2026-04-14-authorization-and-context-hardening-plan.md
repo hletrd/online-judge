@@ -33,6 +33,7 @@ Close the remaining object-level authorization gaps and remove the last places w
   - problem-set dashboard pages now gate on problem-set capabilities instead of instructor-only role checks, and the edit form degrades to read-only when the actor lacks edit/delete/group-assignment permissions
   - problem-set create/update/group-assignment routes now reject out-of-scope problem/group IDs and reuse a shared object-level management helper instead of built-in instructor ownership checks
   - platform-mode context resolution now records server-derived assignment mismatches, the chat API rejects forged problem/assignment combinations explicitly, and compiler runs derive their effective mode from the server-resolved assignment context instead of trusting the request body
+  - assignment submission visibility and generic permission helpers now rely on capabilities instead of built-in admin/instructor role-name checks, while still honoring group-instructor scope for roles that only have `assignments.view_status`
 
 ## Workstream A — Problem-set visibility and scope isolation
 **Targets**

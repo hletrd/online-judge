@@ -288,10 +288,12 @@ export async function canViewAssignmentSubmissions(
   }
 
   const caps = await resolveCapabilities(role);
-  if (!isAdmin(role) && role !== "instructor") {
-    if (!caps.has("submissions.view_all") && !caps.has("assignments.view_status")) {
-      return false;
-    }
+  if (caps.has("submissions.view_all")) {
+    return true;
+  }
+
+  if (!caps.has("assignments.view_status")) {
+    return false;
   }
 
   const assignment = await getAssignmentAccessRecord(assignmentId);
@@ -300,21 +302,11 @@ export async function canViewAssignmentSubmissions(
     return false;
   }
 
-  if (isAdmin(role)) {
-    return true;
-  }
-
-  if (role !== "instructor" && caps.has("submissions.view_all")) return true;
-
-  if (role === "instructor" || caps.has("assignments.view_status")) {
-    return hasGroupInstructorRole(
-      assignment.groupId,
-      userId,
-      assignment.instructorId
-    );
-  }
-
-  return false;
+  return hasGroupInstructorRole(
+    assignment.groupId,
+    userId,
+    assignment.instructorId
+  );
 }
 
 export type StudentProblemProgress = "solved" | "attempted" | "untried";
@@ -421,10 +413,6 @@ export async function getRequiredAssignmentContextsForProblem(
   userId: string,
   role: string
 ): Promise<StudentAssignmentProblemContext[]> {
-  if (isAdmin(role) || role === "instructor") {
-    return [];
-  }
-
   const caps = await resolveCapabilities(role);
   if (
     caps.has("submissions.view_all")

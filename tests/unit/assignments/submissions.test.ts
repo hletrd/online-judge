@@ -204,7 +204,7 @@ describe("validateAssignmentSubmission", () => {
 });
 
 describe("canViewAssignmentSubmissions", () => {
-  it("rejects null assignment IDs and non-instructor roles", async () => {
+  it("rejects null assignment IDs and roles without submission-review capabilities", async () => {
     await expect(canViewAssignmentSubmissions(null, "student-1", "student")).resolves.toBe(
       false
     );
@@ -213,7 +213,7 @@ describe("canViewAssignmentSubmissions", () => {
     ).resolves.toBe(false);
   });
 
-  it("allows admins and the owning instructor", async () => {
+  it("allows roles with submissions.view_all without needing assignment ownership", async () => {
     dbMock.query.assignments.findFirst
       .mockResolvedValueOnce(createAssignmentRecord({ instructorId: "instructor-1" }))
       .mockResolvedValueOnce(createAssignmentRecord({ instructorId: "instructor-1" }));
@@ -225,16 +225,18 @@ describe("canViewAssignmentSubmissions", () => {
     await expect(
       canViewAssignmentSubmissions("assignment-1", "instructor-1", "instructor")
     ).resolves.toBe(true);
+    expect(hasGroupInstructorRoleMock).not.toHaveBeenCalled();
   });
 
-  it("rejects instructors who do not own the assignment", async () => {
+  it("rejects assignment-status reviewers who do not actually instruct the group", async () => {
     dbMock.query.assignments.findFirst.mockResolvedValue(
       createAssignmentRecord({ instructorId: "instructor-2" })
     );
     hasGroupInstructorRoleMock.mockResolvedValue(false);
+    resolveCapabilitiesMock.mockResolvedValue(new Set(["assignments.view_status"]));
 
     await expect(
-      canViewAssignmentSubmissions("assignment-1", "instructor-1", "instructor")
+      canViewAssignmentSubmissions("assignment-1", "reviewer-1", "custom_reviewer")
     ).resolves.toBe(false);
   });
 
