@@ -11,6 +11,7 @@ vi.mock("next-intl/server", () => ({
   getTranslations: async () => (key: string, values?: Record<string, string | number>) => {
     const messages: Record<string, string> = {
       title: "Coding Assessment",
+      description: "You're invited to a coding assessment.",
       invalidToken: "Invalid link",
       invalidTokenDescription: "This link is invalid or has been revoked.",
       expired: "Link expired",
@@ -74,7 +75,7 @@ describe("RecruitPage", () => {
 
     render(await RecruitPage({ params: Promise.resolve({ token: "invite-token" }) }));
 
-    expect(screen.getByText("Welcome, Candidate One")).toBeInTheDocument();
+    expect(screen.getByText("You're invited to a coding assessment.")).toBeInTheDocument();
     expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-requires-account-password", "true");
   });
 
@@ -84,7 +85,7 @@ describe("RecruitPage", () => {
 
     render(await RecruitPage({ params: Promise.resolve({ token: "invite-token" }) }));
 
-    expect(screen.getByText("Welcome, Candidate Two")).toBeInTheDocument();
+    expect(screen.getByText("You're invited to a coding assessment.")).toBeInTheDocument();
     expect(screen.getByText(/sign in later with your recruiting email and account password/i)).toBeInTheDocument();
     expect(screen.getByTestId("recruit-start-form")).toHaveAttribute("data-reentry", "true");
   });
@@ -124,6 +125,7 @@ describe("RecruitPage", () => {
 
     render(await RecruitPage({ params: Promise.resolve({ token: "invite-token" }) }));
 
+    expect(screen.getByText("You're invited to a coding assessment.")).toBeInTheDocument();
     expect(screen.getByText(/previous recruiting password was invalidated/i)).toBeInTheDocument();
     expect(screen.getByTestId("recruit-start-form")).toHaveAttribute(
       "data-requires-account-password",

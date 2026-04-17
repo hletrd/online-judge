@@ -104,6 +104,9 @@ export default async function RecruitPage({
     invitation.userId &&
     session?.user?.id === invitation.userId
   );
+  const candidateGreeting = resumeWithCurrentSession
+    ? t("welcome", { name: invitation.candidateName })
+    : t("description");
 
   const [assignment] = await db
     .select({
@@ -134,9 +137,7 @@ export default async function RecruitPage({
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">{t("title")}</CardTitle>
-          <CardDescription>
-            {t("welcome", { name: invitation.candidateName })}
-          </CardDescription>
+          <CardDescription>{candidateGreeting}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-3">
@@ -181,9 +182,7 @@ export default async function RecruitPage({
     <Card className="w-full max-w-lg">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">{t("title")}</CardTitle>
-        <CardDescription>
-          {t("welcome", { name: invitation.candidateName })}
-        </CardDescription>
+        <CardDescription>{candidateGreeting}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
           <div className="space-y-3">
