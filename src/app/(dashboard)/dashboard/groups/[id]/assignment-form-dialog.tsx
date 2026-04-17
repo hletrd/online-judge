@@ -58,6 +58,7 @@ type AssignmentFormDialogProps = {
   groupId: string;
   availableProblems: AvailableProblem[];
   initialAssignment?: AssignmentEditorValue;
+  seedAssignment?: AssignmentEditorValue;
   allowProblemOverride?: boolean;
 };
 
@@ -94,37 +95,44 @@ export default function AssignmentFormDialog({
   groupId,
   availableProblems,
   initialAssignment,
+  seedAssignment,
   allowProblemOverride = false,
 }: AssignmentFormDialogProps) {
   const router = useRouter();
   const t = useTranslations("groups");
   const tCommon = useTranslations("common");
   const isEditing = Boolean(initialAssignment);
+  const isDuplicating = Boolean(seedAssignment) && !isEditing;
+  const defaultAssignment = initialAssignment ?? seedAssignment;
   const problemsLocked = Boolean(initialAssignment?.hasSubmissions);
   const [problemOverrideEnabled, setProblemOverrideEnabled] = useState(false);
   const areProblemsEditable = !problemsLocked || problemOverrideEnabled;
 
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [title, setTitle] = useState(initialAssignment?.title ?? "");
-  const [description, setDescription] = useState(initialAssignment?.description ?? "");
-  const [startsAt, setStartsAt] = useState(formatDateTimeInput(initialAssignment?.startsAt ?? null));
-  const [deadline, setDeadline] = useState(formatDateTimeInput(initialAssignment?.deadline ?? null));
-  const [lateDeadline, setLateDeadline] = useState(
-    formatDateTimeInput(initialAssignment?.lateDeadline ?? null)
+  const [title, setTitle] = useState(
+    isDuplicating
+      ? `${seedAssignment?.title ?? ""}${t("assignmentDuplicateTitleSuffix")}`
+      : (defaultAssignment?.title ?? "")
   );
-  const [latePenalty, setLatePenalty] = useState(initialAssignment?.latePenalty ?? 0);
-  const [examMode, setExamMode] = useState<"none" | "scheduled" | "windowed">(initialAssignment?.examMode ?? "none");
-  const [visibility, setVisibility] = useState<"private" | "public">(initialAssignment?.visibility ?? "private");
-  const [examDurationMinutes, setExamDurationMinutes] = useState<number | null>(initialAssignment?.examDurationMinutes ?? null);
-  const [scoringModel, setScoringModel] = useState<"ioi" | "icpc">(initialAssignment?.scoringModel ?? "ioi");
-  const [freezeLeaderboardAt, setFreezeLeaderboardAt] = useState(formatDateTimeInput(initialAssignment?.freezeLeaderboardAt ?? null));
-  const [enableAntiCheat, setEnableAntiCheat] = useState(initialAssignment?.enableAntiCheat ?? false);
-  const [showResultsToCandidate, setShowResultsToCandidate] = useState(initialAssignment?.showResultsToCandidate ?? false);
-  const [hideScoresFromCandidates, setHideScoresFromCandidates] = useState(initialAssignment?.hideScoresFromCandidates ?? false);
+  const [description, setDescription] = useState(defaultAssignment?.description ?? "");
+  const [startsAt, setStartsAt] = useState(formatDateTimeInput(defaultAssignment?.startsAt ?? null));
+  const [deadline, setDeadline] = useState(formatDateTimeInput(defaultAssignment?.deadline ?? null));
+  const [lateDeadline, setLateDeadline] = useState(
+    formatDateTimeInput(defaultAssignment?.lateDeadline ?? null)
+  );
+  const [latePenalty, setLatePenalty] = useState(defaultAssignment?.latePenalty ?? 0);
+  const [examMode, setExamMode] = useState<"none" | "scheduled" | "windowed">(defaultAssignment?.examMode ?? "none");
+  const [visibility, setVisibility] = useState<"private" | "public">(defaultAssignment?.visibility ?? "private");
+  const [examDurationMinutes, setExamDurationMinutes] = useState<number | null>(defaultAssignment?.examDurationMinutes ?? null);
+  const [scoringModel, setScoringModel] = useState<"ioi" | "icpc">(defaultAssignment?.scoringModel ?? "ioi");
+  const [freezeLeaderboardAt, setFreezeLeaderboardAt] = useState(formatDateTimeInput(defaultAssignment?.freezeLeaderboardAt ?? null));
+  const [enableAntiCheat, setEnableAntiCheat] = useState(defaultAssignment?.enableAntiCheat ?? false);
+  const [showResultsToCandidate, setShowResultsToCandidate] = useState(defaultAssignment?.showResultsToCandidate ?? false);
+  const [hideScoresFromCandidates, setHideScoresFromCandidates] = useState(defaultAssignment?.hideScoresFromCandidates ?? false);
   const [problemRows, setProblemRows] = useState<AssignmentProblemDraft[]>(
-    initialAssignment?.problems.length
-      ? initialAssignment.problems.map((p) => ({ ...p, _key: nanoid() }))
+    defaultAssignment?.problems.length
+      ? defaultAssignment.problems.map((p) => ({ ...p, _key: nanoid() }))
       : []
   );
 
@@ -143,23 +151,27 @@ export default function AssignmentFormDialog({
   };
 
   function resetState() {
-    setTitle(initialAssignment?.title ?? "");
-    setDescription(initialAssignment?.description ?? "");
-    setStartsAt(formatDateTimeInput(initialAssignment?.startsAt ?? null));
-    setDeadline(formatDateTimeInput(initialAssignment?.deadline ?? null));
-    setLateDeadline(formatDateTimeInput(initialAssignment?.lateDeadline ?? null));
-    setLatePenalty(initialAssignment?.latePenalty ?? 0);
-    setExamMode(initialAssignment?.examMode ?? "none");
-    setVisibility(initialAssignment?.visibility ?? "private");
-    setExamDurationMinutes(initialAssignment?.examDurationMinutes ?? null);
-    setScoringModel(initialAssignment?.scoringModel ?? "ioi");
-    setFreezeLeaderboardAt(formatDateTimeInput(initialAssignment?.freezeLeaderboardAt ?? null));
-    setEnableAntiCheat(initialAssignment?.enableAntiCheat ?? false);
-    setShowResultsToCandidate(initialAssignment?.showResultsToCandidate ?? false);
-    setHideScoresFromCandidates(initialAssignment?.hideScoresFromCandidates ?? false);
+    setTitle(
+      isDuplicating
+        ? `${seedAssignment?.title ?? ""}${t("assignmentDuplicateTitleSuffix")}`
+        : (defaultAssignment?.title ?? "")
+    );
+    setDescription(defaultAssignment?.description ?? "");
+    setStartsAt(formatDateTimeInput(defaultAssignment?.startsAt ?? null));
+    setDeadline(formatDateTimeInput(defaultAssignment?.deadline ?? null));
+    setLateDeadline(formatDateTimeInput(defaultAssignment?.lateDeadline ?? null));
+    setLatePenalty(defaultAssignment?.latePenalty ?? 0);
+    setExamMode(defaultAssignment?.examMode ?? "none");
+    setVisibility(defaultAssignment?.visibility ?? "private");
+    setExamDurationMinutes(defaultAssignment?.examDurationMinutes ?? null);
+    setScoringModel(defaultAssignment?.scoringModel ?? "ioi");
+    setFreezeLeaderboardAt(formatDateTimeInput(defaultAssignment?.freezeLeaderboardAt ?? null));
+    setEnableAntiCheat(defaultAssignment?.enableAntiCheat ?? false);
+    setShowResultsToCandidate(defaultAssignment?.showResultsToCandidate ?? false);
+    setHideScoresFromCandidates(defaultAssignment?.hideScoresFromCandidates ?? false);
     setProblemRows(
-      initialAssignment?.problems.length
-        ? initialAssignment.problems.map((p) => ({ ...p, _key: nanoid() }))
+      defaultAssignment?.problems.length
+        ? defaultAssignment.problems.map((p) => ({ ...p, _key: nanoid() }))
         : []
     );
   }
@@ -262,7 +274,15 @@ export default function AssignmentFormDialog({
         throw new Error(payload.error || (isEditing ? "assignmentUpdateFailed" : "assignmentCreateFailed"));
       }
 
-      toast.success(t(isEditing ? "assignmentUpdateSuccess" : "assignmentCreateSuccess"));
+      toast.success(
+        t(
+          isEditing
+            ? "assignmentUpdateSuccess"
+            : isDuplicating
+              ? "assignmentDuplicateSuccess"
+              : "assignmentCreateSuccess"
+        )
+      );
       await handleOpenChange(false);
 
       const createdAssignmentId = payload.data?.id;
@@ -283,7 +303,7 @@ export default function AssignmentFormDialog({
       <DialogTrigger
         render={
           <Button variant={isEditing ? "outline" : "default"} size="sm">
-            {isEditing ? tCommon("edit") : t("createAssignment")}
+            {isEditing ? tCommon("edit") : isDuplicating ? t("duplicateAssignment") : t("createAssignment")}
           </Button>
         }
       />
@@ -291,12 +311,18 @@ export default function AssignmentFormDialog({
         <form className="space-y-6" onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {isEditing ? t("assignmentEditDialogTitle") : t("assignmentCreateDialogTitle")}
+              {isEditing
+                ? t("assignmentEditDialogTitle")
+                : isDuplicating
+                  ? t("assignmentDuplicateDialogTitle")
+                  : t("assignmentCreateDialogTitle")}
             </DialogTitle>
             <DialogDescription>
               {isEditing
                 ? t("assignmentEditDialogDescription")
-                : t("assignmentCreateDialogDescription")}
+                : isDuplicating
+                  ? t("assignmentDuplicateDialogDescription")
+                  : t("assignmentCreateDialogDescription")}
             </DialogDescription>
           </DialogHeader>
 

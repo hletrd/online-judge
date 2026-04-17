@@ -371,6 +371,12 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
                             initialAssignment={editorValue}
                             allowProblemOverride={canOverrideLockedProblems}
                           />
+                          <AssignmentFormDialog
+                            groupId={groupId}
+                            availableProblems={availableProblemOptions}
+                            seedAssignment={editorValue}
+                            allowProblemOverride={canOverrideLockedProblems}
+                          />
                           <AssignmentDeleteButton
                             groupId={groupId}
                             assignmentId={assignment.id}
