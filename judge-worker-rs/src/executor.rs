@@ -1,5 +1,5 @@
 use crate::api::ApiClient;
-use crate::comparator::{compare_output, compare_float_output};
+use crate::comparator::{compare_float_output, compare_output};
 use crate::config::Config;
 use crate::docker::{self, DockerRunOptions, Phase};
 use crate::languages;
@@ -50,7 +50,10 @@ fn reportable_test_case_output(verdict: Verdict, stdout: &[u8], stderr: &str) ->
     if verdict == Verdict::RuntimeError {
         let trimmed_stderr = stderr.trim();
         if !trimmed_stderr.is_empty() {
-            return trimmed_stderr.chars().take(RUNTIME_ERROR_OUTPUT_LIMIT).collect();
+            return trimmed_stderr
+                .chars()
+                .take(RUNTIME_ERROR_OUTPUT_LIMIT)
+                .collect();
         }
     }
 
@@ -113,50 +116,99 @@ async fn prune_dead_letter_dir(dead_letter_dir: &Path, max_files: usize) {
     }
 }
 
-pub async fn execute(client: &ApiClient, config: &Config, submission: Submission) {
+pub async fn execute(
+    client: &ApiClient,
+    config: &Config,
+    submission: Submission,
+    worker_secret: Option<&str>,
+) {
     let span = tracing::info_span!("judge_submission", submission_id = %submission.id);
-    execute_inner(client, config, submission).instrument(span).await;
+    execute_inner(client, config, submission, worker_secret)
+        .instrument(span)
+        .await;
 }
 
-async fn execute_inner(client: &ApiClient, config: &Config, submission: Submission) {
+async fn execute_inner(
+    client: &ApiClient,
+    config: &Config,
+    submission: Submission,
+    worker_secret: Option<&str>,
+) {
     let lang_config = languages::get_config(&submission.language);
 
     // If no static config exists and no DB overrides are provided, reject
     if lang_config.is_none() && submission.docker_image.is_none() {
-        report_error(client, config, &submission, Verdict::CompileError.as_str(), "Unsupported language").await;
+        report_error(
+            client,
+            config,
+            &submission,
+            Verdict::CompileError.as_str(),
+            "Unsupported language",
+            worker_secret,
+        )
+        .await;
         return;
     }
 
     // Use DB overrides or fall back to static config
     let default_ext = ".txt";
-    let docker_image = submission.docker_image.as_deref()
+    let docker_image = submission
+        .docker_image
+        .as_deref()
         .or(lang_config.map(|c| c.docker_image))
         .unwrap_or("alpine:latest");
 
     // Validate docker image reference to prevent pulling arbitrary images
     if !validate_docker_image(docker_image) {
-        report_error(client, config, &submission, Verdict::CompileError.as_str(), "Invalid Docker image reference").await;
+        report_error(
+            client,
+            config,
+            &submission,
+            Verdict::CompileError.as_str(),
+            "Invalid Docker image reference",
+            worker_secret,
+        )
+        .await;
         return;
     }
     let compile_command: Option<Vec<&str>> = match &submission.compile_command {
-        Some(cmd) if !cmd.is_empty() && !cmd.iter().all(|s| s.is_empty()) => Some(cmd.iter().map(|s| s.as_str()).collect()),
+        Some(cmd) if !cmd.is_empty() && !cmd.iter().all(|s| s.is_empty()) => {
+            Some(cmd.iter().map(|s| s.as_str()).collect())
+        }
         _ => lang_config.and_then(|c| c.compile_command.map(|c| c.to_vec())),
     };
     let run_command: Vec<&str> = match &submission.run_command {
-        Some(cmd) if !cmd.is_empty() && !cmd.iter().all(|s| s.is_empty()) => cmd.iter().map(|s| s.as_str()).collect(),
-        _ => lang_config.map(|c| c.run_command.to_vec()).unwrap_or_default(),
+        Some(cmd) if !cmd.is_empty() && !cmd.iter().all(|s| s.is_empty()) => {
+            cmd.iter().map(|s| s.as_str()).collect()
+        }
+        _ => lang_config
+            .map(|c| c.run_command.to_vec())
+            .unwrap_or_default(),
     };
     let extension = lang_config.map(|c| c.extension).unwrap_or(default_ext);
     let needs_exec_tmp = lang_config.is_some_and(|c| c.needs_exec_tmp);
 
     if run_command.is_empty() {
-        report_error(client, config, &submission, Verdict::CompileError.as_str(), "No run command configured for this language").await;
+        report_error(
+            client,
+            config,
+            &submission,
+            Verdict::CompileError.as_str(),
+            "No run command configured for this language",
+            worker_secret,
+        )
+        .await;
         return;
     }
 
     // Report "judging" status; log errors but continue
     if let Err(e) = client
-        .report_status(&submission.id, &submission.claim_token, "judging")
+        .report_status(
+            &submission.id,
+            &submission.claim_token,
+            "judging",
+            worker_secret,
+        )
         .await
     {
         tracing::error!(error = %e, "Failed to report judging status");
@@ -167,7 +219,15 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
         Ok(d) => d,
         Err(e) => {
             tracing::error!(error = %e, "Failed to create temp dir");
-            report_error(client, config, &submission, "runtime_error", &e.to_string()).await;
+            report_error(
+                client,
+                config,
+                &submission,
+                "runtime_error",
+                &e.to_string(),
+                worker_secret,
+            )
+            .await;
             return;
         }
     };
@@ -182,13 +242,29 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
     .await
     {
         tracing::error!(error = %e, "Failed to set temp dir permissions");
-        report_error(client, config, &submission, "runtime_error", &e.to_string()).await;
+        report_error(
+            client,
+            config,
+            &submission,
+            "runtime_error",
+            &e.to_string(),
+            worker_secret,
+        )
+        .await;
         return;
     }
 
     // Validate source code size before writing to disk
     if submission.source_code.len() > MAX_SOURCE_CODE_BYTES {
-        report_error(client, config, &submission, Verdict::CompileError.as_str(), "Source code exceeds maximum size limit").await;
+        report_error(
+            client,
+            config,
+            &submission,
+            Verdict::CompileError.as_str(),
+            "Source code exceeds maximum size limit",
+            worker_secret,
+        )
+        .await;
         return;
     }
 
@@ -196,7 +272,15 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
     let source_path = workspace_dir.join(format!("solution{}", extension));
     if let Err(e) = fs::write(&source_path, &submission.source_code).await {
         tracing::error!(error = %e, "Failed to write source code");
-        report_error(client, config, &submission, "runtime_error", &e.to_string()).await;
+        report_error(
+            client,
+            config,
+            &submission,
+            "runtime_error",
+            &e.to_string(),
+            worker_secret,
+        )
+        .await;
         return;
     }
 
@@ -208,7 +292,15 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
     .await
     {
         tracing::error!(error = %e, "Failed to set source file permissions");
-        report_error(client, config, &submission, "runtime_error", &e.to_string()).await;
+        report_error(
+            client,
+            config,
+            &submission,
+            "runtime_error",
+            &e.to_string(),
+            worker_secret,
+        )
+        .await;
         return;
     }
 
@@ -216,7 +308,15 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
         Some(s) => s.to_owned(),
         None => {
             tracing::error!("Temp directory path is not valid UTF-8");
-            report_error(client, config, &submission, "runtime_error", "Temp directory path is not valid UTF-8").await;
+            report_error(
+                client,
+                config,
+                &submission,
+                "runtime_error",
+                "Temp directory path is not valid UTF-8",
+                worker_secret,
+            )
+            .await;
             return;
         }
     };
@@ -251,7 +351,15 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
             Ok(result) => result,
             Err(docker::JudgeEnvironmentError(msg)) => {
                 tracing::error!(error = %msg, "Judge environment error during compilation");
-                report_error(client, config, &submission, "runtime_error", &msg).await;
+                report_error(
+                    client,
+                    config,
+                    &submission,
+                    "runtime_error",
+                    &msg,
+                    worker_secret,
+                )
+                .await;
                 return;
             }
         };
@@ -273,6 +381,7 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
                 Verdict::CompileError.as_str(),
                 "Compilation timed out",
                 vec![],
+                worker_secret,
             )
             .await;
             return;
@@ -284,14 +393,31 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
             } else {
                 &compile_output
             };
-            report_result(client, config, &submission, Verdict::CompileError.as_str(), output, vec![]).await;
+            report_result(
+                client,
+                config,
+                &submission,
+                Verdict::CompileError.as_str(),
+                output,
+                vec![],
+                worker_secret,
+            )
+            .await;
             return;
         }
     }
 
     // Reject submissions with no test cases rather than silently returning "accepted"
     if submission.test_cases.is_empty() {
-        report_error(client, config, &submission, "runtime_error", "No test cases defined for this problem").await;
+        report_error(
+            client,
+            config,
+            &submission,
+            "runtime_error",
+            "No test cases defined for this problem",
+            worker_secret,
+        )
+        .await;
         return;
     }
 
@@ -328,7 +454,15 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
                     test_case_id = %test_case.id,
                     "Judge environment error during test case execution"
                 );
-                report_error(client, config, &submission, "runtime_error", &msg).await;
+                report_error(
+                    client,
+                    config,
+                    &submission,
+                    "runtime_error",
+                    &msg,
+                    worker_secret,
+                )
+                .await;
                 return;
             }
         };
@@ -342,10 +476,7 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
                 submission.float_relative_error,
             )
         } else {
-            compare_output(
-                test_case.expected_output.as_bytes(),
-                &execution.stdout,
-            )
+            compare_output(test_case.expected_output.as_bytes(), &execution.stdout)
         };
 
         // Determine test case status
@@ -361,7 +492,8 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
             Verdict::Accepted
         };
 
-        let actual_output = reportable_test_case_output(verdict, &execution.stdout, &execution.stderr);
+        let actual_output =
+            reportable_test_case_output(verdict, &execution.stdout, &execution.stderr);
 
         let memory_used_kb = reported_memory_used_kb(
             execution.memory_peak_kb,
@@ -401,6 +533,7 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
         &final_status,
         &compile_output,
         results,
+        worker_secret,
     )
     .await;
 
@@ -410,8 +543,9 @@ async fn execute_inner(client: &ApiClient, config: &Config, submission: Submissi
 #[cfg(test)]
 mod tests {
     use super::{
-        compile_timeout_ms_for_submission, prune_dead_letter_dir, reportable_test_case_output, reported_memory_used_kb,
-        runtime_error_type, COMPILATION_TIMEOUT_MS, MIN_COMPILE_TIMEOUT_MS, RUNTIME_ERROR_OUTPUT_LIMIT,
+        COMPILATION_TIMEOUT_MS, MIN_COMPILE_TIMEOUT_MS, RUNTIME_ERROR_OUTPUT_LIMIT,
+        compile_timeout_ms_for_submission, prune_dead_letter_dir, reportable_test_case_output,
+        reported_memory_used_kb, runtime_error_type,
     };
     use crate::types::Verdict;
     use tempfile::tempdir;
@@ -419,7 +553,10 @@ mod tests {
 
     #[test]
     fn compile_timeout_has_reasonable_floor_for_tiny_time_limits() {
-        assert_eq!(compile_timeout_ms_for_submission(500), MIN_COMPILE_TIMEOUT_MS);
+        assert_eq!(
+            compile_timeout_ms_for_submission(500),
+            MIN_COMPILE_TIMEOUT_MS
+        );
     }
 
     #[test]
@@ -443,14 +580,23 @@ mod tests {
 
     #[test]
     fn compile_timeout_is_capped_for_huge_time_limits() {
-        assert_eq!(compile_timeout_ms_for_submission(400_000), COMPILATION_TIMEOUT_MS);
+        assert_eq!(
+            compile_timeout_ms_for_submission(400_000),
+            COMPILATION_TIMEOUT_MS
+        );
     }
 
     #[test]
     fn runtime_error_type_maps_known_exit_codes_and_stack_overflow() {
-        assert_eq!(runtime_error_type("", Some(139)).as_deref(), Some("SIGSEGV"));
+        assert_eq!(
+            runtime_error_type("", Some(139)).as_deref(),
+            Some("SIGSEGV")
+        );
         assert_eq!(runtime_error_type("", Some(136)).as_deref(), Some("SIGFPE"));
-        assert_eq!(runtime_error_type("stack overflow", Some(1)).as_deref(), Some("stack_overflow"));
+        assert_eq!(
+            runtime_error_type("stack overflow", Some(1)).as_deref(),
+            Some("stack_overflow")
+        );
     }
 
     #[test]
@@ -460,7 +606,10 @@ mod tests {
 
         assert_eq!(output.len(), RUNTIME_ERROR_OUTPUT_LIMIT);
         assert!(output.chars().all(|ch| ch == 'x'));
-        assert_eq!(reportable_test_case_output(Verdict::WrongAnswer, b"stdout", "stderr"), "stdout");
+        assert_eq!(
+            reportable_test_case_output(Verdict::WrongAnswer, b"stdout", "stderr"),
+            "stdout"
+        );
     }
 
     #[tokio::test]
@@ -469,10 +618,14 @@ mod tests {
 
         for index in 0..3 {
             let path = temp.path().join(format!("entry-{index}.json"));
-            fs::write(&path, format!("{{\"index\":{index}}}")).await.unwrap();
+            fs::write(&path, format!("{{\"index\":{index}}}"))
+                .await
+                .unwrap();
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
-        fs::write(temp.path().join("note.txt"), "keep").await.unwrap();
+        fs::write(temp.path().join("note.txt"), "keep")
+            .await
+            .unwrap();
 
         prune_dead_letter_dir(temp.path(), 2).await;
 
@@ -487,8 +640,25 @@ mod tests {
     }
 }
 
-async fn report_error(client: &ApiClient, config: &Config, submission: &Submission, status: &str, message: &str) {
-    report_with_retry(client, config, &submission.id, &submission.claim_token, status, message, vec![]).await;
+async fn report_error(
+    client: &ApiClient,
+    config: &Config,
+    submission: &Submission,
+    status: &str,
+    message: &str,
+    worker_secret: Option<&str>,
+) {
+    report_with_retry(
+        client,
+        config,
+        &submission.id,
+        &submission.claim_token,
+        status,
+        message,
+        vec![],
+        worker_secret,
+    )
+    .await;
 }
 
 async fn report_result(
@@ -498,8 +668,19 @@ async fn report_result(
     status: &str,
     compile_output: &str,
     results: Vec<TestResult>,
+    worker_secret: Option<&str>,
 ) {
-    report_with_retry(client, config, &submission.id, &submission.claim_token, status, compile_output, results).await;
+    report_with_retry(
+        client,
+        config,
+        &submission.id,
+        &submission.claim_token,
+        status,
+        compile_output,
+        results,
+        worker_secret,
+    )
+    .await;
 }
 
 /// Payload written to the dead-letter directory when all report retries are exhausted.
@@ -520,10 +701,18 @@ async fn report_with_retry(
     status: &str,
     compile_output: &str,
     results: Vec<TestResult>,
+    worker_secret: Option<&str>,
 ) {
     for attempt in 0..3u32 {
         match client
-            .report_result(submission_id, claim_token, status, compile_output, results.clone())
+            .report_result(
+                submission_id,
+                claim_token,
+                status,
+                compile_output,
+                results.clone(),
+                worker_secret,
+            )
             .await
         {
             Ok(()) => return,
@@ -571,7 +760,20 @@ async fn report_with_retry(
             year += 1;
         }
         let leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
-        let days_in_month = [31u64, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        let days_in_month = [
+            31u64,
+            if leap { 29 } else { 28 },
+            31,
+            30,
+            31,
+            30,
+            31,
+            31,
+            30,
+            31,
+            30,
+            31,
+        ];
         let mut month = 1u64;
         for &dim in &days_in_month {
             if days < dim {
@@ -581,7 +783,10 @@ async fn report_with_retry(
             month += 1;
         }
         let day = days + 1;
-        format!("{:04}{:02}{:02}T{:02}{:02}{:02}Z", year, month, day, hh, mm, ss)
+        format!(
+            "{:04}{:02}{:02}T{:02}{:02}{:02}Z",
+            year, month, day, hh, mm, ss
+        )
     };
     let entry = DeadLetterEntry {
         submission_id,

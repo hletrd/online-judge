@@ -4,7 +4,7 @@ import { apiSuccess, apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { judgeWorkers } from "@/lib/db/schema";
 import { eq, lt, and } from "drizzle-orm";
-import { isJudgeAuthorized } from "@/lib/judge/auth";
+import { isJudgeAuthorizedForWorker } from "@/lib/judge/auth";
 import { isJudgeIpAllowed } from "@/lib/judge/ip-allowlist";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -26,10 +26,6 @@ export async function POST(request: NextRequest) {
       return apiError("ipNotAllowed", 403);
     }
 
-    if (!isJudgeAuthorized(request)) {
-      return apiError("unauthorized", 401);
-    }
-
     const parsed = heartbeatSchema.safeParse(await request.json());
     if (!parsed.success) {
       return apiError(parsed.error.issues[0]?.message ?? "invalidRequest", 400);
@@ -37,6 +33,11 @@ export async function POST(request: NextRequest) {
 
     const { workerId, workerSecret, activeTasks } = parsed.data;
     const now = new Date();
+
+    const workerAuth = await isJudgeAuthorizedForWorker(request, workerId);
+    if (!workerAuth.authorized) {
+      return apiError(workerAuth.error ?? "unauthorized", 401);
+    }
 
     // Validate per-worker secret (mandatory)
     const worker = await db.query.judgeWorkers.findFirst({

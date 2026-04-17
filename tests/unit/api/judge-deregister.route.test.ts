@@ -2,19 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 const {
-  isJudgeAuthorizedMock,
+  isJudgeAuthorizedForWorkerMock,
   findFirstMock,
   updateWhereMock,
   loggerMock,
 } = vi.hoisted(() => ({
-  isJudgeAuthorizedMock: vi.fn(),
+  isJudgeAuthorizedForWorkerMock: vi.fn(),
   findFirstMock: vi.fn(),
   updateWhereMock: vi.fn(),
   loggerMock: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
 
 vi.mock("@/lib/judge/auth", () => ({
-  isJudgeAuthorized: isJudgeAuthorizedMock,
+  isJudgeAuthorizedForWorker: isJudgeAuthorizedForWorkerMock,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -67,7 +67,7 @@ function makeRequest(body: unknown) {
 beforeEach(() => {
   vi.clearAllMocks();
 
-  isJudgeAuthorizedMock.mockReturnValue(true);
+  isJudgeAuthorizedForWorkerMock.mockResolvedValue({ authorized: true });
   findFirstMock.mockResolvedValue({ secretToken: "secret-abc" });
   updateWhereMock.mockResolvedValue({ rowCount: 1 });
 });
@@ -85,11 +85,12 @@ describe("POST /api/v1/judge/deregister", () => {
   });
 
   it("returns 401 when not authorized", async () => {
-    isJudgeAuthorizedMock.mockReturnValue(false);
+    isJudgeAuthorizedForWorkerMock.mockResolvedValue({ authorized: false, error: "invalidWorkerToken" });
 
-    const response = await POST(makeRequest({ workerId: "w1" }));
+    const response = await POST(makeRequest({ workerId: "w1", workerSecret: "secret-abc" }));
 
     expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: "invalidWorkerToken" });
   });
 
   it("returns 400 when workerId is missing", async () => {
@@ -138,11 +139,9 @@ describe("POST /api/v1/judge/deregister", () => {
   });
 
   it("returns 500 on unexpected error", async () => {
-    isJudgeAuthorizedMock.mockImplementation(() => {
-      throw new Error("Unexpected");
-    });
+    isJudgeAuthorizedForWorkerMock.mockRejectedValue(new Error("Unexpected"));
 
-    const response = await POST(makeRequest({ workerId: "w1" }));
+    const response = await POST(makeRequest({ workerId: "w1", workerSecret: "secret-abc" }));
 
     expect(response.status).toBe(500);
   });

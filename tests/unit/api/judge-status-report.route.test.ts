@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 const {
+  isJudgeAuthorizedMock,
+  isJudgeAuthorizedForWorkerMock,
   submissionsFindFirstMock,
   execTransactionMock,
   dbTransactionMock,
@@ -9,6 +11,8 @@ const {
   computeFinalJudgeMetricsMock,
   extractFinalJudgeDetailMock,
 } = vi.hoisted(() => ({
+  isJudgeAuthorizedMock: vi.fn(),
+  isJudgeAuthorizedForWorkerMock: vi.fn(),
   submissionsFindFirstMock: vi.fn(),
   execTransactionMock: vi.fn(),
   dbTransactionMock: vi.fn(),
@@ -18,7 +22,8 @@ const {
 }));
 
 vi.mock("@/lib/judge/auth", () => ({
-  isJudgeAuthorized: () => true,
+  isJudgeAuthorized: isJudgeAuthorizedMock,
+  isJudgeAuthorizedForWorker: isJudgeAuthorizedForWorkerMock,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -84,6 +89,8 @@ vi.mock("@/lib/db", () => ({
 describe("POST /api/v1/judge/poll", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isJudgeAuthorizedMock.mockReturnValue(true);
+    isJudgeAuthorizedForWorkerMock.mockResolvedValue({ authorized: true });
     buildSubmissionResultRowsMock.mockReturnValue([]);
     computeFinalJudgeMetricsMock.mockReturnValue({
       score: 100,
@@ -280,5 +287,41 @@ describe("POST /api/v1/judge/poll", () => {
       failedTestCaseIndex: 1,
       runtimeErrorType: "SIGSEGV",
     });
+  });
+
+  it("requires worker-scoped auth for submissions claimed by a registered worker", async () => {
+    submissionsFindFirstMock.mockResolvedValue({
+      id: "submission-1",
+      status: "queued",
+      judgeClaimedAt: new Date("2026-04-14T00:00:00.000Z"),
+      judgeWorkerId: "worker-1",
+    });
+    isJudgeAuthorizedForWorkerMock.mockResolvedValueOnce({
+      authorized: false,
+      error: "invalidWorkerToken",
+    });
+
+    const { POST } = await import("@/app/api/v1/judge/poll/route");
+    const response = await POST(
+      new NextRequest("http://localhost/api/v1/judge/poll", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer wrong-worker-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          submissionId: "submission-1",
+          claimToken: "claim-token",
+          status: "judging",
+          compileOutput: null,
+          results: [],
+        }),
+      })
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: "invalidWorkerToken" });
+    expect(execTransactionMock).not.toHaveBeenCalled();
+    expect(dbTransactionMock).not.toHaveBeenCalled();
   });
 });

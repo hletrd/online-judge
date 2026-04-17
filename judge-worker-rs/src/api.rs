@@ -42,6 +42,13 @@ impl ApiClient {
         format!("Bearer {}", self.auth_token.expose())
     }
 
+    fn auth_header_for_worker(&self, worker_secret: Option<&str>) -> String {
+        format!(
+            "Bearer {}",
+            worker_secret.unwrap_or_else(|| self.auth_token.expose())
+        )
+    }
+
     /// Register this worker with the app server.
     pub async fn register(
         &self,
@@ -99,7 +106,7 @@ impl ApiClient {
         let response = self
             .client
             .post(&self.heartbeat_url)
-            .header("Authorization", self.auth_header())
+            .header("Authorization", self.auth_header_for_worker(worker_secret))
             .json(&body)
             .send()
             .await
@@ -113,13 +120,20 @@ impl ApiClient {
     }
 
     /// Deregister this worker from the app server.
-    pub async fn deregister(&self, worker_id: &str, worker_secret: Option<&str>) -> Result<(), String> {
-        let body = DeregisterRequest { worker_id, worker_secret };
+    pub async fn deregister(
+        &self,
+        worker_id: &str,
+        worker_secret: Option<&str>,
+    ) -> Result<(), String> {
+        let body = DeregisterRequest {
+            worker_id,
+            worker_secret,
+        };
 
         let response = self
             .client
             .post(&self.deregister_url)
-            .header("Authorization", self.auth_header())
+            .header("Authorization", self.auth_header_for_worker(worker_secret))
             .json(&body)
             .send()
             .await
@@ -148,7 +162,7 @@ impl ApiClient {
         let response = self
             .client
             .post(&self.claim_url)
-            .header("Authorization", self.auth_header())
+            .header("Authorization", self.auth_header_for_worker(worker_secret))
             .json(&body)
             .send()
             .await
@@ -174,6 +188,7 @@ impl ApiClient {
         submission_id: &str,
         claim_token: &str,
         status: &str,
+        worker_secret: Option<&str>,
     ) -> Result<(), String> {
         let body = StatusReport {
             submission_id,
@@ -184,7 +199,7 @@ impl ApiClient {
         let response = self
             .client
             .post(&self.report_url)
-            .header("Authorization", self.auth_header())
+            .header("Authorization", self.auth_header_for_worker(worker_secret))
             .json(&body)
             .send()
             .await
@@ -206,6 +221,7 @@ impl ApiClient {
         status: &str,
         compile_output: &str,
         results: Vec<TestResult>,
+        worker_secret: Option<&str>,
     ) -> Result<(), String> {
         let body = ResultReport {
             submission_id,
@@ -218,7 +234,7 @@ impl ApiClient {
         let response = self
             .client
             .post(&self.report_url)
-            .header("Authorization", self.auth_header())
+            .header("Authorization", self.auth_header_for_worker(worker_secret))
             .json(&body)
             .send()
             .await
@@ -230,5 +246,38 @@ impl ApiClient {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ApiClient;
+    use crate::types::SecretString;
+
+    fn make_client() -> ApiClient {
+        ApiClient::new(
+            "http://localhost/claim".to_string(),
+            "http://localhost/report".to_string(),
+            "http://localhost/register".to_string(),
+            "http://localhost/heartbeat".to_string(),
+            "http://localhost/deregister".to_string(),
+            SecretString::new("shared-token".to_string()),
+        )
+        .expect("client")
+    }
+
+    #[test]
+    fn uses_worker_secret_for_worker_scoped_bearer_auth() {
+        let client = make_client();
+        assert_eq!(
+            client.auth_header_for_worker(Some("worker-secret")),
+            "Bearer worker-secret"
+        );
+    }
+
+    #[test]
+    fn falls_back_to_shared_bearer_auth_when_worker_secret_is_absent() {
+        let client = make_client();
+        assert_eq!(client.auth_header_for_worker(None), "Bearer shared-token");
     }
 }

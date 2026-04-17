@@ -10,8 +10,8 @@ mod validation;
 
 use api::ApiClient;
 use config::Config;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::Semaphore;
 
 /// Map ARM CPU implementer + part to a human-readable name.
@@ -146,7 +146,11 @@ fn detect_cpu_model() -> Option<String> {
 /// Detect CPU architecture (e.g. "x86_64", "aarch64").
 fn detect_architecture() -> Option<String> {
     let arch = std::env::consts::ARCH;
-    if arch.is_empty() { None } else { Some(arch.to_string()) }
+    if arch.is_empty() {
+        None
+    } else {
+        Some(arch.to_string())
+    }
 }
 
 #[tokio::main]
@@ -190,20 +194,22 @@ async fn main() {
     }
 
     let concurrency = config.judge_concurrency;
-    let client = Arc::new(match ApiClient::new(
-        config.claim_url.clone(),
-        config.report_url.clone(),
-        config.register_url.clone(),
-        config.heartbeat_url.clone(),
-        config.deregister_url.clone(),
-        config.auth_token.clone(),
-    ) {
-        Ok(c) => c,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to create API client");
-            std::process::exit(1);
-        }
-    });
+    let client = Arc::new(
+        match ApiClient::new(
+            config.claim_url.clone(),
+            config.report_url.clone(),
+            config.register_url.clone(),
+            config.heartbeat_url.clone(),
+            config.deregister_url.clone(),
+            config.auth_token.clone(),
+        ) {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to create API client");
+                std::process::exit(1);
+            }
+        },
+    );
 
     let worker_hostname = config.worker_hostname.clone();
     let config = Arc::new(config);
@@ -225,36 +231,47 @@ async fn main() {
     let cpu_architecture = detect_architecture();
 
     // Register with the app server
-    let (worker_id, worker_secret, heartbeat_interval): (Option<String>, Option<String>, std::time::Duration) =
-        match client.register(&worker_hostname, concurrency, cpu_model.as_deref(), cpu_architecture.as_deref()).await {
-            Ok(resp) => {
-                tracing::info!(
-                    worker_id = %resp.data.worker_id,
-                    heartbeat_interval_ms = resp.data.heartbeat_interval_ms,
-                    "Registered with app server"
+    let (worker_id, worker_secret, heartbeat_interval): (
+        Option<String>,
+        Option<String>,
+        std::time::Duration,
+    ) = match client
+        .register(
+            &worker_hostname,
+            concurrency,
+            cpu_model.as_deref(),
+            cpu_architecture.as_deref(),
+        )
+        .await
+    {
+        Ok(resp) => {
+            tracing::info!(
+                worker_id = %resp.data.worker_id,
+                heartbeat_interval_ms = resp.data.heartbeat_interval_ms,
+                "Registered with app server"
+            );
+            (
+                Some(resp.data.worker_id),
+                resp.data.worker_secret,
+                std::time::Duration::from_millis(resp.data.heartbeat_interval_ms.max(1_000)),
+            )
+        }
+        Err(e) => {
+            if config.allow_unregistered_mode {
+                tracing::warn!(
+                    error = %e,
+                    "Failed to register with app server — running in unregistered mode because JUDGE_ALLOW_UNREGISTERED_MODE is enabled"
                 );
-                (
-                    Some(resp.data.worker_id),
-                    resp.data.worker_secret,
-                    std::time::Duration::from_millis(resp.data.heartbeat_interval_ms.max(1_000)),
-                )
+                (None, None, std::time::Duration::from_secs(30))
+            } else {
+                tracing::error!(
+                    error = %e,
+                    "Failed to register with app server — exiting because unregistered mode is disabled"
+                );
+                std::process::exit(1);
             }
-            Err(e) => {
-                if config.allow_unregistered_mode {
-                    tracing::warn!(
-                        error = %e,
-                        "Failed to register with app server — running in unregistered mode because JUDGE_ALLOW_UNREGISTERED_MODE is enabled"
-                    );
-                    (None, None, std::time::Duration::from_secs(30))
-                } else {
-                    tracing::error!(
-                        error = %e,
-                        "Failed to register with app server — exiting because unregistered mode is disabled"
-                    );
-                    std::process::exit(1);
-                }
-            }
-        };
+        }
+    };
 
     // Spawn heartbeat task if registered
     let heartbeat_handle = if let Some(ref wid) = worker_id {
@@ -281,10 +298,16 @@ async fn main() {
                 let available = concurrency.saturating_sub(current_active);
                 let uptime = start_time.elapsed().as_secs();
 
-                match client.heartbeat(&wid, wsecret.as_deref(), current_active, available, uptime).await {
+                match client
+                    .heartbeat(&wid, wsecret.as_deref(), current_active, available, uptime)
+                    .await
+                {
                     Ok(()) => {
                         if consecutive_failures > 0 {
-                            tracing::info!("Heartbeat recovered after {} failures", consecutive_failures);
+                            tracing::info!(
+                                "Heartbeat recovered after {} failures",
+                                consecutive_failures
+                            );
                         }
                         consecutive_failures = 0;
                     }
@@ -341,9 +364,8 @@ async fn main() {
 
     // Graceful shutdown via SIGTERM/SIGINT
     let shutdown = async {
-        let mut sigterm =
-            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-                .expect("failed to register SIGTERM handler");
+        let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to register SIGTERM handler");
         let sigint = tokio::signal::ctrl_c();
         tokio::select! {
             _ = sigterm.recv() => tracing::info!("Received SIGTERM"),
@@ -419,6 +441,7 @@ async fn main() {
                 let client = Arc::clone(&client);
                 let config = Arc::clone(&config);
                 let active_tasks = Arc::clone(&active_tasks);
+                let worker_secret = worker_secret.clone();
 
                 active_tasks.fetch_add(1, Ordering::Relaxed);
 
@@ -426,7 +449,7 @@ async fn main() {
                     // The permit is moved into this task and dropped when done,
                     // releasing the semaphore slot for a new job.
                     let _permit = permit;
-                    executor::execute(&client, &config, submission).await;
+                    executor::execute(&client, &config, submission, worker_secret.as_deref()).await;
                     active_tasks.fetch_sub(1, Ordering::Relaxed);
                 });
                 task_handles.push(handle);
@@ -466,7 +489,10 @@ async fn main() {
     // Graceful shutdown: await all in-flight tasks
     let in_flight = task_handles.len();
     if in_flight > 0 {
-        tracing::info!(in_flight = in_flight, "Waiting for in-flight submissions to complete");
+        tracing::info!(
+            in_flight = in_flight,
+            "Waiting for in-flight submissions to complete"
+        );
         for handle in task_handles {
             if let Err(e) = handle.await {
                 tracing::error!(error = %e, "Task panicked during shutdown");
