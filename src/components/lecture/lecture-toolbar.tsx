@@ -13,6 +13,15 @@ const AUTO_HIDE_MS = 4000;
 type FontScale = (typeof FONT_SCALES)[number];
 type ColorScheme = (typeof COLOR_SCHEMES)[number];
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (target.isContentEditable) return true;
+  if (target.closest(".cm-editor, [role='combobox'], [role='listbox'], [data-radix-popper-content-wrapper]")) return true;
+  return false;
+}
+
 export function LectureToolbar() {
   const t = useTranslations("lecture");
   const {
@@ -63,8 +72,7 @@ export function LectureToolbar() {
   useEffect(() => {
     if (!active) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if ((e.target as HTMLElement)?.closest?.(".cm-editor")) return;
+      if (isEditableTarget(e.target)) return;
 
       switch (e.key) {
         case "Escape":
