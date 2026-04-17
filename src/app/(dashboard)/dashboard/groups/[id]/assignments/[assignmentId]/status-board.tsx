@@ -1,8 +1,12 @@
+"use client";
+
 import Link from "next/link";
-import { PenLine } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, PenLine } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { type AssignmentStudentStatusRow } from "@/lib/assignments/submissions";
@@ -83,6 +87,166 @@ function getMedian(values: number[]) {
   return ((values[midpoint - 1] ?? 0) + (values[midpoint] ?? 0)) / 2;
 }
 
+function MobileStudentCard({
+  row,
+  rowStatus,
+  problems,
+  totalPoints,
+  statusLabels,
+  locale,
+  timeZone,
+  labels,
+  groupId,
+  assignmentId,
+  isContestView,
+  canManageOverrides,
+  examMode,
+  examSession,
+  now,
+}: {
+  row: AssignmentStudentStatusRow;
+  rowStatus: AssignmentParticipantStatus;
+  problems: ProblemHeader[];
+  totalPoints: number;
+  statusLabels: Record<AssignmentParticipantStatus, string>;
+  locale: string;
+  timeZone: string;
+  labels: StatusBoardLabels;
+  groupId: string;
+  assignmentId: string;
+  isContestView: boolean;
+  canManageOverrides: boolean;
+  examMode?: string;
+  examSession?: { startedAt: string; personalDeadline: string } | undefined;
+  now: number;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <div className="rounded-lg border p-3">
+        <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 text-left">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <Link
+                href={isContestView
+                  ? `/dashboard/contests/${assignmentId}/participant/${row.userId}`
+                  : `/dashboard/groups/${groupId}/assignments/${assignmentId}/student/${row.userId}`}
+                className="font-medium text-primary hover:underline"
+              >
+                {row.name}
+              </Link>
+              <span className="text-xs text-muted-foreground">@{row.username}</span>
+            </div>
+            <div className="mt-1 flex items-center gap-2 text-sm">
+              <span>{formatBoardScore(row.bestTotalScore, locale)}/{formatBoardScore(totalPoints, locale)}</span>
+              <span className="text-muted-foreground">·</span>
+              {rowStatus === "not_submitted" ? (
+                <Badge variant="outline" className="text-xs">{statusLabels[rowStatus]}</Badge>
+              ) : rowStatus === "in_progress" ? (
+                <Badge variant="secondary" className="text-xs">{statusLabels[rowStatus]}</Badge>
+              ) : (
+                <SubmissionStatusBadge
+                  className="text-xs"
+                  label={statusLabels[rowStatus]}
+                  status={rowStatus}
+                />
+              )}
+            </div>
+          </div>
+          <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-3 space-y-2">
+          <div className="text-xs text-muted-foreground">
+            {labels.class}: {row.className ?? labels.notSet} · {labels.attempts}: {row.attemptCount}
+          </div>
+          {row.latestSubmissionId && (
+            <div className="text-xs">
+              {labels.lastSubmission}:{" "}
+              <Link
+                href={`/dashboard/submissions/${row.latestSubmissionId}`}
+                className="text-primary hover:underline"
+              >
+                {formatSubmissionIdPrefix(row.latestSubmissionId)}
+              </Link>
+              {row.latestSubmittedAt && (
+                <span className="text-muted-foreground">
+                  {" "}{formatDateTimeInTimeZone(row.latestSubmittedAt, locale, timeZone)}
+                </span>
+              )}
+            </div>
+          )}
+          {examMode === "windowed" && labels.examSessionStatus && (
+            <div className="text-xs">
+              {labels.examSessionStatus}:{" "}
+              {examSession ? (
+                <Badge variant={now > new Date(examSession.personalDeadline).getTime() ? "outline" : "secondary"} className="text-xs">
+                  {now > new Date(examSession.personalDeadline).getTime() ? labels.examSessionCompleted : labels.examSessionInProgress}
+                </Badge>
+              ) : (
+                <span className="text-muted-foreground">{labels.examSessionNotStarted}</span>
+              )}
+            </div>
+          )}
+          {problems.map((problem) => {
+            const problemRow = row.problems.find((p) => p.problemId === problem.problemId);
+            return (
+              <div key={problem.problemId} className="rounded-md border p-2 text-xs space-y-1">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="font-medium">{problem.title}</span>
+                  <span className="text-muted-foreground">{problem.points}{labels.pointsAbbreviation}</span>
+                </div>
+                {problemRow && (
+                  <>
+                    <div className="flex items-center gap-1">
+                      <span>{labels.bestScore}: {formatBoardScore(problemRow.bestScore ?? 0, locale)}/{formatBoardScore(problem.points, locale)}</span>
+                      {problemRow.isOverridden && (
+                        <PenLine className="size-3 shrink-0 text-amber-500" />
+                      )}
+                    </div>
+                    <div className="text-muted-foreground">{labels.attempts}: {problemRow.attemptCount}</div>
+                    {problemRow.latestSubmissionId && (
+                      <div className="flex items-center gap-1">
+                        {problemRow.latestStatus ? (
+                          <SubmissionStatusBadge
+                            className="text-xs"
+                            label={statusLabels[problemRow.latestStatus as SubmissionStatus]}
+                            status={problemRow.latestStatus}
+                          />
+                        ) : (
+                          <Badge variant="outline" className="text-xs">{statusLabels.not_submitted}</Badge>
+                        )}
+                        <Link
+                          href={`/dashboard/submissions/${problemRow.latestSubmissionId}`}
+                          className="text-primary hover:underline"
+                        >
+                          {formatSubmissionIdPrefix(problemRow.latestSubmissionId)}
+                        </Link>
+                      </div>
+                    )}
+                    {canManageOverrides && labels.overrideLabels && (
+                      <ScoreOverrideDialog
+                        groupId={groupId}
+                        assignmentId={assignmentId}
+                        problemId={problem.problemId}
+                        userId={row.userId}
+                        currentScore={problemRow.bestScore ?? 0}
+                        maxPoints={problem.points}
+                        isOverridden={problemRow.isOverridden}
+                        labels={labels.overrideLabels}
+                      />
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
+
 export function StatusBoard({
   filteredRows,
   problems,
@@ -140,7 +304,8 @@ export function StatusBoard({
             <div className="text-lg font-semibold">{perfectScoreCount}</div>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto">
           <Table data-testid="assignment-status-table">
             <TableHeader>
               <TableRow>
@@ -331,6 +496,46 @@ export function StatusBoard({
               )}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Mobile cards */}
+        <div className="md:hidden space-y-2">
+          {filteredRows.map((row) => {
+            const examSession = examSessionMap.get(row.userId);
+            const rowStatus = getAssignmentParticipantStatus({
+              latestStatus: row.latestStatus,
+              attemptCount: row.attemptCount,
+              bestTotalScore: row.bestTotalScore,
+              totalPoints,
+              examSessionStartedAt: examSession?.startedAt ?? null,
+              examSessionPersonalDeadline: examSession?.personalDeadline ?? null,
+              now,
+            });
+
+            return (
+              <MobileStudentCard
+                key={row.userId}
+                row={row}
+                rowStatus={rowStatus}
+                problems={problems}
+                totalPoints={totalPoints}
+                statusLabels={statusLabels}
+                locale={locale}
+                timeZone={timeZone}
+                labels={labels}
+                groupId={groupId}
+                assignmentId={assignmentId}
+                isContestView={isContestView}
+                canManageOverrides={canManageOverrides}
+                examMode={examMode}
+                examSession={examSession}
+                now={now}
+              />
+            );
+          })}
+          {filteredRows.length === 0 && (
+            <p className="py-6 text-center text-sm text-muted-foreground">{labels.noFilteredStudents}</p>
+          )}
         </div>
       </CardContent>
     </Card>
