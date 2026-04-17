@@ -13,7 +13,6 @@ import { db } from "@/lib/db";
 import { groupInstructors, groups, enrollments, users } from "@/lib/db/schema";
 import { and, eq, or } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { canManageUsers, isInstructorOrAbove } from "@/lib/auth/role-helpers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -75,11 +74,13 @@ export default async function GroupsPage({
   ) {
     redirect("/dashboard");
   }
-  const canEditGroups = caps.has("groups.edit") || isInstructorOrAbove(session.user.role);
+  const canViewAllGroups = caps.has("groups.view_all");
+  const canCreateGroups = caps.has("groups.create");
+  const canEditGroups = caps.has("groups.edit");
   
   let myGroups;
 
-  if (canManageUsers(session.user.role) || caps.has("groups.view_all")) {
+  if (canViewAllGroups) {
     myGroups = await db
       .select({
         id: groups.id,
@@ -200,7 +201,7 @@ export default async function GroupsPage({
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">{t("title")}</h2>
-        {isInstructorOrAbove(session.user.role) && (
+        {canCreateGroups && (
           <CreateGroupDialog />
         )}
       </div>

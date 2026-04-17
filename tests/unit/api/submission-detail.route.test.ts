@@ -64,30 +64,24 @@ describe("GET /api/v1/submissions/[id]", () => {
 
   it("removes source code and hidden test outputs for non-privileged viewers", async () => {
     resolveCapabilitiesMock.mockResolvedValue(new Set());
-    submissionsFindFirstMock
-      .mockResolvedValueOnce({
-        id: "sub-1",
-        userId: "student-2",
-        assignmentId: "assignment-1",
-      })
-      .mockResolvedValueOnce({
-        id: "sub-1",
-        userId: "student-2",
-        assignmentId: "assignment-1",
-        sourceCode: 'print("secret")',
-        results: [
-          {
-            status: "accepted",
-            actualOutput: "42\n",
-            testCase: { sortOrder: 1, isVisible: true },
-          },
-          {
-            status: "wrong_answer",
-            actualOutput: "hidden answer\n",
-            testCase: { sortOrder: 2, isVisible: false },
-          },
-        ],
-      });
+    submissionsFindFirstMock.mockResolvedValueOnce({
+      id: "sub-1",
+      userId: "student-2",
+      assignmentId: "assignment-1",
+      sourceCode: 'print("secret")',
+      results: [
+        {
+          status: "accepted",
+          actualOutput: "42\n",
+          testCase: { sortOrder: 1, isVisible: true },
+        },
+        {
+          status: "wrong_answer",
+          actualOutput: "hidden answer\n",
+          testCase: { sortOrder: 2, isVisible: false },
+        },
+      ],
+    });
 
     const { GET } = await import("@/app/api/v1/submissions/[id]/route");
     const response = await GET(makeRequest(), { params: Promise.resolve({ id: "sub-1" }) });
@@ -111,25 +105,19 @@ describe("GET /api/v1/submissions/[id]", () => {
 
   it("preserves hidden test outputs for reviewers with submissions.view_all", async () => {
     resolveCapabilitiesMock.mockResolvedValue(new Set(["submissions.view_all", "submissions.view_source"]));
-    submissionsFindFirstMock
-      .mockResolvedValueOnce({
-        id: "sub-1",
-        userId: "student-2",
-        assignmentId: "assignment-1",
-      })
-      .mockResolvedValueOnce({
-        id: "sub-1",
-        userId: "student-2",
-        assignmentId: "assignment-1",
-        sourceCode: 'print("secret")',
-        results: [
-          {
-            status: "wrong_answer",
-            actualOutput: "hidden answer\n",
-            testCase: { sortOrder: 2, isVisible: false },
-          },
-        ],
-      });
+    submissionsFindFirstMock.mockResolvedValueOnce({
+      id: "sub-1",
+      userId: "student-2",
+      assignmentId: "assignment-1",
+      sourceCode: 'print("secret")',
+      results: [
+        {
+          status: "wrong_answer",
+          actualOutput: "hidden answer\n",
+          testCase: { sortOrder: 2, isVisible: false },
+        },
+      ],
+    });
 
     const { GET } = await import("@/app/api/v1/submissions/[id]/route");
     const response = await GET(makeRequest(), { params: Promise.resolve({ id: "sub-1" }) });

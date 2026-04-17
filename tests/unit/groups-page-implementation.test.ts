@@ -11,9 +11,13 @@ describe("groups page implementation", () => {
     const source = read("src/app/(dashboard)/dashboard/groups/page.tsx");
 
     expect(source).toContain('import EditGroupDialog from "./edit-group-dialog"');
-    expect(source).toContain("const canEditGroups =");
+    expect(source).toContain("const canViewAllGroups = caps.has(\"groups.view_all\")");
+    expect(source).toContain("const canCreateGroups = caps.has(\"groups.create\")");
+    expect(source).toContain("const canEditGroups = caps.has(\"groups.edit\")");
     expect(source).toContain("<EditGroupDialog");
     expect(source).toContain('caps.has("groups.edit")');
+    expect(source).not.toContain("isInstructorOrAbove(");
+    expect(source).not.toContain("canManageUsers(");
     expect(source).toContain('name="search"');
     expect(source).toContain('t("searchLabel")');
     expect(source).toContain('t("searchPlaceholder")');
