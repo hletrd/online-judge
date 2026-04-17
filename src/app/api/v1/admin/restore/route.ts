@@ -1,4 +1,4 @@
-// Database restore route: JSON import for PostgreSQL
+// Database restore route: JSON or ZIP import for PostgreSQL
 import { NextRequest, NextResponse } from "next/server";
 import { getApiUser, unauthorized, forbidden, csrfForbidden } from "@/lib/api/auth";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
@@ -12,6 +12,9 @@ import { eq } from "drizzle-orm";
 import { importDatabase } from "@/lib/db/import";
 import { validateExport, type JudgeKitExport } from "@/lib/db/export";
 import { MAX_IMPORT_BYTES, readUploadedJsonFileWithLimit } from "@/lib/db/import-transfer";
+import { restoreFilesFromZip } from "@/lib/db/export-with-files";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,23 +62,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "fileTooLarge" }, { status: 400 });
     }
 
-    // Must be a JSON export file
-    const isJsonFile = file.name?.endsWith(".json") || file.type === "application/json";
-    if (!isJsonFile) {
-      return NextResponse.json(
-        { error: "unsupportedFileFormat", message: "Only JSON export files are supported. Use the JSON export format." },
-        { status: 400 }
-      );
-    }
+    // Detect whether this is a ZIP archive (new format) or plain JSON (legacy)
+    const isZipFile =
+      file.name?.endsWith(".zip") ||
+      file.type === "application/zip" ||
+      file.type === "application/x-zip-compressed";
 
     let data: JudgeKitExport;
-    try {
-      data = await readUploadedJsonFileWithLimit<JudgeKitExport>(file);
-    } catch (error) {
-      if (error instanceof Error && error.message === "fileTooLarge") {
-        return NextResponse.json({ error: "fileTooLarge" }, { status: 400 });
+    let filesRestored = 0;
+
+    if (isZipFile) {
+      // ZIP archive: extract database.json + uploaded files
+      const arrayBuffer = await file.arrayBuffer();
+      const zipBuffer = Buffer.from(arrayBuffer);
+
+      const result = await restoreFilesFromZip(zipBuffer);
+      data = result.dbExport;
+      filesRestored = result.filesRestored;
+    } else {
+      // Legacy JSON format
+      const isJsonFile = file.name?.endsWith(".json") || file.type === "application/json";
+      if (!isJsonFile) {
+        return NextResponse.json(
+          { error: "unsupportedFileFormat", message: "Only JSON export files or ZIP backup archives are supported." },
+          { status: 400 }
+        );
       }
-      return NextResponse.json({ error: "invalidJsonFile" }, { status: 400 });
+
+      try {
+        data = await readUploadedJsonFileWithLimit<JudgeKitExport>(file);
+      } catch (error) {
+        if (error instanceof Error && error.message === "fileTooLarge") {
+          return NextResponse.json({ error: "fileTooLarge" }, { status: 400 });
+        }
+        return NextResponse.json({ error: "invalidJsonFile" }, { status: 400 });
+      }
     }
 
     const errors = validateExport(data);
@@ -90,7 +111,9 @@ export async function POST(request: NextRequest) {
       resourceType: "system_settings",
       resourceId: "database",
       resourceLabel: "Database restore",
-      summary: `Restoring from JSON export (source: ${data.sourceDialect}, ${(file.size / 1024 / 1024).toFixed(1)} MB)`,
+      summary: isZipFile
+        ? `Restoring from ZIP backup (source: ${data.sourceDialect}, ${filesRestored} files, ${(file.size / 1024 / 1024).toFixed(1)} MB)`
+        : `Restoring from JSON export (source: ${data.sourceDialect}, ${(file.size / 1024 / 1024).toFixed(1)} MB)`,
       request,
     });
 
@@ -106,9 +129,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Database restored from JSON export.",
+      message: "Database restored from backup.",
       tablesImported: result.tablesImported,
       totalRowsImported: result.totalRowsImported,
+      filesRestored: isZipFile ? filesRestored : undefined,
     });
   } catch (error) {
     logger.error({ err: error }, "Database restore error");

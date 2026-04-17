@@ -271,8 +271,8 @@
     "importFailed": "Failed to import problem.",
     "uploadSourceFile": "Upload Source File",
     "sourceFileLoaded": "\"{name}\" loaded into the editor.",
-    "sourceFileLoadFailed",
-    "submissionCreated": "Submission created successfully": "Failed to read the selected source file.",
+    "sourceFileLoadFailed": "Failed to read the selected source file.",
+    "submissionCreated": "Submission created successfully",
     "resetToTemplate": "Reset to Template",
     "writeCodePlaceholder": "Write your code here...",
     "descriptionTitle": "Description",
@@ -877,7 +877,13 @@
     "assignmentVisibilityPrivate": "Private contest",
     "assignmentVisibilityPublic": "Public contest",
     "assignmentVisibilityDescription_private": "Visible only to enrolled participants and staff. Guests cannot browse it from the public contest catalog.",
-    "assignmentVisibilityDescription_public": "Visible in the public contest catalog. Joining and starting still require authentication."
+    "assignmentVisibilityDescription_public": "Visible in the public contest catalog. Joining and starting still require authentication.",
+    "assignmentPerformance": "Assignment Performance",
+    "assignmentTitle": "Assignment",
+    "highScore": "High Score",
+    "lowScore": "Low Score",
+    "noAssignmentsYet": "No assignments yet.",
+    "avgOverallScore": "Avg Overall Score"
   },
   "admin": {
     "users": {
@@ -926,7 +932,7 @@
       "roleOptions": {
         "student": "User",
         "assistant": "Assistant",
-      "instructor": "Instructor",
+        "instructor": "Instructor",
         "admin": "Admin",
         "super_admin": "Super Admin"
       },
@@ -1130,8 +1136,8 @@
       "siteDescriptionTooLong": "Site description must be 255 characters or less",
       "invalidTimeZone": "Enter a valid IANA timezone such as Asia/Seoul",
       "unauthorized": "You are not authorized to update system settings",
-      "backupTitle": "Database Backup & Restore",
-      "backupDescription": "Download a backup of the database or restore from a previous backup.",
+      "backupTitle": "System Backup & Restore",
+      "backupDescription": "Download a full system backup (database and uploaded files) or restore from a previous backup.",
       "downloadBackup": "Download Backup",
       "backupSuccess": "Backup downloaded.",
       "backupFailed": "Failed to download backup.",

@@ -26,7 +26,7 @@ export function DatabaseBackupRestore({ isSuperAdmin }: { isSuperAdmin: boolean 
 
     setIsDownloading(true);
     try {
-      const response = await apiFetch("/api/v1/admin/backup", {
+      const response = await apiFetch("/api/v1/admin/backup?includeFiles=true", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: backupPassword }),
@@ -41,7 +41,7 @@ export function DatabaseBackupRestore({ isSuperAdmin }: { isSuperAdmin: boolean 
       const a = document.createElement("a");
       a.href = url;
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      a.download = `judgekit-backup-${timestamp}.json`;
+      a.download = `judgekit-backup-${timestamp}.zip`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(t("backupSuccess"));
@@ -140,7 +140,7 @@ export function DatabaseBackupRestore({ isSuperAdmin }: { isSuperAdmin: boolean 
           <input
             ref={fileInputRef}
             type="file"
-            accept=".json,application/json"
+            accept=".json,.zip,application/json,application/zip"
             onChange={() => setConfirmRestore(false)}
             className="block w-full text-sm text-muted-foreground file:mr-4 file:py-1 file:px-3 file:rounded file:border file:border-input file:text-sm file:font-medium file:bg-background file:text-foreground hover:file:bg-accent cursor-pointer"
           />

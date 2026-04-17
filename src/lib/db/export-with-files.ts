@@ -2,7 +2,7 @@ import JSZip from "jszip";
 import { db } from "@/lib/db";
 import { files } from "@/lib/db/schema";
 import { streamDatabaseExport, type JudgeKitExport } from "@/lib/db/export";
-import { readUploadedFile, resolveStoredPath } from "@/lib/files/storage";
+import { readUploadedFile, resolveStoredPath, writeUploadedFile, ensureUploadsDir } from "@/lib/files/storage";
 import { logger } from "@/lib/logger";
 import { asc } from "drizzle-orm";
 import { access } from "node:fs/promises";
@@ -68,4 +68,58 @@ export async function streamBackupWithFiles(signal?: AbortSignal): Promise<Reada
       controller.close();
     },
   });
+}
+
+/**
+ * Restore uploaded files and extract database.json from a ZIP backup archive.
+ *
+ * @param zipBuffer - The ZIP file content as a Buffer
+ * @returns The parsed database export and count of restored files
+ */
+export async function restoreFilesFromZip(zipBuffer: Buffer): Promise<{
+  dbExport: JudgeKitExport;
+  filesRestored: number;
+}> {
+  const zip = await JSZip.loadAsync(zipBuffer);
+
+  // 1. Extract database.json
+  const dbEntry = zip.file("database.json");
+  if (!dbEntry) {
+    throw new Error("missingDatabaseJson");
+  }
+
+  const dbJson = await dbEntry.async("text");
+  let dbExport: JudgeKitExport;
+  try {
+    dbExport = JSON.parse(dbJson);
+  } catch {
+    throw new Error("invalidDatabaseJson");
+  }
+
+  // 2. Extract uploaded files to disk
+  await ensureUploadsDir();
+  let filesRestored = 0;
+
+  const fileEntries = zip.filter(
+    (relativePath) => relativePath.startsWith("uploads/") && !relativePath.endsWith("/")
+  );
+
+  for (const entry of fileEntries) {
+    const storedName = entry.name.slice("uploads/".length);
+    if (!storedName) continue;
+
+    // Validate: no path traversal
+    if (storedName.includes("/") || storedName.includes("\\") || storedName.includes("..")) {
+      logger.warn({ storedName }, "Skipping file with invalid name in backup ZIP");
+      continue;
+    }
+
+    const buffer = await entry.async("nodebuffer");
+    await writeUploadedFile(storedName, buffer);
+    filesRestored++;
+  }
+
+  logger.info({ filesRestored }, "Restored uploaded files from backup ZIP");
+
+  return { dbExport, filesRestored };
 }
