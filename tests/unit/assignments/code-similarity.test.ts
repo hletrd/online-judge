@@ -59,7 +59,7 @@ describe("code similarity status reporting", () => {
     });
   });
 
-  it("tries the Rust sidecar before bailing out of oversized contests", async () => {
+  it("tries the Rust sidecar before reporting an unavailable service for oversized contests", async () => {
     rawQueryAllMock.mockResolvedValue(
       Array.from({ length: 501 }, (_, index) => ({
         userId: `user-${index}`,
@@ -74,7 +74,7 @@ describe("code similarity status reporting", () => {
     expect(computeSimilarityRustMock).toHaveBeenCalledOnce();
     expect(result).toMatchObject({
       status: "not_run",
-      reason: "too_many_submissions",
+      reason: "service_unavailable",
       flaggedPairs: 0,
       submissionCount: 501,
       maxSupportedSubmissions: MAX_SUBMISSIONS_FOR_SIMILARITY,

@@ -77,10 +77,10 @@ describe("POST /api/v1/contests/[assignmentId]/similarity-check", () => {
     dbSelectMock.mockReturnValue({ from: dbFromMock });
   });
 
-  it("returns explicit not_run status instead of silently reporting zero flagged pairs", async () => {
+  it("returns explicit service_unavailable status instead of silently reporting zero flagged pairs", async () => {
     runAndStoreSimilarityCheckMock.mockResolvedValue({
       status: "not_run",
-      reason: "too_many_submissions",
+      reason: "service_unavailable",
       flaggedPairs: 0,
       submissionCount: 700,
       maxSupportedSubmissions: 500,
@@ -98,7 +98,7 @@ describe("POST /api/v1/contests/[assignmentId]/similarity-check", () => {
     expect(res.status).toBe(200);
     expect(body.data).toMatchObject({
       status: "not_run",
-      reason: "too_many_submissions",
+      reason: "service_unavailable",
       submissionCount: 700,
     });
   });

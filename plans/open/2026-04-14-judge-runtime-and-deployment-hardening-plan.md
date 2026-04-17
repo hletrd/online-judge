@@ -31,6 +31,7 @@ Repair the current judge/worker/deploy invariants so long-running jobs, split-ho
 - runner/docker-admin endpoints now support a separate `RUNNER_AUTH_TOKEN` so deployments can split them from `JUDGE_AUTH_TOKEN`
 - Node compiler-run delegation now prefers `RUNNER_AUTH_TOKEN` for `/run` requests, and the local fallback rejects the same shell metacharacter chains that the Rust runner already blocks
 - docker image-management now fails closed when `COMPILER_RUNNER_URL` is configured without `RUNNER_AUTH_TOKEN`/`JUDGE_AUTH_TOKEN`, instead of silently falling back to empty local Docker results
+- oversized similarity scans now report `service_unavailable` explicitly when the Rust sidecar is unavailable, instead of misreporting the condition as a generic submission-count limit
 
 ## Workstream A — Claim freshness and worker-capacity accounting
 **Targets**

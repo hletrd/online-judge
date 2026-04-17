@@ -223,7 +223,12 @@ const YIELD_INTERVAL_MS = 8;
 export const MAX_SUBMISSIONS_FOR_SIMILARITY = 500;
 
 export type SimilarityRunStatus = "completed" | "not_run" | "timed_out";
-export type SimilarityRunReason = "no_submissions" | "too_many_submissions" | "timeout" | null;
+export type SimilarityRunReason =
+  | "no_submissions"
+  | "too_many_submissions"
+  | "service_unavailable"
+  | "timeout"
+  | null;
 
 export type SimilarityRunResult = {
   status: SimilarityRunStatus;
@@ -349,7 +354,7 @@ export async function runSimilarityCheck(
   if (rows.length > MAX_SUBMISSIONS_FOR_SIMILARITY) {
     return {
       status: "not_run",
-      reason: "too_many_submissions",
+      reason: "service_unavailable",
       pairs: [],
       flaggedPairs: 0,
       submissionCount: rows.length,
