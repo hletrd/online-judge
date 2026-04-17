@@ -5,6 +5,7 @@ import { discussionThreads } from "@/lib/db/schema";
 import { discussionThreadCreateSchema } from "@/lib/validators/discussions";
 import { createApiHandler, forbidden } from "@/lib/api/handler";
 import { canAccessProblem } from "@/lib/auth/permissions";
+import { resolveCapabilities, hasCapability } from "@/lib/capabilities";
 import { sanitizeMarkdown } from "@/lib/security/sanitize-html";
 import { recordAuditEvent } from "@/lib/audit/events";
 
@@ -28,11 +29,11 @@ export const POST = createApiHandler({
       }
     }
 
-    if (
-      body.scopeType === "editorial" &&
-      !["admin", "super_admin", "instructor"].includes(user.role)
-    ) {
-      return forbidden();
+    if (body.scopeType === "editorial") {
+      const caps = await resolveCapabilities(user.role);
+      if (!hasCapability(caps, "community.moderate")) {
+        return forbidden();
+      }
     }
 
     const [created] = await db.insert(discussionThreads).values({
