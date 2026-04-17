@@ -1,5 +1,5 @@
 import type { ElementType } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 interface EmptyStateProps {
@@ -8,37 +8,25 @@ interface EmptyStateProps {
   description?: string;
   action?: {
     label: string;
-    href?: string;
-    onClick?: () => void;
+    href: string;
   };
 }
 
 export function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
   return (
-    <Card>
-      <CardContent className="flex flex-col items-center gap-4 py-12">
-        <Icon className="size-10 text-muted-foreground" />
-        <div className="text-center space-y-1">
-          <p className="text-sm font-medium">{title}</p>
-          {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          )}
-        </div>
-        {action && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={action.onClick}
-            {...(action.href ? { asChild: true } : {})}
-          >
-            {action.href ? (
-              <a href={action.href}>{action.label}</a>
-            ) : (
-              action.label
-            )}
-          </Button>
+    <div className="flex flex-col items-center gap-3 py-8">
+      <Icon className="size-10 text-muted-foreground" />
+      <div className="text-center space-y-1">
+        <p className="text-sm font-medium">{title}</p>
+        {description && (
+          <p className="text-sm text-muted-foreground">{description}</p>
         )}
-      </CardContent>
-    </Card>
+      </div>
+      {action && (
+        <Link href={action.href}>
+          <Button variant="outline" size="sm">{action.label}</Button>
+        </Link>
+      )}
+    </div>
   );
 }
