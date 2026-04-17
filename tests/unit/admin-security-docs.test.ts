@@ -17,6 +17,11 @@ describe("admin security operations documentation", () => {
     expect(doc).toContain("Login lockout policy");
     expect(doc).toContain("lockouts survive app restarts");
     expect(doc).toContain("does **not** currently ship native MFA or institution-grade SSO");
+    expect(doc).toContain("Secret management baseline");
+    expect(doc).toContain("AUTH_SECRET");
+    expect(doc).toContain("JUDGE_AUTH_TOKEN");
+    expect(doc).toContain("Reverse proxy and perimeter controls");
+    expect(doc).toContain("nginx rate limits");
     expect(doc).toContain("npm audit --audit-level=high");
     expect(doc).toContain("cargo audit");
     expect(doc).toContain("Dependabot");

@@ -43,6 +43,35 @@ Until native support exists, deploy higher-assurance admin access behind an exte
 - any workstation or CI environment that can run `deploy-docker.sh`
 - secrets used for backups, judge workers, and runtime auth
 
+## Secret management baseline
+
+JudgeKit currently relies on environment variables rather than a built-in vault integration.
+
+### Required operator posture
+- keep `.env` and `.env.production` out of version control
+- restrict file permissions on deployment hosts and CI runners
+- rotate leaked secrets using `docs/operator-incident-runbook.md`
+- prefer a platform secret store (host secret manager, CI secrets, cloud secret store) over hand-copying values between machines
+
+### Secrets that deserve the highest handling bar
+- `AUTH_SECRET`
+- `JUDGE_AUTH_TOKEN`
+- `RUNNER_AUTH_TOKEN`
+- database credentials
+- backup artifacts that include full-fidelity secrets
+
+## Reverse proxy and perimeter controls
+
+JudgeKit does not ship a full WAF, but the default deployment path already includes reverse-proxy rate limiting in nginx for:
+- auth/login-sensitive traffic
+- judge/worker-sensitive traffic
+
+Recommended production posture:
+- keep those nginx rate limits enabled
+- restrict admin access by network boundary where possible (VPN, allowlist, access proxy)
+- terminate TLS at a controlled reverse proxy or access gateway
+- add an external WAF or access proxy when institutional policy requires it
+
 ## Operator checklist
 - review login-log and audit-log exports during investigations
 - verify lockout settings before high-stakes launches
