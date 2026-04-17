@@ -26,12 +26,9 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
     notFound();
   }
 
-  const canEdit =
-    problem.authorId === session.user.id ||
-    session.user.role === "admin" ||
-    session.user.role === "super_admin";
-  const canOverrideTestCases =
-    session.user.role === "admin" || session.user.role === "super_admin";
+  const caps = await resolveCapabilities(session.user.role);
+  const canEdit = problem.authorId === session.user.id || caps.has("problems.edit");
+  const canOverrideTestCases = caps.has("problems.delete");
 
   if (!canEdit) {
     redirect(`/dashboard/problems/${problem.id}`);
@@ -75,7 +72,7 @@ export default async function EditProblemPage({ params }: { params: Promise<{ id
         <CardContent>
           <CreateProblemForm
             mode="edit"
-            canUploadFiles={(await resolveCapabilities(session.user.role)).has("files.upload")}
+            canUploadFiles={caps.has("files.upload")}
             initialProblem={{
               id: problem.id,
               title: problem.title,

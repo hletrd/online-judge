@@ -32,6 +32,7 @@ import { getJudgeLanguageDefinition } from "@/lib/judge/languages";
 import { ProblemKeyboardNav } from "./problem-keyboard-nav";
 import { formatSubmissionIdPrefix } from "@/lib/submissions/format";
 import Link from "next/link";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -105,6 +106,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
     auth(),
     getLocale(),
   ]);
+  const caps = session?.user ? await resolveCapabilities(session.user.role) : new Set<string>();
 
   const problem = await db.query.problems.findFirst({
     where: eq(problems.id, id),
@@ -519,7 +521,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
             )}
 
             {/* Create editorial form for admin/instructor */}
-            {session?.user && (session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "instructor") && (
+            {session?.user && caps.has("problems.edit") && (
               <DiscussionThreadForm
                 scopeType="editorial"
                 problemId={problem.id}

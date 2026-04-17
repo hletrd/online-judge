@@ -25,6 +25,7 @@ import { ProblemDeleteButton } from "./problem-delete-button";
 import { ProblemExportButton } from "./problem-export-button";
 import { ArrowLeft, Trophy } from "lucide-react";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 function formatDifficultyValue(value: number) {
   return value.toFixed(2).replace(/\.?0+$/, "");
@@ -58,6 +59,7 @@ export default async function ProblemDetailPage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  const caps = await resolveCapabilities(session.user.role);
 
   const [resolvedParams, resolvedSearchParams] = await Promise.all([
     params,
@@ -116,10 +118,7 @@ export default async function ProblemDetailPage({
     redirect(recruitingAccess.isRecruitingCandidate ? "/dashboard/contests" : "/dashboard/problems");
   }
 
-  const canEdit =
-    problem.authorId === session.user.id ||
-    session.user.role === "admin" ||
-    session.user.role === "super_admin";
+  const canEdit = problem.authorId === session.user.id || caps.has("problems.edit");
 
   let assignmentContext:
     | {
@@ -158,9 +157,10 @@ export default async function ProblemDetailPage({
     if (
       assignment?.startsAt &&
       new Date(assignment.startsAt) > new Date() &&
-      session.user.role !== "admin" &&
-      session.user.role !== "super_admin" &&
-      session.user.role !== "instructor"
+      !caps.has("groups.view_all") &&
+      !caps.has("assignments.view_status") &&
+      !caps.has("contests.view_analytics") &&
+      !caps.has("submissions.view_all")
     ) {
       redirect(`/dashboard/contests/${normalizedAssignmentId}`);
     }
@@ -251,7 +251,11 @@ export default async function ProblemDetailPage({
                 <Link href={`/dashboard/problems/${problem.id}/edit`}>
                   <Button variant="outline" size="sm">{tCommon("edit")}</Button>
                 </Link>
-                <ProblemDeleteButton problemId={problem.id} problemTitle={problem.title} isAdmin={session.user.role === "admin" || session.user.role === "super_admin"} />
+                <ProblemDeleteButton
+                  problemId={problem.id}
+                  problemTitle={problem.title}
+                  isAdmin={caps.has("problems.delete")}
+                />
               </>
             )}
           </div>

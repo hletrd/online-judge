@@ -9,6 +9,7 @@ function read(relativePath: string) {
 describe("custom-role page/runtime implementation guards", () => {
   it("removes built-in-only role assertions from custom-role-aware dashboard pages", () => {
     const pagePaths = [
+      "src/app/(dashboard)/layout.tsx",
       "src/app/(dashboard)/dashboard/contests/page.tsx",
       "src/app/(dashboard)/dashboard/contests/[assignmentId]/analytics/page.tsx",
       "src/app/(dashboard)/dashboard/contests/[assignmentId]/participant/[userId]/page.tsx",
@@ -16,6 +17,9 @@ describe("custom-role page/runtime implementation guards", () => {
       "src/app/(dashboard)/dashboard/groups/[id]/assignments/[assignmentId]/student/[userId]/page.tsx",
       "src/app/(dashboard)/dashboard/groups/[id]/assignments/[assignmentId]/page.tsx",
       "src/app/(dashboard)/dashboard/groups/[id]/page.tsx",
+      "src/app/(dashboard)/dashboard/problems/page.tsx",
+      "src/app/(dashboard)/dashboard/problems/[id]/page.tsx",
+      "src/app/(dashboard)/dashboard/problems/[id]/edit/page.tsx",
     ];
 
     for (const pagePath of pagePaths) {
@@ -29,5 +33,29 @@ describe("custom-role page/runtime implementation guards", () => {
     expect(contestsHelper).toContain("resolveCapabilities");
     expect(contestsHelper).toContain("group_instructors gi");
     expect(contestsHelper).toContain("groups.view_all");
+  });
+
+  it("keeps problem and dashboard affordances capability-aware for custom roles", () => {
+    const dashboardLayout = read("src/app/(dashboard)/layout.tsx");
+    const problemsPage = read("src/app/(dashboard)/dashboard/problems/page.tsx");
+    const problemDetail = read("src/app/(dashboard)/dashboard/problems/[id]/page.tsx");
+    const publicPracticeDetail = read("src/app/(public)/practice/problems/[id]/page.tsx");
+
+    expect(dashboardLayout).toContain('capsSet.has("assignments.view_status")');
+    expect(dashboardLayout).not.toContain('session.user.role === "admin"');
+
+    expect(problemsPage).toContain("resolveCapabilities");
+    expect(problemsPage).toContain('caps.has("problems.edit")');
+    expect(problemsPage).toContain('caps.has("problems.view_all")');
+    expect(problemsPage).not.toContain('session.user.role === "admin"');
+
+    expect(problemDetail).toContain("resolveCapabilities");
+    expect(problemDetail).toContain('caps.has("problems.edit")');
+    expect(problemDetail).toContain('caps.has("assignments.view_status")');
+    expect(problemDetail).not.toContain('session.user.role === "admin"');
+
+    expect(publicPracticeDetail).toContain("resolveCapabilities");
+    expect(publicPracticeDetail).toContain('caps.has("problems.edit")');
+    expect(publicPracticeDetail).not.toContain('session.user.role === "admin"');
   });
 });

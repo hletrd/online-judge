@@ -23,6 +23,7 @@ import { PaginationControls } from "@/components/pagination-controls";
 import { FilterSelect } from "@/components/filter-select";
 import { ProblemImportButton } from "./problem-import-button";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 type ProblemProgress = "solved" | "attempted" | "untried";
 type ProblemFilter = "all" | "solved" | "unsolved" | "attempted";
@@ -136,15 +137,18 @@ export default async function ProblemsPage({
   const tCommon = await getTranslations("common");
   const tSubmissions = await getTranslations("submissions");
   const recruitingAccess = await getRecruitingAccessContext(session.user.id);
+  const caps = await resolveCapabilities(session.user.role);
   const visibilityLabels = {
     public: t("visibilityOptions.public"),
     private: t("visibilityOptions.private"),
     hidden: t("visibilityOptions.hidden"),
   };
   const canManageProblems =
-    session.user.role === "admin" ||
-    session.user.role === "super_admin" ||
-    session.user.role === "instructor";
+    caps.has("problems.create") ||
+    caps.has("problems.edit") ||
+    caps.has("problems.view_all");
+  const canViewProblemVisibility = caps.has("problems.view_all");
+  const canEditProblems = caps.has("problems.edit");
 
   // Fetch all tags for the filter dropdown
   const allTags = recruitingAccess.isRecruitingCandidate
@@ -172,7 +176,7 @@ export default async function ProblemsPage({
 
   // Build visibility filter
   const visibilityDbFilter =
-    canManageProblems && currentVisibility !== "all"
+    canViewProblemVisibility && currentVisibility !== "all"
       ? eq(problems.visibility, currentVisibility)
       : undefined;
 
@@ -660,9 +664,7 @@ export default async function ProblemsPage({
                       <Link href={`/dashboard/problems/${problem.id}`}>
                         <Button variant="outline" size="sm">{t("solve")}</Button>
                       </Link>
-                      {(problem.authorId === session.user.id ||
-                        session.user.role === "admin" ||
-                        session.user.role === "super_admin") && (
+                      {(problem.authorId === session.user.id || canEditProblems) && (
                         <Link href={`/dashboard/problems/${problem.id}/edit`}>
                           <Button size="sm">{tCommon("edit")}</Button>
                         </Link>

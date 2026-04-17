@@ -24,6 +24,8 @@ Close the remaining object-level authorization gaps and remove the last places w
   - assignment submission visibility now honors group-instructor roles instead of only assignment ownership
   - submission detail + lecture mode now use capability-aware privilege checks instead of built-in-role-only allowlists
   - anonymous recruiting validation payloads are reduced to minimal validity metadata
+  - dashboard/problem editing affordances now use capabilities instead of built-in admin/instructor role-name checks
+  - problem detail contest-start access now honors custom privileged roles via capability checks
 
 ## Workstream A — Problem-set visibility and scope isolation
 **Targets**

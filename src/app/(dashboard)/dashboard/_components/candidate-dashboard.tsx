@@ -32,7 +32,7 @@ export async function CandidateDashboard({
 
   // Determine accessible problem count at the database level instead of fetching all problems
   const caps = await resolveCapabilities(role);
-  const canViewAll = caps.has("problems.view_all") || role === "super_admin" || role === "admin";
+  const canViewAll = caps.has("problems.view_all");
   const restrictToAssignmentIds = assignmentIds.length > 0;
   const assignmentSubmissionFilter = restrictToAssignmentIds
     ? inArray(submissions.assignmentId, assignmentIds)

@@ -47,10 +47,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ]);
   const capsSet = new Set(capabilities);
   const canBypassTimedAssignmentPanel =
-    session.user.role === "admin"
-    || session.user.role === "super_admin"
-    || session.user.role === "instructor"
-    || capsSet.has("groups.view_all")
+    capsSet.has("groups.view_all")
     || capsSet.has("submissions.view_all")
     || capsSet.has("assignments.view_status");
 
