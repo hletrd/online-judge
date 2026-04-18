@@ -56,16 +56,16 @@ function validateProfileFields(body: Record<string, unknown>, isAdminActor: bool
   const profileFields = getProfileFields(body, isAdminActor);
 
   if (Object.keys(profileFields).length === 0) {
-    return null;
+    return { error: null as null, data: null as Record<string, unknown> | null };
   }
 
   const parsed = profileSchema.partial().safeParse(profileFields);
 
   if (!parsed.success) {
-    return apiError(parsed.error.issues[0]?.message ?? "validationError", 400);
+    return { error: apiError(parsed.error.issues[0]?.message ?? "validationError", 400), data: null as Record<string, unknown> | null };
   }
 
-  return null;
+  return { error: null as null, data: parsed.data as Record<string, unknown> };
 }
 
 async function ensureUniqueIdentityFields(
@@ -298,7 +298,7 @@ export const PATCH = createApiHandler({
       return apiError(parsed.error.issues[0]?.message ?? "invalidInput", 400);
     }
     const body = parsed.data;
-    const profileValidationError = validateProfileFields(body, isAdminActor);
+    const { error: profileValidationError, data: validatedProfileFields } = validateProfileFields(body, isAdminActor);
     if (profileValidationError) return profileValidationError;
 
     if (!isAdminActor && body.username !== undefined) {
