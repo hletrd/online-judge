@@ -110,7 +110,7 @@ export default async function DashboardPage() {
         </Suspense>
       )}
 
-      {!isAdminView && (
+      {!isAdminView && !isCandidateView && (
         <Suspense
           fallback={
             <div className="space-y-4">

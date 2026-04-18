@@ -1,22 +1,37 @@
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
+import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { auth } from "@/lib/auth";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { getJudgeSystemSnapshot } from "@/lib/judge/dashboard-data";
+import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 
 function formatNumber(value: number, locale: string) {
   return new Intl.NumberFormat(locale).format(value);
 }
 
 export default async function DashboardLanguagesPage() {
-  const [snapshot, locale, tDashboard, tLanguages] = await Promise.all([
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const [snapshot, locale, tDashboard, tLanguages, caps, accessContext] = await Promise.all([
     getJudgeSystemSnapshot(),
     getLocale(),
     getTranslations("dashboard"),
     getTranslations("languages"),
+    resolveCapabilities(session.user.role),
+    getRecruitingAccessContext(session.user.id),
   ]);
+  if (
+    accessContext.effectivePlatformMode === "recruiting" &&
+    (accessContext.isRecruitingCandidate || (!caps.has("system.settings") && !caps.has("submissions.view_all")))
+  ) {
+    redirect("/dashboard");
+  }
 
   return (
     <div className="space-y-6">
