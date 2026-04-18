@@ -94,15 +94,19 @@ describe("custom-role page/runtime implementation guards", () => {
     const addDialog = read("src/app/(dashboard)/dashboard/admin/users/add-user-dialog.tsx");
     const userActions = read("src/app/(dashboard)/dashboard/admin/users/user-actions.tsx");
     const editDialog = read("src/app/(dashboard)/dashboard/admin/users/edit-user-dialog.tsx");
+    const userDetailPage = read("src/app/(dashboard)/dashboard/admin/users/[id]/page.tsx");
 
     expect(usersPage).toContain("canManageRoleAsync");
     expect(usersPage).toContain('caps.has("users.create")');
     expect(usersPage).toContain('caps.has("users.edit")');
     expect(usersPage).toContain('caps.has("users.delete")');
     expect(usersPage).not.toContain('const isAdmin = caps.has("users.edit")');
+    expect(usersPage).toContain("{canEditUsers ? (");
 
+    expect(userActions).toContain("actorCanEdit");
     expect(userActions).toContain("actorCanDelete");
     expect(userActions).not.toContain('actorRole === "admin"');
+    expect(userActions).toContain("{actorCanEdit ? (");
 
     expect(addDialog).toContain("availableRoles");
     expect(addDialog).toContain('assistant: t("roleOptions.assistant")');
@@ -116,5 +120,10 @@ describe("custom-role page/runtime implementation guards", () => {
     expect(editDialog).not.toContain("actorRole");
     expect(editDialog).not.toContain('actorRole === "instructor"');
     expect(editDialog).not.toContain('.filter((r) => r.name !== "super_admin" || user.role === "super_admin")');
+
+    expect(userDetailPage).toContain('if (!caps.has("users.view")) redirect("/dashboard");');
+    expect(userDetailPage).toContain('const canEditUsers = caps.has("users.edit");');
+    expect(userDetailPage).toContain("actorCanEdit={canEditUsers}");
+    expect(userDetailPage).toContain('assistant: tCommon("roles.assistant")');
   });
 });

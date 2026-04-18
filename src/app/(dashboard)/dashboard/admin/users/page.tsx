@@ -251,20 +251,23 @@ export default async function UserManagementPage({
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2 items-center">
-                      <EditUserDialog roleOptions={availableRoles.filter((role) => role.name === user.role || manageableRoleNames.has(role.name))} canEditRole={user.role !== "super_admin" && canEditUsers} user={{
-                        id: user.id,
-                        username: user.username,
-                        email: user.email,
-                        name: user.name,
-                        className: user.className,
-                        role: user.role
-                      }} />
+                      {canEditUsers ? (
+                        <EditUserDialog roleOptions={availableRoles.filter((role) => role.name === user.role || manageableRoleNames.has(role.name))} canEditRole={user.role !== "super_admin" && canEditUsers} user={{
+                          id: user.id,
+                          username: user.username,
+                          email: user.email,
+                          name: user.name,
+                          className: user.className,
+                          role: user.role
+                        }} />
+                      ) : null}
                       <UserActions
                         userId={user.id}
                         username={user.username}
                         isActive={!!user.isActive}
                         isSelf={user.id === session.user.id}
                         userRole={user.role}
+                        actorCanEdit={canEditUsers}
                         actorCanDelete={canDeleteUsers}
                       />
                     </div>

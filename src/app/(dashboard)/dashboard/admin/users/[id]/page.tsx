@@ -21,7 +21,9 @@ export default async function AdminUserDetailPage({
   const session = await auth();
   if (!session?.user) redirect("/login");
   const caps = await resolveCapabilities(session.user.role);
-  if (!caps.has("users.view") || !caps.has("users.edit")) redirect("/dashboard");
+  if (!caps.has("users.view")) redirect("/dashboard");
+  const canEditUsers = caps.has("users.edit");
+  const canDeleteUsers = caps.has("users.delete");
 
   const resolvedParams = await params;
   const user = await db.query.users.findFirst({
@@ -48,6 +50,7 @@ export default async function AdminUserDetailPage({
   const timeZone = await getResolvedSystemTimeZone();
   const roleLabels = {
     student: tCommon("roles.student"),
+    assistant: tCommon("roles.assistant"),
     instructor: tCommon("roles.instructor"),
     admin: tCommon("roles.admin"),
     super_admin: tCommon("roles.super_admin"),
@@ -71,6 +74,8 @@ export default async function AdminUserDetailPage({
             isActive={!!user.isActive}
             isSelf={user.id === session.user.id}
             userRole={user.role}
+            actorCanEdit={canEditUsers}
+            actorCanDelete={canDeleteUsers}
             triggerVariant={user.isActive ? "destructive" : "outline"}
           />
         </div>

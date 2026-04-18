@@ -13,6 +13,7 @@ export default function UserActions({
   isActive,
   isSelf,
   userRole,
+  actorCanEdit,
   actorCanDelete,
   triggerVariant,
 }: {
@@ -21,6 +22,7 @@ export default function UserActions({
   isActive: boolean;
   isSelf: boolean;
   userRole: string;
+  actorCanEdit?: boolean;
   actorCanDelete?: boolean;
   triggerVariant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
 }) {
@@ -75,24 +77,26 @@ export default function UserActions({
     });
   }
 
-  if (isSelf || userRole === "super_admin") return null;
+  if (isSelf || userRole === "super_admin" || (!actorCanEdit && !actorCanDelete)) return null;
 
   return (
     <div className="flex items-center gap-2">
-      <DestructiveActionDialog
-        triggerLabel={t(isActive ? "deactivateAccess" : "restoreAccess")}
-        title={t(isActive ? "deactivateDialogTitle" : "restoreDialogTitle")}
-        description={t(isActive ? "deactivateDialogDescription" : "restoreDialogDescription", {
-          username,
-        })}
-        confirmLabel={t(isActive ? "deactivateAccess" : "restoreAccess")}
-        cancelLabel={t("cancelAction")}
-        onConfirmAction={handleToggle}
-        disabled={isPending}
-        triggerVariant={triggerVariant ?? (isActive ? "destructive" : "outline")}
-        triggerTestId={`user-access-toggle-${userId}`}
-        confirmTestId={`user-access-toggle-confirm-${userId}`}
-      />
+      {actorCanEdit ? (
+        <DestructiveActionDialog
+          triggerLabel={t(isActive ? "deactivateAccess" : "restoreAccess")}
+          title={t(isActive ? "deactivateDialogTitle" : "restoreDialogTitle")}
+          description={t(isActive ? "deactivateDialogDescription" : "restoreDialogDescription", {
+            username,
+          })}
+          confirmLabel={t(isActive ? "deactivateAccess" : "restoreAccess")}
+          cancelLabel={t("cancelAction")}
+          onConfirmAction={handleToggle}
+          disabled={isPending}
+          triggerVariant={triggerVariant ?? (isActive ? "destructive" : "outline")}
+          triggerTestId={`user-access-toggle-${userId}`}
+          confirmTestId={`user-access-toggle-confirm-${userId}`}
+        />
+      ) : null}
       {actorCanDelete ? (
         <DestructiveActionDialog
           triggerLabel={t("deleteUser")}
