@@ -64,7 +64,7 @@ Tracked in `.context/reviews/comprehensive-code-review-2026-04-18.md` §3.* and 
 | CRIT-3 | Done | `fix(accepted-solutions): 🔐 require auth and hide anonymous userId` |
 | CRIT-4 | Done | `fix(files): 🛡️ authenticate API-key deletes before CSRF` |
 | CRIT-5 | Done | `fix(judge-runner): 🛡️ cap runner HTTP body at 4 MiB` |
-| CRIT-6 | Open | — |
+| CRIT-6 | Done | `fix(secrets): 🔒 stop persisting plaintext worker + recruiting tokens` |
 | CRIT-7 | Done | `fix(retention): 🔒 prune loginEvents and honor legal hold for audit` |
 | CRIT-8 | Done | `fix(sidecars): 🛡️ add bearer auth + body-size limits to Rust sidecars` |
 | CRIT-9 | Done | key.pem removed from working tree; `*.pem`/`*.key`/`*.p12`/`*.pfx` added to `.dockerignore`. **Operator action:** rotate any TLS/private key that was present at `/key.pem` before this change, because it may have been copied into prior docker builder layers. |
