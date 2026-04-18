@@ -431,7 +431,8 @@ export const DELETE = createApiHandler({
       let body: { confirmUsername?: string } = {};
       try {
         body = await req.json();
-      } catch {
+      } catch (err) {
+        logger.warn({ err, userId: found.id }, "[users] failed to parse request body for permanent deletion confirmation");
         return apiError("confirmUsernameRequired", 400);
       }
 

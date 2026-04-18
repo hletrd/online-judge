@@ -156,8 +156,9 @@ async function sharedPollTick(): Promise<void> {
       for (const cb of subs) {
         try {
           cb(status);
-        } catch {
+        } catch (err) {
           // Individual callback errors should not break the loop
+          logger.debug({ err, subId }, "[sse] subscriber callback error during poll tick");
         }
       }
     }
