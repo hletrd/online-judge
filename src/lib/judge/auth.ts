@@ -5,6 +5,7 @@ import { safeTokenCompare } from "@/lib/security/timing";
 import { db } from "@/lib/db";
 import { judgeWorkers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { logger } from "@/lib/logger";
 
 function parseBearerToken(authHeader: string | null) {
   if (!authHeader?.startsWith("Bearer ")) {
@@ -40,8 +41,9 @@ export function isJudgeAuthorized(request: NextRequest) {
  * Validate that the request carries a valid judge Bearer token for a
  * specific worker. When the worker has a `secretTokenHash` stored in the DB,
  * the provided token is hashed and compared against it. When only a plaintext
- * `secretToken` exists (backward compatibility during migration), a direct
- * comparison is used. Otherwise it falls back to the shared JUDGE_AUTH_TOKEN.
+ * `secretToken` exists (legacy — should be migrated), a deprecation warning
+ * is logged and auth is rejected. Otherwise it falls back to the shared
+ * JUDGE_AUTH_TOKEN.
  *
  * Returns an object with `authorized` boolean and an optional error key
  * that can be returned directly to the client.
@@ -58,7 +60,7 @@ export async function isJudgeAuthorizedForWorker(
 
   const worker = await db.query.judgeWorkers.findFirst({
     where: eq(judgeWorkers.id, workerId),
-    columns: { secretToken: true, secretTokenHash: true },
+    columns: { secretTokenHash: true },
   });
 
   // If the worker exists and has a hashed secret, validate against the hash
@@ -70,15 +72,16 @@ export async function isJudgeAuthorizedForWorker(
     return { authorized: false, error: "invalidWorkerToken" };
   }
 
-  // Backward compatibility: fall back to plaintext comparison when no hash stored
-  if (worker?.secretToken) {
-    if (safeTokenCompare(providedToken, worker.secretToken)) {
-      return { authorized: true };
-    }
-    return { authorized: false, error: "invalidWorkerToken" };
+  // Worker found but has no secretTokenHash — reject and log migration warning
+  if (worker) {
+    logger.warn(
+      { workerId },
+      "[judge] Worker %s has no secretTokenHash — rejecting auth. Migrate plaintext secretToken to hash.",
+    );
+    return { authorized: false, error: "workerSecretNotMigrated" };
   }
 
-  // Worker not found or has no per-worker secret: fall back to shared token
+  // Worker not found: fall back to shared token
   const expectedToken = getValidatedJudgeAuthToken();
   if (safeTokenCompare(providedToken, expectedToken)) {
     return { authorized: true };

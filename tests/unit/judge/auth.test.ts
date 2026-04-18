@@ -131,13 +131,14 @@ describe("isJudgeAuthorizedForWorker", () => {
     });
   });
 
-  it("uses the worker-specific plaintext secret when no hash is present", async () => {
+  it("returns workerSecretNotMigrated when worker has no hash stored", async () => {
     judgeWorkerFindFirstMock.mockResolvedValueOnce({ secretToken: "worker-secret-token", secretTokenHash: null });
 
     const request = makeRequest("Bearer worker-secret-token");
 
     await expect(isJudgeAuthorizedForWorker(request, "worker-1")).resolves.toEqual({
-      authorized: true,
+      authorized: false,
+      error: "workerSecretNotMigrated",
     });
   });
 
@@ -148,7 +149,7 @@ describe("isJudgeAuthorizedForWorker", () => {
 
     await expect(isJudgeAuthorizedForWorker(request, "worker-1")).resolves.toEqual({
       authorized: false,
-      error: "invalidWorkerToken",
+      error: "workerSecretNotMigrated",
     });
   });
 
@@ -171,8 +172,8 @@ describe("isJudgeAuthorizedForWorker", () => {
     });
   });
 
-  it("prefers hash over plaintext when both are stored", async () => {
-    // When both secretTokenHash and secretToken exist, hash should be used
+  it("uses hash for comparison even when plaintext is also stored", async () => {
+    // When both secretTokenHash and secretToken exist, hash is used for comparison
     judgeWorkerFindFirstMock.mockResolvedValueOnce({
       secretToken: "wrong-plaintext-secret",
       secretTokenHash: hashToken("correct-hashed-secret"),
