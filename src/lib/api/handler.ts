@@ -19,7 +19,7 @@ import { logger } from "@/lib/logger";
 export type AuthUser = NonNullable<Awaited<ReturnType<typeof getApiUser>>>;
 
 /** Context passed to the inner handler function */
-export type HandlerContext<T = unknown> = {
+export type HandlerContext<T = undefined> = {
   user: AuthUser;
   body: T;
   params: Record<string, string>;
@@ -47,7 +47,7 @@ type AuthConfig =
  * - schema     — Zod schema to parse and validate the request body
  * - handler    — the actual business logic; receives (req, ctx)
  */
-export type HandlerConfig<T = unknown> = {
+export type HandlerConfig<T = undefined> = {
   /** Require authentication. Pass `{ roles: [...] }` to also check role. Defaults to true. */
   auth?: AuthConfig | false;
   /**
@@ -84,7 +84,12 @@ const MUTATION_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
  * });
  * ```
  */
-export function createApiHandler<T = unknown>(config: HandlerConfig<T>) {
+// Overload: when schema is provided, body is typed as the schema output
+export function createApiHandler<T>(config: HandlerConfig<T> & { schema: ZodSchema<T> }): (req: NextRequest, routeCtx?: { params: Promise<Record<string, string>> }) => Promise<NextResponse>;
+// Overload: when no schema, body is undefined
+export function createApiHandler(config: HandlerConfig<undefined> & { schema?: undefined }): (req: NextRequest, routeCtx?: { params: Promise<Record<string, string>> }) => Promise<NextResponse>;
+// Implementation
+export function createApiHandler<T = undefined>(config: HandlerConfig<T>) {
   const {
     auth = true,
     csrf,
