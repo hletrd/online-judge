@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { signIn, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -14,6 +15,7 @@ export function ChangePasswordForm({ username }: { username: string }) {
   const router = useRouter();
   const t = useTranslations("changePassword");
   const [error, setError] = useState<string | null>(null);
+  const [reauthFailed, setReauthFailed] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [newPasswordValue, setNewPasswordValue] = useState("");
   const [confirmPasswordValue, setConfirmPasswordValue] = useState("");
@@ -21,6 +23,7 @@ export function ChangePasswordForm({ username }: { username: string }) {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setReauthFailed(false);
 
     const formData = new FormData(e.currentTarget);
     const currentPassword = formData.get("currentPassword") as string;
@@ -55,9 +58,11 @@ export function ChangePasswordForm({ username }: { username: string }) {
         });
 
         if (refreshedSession?.error || !refreshedSession?.ok) {
+          // Password was already changed server-side, but automatic re-login
+          // failed (rate limit, network blip, etc.). Surface a clear notice
+          // and a fallback link so the user is never left with a dead UI.
           await signOut({ redirect: false });
-          router.replace("/login");
-          router.refresh();
+          setReauthFailed(true);
           return;
         }
 
@@ -125,6 +130,17 @@ export function ChangePasswordForm({ username }: { username: string }) {
       </div>
       {error && (
         <p className="text-sm text-destructive" role="alert">{error}</p>
+      )}
+      {reauthFailed && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3" role="alert">
+          <p className="text-sm text-amber-900 dark:text-amber-200">{t("reauthFailed")}</p>
+          <Link
+            href="/login"
+            className="mt-1 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            {t("signInAgain")}
+          </Link>
+        </div>
       )}
       <Button type="submit" className="w-full" disabled={isPending}>
         {isPending ? t("changing") : t("changeButton")}

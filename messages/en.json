@@ -1774,7 +1774,9 @@
     "changePasswordRateLimited": "Too many password change attempts. Please wait a few minutes and try again.",
     "error": "An error occurred",
     "userNotFound": "User not found",
-    "sessionExpired": "Your session expired. Redirecting to the sign-in page..."
+    "sessionExpired": "Your session expired. Redirecting to the sign-in page...",
+    "reauthFailed": "Password changed, but automatic sign-in failed. Please sign in again with your new password.",
+    "signInAgain": "Sign in again"
   },
   "comments": {
     "title": "Feedback",
