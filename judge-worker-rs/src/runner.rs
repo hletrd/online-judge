@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::path::Path;
 
-use axum::extract::{Query, State};
+use axum::extract::{DefaultBodyLimit, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
@@ -20,6 +20,10 @@ const MAX_SOURCE_CODE_BYTES: usize = 64 * 1024; // 64KB
 const MAX_STDIN_BYTES: usize = 64 * 1024; // 64KB
 const DEFAULT_TIME_LIMIT_MS: u64 = 10_000;
 const MIN_COMPILE_TIMEOUT_MS: u64 = 30_000;
+// Upper bound on the raw request body size accepted by the runner HTTP
+// server. Prevents an authenticated caller (or a compromised app server)
+// from OOM-ing the worker before the per-field size checks fire.
+const MAX_RUNNER_BODY_BYTES: usize = 4 * 1024 * 1024;
 
 pub struct RunnerState {
     pub config: Arc<Config>,
@@ -813,5 +817,6 @@ pub fn create_router(state: Arc<RunnerState>) -> Router {
         .route("/docker/remove", post(docker_remove_handler))
         .route("/docker/build", post(docker_build_handler))
         .route("/docker/disk-usage", get(disk_usage_handler))
+        .layer(DefaultBodyLimit::max(MAX_RUNNER_BODY_BYTES))
         .with_state(state)
 }
