@@ -27,6 +27,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # Start a real PostgreSQL service so the integration suite
+    # (tests/integration/**) runs against PG, not just skips. Without this
+    # hasPostgresIntegrationSupport would be false and every describe.skipIf
+    # would silently pass.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: judgekit
+          POSTGRES_PASSWORD: judgekit
+          POSTGRES_DB: judgekit_test
+          PGDATA: /var/lib/postgresql/data/pgdata
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U judgekit -d judgekit_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      INTEGRATION_DATABASE_URL: postgres://judgekit:judgekit@127.0.0.1:5432/judgekit_test
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
