@@ -86,7 +86,9 @@ export const accounts = pgTable("accounts", {
   scope: text("scope"),
   id_token: text("id_token"),
   session_state: text("session_state"),
-});
+}, (table) => [
+  uniqueIndex("accounts_provider_account_idx").on(table.provider, table.providerAccountId),
+]);
 
 export const loginEvents = pgTable(
   "login_events",
