@@ -19,12 +19,23 @@ const {
 
 vi.mock("@/lib/api/handler", () => ({
   createApiHandler:
-    ({ handler }: { handler: (req: NextRequest, ctx: { user: any; body: unknown; params: Record<string, string> }) => Promise<Response> }) =>
-    async (req: NextRequest) => handler(req, {
-      user: await getApiUserMock(),
-      body: undefined as never,
-      params: {},
-    }),
+    ({ schema, handler }: { schema?: { safeParse: (input: unknown) => { success: true; data: unknown } | { success: false; error: { issues?: Array<{ message?: string }> } } }; handler: (req: NextRequest, ctx: { user: any; body: unknown; params: Record<string, string> }) => Promise<Response> }) =>
+    async (req: NextRequest) => {
+      let body: unknown = undefined;
+      if (schema) {
+        body = await req.json();
+        const parsed = schema.safeParse(body);
+        if (!parsed.success) {
+          return new Response(JSON.stringify({ error: parsed.error.issues?.[0]?.message ?? "validationError" }), { status: 400 });
+        }
+        body = parsed.data;
+      }
+      return handler(req, {
+        user: await getApiUserMock(),
+        body,
+        params: {},
+      });
+    },
   forbidden: () => new Response(JSON.stringify({ error: "forbidden" }), { status: 403 }),
 }));
 
