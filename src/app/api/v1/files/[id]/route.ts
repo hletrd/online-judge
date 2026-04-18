@@ -124,14 +124,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
-
     const rateLimitError = await consumeApiRateLimit(request, "files:delete");
     if (rateLimitError) return rateLimitError;
 
+    // Resolve auth before CSRF so API-key-authenticated callers (no cookies,
+    // no CSRF exposure) are not blocked by the browser-origin check.
     const user = await getApiUser(request);
     if (!user) return unauthorized();
+
+    const isApiKeyAuth = "_apiKeyAuth" in user;
+    if (!isApiKeyAuth) {
+      const csrfError = csrfForbidden(request);
+      if (csrfError) return csrfError;
+    }
 
     const caps = await resolveCapabilities(user.role);
     const { id } = await params;
