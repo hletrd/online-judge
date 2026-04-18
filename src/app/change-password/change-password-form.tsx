@@ -80,6 +80,22 @@ export function ChangePasswordForm({ username }: { username: string }) {
   const passwordsMatch = confirmPasswordValue.length > 0 && newPasswordValue === confirmPasswordValue;
   const passwordsMismatch = confirmPasswordValue.length > 0 && newPasswordValue !== confirmPasswordValue;
 
+  if (reauthFailed) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3" role="alert">
+          <p className="text-sm text-amber-900 dark:text-amber-200">{t("reauthFailed")}</p>
+          <Link
+            href="/login"
+            className="mt-1 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            {t("signInAgain")}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
@@ -130,17 +146,6 @@ export function ChangePasswordForm({ username }: { username: string }) {
       </div>
       {error && (
         <p className="text-sm text-destructive" role="alert">{error}</p>
-      )}
-      {reauthFailed && (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3" role="alert">
-          <p className="text-sm text-amber-900 dark:text-amber-200">{t("reauthFailed")}</p>
-          <Link
-            href="/login"
-            className="mt-1 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
-          >
-            {t("signInAgain")}
-          </Link>
-        </div>
       )}
       <Button type="submit" className="w-full" disabled={isPending}>
         {isPending ? t("changing") : t("changeButton")}
