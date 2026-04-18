@@ -9,11 +9,7 @@ import { db } from "@/lib/db";
 import {
   assignmentProblems,
   assignments,
-  contestAccessTokens,
-  examSessions,
   problems,
-  submissions,
-  users,
 } from "@/lib/db/schema";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
@@ -21,6 +17,7 @@ import { formatSubmissionIdPrefix } from "@/lib/submissions/format";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
 import { getParticipantAuditData } from "@/lib/assignments/participant-audit";
+import { getParticipantTimeline } from "@/lib/assignments/participant-timeline";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { ParticipantAntiCheatTimeline } from "@/components/contest/participant-anti-cheat-timeline";
 import { CodeTimelinePanel } from "@/components/contest/code-timeline-panel";
@@ -80,32 +77,15 @@ export default async function ParticipantAuditPage({
     notFound();
   }
 
-  const auditData = await getParticipantAuditData(assignmentId, userId);
-
-  const [student, examSession, contestAccess] = await Promise.all([
-    db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, name: true, username: true, className: true },
-    }),
-    db.query.examSessions.findFirst({
-      where: and(
-        eq(examSessions.assignmentId, assignmentId),
-        eq(examSessions.userId, userId)
-      ),
-      columns: { startedAt: true, personalDeadline: true },
-    }),
-    db.query.contestAccessTokens.findFirst({
-      where: and(
-        eq(contestAccessTokens.assignmentId, assignmentId),
-        eq(contestAccessTokens.userId, userId)
-      ),
-      columns: { redeemedAt: true },
-    }),
+  const [auditData, participantTimeline] = await Promise.all([
+    getParticipantAuditData(assignmentId, userId),
+    getParticipantTimeline(assignmentId, userId),
   ]);
 
-  if (!student) {
+  if (!participantTimeline) {
     notFound();
   }
+  const { participant, problems: timelineProblems } = participantTimeline;
 
   const assignmentProblemRows = await db
     .select({
@@ -119,33 +99,9 @@ export default async function ParticipantAuditPage({
     .where(eq(assignmentProblems.assignmentId, assignmentId))
     .orderBy(assignmentProblems.sortOrder, problems.title);
 
-  const studentSubmissions = await db
-    .select({
-      id: submissions.id,
-      problemId: submissions.problemId,
-      language: submissions.language,
-      status: submissions.status,
-      score: submissions.score,
-      executionTimeMs: submissions.executionTimeMs,
-      memoryUsedKb: submissions.memoryUsedKb,
-      submittedAt: submissions.submittedAt,
-    })
-    .from(submissions)
-    .where(
-      and(
-        eq(submissions.assignmentId, assignmentId),
-        eq(submissions.userId, userId)
-      )
-    )
-    .orderBy(desc(submissions.submittedAt));
-
-  const submissionsByProblem = new Map<string, typeof studentSubmissions>();
-  for (const sub of studentSubmissions) {
-    if (!submissionsByProblem.has(sub.problemId)) {
-      submissionsByProblem.set(sub.problemId, []);
-    }
-    submissionsByProblem.get(sub.problemId)!.push(sub);
-  }
+  const timelineByProblem = new Map(
+    timelineProblems.map((problem) => [problem.problemId, problem])
+  );
 
   const statusLabels: Record<string, string> = buildStatusLabels(tSubmissions);
 
@@ -167,9 +123,9 @@ export default async function ParticipantAuditPage({
       {/* Header */}
       <div className="space-y-3">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold">{student.name}</h2>
+          <h2 className="text-2xl font-bold">{participant.name}</h2>
           <p className="text-sm text-muted-foreground">
-            @{student.username} &middot; {assignment.title}
+            @{participant.username} &middot; {assignment.title}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -191,27 +147,27 @@ export default async function ParticipantAuditPage({
                 )}
             </>
           )}
-          {student.className && (
+          {participant.className && (
             <Badge variant="outline">
-              {t("header.class")}: {student.className}
+              {t("header.class")}: {participant.className}
             </Badge>
           )}
-          {examSession?.startedAt && (
+          {participant.examStartedAt && (
             <Badge variant="outline">
               {t("header.examStarted")}:{" "}
-              {formatDateTimeInTimeZone(examSession.startedAt, locale, timeZone)}
+              {formatDateTimeInTimeZone(participant.examStartedAt, locale, timeZone)}
             </Badge>
           )}
-          {examSession?.personalDeadline && (
+          {participant.personalDeadline && (
             <Badge variant="outline">
               {t("header.personalDeadline")}:{" "}
-              {formatDateTimeInTimeZone(examSession.personalDeadline, locale, timeZone)}
+              {formatDateTimeInTimeZone(participant.personalDeadline, locale, timeZone)}
             </Badge>
           )}
-          {contestAccess?.redeemedAt && (
+          {participant.contestAccessAt && (
             <Badge variant="outline">
               {t("header.contestAccess")}:{" "}
-              {formatDateTimeInTimeZone(contestAccess.redeemedAt, locale, timeZone)}
+              {formatDateTimeInTimeZone(participant.contestAccessAt, locale, timeZone)}
             </Badge>
           )}
         </div>
@@ -238,6 +194,7 @@ export default async function ParticipantAuditPage({
               <TableBody>
                 {assignmentProblemRows.map((problem) => {
                   const ranking = problemRankingMap.get(problem.problemId);
+                  const timeline = timelineByProblem.get(problem.problemId);
                   return (
                     <TableRow key={problem.problemId}>
                       <TableCell>
@@ -272,11 +229,11 @@ export default async function ParticipantAuditPage({
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell>{ranking?.attempts ?? 0}</TableCell>
+                      <TableCell>{timeline?.summary.totalAttempts ?? ranking?.attempts ?? 0}</TableCell>
                       <TableCell>
-                        {ranking?.firstAcAt
+                        {(timeline?.summary.firstAcAt ?? ranking?.firstAcAt)
                           ? formatDateTimeInTimeZone(
-                              new Date(ranking.firstAcAt),
+                              new Date((timeline?.summary.firstAcAt ?? ranking?.firstAcAt)!),
                               locale,
                               timeZone
                             )
@@ -300,7 +257,8 @@ export default async function ParticipantAuditPage({
         </CardHeader>
         <CardContent className="space-y-6">
           {assignmentProblemRows.map((problem) => {
-            const subs = submissionsByProblem.get(problem.problemId) ?? [];
+            const timeline = timelineByProblem.get(problem.problemId);
+            const submissionEvents = timeline?.timeline.filter((event) => event.type === "submission") ?? [];
             return (
               <div key={problem.problemId}>
                 <h4 className="mb-2 flex items-center gap-2 text-sm font-medium">
@@ -314,7 +272,7 @@ export default async function ParticipantAuditPage({
                     {problem.points ?? 100} pt
                   </span>
                 </h4>
-                {subs.length === 0 ? (
+                {submissionEvents.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     {t("submissionHistory.noSubmissions")}
                   </p>
@@ -335,14 +293,14 @@ export default async function ParticipantAuditPage({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {subs.map((sub) => (
-                        <TableRow key={sub.id}>
+                      {submissionEvents.map((sub) => (
+                        <TableRow key={sub.submissionId}>
                           <TableCell className="font-mono text-xs">
                             <Link
-                              href={`/dashboard/submissions/${sub.id}`}
+                              href={`/dashboard/submissions/${sub.submissionId}`}
                               className="text-primary hover:underline"
                             >
-                              {formatSubmissionIdPrefix(sub.id)}
+                              {formatSubmissionIdPrefix(sub.submissionId)}
                             </Link>
                           </TableCell>
                           <TableCell>
@@ -378,16 +336,16 @@ export default async function ParticipantAuditPage({
                           </TableCell>
                           <TableCell>{getLanguageDisplayLabel(sub.language)}</TableCell>
                           <TableCell>
-                            {sub.submittedAt
+                            {sub.at
                               ? formatDateTimeInTimeZone(
-                                  sub.submittedAt,
+                                  sub.at,
                                   locale,
                                   timeZone
                                 )
                               : "-"}
                           </TableCell>
                           <TableCell>
-                            <Link href={`/dashboard/submissions/${sub.id}`}>
+                            <Link href={`/dashboard/submissions/${sub.submissionId}`}>
                               <Button variant="outline" size="sm">
                                 {tCommon("view")}
                               </Button>
@@ -404,10 +362,10 @@ export default async function ParticipantAuditPage({
         </CardContent>
       </Card>
 
-      <CodeTimelinePanel
+        <CodeTimelinePanel
         assignmentId={assignmentId}
         userId={userId}
-        userName={student.name}
+        userName={participant.name}
       />
 
       {/* Anti-Cheat Timeline */}

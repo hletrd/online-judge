@@ -14,14 +14,16 @@ describe("participant audit page implementation", () => {
     expect(source).toContain("<CodeTimelinePanel");
     expect(source).toContain("assignmentId={assignmentId}");
     expect(source).toContain("userId={userId}");
-    expect(source).toContain("userName={student.name}");
+    expect(source).toContain("userName={participant.name}");
   });
 
   it("shows exam-session and contest-access metadata in the participant header", () => {
     const source = read("src/app/(dashboard)/dashboard/contests/[assignmentId]/participant/[userId]/page.tsx");
 
-    expect(source).toContain("db.query.examSessions.findFirst");
-    expect(source).toContain("db.query.contestAccessTokens.findFirst");
+    expect(source).toContain("getParticipantTimeline(assignmentId, userId)");
+    expect(source).toContain("participant.examStartedAt");
+    expect(source).toContain("participant.personalDeadline");
+    expect(source).toContain("participant.contestAccessAt");
     expect(source).toContain('t("header.examStarted")');
     expect(source).toContain('t("header.personalDeadline")');
     expect(source).toContain('t("header.contestAccess")');

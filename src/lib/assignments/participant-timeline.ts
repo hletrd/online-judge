@@ -20,6 +20,7 @@ export type ParticipantTimelineEvent =
       score: number | null;
       language: string;
       executionTimeMs: number | null;
+      memoryUsedKb: number | null;
     }
   | {
       type: "snapshot";
@@ -39,6 +40,7 @@ export type ParticipantTimeline = {
     userId: string;
     username: string;
     name: string;
+    className: string | null;
     examStartedAt: Date | null;
     personalDeadline: Date | null;
     contestAccessAt: Date | null;
@@ -101,6 +103,7 @@ export async function getParticipantTimeline(
         id: true,
         username: true,
         name: true,
+        className: true,
       },
     }),
     db.query.examSessions.findFirst({
@@ -138,6 +141,7 @@ export async function getParticipantTimeline(
         score: submissions.score,
         language: submissions.language,
         executionTimeMs: submissions.executionTimeMs,
+        memoryUsedKb: submissions.memoryUsedKb,
         submittedAt: submissions.submittedAt,
       })
       .from(submissions)
@@ -212,6 +216,7 @@ export async function getParticipantTimeline(
         score: submission.score,
         language: submission.language,
         executionTimeMs: submission.executionTimeMs,
+        memoryUsedKb: submission.memoryUsedKb,
       })),
       ...problemSnapshots.map((snapshot) => ({
         type: "snapshot" as const,
@@ -259,6 +264,7 @@ export async function getParticipantTimeline(
       userId: participant.id,
       username: participant.username,
       name: participant.name,
+      className: participant.className,
       examStartedAt: examSession?.startedAt ?? null,
       personalDeadline: examSession?.personalDeadline ?? null,
       contestAccessAt: contestAccess?.redeemedAt ?? null,
