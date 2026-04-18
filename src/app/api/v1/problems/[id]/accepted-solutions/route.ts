@@ -10,7 +10,7 @@ const DEFAULT_SORT = "newest";
 const VALID_SORTS = new Set(["shortest", "fastest", "newest"]);
 
 export const GET = createApiHandler({
-  auth: false,
+  auth: true,
   rateLimit: "accepted-solutions",
   handler: async (req: NextRequest, { params }) => {
     const { id } = params;
@@ -78,7 +78,9 @@ export const GET = createApiHandler({
         .filter((solution) => solution.shareAcceptedSolutions)
         .map((solution) => ({
           submissionId: solution.submissionId,
-          userId: solution.userId,
+          // Anonymous solutions must not leak the author's userId; otherwise
+          // the id alone could deanonymize via the user detail endpoint.
+          userId: solution.acceptedSolutionsAnonymous ? null : solution.userId,
           username: solution.acceptedSolutionsAnonymous ? "" : solution.username,
           language: solution.language,
           sourceCode: solution.sourceCode,

@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
-const { consumeApiRateLimitMock, problemsFindFirstMock, selectMock } = vi.hoisted(() => ({
+const { consumeApiRateLimitMock, problemsFindFirstMock, selectMock, getApiUserMock } = vi.hoisted(() => ({
   consumeApiRateLimitMock: vi.fn(() => null),
   problemsFindFirstMock: vi.fn(),
   selectMock: vi.fn(),
+  getApiUserMock: vi.fn(),
 }));
 
 vi.mock("@/lib/api/auth", () => ({
-  getApiUser: vi.fn(),
+  getApiUser: getApiUserMock,
   csrfForbidden: vi.fn(() => null),
   unauthorized: () => NextResponse.json({ error: "unauthorized" }, { status: 401 }),
   forbidden: () => NextResponse.json({ error: "forbidden" }, { status: 403 }),
@@ -60,6 +61,7 @@ vi.mock("@/lib/db", () => ({
 describe("GET /api/v1/problems/[id]/accepted-solutions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getApiUserMock.mockResolvedValue({ id: "viewer-1", username: "viewer", role: "student" });
     problemsFindFirstMock.mockResolvedValue({ id: "problem-1", visibility: "public" });
     const countChain = {
       from: vi.fn(),
@@ -162,9 +164,22 @@ describe("GET /api/v1/problems/[id]/accepted-solutions", () => {
     expect(payload.data.solutions).toEqual([
       expect.objectContaining({
         submissionId: "submission-1",
+        userId: null,
         username: "",
         isAnonymous: true,
       }),
     ]);
+  });
+
+  it("rejects unauthenticated callers with 401", async () => {
+    getApiUserMock.mockResolvedValue(null);
+
+    const { GET } = await import("@/app/api/v1/problems/[id]/accepted-solutions/route");
+    const response = await GET(
+      new NextRequest("http://localhost:3000/api/v1/problems/problem-1/accepted-solutions"),
+      { params: Promise.resolve({ id: "problem-1" }) }
+    );
+
+    expect(response.status).toBe(401);
   });
 });

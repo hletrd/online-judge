@@ -10,7 +10,7 @@ import { getLanguageDisplayLabel } from "@/lib/judge/languages";
 
 type AcceptedSolution = {
   submissionId: string;
-  userId: string;
+  userId: string | null;
   username: string;
   language: string;
   sourceCode: string;
