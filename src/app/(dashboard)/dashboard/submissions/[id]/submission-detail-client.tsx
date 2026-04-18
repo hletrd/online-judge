@@ -317,12 +317,10 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
         results={submission.results}
       />
 
-      {!submission.assignmentId && (
-        <CommentSection
-          submissionId={submission.id}
-          canComment={canComment}
-        />
-      )}
+      <CommentSection
+        submissionId={submission.id}
+        canComment={canComment}
+      />
     </div>
   );
 }
