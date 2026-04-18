@@ -72,8 +72,8 @@ Tracked in `.context/reviews/comprehensive-code-review-2026-04-18.md` §3.* and 
 | HIGH-2 | Done | `fix(auth): 🛡️ harden getSafeRedirectUrl against open-redirect tricks` |
 | HIGH-3 | Done | `fix(change-password): 🩹 surface clear recovery UI when re-auth fails` |
 | HIGH-4 | Done | `fix(judge): 🐛 heartbeat no longer clobbers the atomic active_tasks counter` |
-| HIGH-5 | Open | — |
-| HIGH-6 | Open | — |
+| HIGH-5 | Done | `fix(scoring): 🧮 count only terminal submissions in contest and assignment aggregates` |
+| HIGH-6 | Done | `fix(scoring): 🕒 apply windowed late penalties against personal deadlines` |
 | HIGH-7 | Done | `fix(db): 🐛 add missing communityVotes Drizzle relation` |
 | HIGH-8 | Done | `fix(judge-sandbox): 🛡️ align shell validators + document seccomp socket policy` |
 | HIGH-9 | Done | `fix(judge-sandbox): 🛡️ align shell validators + document seccomp socket policy` |
