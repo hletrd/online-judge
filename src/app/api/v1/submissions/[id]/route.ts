@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
 import { apiSuccess } from "@/lib/api/responses";
 import { db } from "@/lib/db";
-import { assignments, submissions } from "@/lib/db/schema";
+import { submissions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { forbidden, notFound } from "@/lib/api/auth";
 import { canAccessSubmission } from "@/lib/auth/permissions";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { sanitizeSubmissionForViewer } from "@/lib/submissions/visibility";
 import { createApiHandler } from "@/lib/api/handler";
 
 export const GET = createApiHandler({
@@ -18,7 +19,13 @@ export const GET = createApiHandler({
           columns: { name: true },
         },
         problem: {
-          columns: { id: true, title: true },
+          columns: {
+            id: true,
+            title: true,
+            showCompileOutput: true,
+            showDetailedResults: true,
+            showRuntimeErrors: true,
+          },
         },
         results: {
           with: {
@@ -42,47 +49,8 @@ export const GET = createApiHandler({
       return forbidden();
     }
 
-    const isOwner = submission.userId === user.id;
     const caps = await resolveCapabilities(user.role);
-    const canViewSource = caps.has("submissions.view_source");
-    const canViewAllResults = caps.has("submissions.view_all");
-
-    // Strip hidden test case details for non-privileged users
-    const sanitized = { ...submission };
-    if (!canViewAllResults && sanitized.results) {
-      sanitized.results = sanitized.results.map((r) => {
-        const isVisible = r.testCase?.isVisible ?? false;
-        if (!isVisible) {
-          return { ...r, actualOutput: null, testCase: { isVisible: false as const, sortOrder: r.testCase?.sortOrder ?? null } };
-        }
-        return r;
-      });
-    }
-
-    // Enforce assignment result visibility settings for non-privileged users
-    if (!canViewAllResults && submission.assignmentId) {
-      const assignmentRow = await db.query.assignments.findFirst({
-        where: eq(assignments.id, submission.assignmentId),
-        columns: { showResultsToCandidate: true, hideScoresFromCandidates: true },
-      });
-      const hideResults = !(assignmentRow?.showResultsToCandidate ?? false);
-      const hideScores = assignmentRow?.hideScoresFromCandidates ?? false;
-      if (hideResults) {
-        (sanitized as Record<string, unknown>).results = [];
-        (sanitized as Record<string, unknown>).compileOutput = null;
-        (sanitized as Record<string, unknown>).executionTimeMs = null;
-        (sanitized as Record<string, unknown>).memoryUsedKb = null;
-        (sanitized as Record<string, unknown>).score = null;
-      } else if (hideScores) {
-        (sanitized as Record<string, unknown>).score = null;
-      }
-    }
-
-    if (!isOwner && !canViewSource) {
-      const { sourceCode: _sourceCode, ...rest } = sanitized;
-      void _sourceCode;
-      return apiSuccess(rest);
-    }
+    const sanitized = await sanitizeSubmissionForViewer(submission, user.id, caps);
 
     return apiSuccess(sanitized);
   },

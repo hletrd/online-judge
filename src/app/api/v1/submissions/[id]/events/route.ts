@@ -9,6 +9,7 @@ import { canAccessSubmission } from "@/lib/auth/permissions";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { IN_PROGRESS_JUDGE_STATUSES } from "@/lib/judge/verdict";
 import { logger } from "@/lib/logger";
+import { sanitizeSubmissionForViewer } from "@/lib/submissions/visibility";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
 import { acquireSharedSseConnectionSlot, getRealtimeConnectionKey, getUnsupportedRealtimeGuard, releaseSharedSseConnectionSlot, usesSharedRealtimeCoordination } from "@/lib/realtime/realtime-coordination";
@@ -219,16 +220,14 @@ export async function GET(
       return forbidden();
     }
 
-    const isOwner = submission.userId === user.id;
     const caps = await resolveCapabilities(user.role);
-    const canViewSource = caps.has("submissions.view_source");
 
     // If already in a terminal state, return the full submission immediately as a single event
     if (!IN_PROGRESS_JUDGE_STATUSES.has(submission.status ?? "")) {
       const fullSubmission = await queryFullSubmission(id);
-      const sanitized = (!isOwner && !canViewSource && fullSubmission)
-        ? stripSourceCode(fullSubmission)
-        : fullSubmission;
+      const sanitized = fullSubmission
+        ? await sanitizeSubmissionForViewer(fullSubmission, user.id, caps)
+        : null;
       const body = `event: result\ndata: ${JSON.stringify(sanitized)}\n\n`;
       if (useSharedCoordination) {
         await releaseSharedSseConnectionSlot(sharedConnectionKey);
@@ -303,9 +302,9 @@ export async function GET(
               try {
                 const fullSubmission = await queryFullSubmission(id);
                 if (closed) return;
-                const sanitized = (!isOwner && !canViewSource && fullSubmission)
-                  ? stripSourceCode(fullSubmission)
-                  : fullSubmission;
+                const sanitized = fullSubmission
+                  ? await sanitizeSubmissionForViewer(fullSubmission, user.id, caps)
+                  : null;
                 controller.enqueue(
                   encoder.encode(`event: result\ndata: ${JSON.stringify(sanitized)}\n\n`)
                 );
@@ -356,11 +355,6 @@ function sseHeaders(): HeadersInit {
   };
 }
 
-function stripSourceCode<T extends Record<string, unknown>>(obj: T): Omit<T, "sourceCode"> {
-  const { sourceCode: _sourceCode, ...rest } = obj;
-  void _sourceCode;
-  return rest as Omit<T, "sourceCode">;
-}
 
 async function queryFullSubmission(id: string) {
   return db.query.submissions.findFirst({
@@ -370,7 +364,13 @@ async function queryFullSubmission(id: string) {
         columns: { name: true },
       },
       problem: {
-        columns: { id: true, title: true },
+        columns: {
+          id: true,
+          title: true,
+          showCompileOutput: true,
+          showDetailedResults: true,
+          showRuntimeErrors: true,
+        },
       },
       results: {
         with: {
