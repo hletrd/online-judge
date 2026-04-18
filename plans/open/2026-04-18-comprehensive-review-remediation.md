@@ -80,7 +80,7 @@ Tracked in `.context/reviews/comprehensive-code-review-2026-04-18.md` §3.* and 
 | HIGH-10 | Done | `fix(problem-sets): 🛡️ route mutations run through createApiHandler schemas` |
 | HIGH-11 | Done | `fix(groups): 🛡️ move assignment overrides route under createApiHandler` |
 | HIGH-12 | Done | `fix(judge-claim): 🛡️ move claim throttling to the shared API rate limiter` |
-| HIGH-13 | Open (closed by CRIT-3) | — |
+| HIGH-13 | Done (closed by CRIT-3) | `fix(accepted-solutions): 🔐 require auth and hide anonymous userId` |
 | HIGH-14 | Done | `fix(similarity): 🧪 isolate best-submission selection per language` |
 | HIGH-15 | Done | `docs(runtime): 📝 document the admin-configured shell-command trust boundary` |
 | HIGH-16 | Done | `ci(workflow): 🧪 run integration suite against a real postgres service` |
