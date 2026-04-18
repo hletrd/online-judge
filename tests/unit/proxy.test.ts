@@ -438,7 +438,7 @@ describe("proxy", () => {
 
       expect(response.status).toBe(401);
       const body = await response.json();
-      expect(body).toEqual({ error: "Unauthorized" });
+      expect(body).toEqual({ error: "unauthorized" });
     });
 
     it("returns 401 JSON when token exists but user is inactive", async () => {
@@ -451,7 +451,7 @@ describe("proxy", () => {
 
       expect(response.status).toBe(401);
       const body = await response.json();
-      expect(body).toEqual({ error: "Unauthorized" });
+      expect(body).toEqual({ error: "unauthorized" });
     });
 
     it("returns 403 JSON when mustChangePassword is set on API route", async () => {

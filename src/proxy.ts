@@ -267,7 +267,7 @@ export async function proxy(request: NextRequest) {
 
     if (isApiRoute) {
       return clearAuthSessionCookies(
-        NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        NextResponse.json({ error: "unauthorized" }, { status: 401 })
       );
     }
 
