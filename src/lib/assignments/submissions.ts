@@ -18,6 +18,7 @@ import { isAdmin } from "@/lib/api/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { getAssignedTeachingGroupIds, hasGroupInstructorRole } from "@/lib/assignments/management";
+import { TERMINAL_SUBMISSION_STATUSES_SQL_LIST } from "@/lib/submissions/status";
 
 type AssignmentValidationError =
   | "invalidAssignmentId"
@@ -575,6 +576,7 @@ export async function getAssignmentStatusRows(
       INNER JOIN assignment_problems ap
         ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
       WHERE s.assignment_id = @assignmentId
+        AND s.status IN (${TERMINAL_SUBMISSION_STATUSES_SQL_LIST})
     )
     SELECT
       user_id   AS "userId",

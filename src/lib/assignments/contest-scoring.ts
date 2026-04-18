@@ -2,6 +2,7 @@ import { rawQueryOne, rawQueryAll } from "@/lib/db/queries";
 import { logger } from "@/lib/logger";
 import { LRUCache } from "lru-cache";
 import type { ScoringModel } from "@/types";
+import { TERMINAL_SUBMISSION_STATUSES_SQL_LIST } from "@/lib/submissions/status";
 
 /**
  * ICPC penalty: minutes from contest start to first AC + 20 min per wrong attempt before AC.
@@ -145,7 +146,8 @@ async function _computeContestRankingInner(assignmentId: string, cutoffSec?: num
         INNER JOIN assignment_problems ap
           ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
         INNER JOIN users u ON u.id = s.user_id
-        WHERE s.assignment_id = @assignmentId${withCutoff ? " AND EXTRACT(EPOCH FROM s.submitted_at)::bigint <= @cutoffSec" : ""}
+        WHERE s.assignment_id = @assignmentId
+          AND s.status IN (${TERMINAL_SUBMISSION_STATUSES_SQL_LIST})${withCutoff ? " AND EXTRACT(EPOCH FROM s.submitted_at)::bigint <= @cutoffSec" : ""}
       )
       SELECT
         user_id AS "userId",
