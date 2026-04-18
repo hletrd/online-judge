@@ -3,16 +3,67 @@ mod types;
 
 use axum::{
     Json, Router,
+    extract::{DefaultBodyLimit, Request, State},
     http::StatusCode,
+    middleware::{self, Next},
     response::IntoResponse,
     routing::{get, post},
 };
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tokio::signal;
 use tracing::info;
 
 use crate::similarity::compute_similarity;
 use crate::types::{ComputeRequest, ComputeResponse, HealthResponse};
+
+// Body size cap for /compute. Large enough for assignments with many
+// submissions but bounded so an attacker on the docker network cannot
+// OOM the process with a giant payload.
+const MAX_COMPUTE_BODY_BYTES: usize = 16 * 1024 * 1024;
+
+/// Bearer token loaded from CODE_SIMILARITY_AUTH_TOKEN at startup.
+/// When unset we keep the service open (and log a warning) so local
+/// single-machine setups without docker-networked callers still work.
+#[derive(Clone)]
+struct AuthState {
+    expected: Option<Arc<String>>,
+}
+
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
+async fn require_bearer(
+    State(auth): State<AuthState>,
+    req: Request,
+    next: Next,
+) -> Result<impl IntoResponse, StatusCode> {
+    let Some(expected) = auth.expected.as_ref() else {
+        return Ok(next.run(req).await);
+    };
+
+    let header = req.headers().get(axum::http::header::AUTHORIZATION);
+    let Some(raw) = header.and_then(|value| value.to_str().ok()) else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+    let Some(token) = raw.strip_prefix("Bearer ") else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+
+    if constant_time_eq(token.as_bytes(), expected.as_bytes()) {
+        Ok(next.run(req).await)
+    } else {
+        Err(StatusCode::UNAUTHORIZED)
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Handlers
@@ -109,9 +160,27 @@ async fn main() {
         .and_then(|p| p.parse().ok())
         .unwrap_or(3002);
 
+    let auth_state = AuthState {
+        expected: std::env::var("CODE_SIMILARITY_AUTH_TOKEN")
+            .ok()
+            .map(|t| t.trim().to_string())
+            .filter(|t| !t.is_empty())
+            .map(Arc::new),
+    };
+    if auth_state.expected.is_none() {
+        tracing::warn!(
+            "CODE_SIMILARITY_AUTH_TOKEN is not set — /compute will accept unauthenticated requests. Set it in production."
+        );
+    }
+
+    let protected = Router::new()
+        .route("/compute", post(compute))
+        .layer(DefaultBodyLimit::max(MAX_COMPUTE_BODY_BYTES))
+        .layer(middleware::from_fn_with_state(auth_state.clone(), require_bearer));
+
     let app = Router::new()
         .route("/health", get(health))
-        .route("/compute", post(compute));
+        .merge(protected);
 
     let addr: SocketAddr = format!("{host}:{port}").parse().unwrap_or_else(|_| {
         tracing::warn!("invalid host/port, falling back to 127.0.0.1:{port}");

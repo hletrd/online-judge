@@ -1,6 +1,7 @@
 use axum::{
-    extract::State,
+    extract::{DefaultBodyLimit, Request, State},
     http::StatusCode,
+    middleware::{self, Next},
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
@@ -37,6 +38,51 @@ const EVICTION_AGE_MS: u64 = MAX_BLOCK_MS;
 const EVICTION_INTERVAL_SECS: u64 = 60;
 // Cap on consecutive_blocks exponent to prevent overflow
 const MAX_CONSECUTIVE_BLOCKS_EXP: u32 = 4;
+// Body size cap for the JSON endpoints. Rate limit payloads are tiny;
+// 64 KiB is a generous upper bound.
+const MAX_BODY_BYTES: usize = 64 * 1024;
+
+/// Bearer token loaded from RATE_LIMITER_AUTH_TOKEN at startup.
+/// When unset the service stays open for local dev (with a warning).
+#[derive(Clone)]
+struct AuthState {
+    expected: Option<Arc<String>>,
+}
+
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
+async fn require_bearer(
+    State(auth): State<AuthState>,
+    req: Request,
+    next: Next,
+) -> Result<impl IntoResponse, StatusCode> {
+    let Some(expected) = auth.expected.as_ref() else {
+        return Ok(next.run(req).await);
+    };
+
+    let header = req.headers().get(axum::http::header::AUTHORIZATION);
+    let Some(raw) = header.and_then(|value| value.to_str().ok()) else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+    let Some(token) = raw.strip_prefix("Bearer ") else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+
+    if constant_time_eq(token.as_bytes(), expected.as_bytes()) {
+        Ok(next.run(req).await)
+    } else {
+        Err(StatusCode::UNAUTHORIZED)
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Request / Response types
@@ -330,22 +376,40 @@ async fn main() {
         .unwrap_or(3001);
     let enable_reset = env_flag("RATE_LIMITER_ENABLE_RESET", false);
 
+    let auth_state = AuthState {
+        expected: std::env::var("RATE_LIMITER_AUTH_TOKEN")
+            .ok()
+            .map(|t| t.trim().to_string())
+            .filter(|t| !t.is_empty())
+            .map(Arc::new),
+    };
+    if auth_state.expected.is_none() {
+        warn!(
+            "RATE_LIMITER_AUTH_TOKEN is not set — /check, /record-failure, and /reset will accept unauthenticated requests. Set it in production."
+        );
+    }
+
     let store: Store = Arc::new(DashMap::new());
 
     // Start background eviction
     spawn_eviction_task(Arc::clone(&store));
 
-    let app = Router::new()
-        .route("/health", get(health))
+    let mut protected = Router::new()
         .route("/check", post(check))
         .route("/record-failure", post(record_failure));
 
-    let app = if enable_reset {
-        app.route("/reset", post(reset))
-    } else {
-        app
+    if enable_reset {
+        protected = protected.route("/reset", post(reset));
     }
-    .with_state(store);
+
+    let protected = protected
+        .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
+        .layer(middleware::from_fn_with_state(auth_state.clone(), require_bearer))
+        .with_state(store);
+
+    let app = Router::new()
+        .route("/health", get(health))
+        .merge(protected);
 
     let addr: SocketAddr = format!("{host}:{port}")
         .parse()

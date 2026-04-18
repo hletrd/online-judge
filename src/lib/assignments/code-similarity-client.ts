@@ -1,5 +1,6 @@
 const CODE_SIMILARITY_URL =
   process.env.CODE_SIMILARITY_URL || "http://127.0.0.1:3002";
+const CODE_SIMILARITY_AUTH_TOKEN = process.env.CODE_SIMILARITY_AUTH_TOKEN ?? "";
 
 interface RustSubmission {
   userId: string;
@@ -28,9 +29,13 @@ export async function computeSimilarityRust(
   ngramSize: number = 3
 ): Promise<RustSimilarityPair[] | null> {
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (CODE_SIMILARITY_AUTH_TOKEN.length > 0) {
+      headers.Authorization = `Bearer ${CODE_SIMILARITY_AUTH_TOKEN}`;
+    }
     const response = await fetch(`${CODE_SIMILARITY_URL}/compute`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         submissions,
         threshold,

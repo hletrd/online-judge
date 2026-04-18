@@ -19,6 +19,7 @@
  */
 
 const RATE_LIMITER_URL = process.env.RATE_LIMITER_URL ?? "";
+const RATE_LIMITER_AUTH_TOKEN = process.env.RATE_LIMITER_AUTH_TOKEN ?? "";
 
 export interface RateLimitCheckResult {
   allowed: boolean;
@@ -58,9 +59,13 @@ async function callRateLimiter<T>(path: string, body: Record<string, unknown>): 
   }
 
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (RATE_LIMITER_AUTH_TOKEN.length > 0) {
+      headers.Authorization = `Bearer ${RATE_LIMITER_AUTH_TOKEN}`;
+    }
     const response = await fetch(`${RATE_LIMITER_URL}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
