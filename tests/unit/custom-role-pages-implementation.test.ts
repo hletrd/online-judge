@@ -95,6 +95,7 @@ describe("custom-role page/runtime implementation guards", () => {
     const userActions = read("src/app/(dashboard)/dashboard/admin/users/user-actions.tsx");
     const editDialog = read("src/app/(dashboard)/dashboard/admin/users/edit-user-dialog.tsx");
     const userDetailPage = read("src/app/(dashboard)/dashboard/admin/users/[id]/page.tsx");
+    const profilePage = read("src/app/(dashboard)/dashboard/profile/page.tsx");
 
     expect(usersPage).toContain("canManageRoleAsync");
     expect(usersPage).toContain('caps.has("users.create")');
@@ -128,5 +129,10 @@ describe("custom-role page/runtime implementation guards", () => {
     expect(userDetailPage).toContain('assistant: tCommon("roles.assistant")');
     expect(userDetailPage).toContain("db.query.roles.findFirst");
     expect(userDetailPage).toContain("roleRecord?.displayName");
+
+    expect(profilePage).toContain('assistant: tCommon("roles.assistant")');
+    expect(profilePage).toContain("getRoleLevel");
+    expect(profilePage).toContain("roleRecord?.displayName");
+    expect(profilePage).toContain("const canEditClassName = actorRoleLevel > 0;");
   });
 });

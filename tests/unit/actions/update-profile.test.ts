@@ -11,7 +11,9 @@ const mocks = vi.hoisted(() => {
     buildServerActionAuditContext: vi.fn<() => Promise<Record<string, string>>>(),
     recordAuditEvent: vi.fn(),
 
+    getRoleLevel: vi.fn<() => Promise<number>>(),
     dbQueryUsersFindFirst: vi.fn(),
+    dbUpdateSetPayload: vi.fn(),
     dbUpdateSetWhereRun: vi.fn(),
   };
 });
@@ -34,6 +36,10 @@ vi.mock("@/lib/security/api-rate-limit", () => ({
 vi.mock("@/lib/audit/events", () => ({
   buildServerActionAuditContext: mocks.buildServerActionAuditContext,
   recordAuditEvent: mocks.recordAuditEvent,
+}));
+
+vi.mock("@/lib/capabilities/cache", () => ({
+  getRoleLevel: mocks.getRoleLevel,
 }));
 
 vi.mock("@/lib/validators/profile", async () => {
@@ -77,13 +83,16 @@ vi.mock("@/lib/db", () => ({
       },
     },
     update: vi.fn(() => ({
-      set: vi.fn(() => ({
+      set: vi.fn((payload: unknown) => {
+        mocks.dbUpdateSetPayload(payload);
+        return ({
         where: vi.fn(() => ({
           run: vi.fn((...args: unknown[]) => {
             mocks.dbUpdateSetWhereRun(...args);
           }),
         })),
-      })),
+      });
+      }),
     })),
   },
 }));
@@ -109,6 +118,7 @@ function setupAuthenticatedUser() {
   mocks.auth.mockResolvedValue({
     user: { id: "user-1", role: "student", username: "alice" },
   });
+  mocks.getRoleLevel.mockResolvedValue(0);
   mocks.checkServerActionRateLimit.mockReturnValue(null);
   mocks.dbQueryUsersFindFirst.mockResolvedValue({ ...testUser });
   mocks.unstable_update.mockResolvedValue(undefined);
@@ -118,6 +128,14 @@ function setupAuthenticatedUser() {
     requestMethod: "SERVER_ACTION",
     requestPath: "/dashboard/profile",
   });
+}
+
+function setupStaffUser() {
+  setupAuthenticatedUser();
+  mocks.auth.mockResolvedValue({
+    user: { id: "user-1", role: "assistant", username: "alice" },
+  });
+  mocks.getRoleLevel.mockResolvedValue(1);
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -211,15 +229,31 @@ describe("updateProfile", () => {
     );
   });
 
-  it("successfully updates name and className", async () => {
+  it("allows staff users to update name and className", async () => {
     const { updateProfile } = await import("@/lib/actions/update-profile");
-    setupAuthenticatedUser();
+    setupStaffUser();
 
     const result = await updateProfile({ name: "Alice Updated", className: "CS202" });
     expect(result).toEqual({ success: true });
     expect(mocks.unstable_update).toHaveBeenCalledWith(
       expect.objectContaining({
         user: expect.objectContaining({ name: "Alice Updated", className: "CS202" }),
+      })
+    );
+  });
+
+  it("ignores className changes from student callers", async () => {
+    const { updateProfile } = await import("@/lib/actions/update-profile");
+    setupAuthenticatedUser();
+
+    const result = await updateProfile({ name: "Alice Updated", className: "CS202" });
+    expect(result).toEqual({ success: true });
+    expect(mocks.dbUpdateSetPayload).toHaveBeenCalledWith(
+      expect.objectContaining({ className: "CS101" })
+    );
+    expect(mocks.unstable_update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user: expect.objectContaining({ className: "CS101" }),
       })
     );
   });
@@ -245,9 +279,9 @@ describe("updateProfile", () => {
     );
   });
 
-  it("normalizes empty className to null", async () => {
+  it("normalizes empty className to null for staff callers", async () => {
     const { updateProfile } = await import("@/lib/actions/update-profile");
-    setupAuthenticatedUser();
+    setupStaffUser();
 
     await updateProfile({ name: "Alice", className: undefined });
     expect(mocks.unstable_update).toHaveBeenCalledWith(
@@ -290,7 +324,7 @@ describe("updateProfile", () => {
 
   it("records changed fields in audit event details when className changes", async () => {
     const { updateProfile } = await import("@/lib/actions/update-profile");
-    setupAuthenticatedUser();
+    setupStaffUser();
     // testUser.className is "CS101", new className is "CS202"
 
     await updateProfile({ name: "Alice Smith", className: "CS202" });

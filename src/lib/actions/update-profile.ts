@@ -9,6 +9,7 @@ import { buildServerActionAuditContext, recordAuditEvent } from "@/lib/audit/eve
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
 import { logger } from "@/lib/logger";
+import { getRoleLevel } from "@/lib/capabilities/cache";
 import {
   type UpdateProfileInput,
   updateProfileSchema,
@@ -69,7 +70,10 @@ export async function updateProfile(
     editorFontSize,
     editorFontFamily,
   } = parsedInput.data;
-  const normalizedClassName = className ?? null;
+  const actorRoleLevel = await getRoleLevel(session.user.role);
+  const canEditClassName = actorRoleLevel > 0;
+  const requestedClassName = className ?? null;
+  const normalizedClassName = canEditClassName ? requestedClassName : currentUser.className;
   const normalizedPreferredLanguage = preferredLanguage ?? null;
   const normalizedPreferredTheme = preferredTheme ?? null;
   const normalizedEditorTheme = editorTheme ?? null;
@@ -77,7 +81,7 @@ export async function updateProfile(
   const normalizedEditorFontFamily = editorFontFamily ?? null;
   const changedFields = [
     currentUser.name !== name ? "name" : null,
-    currentUser.className !== normalizedClassName ? "className" : null,
+    canEditClassName && currentUser.className !== normalizedClassName ? "className" : null,
     currentUser.preferredLanguage !== normalizedPreferredLanguage ? "preferredLanguage" : null,
     currentUser.preferredTheme !== normalizedPreferredTheme ? "preferredTheme" : null,
     currentUser.shareAcceptedSolutions !== (shareAcceptedSolutions ?? true) ? "shareAcceptedSolutions" : null,

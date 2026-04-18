@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { languageConfigs } from "@/lib/db/schema";
+import { languageConfigs, roles } from "@/lib/db/schema";
 import { getJudgeLanguageDefinition } from "@/lib/judge/languages";
+import { getRoleLevel } from "@/lib/capabilities/cache";
 import ProfileForm from "./profile-form";
 import { EditorThemePicker } from "./editor-theme-picker";
 
@@ -20,7 +21,14 @@ export default async function ProfilePage() {
 
   const t = await getTranslations("profile");
   const tCommon = await getTranslations("common");
-  const langs = await db.select().from(languageConfigs).where(eq(languageConfigs.isEnabled, true));
+  const [langs, actorRoleLevel, roleRecord] = await Promise.all([
+    db.select().from(languageConfigs).where(eq(languageConfigs.isEnabled, true)),
+    getRoleLevel(session.user.role),
+    db.query.roles.findFirst({
+      where: eq(roles.name, session.user.role),
+      columns: { displayName: true },
+    }),
+  ]);
   const enabledLanguages = langs.flatMap((lang) => {
     const def = getJudgeLanguageDefinition(lang.language);
     if (!def) return [];
@@ -29,10 +37,13 @@ export default async function ProfilePage() {
 
   const roleLabels: Record<string, string> = {
     student: tCommon("roles.student"),
+    assistant: tCommon("roles.assistant"),
     instructor: tCommon("roles.instructor"),
     admin: tCommon("roles.admin"),
     super_admin: tCommon("roles.super_admin"),
   };
+  const roleLabel = roleLabels[session.user.role] ?? roleRecord?.displayName ?? session.user.role;
+  const canEditClassName = actorRoleLevel > 0;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -64,7 +75,7 @@ export default async function ProfilePage() {
             <Label>{t("role")}</Label>
             <div>
               <Badge variant="default" className="text-sm capitalize">
-                {roleLabels[session.user.role]}
+                {roleLabel}
               </Badge>
             </div>
           </div>
@@ -87,7 +98,7 @@ export default async function ProfilePage() {
             initialEditorFontSize={session.user.editorFontSize || "14"}
             initialEditorFontFamily={session.user.editorFontFamily || "system"}
             languages={enabledLanguages}
-            canEditClassName={session.user.role !== "student"}
+            canEditClassName={canEditClassName}
           />
         </CardContent>
       </Card>

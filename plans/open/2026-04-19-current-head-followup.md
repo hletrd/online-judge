@@ -20,8 +20,8 @@ This lane owns repo-level current-head issues that are not already fully covered
 | F-06 | `compiler/execute` implementation test still asserts pre-hardening `0o777` | Done | `test(compiler): 🧪 align the workspace-permission contract with the hardened 0o770 mode` |
 | F-07 | `source-grep` documented baseline is stale | Done | `test(infra): 🧪 refresh the documented source-grep baseline after intentional suite growth` |
 | F-08 | Assistant roles can browse the global user directory | Pending | — |
-| F-09 | Profile `className` restrictions are UI-only | Pending | — |
-| F-10 | Profile page cannot render assistant/custom role labels correctly | Pending | — |
+| F-09 | Profile `className` restrictions are UI-only | Done | `fix(profile): 🛡️ enforce class-name edit rules in the server action and make the profile label custom-role-aware` |
+| F-10 | Profile page cannot render assistant/custom role labels correctly | Done | `fix(profile): 🛡️ enforce class-name edit rules in the server action and make the profile label custom-role-aware` |
 | F-11 | `/api/health` eagerly computes the admin snapshot for public callers | Done | `fix(ops): 🩺 gate admin health details by capability before computing the full snapshot` |
 | F-12 | `AdminDashboard` eagerly computes health for roles that cannot view it | Done | `fix(ops): 🩺 gate admin health details by capability before computing the full snapshot` |
 | F-13 | Bulk user creation is fail-all on disallowed per-row roles | Pending | — |
