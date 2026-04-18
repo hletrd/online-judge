@@ -140,12 +140,15 @@ async function _computeContestRankingInner(assignmentId: string, cutoffSec?: num
           u.username,
           u.name,
           u.class_name,
+          es.personal_deadline,
           MIN(CASE WHEN ROUND(s.score, 2) = 100 THEN s.submitted_at ELSE NULL END)
             OVER (PARTITION BY s.user_id, s.problem_id) AS first_ac_at
         FROM submissions s
         INNER JOIN assignment_problems ap
           ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
         INNER JOIN users u ON u.id = s.user_id
+        LEFT JOIN exam_sessions es
+          ON es.assignment_id = s.assignment_id AND es.user_id = s.user_id
         WHERE s.assignment_id = @assignmentId
           AND s.status IN (${TERMINAL_SUBMISSION_STATUSES_SQL_LIST})${withCutoff ? " AND EXTRACT(EPOCH FROM s.submitted_at)::bigint <= @cutoffSec" : ""}
       )
@@ -161,8 +164,14 @@ async function _computeContestRankingInner(assignmentId: string, cutoffSec?: num
           CASE
             WHEN score IS NOT NULL THEN
               CASE
+                -- Non-windowed: late penalty against the global deadline
                 WHEN @deadline::bigint IS NOT NULL AND @latePenalty::double precision > 0 AND @examMode::text != 'windowed'
                      AND submitted_at IS NOT NULL AND EXTRACT(EPOCH FROM submitted_at)::bigint > @deadline::bigint
+                THEN ROUND(((LEAST(GREATEST(score, 0), 100) / 100.0 * points) * (1.0 - @latePenalty::double precision / 100.0))::numeric, 2)
+                -- Windowed: late penalty against the per-user personal_deadline
+                WHEN @examMode::text = 'windowed' AND @latePenalty::double precision > 0
+                     AND personal_deadline IS NOT NULL
+                     AND submitted_at IS NOT NULL AND submitted_at > personal_deadline
                 THEN ROUND(((LEAST(GREATEST(score, 0), 100) / 100.0 * points) * (1.0 - @latePenalty::double precision / 100.0))::numeric, 2)
                 ELSE ROUND((LEAST(GREATEST(score, 0), 100) / 100.0 * points)::numeric, 2)
               END
