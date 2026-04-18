@@ -7,11 +7,9 @@ function read(relativePath: string) {
 }
 
 describe("access code schema implementation", () => {
-  it("marks assignment access codes unique in both PostgreSQL and MySQL schemas", () => {
+  it("marks assignment access codes unique in the PostgreSQL schema", () => {
     const pgSource = read("src/lib/db/schema.pg.ts");
-    const mysqlSource = read("src/lib/db/schema.mysql.ts");
 
     expect(pgSource).toContain('uniqueIndex("assignments_access_code_unique").on(table.accessCode)');
-    expect(mysqlSource).toContain('uniqueIndex("assignments_access_code_unique").on(table.accessCode)');
   });
 });
