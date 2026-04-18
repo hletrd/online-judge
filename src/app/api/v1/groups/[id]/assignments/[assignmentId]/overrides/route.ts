@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -6,9 +6,8 @@ import { db } from "@/lib/db";
 import { assignmentProblems, assignments, enrollments, scoreOverrides } from "@/lib/db/schema";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
-import { getApiUser, forbidden, notFound, unauthorized, csrfForbidden } from "@/lib/api/auth";
-import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
-import { logger } from "@/lib/logger";
+import { createApiHandler, forbidden, notFound } from "@/lib/api/handler";
+import type { AuthUser } from "@/lib/api/handler";
 
 const scoreOverrideBodySchema = z.object({
   problemId: z.string().min(1),
@@ -22,14 +21,17 @@ const deleteOverrideQuerySchema = z.object({
   userId: z.string().min(1),
 });
 
-async function resolveAssignmentAndAuthorize(
-  request: NextRequest,
-  params: Promise<Record<string, string>>
-) {
-  const user = await getApiUser(request);
-  if (!user) return { error: unauthorized() };
+type AssignmentAuthSuccess = {
+  assignment: { id: string; groupId: string | null; title: string };
+  groupId: string;
+};
 
-  const { id, assignmentId } = await params;
+async function authorizeAssignmentAccess(
+  user: AuthUser,
+  params: Record<string, string>,
+): Promise<AssignmentAuthSuccess | { error: NextResponse }> {
+  const id = params.id;
+  const assignmentId = params.assignmentId;
   if (!id || !assignmentId) {
     return { error: notFound("Assignment") };
   }
@@ -38,60 +40,41 @@ async function resolveAssignmentAndAuthorize(
     where: (groups, { eq: equals }) => equals(groups.id, id),
     columns: { id: true, instructorId: true },
   });
-
   if (!group) return { error: notFound("Group") };
 
   const canManage = await canManageGroupResourcesAsync(
     group.instructorId,
     user.id,
     user.role,
-    id
+    id,
   );
-
   if (!canManage) return { error: forbidden() };
 
   const assignment = await db.query.assignments.findFirst({
     where: eq(assignments.id, assignmentId),
     columns: { id: true, groupId: true, title: true },
   });
-
   if (!assignment || assignment.groupId !== id) {
     return { error: notFound("Assignment") };
   }
 
-  return { user, assignment, groupId: id };
+  return { assignment, groupId: id };
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<Record<string, string>> }
-) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
+export const POST = createApiHandler({
+  rateLimit: "overrides:upsert",
+  schema: scoreOverrideBodySchema,
+  handler: async (req: NextRequest, { user, body, params }) => {
+    const access = await authorizeAssignmentAccess(user, params);
+    if ("error" in access) return access.error;
 
-    const rateLimitResponse = await consumeApiRateLimit(request, "overrides:upsert");
-    if (rateLimitResponse) return rateLimitResponse;
+    const { assignment, groupId } = access;
+    const { problemId, userId, overrideScore, reason } = body;
 
-    const result = await resolveAssignmentAndAuthorize(request, params);
-    if ("error" in result) return result.error;
-
-    const { user, assignment } = result;
-
-    const body = await request.json();
-    const parsed = scoreOverrideBodySchema.safeParse(body);
-
-    if (!parsed.success) {
-      return apiError(parsed.error.issues[0]?.message ?? "invalidInput", 400);
-    }
-
-    const { problemId, userId, overrideScore, reason } = parsed.data;
-
-    // Verify problemId belongs to this assignment
     const assignmentProblem = await db.query.assignmentProblems.findFirst({
       where: and(
         eq(assignmentProblems.assignmentId, assignment.id),
-        eq(assignmentProblems.problemId, problemId)
+        eq(assignmentProblems.problemId, problemId),
       ),
       columns: { id: true, points: true },
     });
@@ -99,30 +82,27 @@ export async function POST(
       return apiError("problemNotInAssignment", 400);
     }
 
-    // Cap override score to the problem's max points
     const maxPoints = assignmentProblem.points ?? 100;
     if (overrideScore > maxPoints) {
       return apiError("overrideScoreExceedsMax", 400);
     }
 
-    // Verify the target user is enrolled in the group
     const targetEnrollment = await db.query.enrollments.findFirst({
-      where: and(eq(enrollments.groupId, result.groupId), eq(enrollments.userId, userId)),
+      where: and(eq(enrollments.groupId, groupId), eq(enrollments.userId, userId)),
       columns: { id: true },
     });
     if (!targetEnrollment) {
       return apiError("userNotEnrolled", 400);
     }
 
-    // Atomic upsert: delete existing then insert within a transaction
     await db.transaction(async (tx) => {
       await tx.delete(scoreOverrides)
         .where(
           and(
             eq(scoreOverrides.assignmentId, assignment.id),
             eq(scoreOverrides.problemId, problemId),
-            eq(scoreOverrides.userId, userId)
-          )
+            eq(scoreOverrides.userId, userId),
+          ),
         );
 
       await tx.insert(scoreOverrides)
@@ -152,66 +132,43 @@ export async function POST(
         overrideScore,
         reason: reason ?? null,
       },
-      request,
+      request: req,
     });
 
     return apiSuccess({ assignmentId: assignment.id, problemId, userId, overrideScore, reason });
-  } catch (error) {
-    logger.error({ err: error }, "POST /api/v1/groups/[id]/assignments/[assignmentId]/overrides error");
-    return apiError("overrideCreateFailed", 500);
-  }
-}
+  },
+});
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<Record<string, string>> }
-) {
-  try {
-    const result = await resolveAssignmentAndAuthorize(request, params);
-    if ("error" in result) return result.error;
-
-    const { assignment } = result;
+export const GET = createApiHandler({
+  handler: async (_req: NextRequest, { user, params }) => {
+    const access = await authorizeAssignmentAccess(user, params);
+    if ("error" in access) return access.error;
 
     const overrides = await db
       .select()
       .from(scoreOverrides)
-      .where(eq(scoreOverrides.assignmentId, assignment.id));
-
+      .where(eq(scoreOverrides.assignmentId, access.assignment.id));
     return apiSuccess(overrides);
-  } catch (error) {
-    logger.error({ err: error }, "GET /api/v1/groups/[id]/assignments/[assignmentId]/overrides error");
-    return apiError("overrideLoadFailed", 500);
-  }
-}
+  },
+});
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<Record<string, string>> }
-) {
-  try {
-    const csrfError = csrfForbidden(request);
-    if (csrfError) return csrfError;
+export const DELETE = createApiHandler({
+  rateLimit: "overrides:delete",
+  handler: async (req: NextRequest, { user, params }) => {
+    const access = await authorizeAssignmentAccess(user, params);
+    if ("error" in access) return access.error;
 
-    const rateLimitResponse = await consumeApiRateLimit(request, "overrides:delete");
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const result = await resolveAssignmentAndAuthorize(request, params);
-    if ("error" in result) return result.error;
-
-    const { user, assignment } = result;
-
-    const { searchParams } = new URL(request.url);
+    const { assignment } = access;
+    const { searchParams } = new URL(req.url);
     const queryParsed = deleteOverrideQuerySchema.safeParse({
       problemId: searchParams.get("problemId") ?? "",
       userId: searchParams.get("userId") ?? "",
     });
-
     if (!queryParsed.success) {
       return apiError(queryParsed.error.issues[0]?.message ?? "invalidInput", 400);
     }
 
     const { problemId, userId } = queryParsed.data;
-
     const [existing] = await db
       .select({ assignmentId: scoreOverrides.assignmentId })
       .from(scoreOverrides)
@@ -219,8 +176,8 @@ export async function DELETE(
         and(
           eq(scoreOverrides.assignmentId, assignment.id),
           eq(scoreOverrides.problemId, problemId),
-          eq(scoreOverrides.userId, userId)
-        )
+          eq(scoreOverrides.userId, userId),
+        ),
       );
 
     if (!existing) {
@@ -233,8 +190,8 @@ export async function DELETE(
         and(
           eq(scoreOverrides.assignmentId, assignment.id),
           eq(scoreOverrides.problemId, problemId),
-          eq(scoreOverrides.userId, userId)
-        )
+          eq(scoreOverrides.userId, userId),
+        ),
       );
 
     recordAuditEvent({
@@ -250,12 +207,9 @@ export async function DELETE(
         problemId,
         userId,
       },
-      request,
+      request: req,
     });
 
     return apiSuccess({ assignmentId: assignment.id, problemId, userId });
-  } catch (error) {
-    logger.error({ err: error }, "DELETE /api/v1/groups/[id]/assignments/[assignmentId]/overrides error");
-    return apiError("overrideDeleteFailed", 500);
-  }
-}
+  },
+});
