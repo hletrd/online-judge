@@ -35,6 +35,11 @@ function isTestEnvironment(): boolean {
   return Boolean(getPlaywrightToken());
 }
 
+function isLocalhostRequest(req: NextRequest): boolean {
+  const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  return ip === "127.0.0.1" || ip === "::1" || ip === "localhost";
+}
+
 function isAuthorized(req: NextRequest): boolean {
   const expected = getPlaywrightToken();
   if (!expected) return false;
@@ -96,6 +101,11 @@ export async function POST(req: NextRequest) {
   // Hard gate: behave as if the route doesn't exist in non-test environments.
   if (!isTestEnvironment()) {
     return apiError("notFound", 404);
+  }
+
+  // Restrict to localhost only — this endpoint creates/deletes users and data.
+  if (!isLocalhostRequest(req)) {
+    return apiError("forbidden", 403);
   }
 
   if (!isAuthorized(req)) {
