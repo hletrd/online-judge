@@ -126,8 +126,7 @@ test.describe("Contest System", () => {
       await page.locator("#access-code").fill("INVALIDCODE99");
       await page.getByRole("button", { name: /^Join$|^참가$/ }).click();
 
-      // Wait for toast or loading to finish
-      await page.waitForTimeout(3000);
+      // Wait for error toast to appear
       const toast = page.locator("[data-sonner-toast]");
       await expect(toast.first()).toBeVisible({ timeout: 10_000 });
     });

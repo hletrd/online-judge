@@ -109,8 +109,6 @@ async function expectBackDialog(page: Page, accept: boolean) {
   } else {
     await dialog.dismiss();
   }
-
-  await page.waitForTimeout(250);
 }
 
 async function expectNoDialogDuring(page: Page, action: () => Promise<unknown>) {
@@ -125,7 +123,6 @@ async function expectNoDialogDuring(page: Page, action: () => Promise<unknown>) 
 
   try {
     await action();
-    await page.waitForTimeout(250);
   } finally {
     page.off("dialog", dialogListener);
   }
@@ -152,7 +149,8 @@ test("task 7 guards browser back navigation while dirty and stays clean after su
     await page.waitForURL(`/dashboard/problems/${problemId}`, { timeout: 15_000 });
     await chooseLanguage(page, label);
     await page.locator("#sourceCode").fill(solution);
-    await page.waitForTimeout(700);
+    // Wait for editor to register the content change as dirty state
+    await expect.poll(async () => normalizeSourceText(await readEditorText(page))).not.toBe("");
 
     await test.step("browser back stays on the page when the dirty-history dialog is dismissed", async () => {
       await expectBackDialog(page, false);
