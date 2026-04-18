@@ -15,6 +15,7 @@ describe("admin dashboard implementation", () => {
     expect(source).toContain('const canViewHealth = caps.has("system.settings");');
     expect(source).toContain('caps.has("system.settings")');
     expect(source).toContain('caps.has("users.view")');
+    expect(source).toContain('caps.has("users.manage_roles")');
     expect(source).toContain('caps.has("system.audit_logs")');
     expect(source).toContain('caps.has("system.login_logs")');
     expect(source).toContain('caps.has("system.chat_logs")');
@@ -24,12 +25,15 @@ describe("admin dashboard implementation", () => {
     expect(source).toContain('href="/dashboard/admin/workers"');
     expect(source).toContain('href="/dashboard/admin/languages"');
     expect(source).toContain('href="/dashboard/admin/users"');
+    expect(source).toContain('href="/dashboard/admin/roles"');
     expect(source).toContain('href="/dashboard/admin/audit-logs"');
     expect(source).toContain('href="/dashboard/admin/login-logs"');
     expect(source).toContain('href="/dashboard/admin/plugins/chat-logs"');
     expect(source).toContain('href="/dashboard/admin/files"');
     expect(source).toContain('href="/dashboard/admin/plugins"');
     expect(source).toContain('href="/dashboard/admin/api-keys"');
+    expect(source).toContain('href="/dashboard/admin/tags"');
+    expect(source).toContain('href="/dashboard/admin/settings"');
     expect(dashboardPage).toContain("<AdminDashboard capabilities={capabilityList} />");
   });
 

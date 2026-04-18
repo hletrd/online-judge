@@ -50,6 +50,11 @@ export async function AdminDashboard({ capabilities }: AdminDashboardProps) {
               <Button size="sm" variant="outline">{tNav("userManagement")}</Button>
             </Link>
           ) : null}
+          {caps.has("users.manage_roles") ? (
+            <Link href="/dashboard/admin/roles">
+              <Button size="sm" variant="outline">{tNav("roleManagement")}</Button>
+            </Link>
+          ) : null}
           {caps.has("system.audit_logs") ? (
             <Link href="/dashboard/admin/audit-logs">
               <Button size="sm" variant="outline">{tNav("auditLogs")}</Button>
@@ -78,6 +83,16 @@ export async function AdminDashboard({ capabilities }: AdminDashboardProps) {
           {caps.has("system.settings") ? (
             <Link href="/dashboard/admin/api-keys">
               <Button size="sm" variant="outline">{tNav("apiKeys")}</Button>
+            </Link>
+          ) : null}
+          {caps.has("system.settings") ? (
+            <Link href="/dashboard/admin/tags">
+              <Button size="sm" variant="outline">{tNav("tagManagement")}</Button>
+            </Link>
+          ) : null}
+          {caps.has("system.settings") ? (
+            <Link href="/dashboard/admin/settings">
+              <Button size="sm" variant="outline">{tNav("systemSettings")}</Button>
             </Link>
           ) : null}
         </CardContent>
