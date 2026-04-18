@@ -13,7 +13,7 @@ This lane owns repo-level current-head issues that are not already fully covered
 | ID | Finding | Status | Commit |
 | --- | --- | --- | --- |
 | F-01 | Anti-cheat dashboard missing `contests.antiCheat.language` translation key | Done | `fix(contests): 🌐 restore anti-cheat language label coverage` |
-| F-02 | `code-similarity-client` tests still omit `language` | Pending | — |
+| F-02 | `code-similarity-client` tests still omit `language` | Done | `test(similarity): 🧪 align Rust client fixtures with language-aware payloads` |
 | F-03 | `AuthUserRecord.mustChangePassword` nullability breaks `npx tsc --noEmit` | Pending | — |
 | F-04 | `src/lib/db/migrate.ts` cast no longer typechecks | Pending | — |
 | F-05 | `users.bulk` route test harness bypasses parsed request body | Pending | — |

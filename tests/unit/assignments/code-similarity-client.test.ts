@@ -11,7 +11,7 @@ describe("computeSimilarityRust", () => {
 
   it("returns pairs on successful response", async () => {
     const mockPairs = [
-      { userId1: "u1", userId2: "u2", problemId: "p1", similarity: 0.95 },
+      { userId1: "u1", userId2: "u2", problemId: "p1", language: "python", similarity: 0.95 },
     ];
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -20,8 +20,8 @@ describe("computeSimilarityRust", () => {
 
     const result = await computeSimilarityRust(
       [
-        { userId: "u1", problemId: "p1", sourceCode: "code1" },
-        { userId: "u2", problemId: "p1", sourceCode: "code2" },
+        { userId: "u1", problemId: "p1", language: "python", sourceCode: "code1" },
+        { userId: "u2", problemId: "p1", language: "python", sourceCode: "code2" },
       ],
       0.85,
       3
@@ -38,7 +38,7 @@ describe("computeSimilarityRust", () => {
     });
 
     const result = await computeSimilarityRust(
-      [{ userId: "u1", problemId: "p1", sourceCode: "code" }],
+      [{ userId: "u1", problemId: "p1", language: "python", sourceCode: "code" }],
       0.85,
       3
     );
@@ -50,7 +50,7 @@ describe("computeSimilarityRust", () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error("ECONNREFUSED"));
 
     const result = await computeSimilarityRust(
-      [{ userId: "u1", problemId: "p1", sourceCode: "code" }],
+      [{ userId: "u1", problemId: "p1", language: "python", sourceCode: "code" }],
       0.85,
       3
     );
@@ -62,7 +62,7 @@ describe("computeSimilarityRust", () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new DOMException("Aborted", "AbortError"));
 
     const result = await computeSimilarityRust(
-      [{ userId: "u1", problemId: "p1", sourceCode: "code" }],
+      [{ userId: "u1", problemId: "p1", language: "python", sourceCode: "code" }],
       0.85,
       3
     );
@@ -77,7 +77,7 @@ describe("computeSimilarityRust", () => {
     });
 
     await computeSimilarityRust(
-      [{ userId: "u1", problemId: "p1", sourceCode: "code" }],
+      [{ userId: "u1", problemId: "p1", language: "python", sourceCode: "code" }],
       0.9,
       5
     );
@@ -85,7 +85,7 @@ describe("computeSimilarityRust", () => {
     const call = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
     const body = JSON.parse(call[1].body);
     expect(body).toEqual({
-      submissions: [{ userId: "u1", problemId: "p1", sourceCode: "code" }],
+      submissions: [{ userId: "u1", problemId: "p1", language: "python", sourceCode: "code" }],
       threshold: 0.9,
       ngram_size: 5,
     });
@@ -98,7 +98,7 @@ describe("computeSimilarityRust", () => {
     });
 
     await computeSimilarityRust([
-      { userId: "u1", problemId: "p1", sourceCode: "code" },
+      { userId: "u1", problemId: "p1", language: "python", sourceCode: "code" },
     ]);
 
     const call = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
