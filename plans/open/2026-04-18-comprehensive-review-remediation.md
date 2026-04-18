@@ -86,7 +86,7 @@ Tracked in `.context/reviews/comprehensive-code-review-2026-04-18.md` §3.* and 
 | HIGH-16 | Open | — |
 | HIGH-17 | Done | `chore(test-compose): 🔒 drop BUILD/DELETE from test-backends docker-proxy` |
 | HIGH-18 | Open | — |
-| HIGH-19 | Open | — |
+| HIGH-19 | Open (upload traversal regression covered; access-code race/admin IP allowlist/seccomp coverage still pending) | — |
 | HIGH-20 | Open | — |
 | HIGH-21 | Open | — |
 | HIGH-22 | Open | — |
