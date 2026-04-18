@@ -1,4 +1,5 @@
 import { extractClientIp } from "@/lib/security/ip";
+import { logger } from "@/lib/logger";
 
 export const MAX_TEXT_LENGTH = 512;
 export const MAX_PATH_LENGTH = 512;
@@ -32,7 +33,8 @@ export function getRequestPath(url: string | null | undefined): string | null {
 
   try {
     return normalizeText(new URL(url).pathname, MAX_PATH_LENGTH);
-  } catch {
+  } catch (err) {
+    logger.debug({ err, url }, "[request-context] failed to parse request URL path");
     return null;
   }
 }

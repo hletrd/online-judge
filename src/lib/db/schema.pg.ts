@@ -49,11 +49,11 @@ export const users = pgTable(
     lectureColorScheme: text("lecture_color_scheme"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("users_created_at_idx").on(table.createdAt),
@@ -106,7 +106,7 @@ export const loginEvents = pgTable(
     requestPath: text("request_path"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("login_events_outcome_idx").on(table.outcome),
@@ -135,7 +135,7 @@ export const auditEvents = pgTable(
     requestPath: text("request_path"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("audit_events_actor_idx").on(table.actorId),
@@ -164,10 +164,10 @@ export const apiKeys = pgTable(
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     uniqueIndex("api_keys_key_hash_unique").on(table.keyHash),
@@ -189,11 +189,11 @@ export const groups = pgTable(
     isArchived: boolean("is_archived").default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("groups_instructor_id_idx").on(table.instructorId),
@@ -214,7 +214,7 @@ export const enrollments = pgTable(
       .references(() => groups.id, { onDelete: "cascade" }),
     enrolledAt: timestamp("enrolled_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     uniqueIndex("enrollments_user_group_idx").on(table.userId, table.groupId),
@@ -238,7 +238,7 @@ export const groupInstructors = pgTable(
     role: text("role").notNull(), // "co_instructor" | "ta"
     assignedAt: timestamp("assigned_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     uniqueIndex("group_instructors_group_user_idx").on(table.groupId, table.userId),
@@ -274,11 +274,11 @@ export const problems = pgTable(
     }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     // NOTE: $defaultFn only fires on INSERT. Use withUpdatedAt() from @/lib/db/helpers for every UPDATE.
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("problems_created_at_idx").on(table.createdAt),
@@ -349,14 +349,15 @@ export const assignments = pgTable(
     hideScoresFromCandidates: boolean("hide_scores_from_candidates").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("assignments_group_idx").on(table.groupId),
     uniqueIndex("assignments_access_code_unique").on(table.accessCode),
+    check("assignments_late_penalty_nonneg", sql`${table.latePenalty} >= 0`),
   ]
 );
 
@@ -425,10 +426,10 @@ export const judgeWorkers = pgTable(
     status: text("status").notNull().default("online"),
     registeredAt: timestamp("registered_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     lastHeartbeatAt: timestamp("last_heartbeat_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     deregisteredAt: timestamp("deregistered_at", { withTimezone: true }),
   },
   (table) => [
@@ -476,7 +477,7 @@ export const submissions = pgTable(
     ipAddress: text("ip_address"),
     submittedAt: timestamp("submitted_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("submissions_user_problem_idx").on(table.userId, table.problemId),
@@ -510,7 +511,7 @@ export const languageConfigs = pgTable("language_configs", {
   isEnabled: boolean("is_enabled").default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .$defaultFn(() => new Date(Date.now())),
+    .$defaultFn(() => new Date()),
 });
 
 export const systemSettings = pgTable("system_settings", {
@@ -585,7 +586,7 @@ export const systemSettings = pgTable("system_settings", {
   }>>(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .$defaultFn(() => new Date(Date.now())),
+    .$defaultFn(() => new Date()),
 });
 
 export const rateLimits = pgTable(
@@ -623,10 +624,10 @@ export const submissionComments = pgTable(
     lineNumber: integer("line_number"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("sc_submission_idx").on(table.submissionId),
@@ -682,10 +683,10 @@ export const contestAnnouncements = pgTable(
     createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("contest_announcements_assignment_idx").on(table.assignmentId),
@@ -714,10 +715,10 @@ export const contestClarifications = pgTable(
     isPublic: boolean("is_public").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("contest_clarifications_assignment_idx").on(table.assignmentId, table.createdAt),
@@ -738,10 +739,10 @@ export const problemSets = pgTable("problem_sets", {
   }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .$defaultFn(() => new Date(Date.now())),
+    .$defaultFn(() => new Date()),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .$defaultFn(() => new Date(Date.now())),
+    .$defaultFn(() => new Date()),
 });
 
 export const problemSetProblems = pgTable(
@@ -779,7 +780,7 @@ export const problemSetGroupAccess = pgTable(
       .references(() => groups.id, { onDelete: "cascade" }),
     assignedAt: timestamp("assigned_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("psga_problem_set_idx").on(table.problemSetId),
@@ -817,7 +818,7 @@ export const plugins = pgTable("plugins", {
   config: jsonb("config"),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .$defaultFn(() => new Date(Date.now())),
+    .$defaultFn(() => new Date()),
 });
 
 export const chatMessages = pgTable(
@@ -839,7 +840,7 @@ export const chatMessages = pgTable(
     provider: text("provider"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("chat_messages_session_id_idx").on(table.sessionId),
@@ -862,10 +863,10 @@ export const discussionThreads = pgTable(
     pinnedAt: timestamp("pinned_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("dt_scope_idx").on(table.scopeType),
@@ -887,10 +888,10 @@ export const discussionPosts = pgTable(
     content: text("content").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("dp_thread_idx").on(table.threadId),
@@ -913,10 +914,10 @@ export const communityVotes = pgTable(
     voteType: text("vote_type").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("cv_target_idx").on(table.targetType, table.targetId),
@@ -951,10 +952,10 @@ export const recruitingInvitations = pgTable(
       .references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     uniqueIndex("ri_token_idx").on(table.token),
@@ -985,7 +986,7 @@ export const codeSnapshots = pgTable(
     charCount: integer("char_count").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("cs_user_problem_idx").on(table.userId, table.problemId, table.assignmentId),
@@ -1007,7 +1008,7 @@ export const contestAccessTokens = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     redeemedAt: timestamp("redeemed_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     ipAddress: text("ip_address"),
   },
   (table) => [
@@ -1029,10 +1030,10 @@ export const roles = pgTable(
     capabilities: jsonb("capabilities").$type<string[]>().notNull().default([]),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     uniqueIndex("roles_name_idx").on(table.name),
@@ -1053,7 +1054,7 @@ export const tags = pgTable(
     }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   }
 );
 
@@ -1095,7 +1096,7 @@ export const antiCheatEvents = pgTable(
     userAgent: text("user_agent"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("ace_assignment_user_idx").on(table.assignmentId, table.userId),
@@ -1123,7 +1124,7 @@ export const files = pgTable(
       .references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .$defaultFn(() => new Date(Date.now())),
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index("files_problem_id_idx").on(table.problemId),

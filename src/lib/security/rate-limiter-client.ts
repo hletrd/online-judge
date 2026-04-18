@@ -18,6 +18,8 @@
  *     the only limiter).
  */
 
+import { logger } from "@/lib/logger";
+
 const RATE_LIMITER_URL = process.env.RATE_LIMITER_URL ?? "";
 const RATE_LIMITER_AUTH_TOKEN = process.env.RATE_LIMITER_AUTH_TOKEN ?? "";
 
@@ -79,9 +81,10 @@ async function callRateLimiter<T>(path: string, body: Record<string, unknown>): 
       consecutiveFailures = 0;
     }
     return data;
-  } catch {
+  } catch (err) {
     consecutiveFailures++;
     circuitOpenUntil = Date.now() + RECOVERY_WINDOW_MS;
+    logger.warn({ err, path }, "[rate-limiter] sidecar unreachable, circuit breaker updated");
     return null;
   }
 }

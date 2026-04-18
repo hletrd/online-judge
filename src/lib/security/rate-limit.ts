@@ -4,6 +4,7 @@ import { extractClientIp } from "@/lib/security/ip";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
 import { eq, lt } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { logger } from "@/lib/logger";
 
 function getRateLimitConfig() {
   const s = getConfiguredSettings();
@@ -35,8 +36,9 @@ async function evictStaleEntries() {
   const cutoff = Date.now() - RATE_LIMIT_EVICTION_AGE_MS;
   try {
     await db.delete(rateLimits).where(lt(rateLimits.lastAttempt, cutoff));
-  } catch {
+  } catch (err) {
     // Eviction is best-effort
+    logger.warn({ err }, "[rate-limit] stale entry eviction failed");
   }
 }
 

@@ -6,6 +6,7 @@
  */
 
 import { asc, sql } from "drizzle-orm";
+import type { PgTable } from "drizzle-orm/pg-core";
 import { db, type TransactionClient, activeDialect } from "./index";
 import type { DbDialect } from "./config";
 import * as schema from "./schema";
@@ -70,7 +71,7 @@ async function waitForReadableStreamDemand(
     controller.desiredSize !== null &&
     controller.desiredSize <= 0
   ) {
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 10));
   }
 }
 
@@ -131,7 +132,7 @@ export function streamDatabaseExport(options: { signal?: AbortSignal; sanitize?:
                 if (cancelled) return;
                 await waitForReadableStreamDemand(controller, () => cancelled);
                 const normalizedRow = columns.map((col) =>
-                  redactSet?.has(col) ? null : normalizeValue((row as any)[col])
+                  redactSet?.has(col) ? null : normalizeValue((row as Record<string, unknown>)[col])
                 );
                 controller.enqueue(
                   encoder.encode(`${rowIndex === 0 ? "" : ","}${JSON.stringify(normalizedRow)}`)
@@ -179,7 +180,7 @@ export function streamDatabaseExport(options: { signal?: AbortSignal; sanitize?:
  * Tables in FK-dependency order (parents before children).
  * Each entry maps a logical name to the Drizzle table reference.
  */
-const TABLE_ORDER: { name: string; table: any; orderColumns: string[] }[] = [
+const TABLE_ORDER: { name: string; table: PgTable; orderColumns: string[] }[] = [
   // Level 0: no foreign keys
   { name: "users", table: schema.users, orderColumns: ["id"] },
   { name: "roles", table: schema.roles, orderColumns: ["id"] },
@@ -285,7 +286,7 @@ const ALWAYS_REDACT: Record<string, Set<string>> = {
 /** Empty redaction set for full-fidelity backup exports (minus ALWAYS_REDACT). */
 const REDACTED_COLUMNS: Record<string, Set<string>> = {};
 
-function getOrderClauses(table: any, orderColumns: string[]) {
+function getOrderClauses(table: PgTable, orderColumns: string[]) {
   return orderColumns
     .map((column) => table[column])
     .filter(Boolean)
@@ -294,7 +295,7 @@ function getOrderClauses(table: any, orderColumns: string[]) {
 
 async function selectTableChunks(
   tx: TransactionClient,
-  table: any,
+  table: PgTable,
   orderColumns: string[]
 ): Promise<Record<string, unknown>[]> {
   const rows: Record<string, unknown>[] = [];
@@ -321,6 +322,10 @@ async function selectTableChunks(
  * Export the entire database to a portable JSON format.
  * Uses cursor-based pagination to avoid loading entire tables into memory.
  */
+/**
+ * @deprecated Use streamDatabaseExport() instead — this function loads entire
+ * tables into memory via offset-based pagination and may OOM on large databases.
+ */
 export async function exportDatabase(options: { sanitize?: boolean } = {}): Promise<JudgeKitExport> {
   const redactionMap = options.sanitize ? SANITIZED_COLUMNS : REDACTED_COLUMNS;
 
@@ -341,7 +346,7 @@ export async function exportDatabase(options: { sanitize?: boolean } = {}): Prom
       const columns = orderedRows.length > 0 ? Object.keys(orderedRows[0] as object) : [];
       const redactSet = redactionMap[name];
       const rows = orderedRows.map((row) =>
-        columns.map((col) => (redactSet?.has(col) ? null : normalizeValue((row as any)[col])))
+        columns.map((col) => (redactSet?.has(col) ? null : normalizeValue((row as Record<string, unknown>)[col])))
       );
 
       result.tables[name] = {

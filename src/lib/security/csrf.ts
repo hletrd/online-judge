@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUrlObject } from "@/lib/security/env";
+import { logger } from "@/lib/logger";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -61,7 +62,8 @@ export function validateCsrf(request: NextRequest): NextResponse | null {
       if (new URL(origin).host !== expectedHost) {
         return NextResponse.json({ error: "csrfValidationFailed" }, { status: 403 });
       }
-    } catch {
+    } catch (err) {
+      logger.warn({ err, origin }, "[csrf] invalid origin URL, rejecting request");
       return NextResponse.json({ error: "csrfValidationFailed" }, { status: 403 });
     }
   }

@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { getTrustedAuthHosts, normalizeHostForComparison } from "@/lib/security/env";
+import { logger } from "@/lib/logger";
 
 function getOriginHost(origin: string | null) {
   if (!origin) {
@@ -10,7 +11,8 @@ function getOriginHost(origin: string | null) {
 
   try {
     return normalizeHostForComparison(new URL(origin).host);
-  } catch {
+  } catch (err) {
+    logger.warn({ err, origin }, "[server-actions] failed to parse origin URL");
     return null;
   }
 }

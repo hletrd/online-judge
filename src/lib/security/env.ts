@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 const AUTH_SECRET_PLACEHOLDER = "your-secret-key-here-generate-with-openssl-rand-base64-32";
 const JUDGE_AUTH_TOKEN_PLACEHOLDER = "your-judge-auth-token";
 const JUDGE_AUTH_TOKEN_DEV_PLACEHOLDER = "dev-test-token-for-local-development";
@@ -70,7 +72,8 @@ export function getAuthUrlObject() {
 
   try {
     return new URL(authUrl);
-  } catch {
+  } catch (err) {
+    logger.error({ err, authUrl }, "[env] AUTH_URL is not a valid absolute URL");
     throw new Error("AUTH_URL must be a valid absolute URL.");
   }
 }
@@ -82,7 +85,8 @@ function parseAllowedHosts(raw: string | null | undefined): string[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, "[env] failed to parse ALLOWED_HOSTS, defaulting to empty");
     return [];
   }
 }
@@ -139,7 +143,8 @@ async function getAllowedHostsFromDb(): Promise<string[]> {
     const { getSystemSettings } = await import("@/lib/system-settings");
     const settings = await getSystemSettings();
     return parseAllowedHosts(settings?.allowedHosts);
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, "[env] failed to load allowed hosts from DB, defaulting to empty");
     return [];
   }
 }

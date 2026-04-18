@@ -1,4 +1,5 @@
 // SSE route: not migrated to createApiHandler due to streaming response
+import { randomUUID } from "crypto";
 import { NextRequest } from "next/server";
 import { apiError } from "@/lib/api/responses";
 import { db } from "@/lib/db";
@@ -26,10 +27,11 @@ const activeConnectionSet = new Set<string>();
 const connectionInfoMap = new Map<string, ConnectionInfo>();
 
 const MAX_GLOBAL_SSE_CONNECTIONS = 500;
+const MAX_TRACKED_CONNECTIONS = MAX_GLOBAL_SSE_CONNECTIONS * 2;
 const AUTH_RECHECK_INTERVAL_MS = 30_000;
 
 function generateConnectionId(userId: string): string {
-  return `${userId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${userId}-${Date.now()}-${randomUUID().slice(0, 8)}`;
 }
 
 function countUserConnections(userId: string): number {
@@ -42,6 +44,12 @@ function countUserConnections(userId: string): number {
 }
 
 function addConnection(connId: string, userId: string): void {
+  // Evict oldest entries if tracking map exceeds cap
+  while (connectionInfoMap.size >= MAX_TRACKED_CONNECTIONS) {
+    const oldest = connectionInfoMap.keys().next().value;
+    if (oldest) removeConnection(oldest);
+    else break;
+  }
   activeConnectionSet.add(connId);
   connectionInfoMap.set(connId, { userId, createdAt: Date.now() });
 }
@@ -67,6 +75,18 @@ globalThis.__sseCleanupTimer = setInterval(() => {
     }
   }
 }, CLEANUP_INTERVAL_MS);
+
+// Graceful shutdown: clear connection tracking on SIGTERM
+declare global {
+  var __sseShutdownHandler: boolean | undefined;
+}
+if (!globalThis.__sseShutdownHandler) {
+  globalThis.__sseShutdownHandler = true;
+  process.on("SIGTERM", () => {
+    activeConnectionSet.clear();
+    connectionInfoMap.clear();
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Shared polling manager: one setInterval queries ALL active submission IDs

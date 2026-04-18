@@ -127,6 +127,13 @@
       "when": 1776445738004,
       "tag": "0017_stale_captain_midlands",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1776545738004,
+      "tag": "0018_add_late_penalty_check",
+      "breakpoints": true
     }
   ]
 }

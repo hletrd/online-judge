@@ -40,7 +40,7 @@ const HEADER_ALIASES: Record<string, string> = {
   name: "name",
   fullname: "name",
   displayname: "name",
-  password: "password",
+  password: "",
   passwd: "password",
   pass: "password",
   email: "email",

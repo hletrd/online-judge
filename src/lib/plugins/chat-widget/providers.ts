@@ -1,3 +1,34 @@
+import { z } from "zod";
+
+// ── Zod Schemas for provider response parsing ────────────────────────────────
+
+const OpenAIToolCallSchema = z.object({
+  id: z.string(),
+  function: z.object({ name: z.string(), arguments: z.string() }),
+});
+
+const ClaudeToolUseBlockSchema = z.object({
+  type: z.literal("tool_use"),
+  id: z.string(),
+  name: z.string(),
+  input: z.record(z.string(), z.unknown()),
+});
+
+const ClaudeTextBlockSchema = z.object({
+  type: z.literal("text"),
+  text: z.string(),
+});
+
+const GeminiFunctionCallPartSchema = z.object({
+  functionCall: z.object({ name: z.string(), args: z.record(z.string(), z.unknown()) }),
+});
+
+const GeminiTextPartSchema = z.object({
+  text: z.string(),
+});
+
+// ── Provider interfaces ──────────────────────────────────────────────────────
+
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
@@ -111,7 +142,8 @@ const openaiProvider: ChatProvider = {
     if (msg?.tool_calls && msg.tool_calls.length > 0) {
       return {
         type: "tool_calls" as const,
-        toolCalls: msg.tool_calls.map((tc: any) => {
+        toolCalls: msg.tool_calls.map((raw: unknown) => {
+          const tc = OpenAIToolCallSchema.parse(raw);
           let args: Record<string, unknown> = {};
           try { args = JSON.parse(tc.function.arguments || "{}"); } catch { /* malformed response */ }
           return {
@@ -224,24 +256,27 @@ const claudeProvider: ChatProvider = {
     }
 
     const data = await response.json();
-    const toolUseBlocks = (data.content ?? []).filter((b: any) => b.type === "tool_use");
-    const textBlocks = (data.content ?? []).filter((b: any) => b.type === "text");
+    const toolUseBlocks = (data.content ?? []).filter((raw: unknown) => ClaudeToolUseBlockSchema.safeParse(raw).success);
+    const textBlocks = (data.content ?? []).filter((raw: unknown) => ClaudeTextBlockSchema.safeParse(raw).success);
 
     if (toolUseBlocks.length > 0) {
       return {
         type: "tool_calls" as const,
-        toolCalls: toolUseBlocks.map((b: any) => ({
-          id: b.id,
-          name: b.name,
-          arguments: b.input ?? {},
-        })),
+        toolCalls: toolUseBlocks.map((raw: unknown) => {
+          const b = ClaudeToolUseBlockSchema.parse(raw);
+          return {
+            id: b.id,
+            name: b.name,
+            arguments: b.input ?? {},
+          };
+        }),
         rawAssistantMessage: { role: "assistant", content: data.content },
       };
     }
 
     return {
       type: "text" as const,
-      text: textBlocks.map((b: any) => b.text).join("") || "",
+      text: textBlocks.map((raw: unknown) => ClaudeTextBlockSchema.parse(raw).text).join("") || "",
       rawAssistantMessage: { role: "assistant", content: data.content },
     };
   },
@@ -362,24 +397,27 @@ const geminiProvider: ChatProvider = {
 
     const data = await response.json();
     const parts = data.candidates?.[0]?.content?.parts ?? [];
-    const functionCalls = parts.filter((p: any) => p.functionCall);
-    const textParts = parts.filter((p: any) => p.text);
+    const functionCalls = parts.filter((raw: unknown) => GeminiFunctionCallPartSchema.safeParse(raw).success);
+    const textParts = parts.filter((raw: unknown) => GeminiTextPartSchema.safeParse(raw).success);
 
     if (functionCalls.length > 0) {
       return {
         type: "tool_calls" as const,
-        toolCalls: functionCalls.map((p: any, i: number) => ({
-          id: `gemini-${i}`,
-          name: p.functionCall.name,
-          arguments: p.functionCall.args ?? {},
-        })),
+        toolCalls: functionCalls.map((raw: unknown, i: number) => {
+          const p = GeminiFunctionCallPartSchema.parse(raw);
+          return {
+            id: `gemini-${i}`,
+            name: p.functionCall.name,
+            arguments: p.functionCall.args ?? {},
+          };
+        }),
         rawAssistantMessage: { role: "model", parts },
       };
     }
 
     return {
       type: "text" as const,
-      text: textParts.map((p: any) => p.text).join("") || "",
+      text: textParts.map((raw: unknown) => GeminiTextPartSchema.parse(raw).text).join("") || "",
       rawAssistantMessage: { role: "model", parts },
     };
   },

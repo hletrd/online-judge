@@ -1,6 +1,8 @@
 import { migrate } from "drizzle-orm/node-postgres/migrator";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { db } from "./index";
+import { logger } from "@/lib/logger";
 
-console.log("Running PostgreSQL migrations...");
-await migrate(db as any, { migrationsFolder: "./drizzle/pg" });
-console.log("Migrations complete.");
+logger.info("Running PostgreSQL migrations...");
+await migrate(db as NodePgDatabase, { migrationsFolder: "./drizzle/pg" });
+logger.info("Migrations complete.");
