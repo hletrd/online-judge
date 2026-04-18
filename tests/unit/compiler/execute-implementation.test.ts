@@ -7,7 +7,7 @@ describe("compiler execute implementation", () => {
     const source = readFileSync(join(process.cwd(), "src/lib/compiler/execute.ts"), "utf8");
 
     expect(source).toContain('"65534:65534"');
-    expect(source).toContain("await chmod(workspaceDir, 0o777);");
+    expect(source).toContain("await chmod(workspaceDir, 0o770);");
     expect(source).toContain("await chmod(join(workspaceDir, sourceFileName), 0o644);");
   });
 

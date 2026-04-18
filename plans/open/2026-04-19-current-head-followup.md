@@ -17,7 +17,7 @@ This lane owns repo-level current-head issues that are not already fully covered
 | F-03 | `AuthUserRecord.mustChangePassword` nullability breaks `npx tsc --noEmit` | Done | `fix(auth): 🔧 normalize AuthUserRecord.mustChangePassword to boolean` |
 | F-04 | `src/lib/db/migrate.ts` cast no longer typechecks | Done | `fix(db): 🔧 let drizzle migrate infer the concrete NodePgDatabase type` |
 | F-05 | `users.bulk` route test harness bypasses parsed request body | Done | `test(users): 🧪 make the bulk-create route harness respect schema-parsed bodies` |
-| F-06 | `compiler/execute` implementation test still asserts pre-hardening `0o777` | Pending | — |
+| F-06 | `compiler/execute` implementation test still asserts pre-hardening `0o777` | Done | `test(compiler): 🧪 align the workspace-permission contract with the hardened 0o770 mode` |
 | F-07 | `source-grep` documented baseline is stale | Pending | — |
 | F-08 | Assistant roles can browse the global user directory | Pending | — |
 | F-09 | Profile `className` restrictions are UI-only | Pending | — |
