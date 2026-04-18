@@ -2083,6 +2083,7 @@
       "flaggedPairs": "표절 의심 쌍",
       "student1": "사용자 1",
       "student2": "사용자 2",
+      "language": "언어",
       "similarityPercent": "유사도",
       "flagged": "검토",
       "eventCount": "{count}건의 이벤트",

@@ -49,6 +49,7 @@ type SimilarityPairView = {
   user1Name: string;
   user2Name: string;
   problemId: string;
+  language: string;
   similarity: number;
 };
 
@@ -303,14 +304,16 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
                 <TableRow>
                   <TableHead>{t("student1")}</TableHead>
                   <TableHead>{t("student2")}</TableHead>
+                  <TableHead>{t("language")}</TableHead>
                   <TableHead className="text-right">{t("similarityPercent")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {similarityPairs.map((pair) => (
-                  <TableRow key={`${pair.userId1}-${pair.userId2}`}>
+                  <TableRow key={`${pair.userId1}-${pair.userId2}-${pair.language}`}>
                     <TableCell className="text-sm">{pair.user1Name}</TableCell>
                     <TableCell className="text-sm">{pair.user2Name}</TableCell>
+                    <TableCell className="text-sm">{pair.language}</TableCell>
                     <TableCell className="text-right">
                       <Badge variant={pair.similarity >= 90 ? "destructive" : "secondary"}>
                         {pair.similarity}%

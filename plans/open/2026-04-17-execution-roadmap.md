@@ -11,8 +11,9 @@ This is the single prioritized roadmap across the root `plans/open/` backlog and
 1. `plans/archive/2026-04-14-authorization-and-context-hardening-plan.md` ✅
 2. `plans/archive/2026-04-14-judge-runtime-and-deployment-hardening-plan.md` ✅
 3. `plans/archive/2026-04-17-test-contract-alignment-plan.md` ✅
+4. `plans/open/2026-04-19-current-head-followup.md` ⏳
 
-**Why first:** these three lanes close the current-head correctness/security gaps and restore trust in the repo-level quality gates. Phase 0 is now complete and archived.
+**Why first:** the archived lanes closed the earlier current-head correctness/security gaps, but the 2026-04-19 review reopened a smaller repo-level follow-up lane. Keep this lane ahead of the feature/domain backlog so the repo-level quality gates stay trustworthy.
 
 **Progress update (2026-04-18):** Additional security and operational fixes committed and pushed:
 - Removed plaintext `secretToken` fallback in judge auth; `isJudgeAuthorizedForWorker` returns `workerSecretNotMigrated` when no hash stored

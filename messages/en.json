@@ -2083,6 +2083,7 @@
       "flaggedPairs": "Flagged Pairs",
       "student1": "User 1",
       "student2": "User 2",
+      "language": "Language",
       "similarityPercent": "Similarity",
       "flagged": "Review",
       "eventCount": "{count} events",
