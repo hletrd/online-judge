@@ -24,7 +24,7 @@ This lane owns repo-level current-head issues that are not already fully covered
 | F-10 | Profile page cannot render assistant/custom role labels correctly | Done | `fix(profile): 🛡️ enforce class-name edit rules in the server action and make the profile label custom-role-aware` |
 | F-11 | `/api/health` eagerly computes the admin snapshot for public callers | Done | `fix(ops): 🩺 gate admin health details by capability before computing the full snapshot` |
 | F-12 | `AdminDashboard` eagerly computes health for roles that cannot view it | Done | `fix(ops): 🩺 gate admin health details by capability before computing the full snapshot` |
-| F-13 | Bulk user creation is fail-all on disallowed per-row roles | Pending | — |
+| F-13 | Bulk user creation is fail-all on disallowed per-row roles | Done | `fix(users): 🔧 treat disallowed bulk-create roles as per-row failures` |
 | F-14 | Sidecar auth tokens are documented but not wired in compose | Pending | — |
 | F-15 | Dedicated worker compose does not forward `RUNNER_AUTH_TOKEN` | Pending | — |
 | F-16 | `/api/health` and `/api/metrics` still use built-in-only `isAdmin()` | Done | `fix(ops): 🩺 gate admin health details by capability before computing the full snapshot` |

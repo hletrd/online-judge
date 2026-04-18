@@ -20,15 +20,6 @@ export const POST = createApiHandler({
 
     const { users: userList } = body;
 
-    // Validate role escalation for each user
-    for (const entry of userList) {
-      const requestedRole = entry.role ?? "student";
-      const roleError = await validateRoleChangeAsync(user.role, requestedRole);
-      if (roleError) {
-        return apiError(roleError, 403);
-      }
-    }
-
     // Check for duplicate usernames within the request itself
     const requestUsernames = userList.map((u) => u.username.toLowerCase());
     const uniqueRequestUsernames = new Set(requestUsernames);
@@ -69,6 +60,15 @@ export const POST = createApiHandler({
     const preparedEntries: Array<PreparedSuccessEntry | PreparedFailureEntry> = await Promise.all(
       userList.map((item) =>
         hashLimit(async () => {
+          const requestedRole = item.role ?? "student";
+          const roleError = await validateRoleChangeAsync(user.role, requestedRole);
+          if (roleError) {
+            return {
+              username: item.username.toLowerCase(),
+              failedReason: roleError,
+            };
+          }
+
           const passwordResult = await validateAndHashPassword(item.password, {
             username: item.username,
             email: item.email?.trim() || null,
@@ -92,7 +92,7 @@ export const POST = createApiHandler({
             email: normalizedEmail,
             className: normalizedClassName,
             passwordHash: passwordResult.hash,
-            role: item.role ?? "student",
+            role: requestedRole,
           };
         })
       )

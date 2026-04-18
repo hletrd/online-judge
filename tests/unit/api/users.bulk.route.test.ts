@@ -195,4 +195,23 @@ describe("POST /api/v1/users/bulk", () => {
     expect(inserted[0]?.role).toBe("custom_reviewer");
     expect(body.created[0]).toMatchObject({ username: "reviewer1", name: "Reviewer One" });
   });
+
+  it("keeps valid rows when another row requests a disallowed role", async () => {
+    validateRoleChangeAsyncMock.mockImplementation(async (_actorRole: string, requestedRole: string) =>
+      requestedRole === "super_admin" ? "roleNameExists" : null
+    );
+
+    const { POST } = await import("@/app/api/v1/users/bulk/route");
+    const res = await POST(makeRequest({
+      users: [
+        { username: "student-ok", name: "Student Ok", password: "StrongPass123!", role: "student" },
+        { username: "student-bad", name: "Student Bad", password: "StrongPass123!", role: "super_admin" },
+      ],
+    }));
+    const body = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(body.created).toEqual([{ username: "student-ok", name: "Student Ok" }]);
+    expect(body.failed).toEqual([{ username: "student-bad", reason: "roleNameExists" }]);
+  });
 });
