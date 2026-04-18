@@ -403,7 +403,7 @@ export function LeaderboardTable({
                   </div>
                   {canViewStudentDetails ? (
                     <Link
-                      href={`/dashboard/contests/${assignmentId}/participant/${entry.userId}`}
+                      href={`/dashboard/contests/${assignmentId}/participant/${entry.userId}/timeline`}
                       className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                     >
                       {t("timeline")}
