@@ -401,6 +401,14 @@ export function LeaderboardTable({
                       </Badge>
                     ) : null}
                   </div>
+                  {canViewStudentDetails ? (
+                    <Link
+                      href={`/dashboard/contests/${assignmentId}/participant/${entry.userId}`}
+                      className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                    >
+                      {t("timeline")}
+                    </Link>
+                  ) : null}
                 </TableCell>
                 {hasAffiliationColumn ? (
                   <TableCell className="text-center text-sm text-muted-foreground">

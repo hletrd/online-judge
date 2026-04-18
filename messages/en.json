@@ -2017,7 +2017,8 @@
       "refreshing": "Refreshing...",
       "fetchError": "Failed to load data.",
       "retry": "Retry",
-      "affiliation": "Affiliation"
+      "affiliation": "Affiliation",
+      "timeline": "Timeline"
     },
     "accessCode": {
       "title": "Access Code",

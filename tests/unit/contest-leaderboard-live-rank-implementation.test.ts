@@ -14,4 +14,11 @@ describe("contest leaderboard live rank implementation", () => {
     expect(source).toContain('t("liveRank", { rank: entry.liveRank })');
     expect(source).toContain('t("live")');
   });
+
+  it("surfaces a participant timeline link when staff can view student details", () => {
+    const source = read("src/components/contest/leaderboard-table.tsx");
+
+    expect(source).toContain('href={`/dashboard/contests/${assignmentId}/participant/${entry.userId}`}');
+    expect(source).toContain('t("timeline")');
+  });
 });
