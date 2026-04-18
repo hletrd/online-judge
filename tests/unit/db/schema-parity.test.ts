@@ -1,13 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { getTableName, getTableColumns } from "drizzle-orm";
-import * as sqliteSchema from "@/lib/db/schema";
 import * as pgSchema from "@/lib/db/schema.pg";
-import * as mysqlSchema from "@/lib/db/schema.mysql";
 
 /**
- * Verify that all three schema variants define the same tables
- * with the same column names. This catches drift when one schema
- * is updated but the others are not.
+ * Verify that the PostgreSQL schema is well-formed: every exported table
+ * has a valid name and columns. Multi-dialect schema parity tests are no
+ * longer needed since only PostgreSQL is supported.
  */
 
 function getExportedTables(schemaModule: Record<string, unknown>) {
@@ -28,48 +26,28 @@ function getExportedTables(schemaModule: Record<string, unknown>) {
   return tables;
 }
 
-describe("Schema Parity", () => {
-  const sqliteTables = getExportedTables(sqliteSchema as any);
+describe("Schema Integrity", () => {
   const pgTables = getExportedTables(pgSchema as any);
-  const mysqlTables = getExportedTables(mysqlSchema as any);
 
-  it("should have the same number of table exports", () => {
-    const sqliteCount = Object.keys(sqliteTables).length;
-    const pgCount = Object.keys(pgTables).length;
-    const mysqlCount = Object.keys(mysqlTables).length;
-
-    expect(pgCount).toBe(sqliteCount);
-    expect(mysqlCount).toBe(sqliteCount);
+  it("should export at least one table", () => {
+    expect(Object.keys(pgTables).length).toBeGreaterThan(0);
   });
 
-  it("should export tables with the same names", () => {
-    const sqliteExportNames = Object.keys(sqliteTables).sort();
-    const pgExportNames = Object.keys(pgTables).sort();
-    const mysqlExportNames = Object.keys(mysqlTables).sort();
-
-    expect(pgExportNames).toEqual(sqliteExportNames);
-    expect(mysqlExportNames).toEqual(sqliteExportNames);
+  it("every table should have a non-empty name", () => {
+    for (const [, table] of Object.entries(pgTables)) {
+      expect(table.tableName.length).toBeGreaterThan(0);
+    }
   });
 
-  for (const [exportName, sqliteTable] of Object.entries(sqliteTables)) {
-    describe(`table: ${exportName} (${sqliteTable.tableName})`, () => {
-      it("PostgreSQL has matching table name", () => {
-        expect(pgTables[exportName]).toBeDefined();
-        expect(pgTables[exportName].tableName).toBe(sqliteTable.tableName);
-      });
+  it("every table should have at least one column", () => {
+    for (const [exportName, table] of Object.entries(pgTables)) {
+      expect(table.columns.length, `${exportName} should have columns`).toBeGreaterThan(0);
+    }
+  });
 
-      it("MySQL has matching table name", () => {
-        expect(mysqlTables[exportName]).toBeDefined();
-        expect(mysqlTables[exportName].tableName).toBe(sqliteTable.tableName);
-      });
-
-      it("PostgreSQL has the same columns", () => {
-        expect(pgTables[exportName].columns).toEqual(sqliteTable.columns);
-      });
-
-      it("MySQL has the same columns", () => {
-        expect(mysqlTables[exportName].columns).toEqual(sqliteTable.columns);
-      });
-    });
-  }
+  it("no two tables should share the same runtime name", () => {
+    const names = Object.values(pgTables).map((t) => t.tableName);
+    const unique = new Set(names);
+    expect(unique.size).toBe(names.length);
+  });
 });
