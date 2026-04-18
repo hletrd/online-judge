@@ -83,7 +83,7 @@ Tracked in `.context/reviews/comprehensive-code-review-2026-04-18.md` §3.* and 
 | HIGH-13 | Open (closed by CRIT-3) | — |
 | HIGH-14 | Done | `fix(similarity): 🧪 isolate best-submission selection per language` |
 | HIGH-15 | Done | `docs(runtime): 📝 document the admin-configured shell-command trust boundary` |
-| HIGH-16 | Open | — |
+| HIGH-16 | Done | `ci(workflow): 🧪 run integration suite against a real postgres service` |
 | HIGH-17 | Done | `chore(test-compose): 🔒 drop BUILD/DELETE from test-backends docker-proxy` |
 | HIGH-18 | Open | — |
 | HIGH-19 | Open (upload traversal regression covered; access-code race/admin IP allowlist/seccomp coverage still pending) | — |
