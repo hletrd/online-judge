@@ -265,6 +265,7 @@ Default: `homework`. Change in admin settings or directly in the database (`syst
 
 - [API Reference](docs/api.md) — all REST endpoints, authentication, request/response formats
 - [Deployment Guide](docs/deployment.md) — provisioning, deploy scripts, nginx, post-deploy checks
+- [Deployment Automation](docs/deployment-automation.md) — current production deploy baseline, CI verification path, and CD status
 - [Monitoring & Alerting](docs/monitoring.md) — health surfaces, metrics, and minimum operator alerting guidance
 - [Authentication](docs/authentication.md) — sign-in flow, cookie architecture, API smoke test
 - [Admin Security Operations](docs/admin-security-operations.md) — lockout policy, MFA/SSO integration guidance, and dependency scanning baseline

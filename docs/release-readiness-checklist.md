@@ -46,6 +46,7 @@ These must pass for **any** release.
 
 ## 1.4 Operational readiness
 - [ ] deployment instructions match actual runtime architecture
+- [ ] deployment baseline and CI/CD status reviewed (`docs/deployment-automation.md`)
 - [ ] rollback procedure exists
 - [ ] database backup procedure exists
 - [ ] restore procedure exists

@@ -116,6 +116,8 @@ sudo systemctl restart online-judge-worker-rs.service
 
 Rsyncs source to the remote server and builds Docker images there (never locally), auto-detecting architecture. Supports password (`SSH_PASSWORD`) and key (`SSH_KEY`) SSH auth.
 
+See also: [Deployment Automation & Reproducibility](docs/deployment-automation.md) for the current production-standard deploy baseline and CI/CD status.
+
 For the default Docker deployment, the Next.js app does **not** talk to Docker directly. The local judge worker is the only container with Docker daemon access (via `docker-proxy`), and the app reaches the worker’s authenticated internal runner/admin endpoints instead.
 
 ```bash
