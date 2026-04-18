@@ -100,11 +100,6 @@ export default async function UserManagementPage({
   const validRoleNames = new Set(availableRoles.map((r) => r.name));
   const filters = [];
 
-  // Instructors can only manage students
-  if (!canEditUsers) {
-    filters.push(eq(users.role, "student"));
-  }
-
   if (searchQuery) {
     const likePattern = `%${searchQuery.toLowerCase()}%`;
     filters.push(

@@ -101,6 +101,7 @@ describe("custom-role page/runtime implementation guards", () => {
     expect(usersPage).toContain('caps.has("users.edit")');
     expect(usersPage).toContain('caps.has("users.delete")');
     expect(usersPage).not.toContain('const isAdmin = caps.has("users.edit")');
+    expect(usersPage).not.toContain('filters.push(eq(users.role, "student"))');
     expect(usersPage).toContain("{canEditUsers ? (");
 
     expect(userActions).toContain("actorCanEdit");
