@@ -242,8 +242,9 @@ export const POST = createApiHandler({
         if (problem && !problem.allowAiAssistant) {
           return NextResponse.json({ error: "aiDisabledForProblem" }, { status: 403 });
         }
-      } catch {
+      } catch (err) {
         // Column may not exist yet — skip per-problem check
+        logger.debug({ err, problemId: context.problemId }, "[chat] per-problem AI check skipped, column may not exist");
       }
     }
 
