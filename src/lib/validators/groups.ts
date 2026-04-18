@@ -15,6 +15,10 @@ export const groupMembershipSchema = z.object({
 
 export const updateGroupSchema = createGroupSchema.partial().extend({
   isArchived: z.boolean().optional(),
+  instructorId: z.preprocess(
+    normalizeOptionalString,
+    z.string().min(1, "instructorRequired").optional()
+  ),
 });
 
 export const bulkEnrollmentSchema = z.object({

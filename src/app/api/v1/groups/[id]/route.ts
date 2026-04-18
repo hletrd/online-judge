@@ -10,6 +10,7 @@ import { updateGroupSchema } from "@/lib/validators/groups";
 import { withUpdatedAt } from "@/lib/db/helpers";
 import { execTransaction } from "@/lib/db";
 import { createApiHandler, notFound, forbidden } from "@/lib/api/handler";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { parsePagination } from "@/lib/api/pagination";
 
 export const GET = createApiHandler({
@@ -106,20 +107,36 @@ export const PATCH = createApiHandler({
     const group = await db.query.groups.findFirst({ where: eq(groups.id, id) });
     if (!group) return notFound("Group");
 
+    const caps = await resolveCapabilities(user.role);
     const canManage = await canManageGroupResourcesAsync(
       group.instructorId,
       user.id,
       user.role,
       id
     );
-    if (!canManage) return forbidden();
+    const canEditByCapability = caps.has("groups.edit") && (await canAccessGroup(id, user.id, user.role));
+    if (!canManage && !canEditByCapability) return forbidden();
 
-    const { name, description, isArchived } = body;
+    const { name, description, isArchived, instructorId } = body;
 
     const updates: Record<string, unknown> = {};
     if (name !== undefined) updates.name = name;
     if (description !== undefined) updates.description = description ?? null;
     if (isArchived !== undefined) updates.isArchived = isArchived;
+    if (instructorId !== undefined) {
+      const nextInstructor = await db.query.users.findFirst({
+        where: (users, { eq: equals }) => equals(users.id, instructorId),
+        columns: { id: true, role: true, isActive: true },
+      });
+
+      if (!nextInstructor) {
+        return apiError("instructorNotFound", 404);
+      }
+      if (!nextInstructor.isActive || nextInstructor.role === "student") {
+        return apiError("instructorRoleInvalid", 409);
+      }
+      updates.instructorId = instructorId;
+    }
 
     await db.update(groups).set(withUpdatedAt(updates)).where(eq(groups.id, id));
 
@@ -135,8 +152,9 @@ export const PATCH = createApiHandler({
         resourceLabel: updated.name,
         summary: `Updated group \"${updated.name}\"`,
         details: {
-          changedFields: Object.keys(body).filter((key) => ["name", "description", "isArchived"].includes(key)),
+          changedFields: Object.keys(body).filter((key) => ["name", "description", "isArchived", "instructorId"].includes(key)),
           isArchived: updated.isArchived,
+          instructorId: updated.instructorId,
         },
         request: req,
       });

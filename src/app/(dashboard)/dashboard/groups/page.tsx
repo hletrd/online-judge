@@ -79,6 +79,14 @@ export default async function GroupsPage({
   const canEditGroups = caps.has("groups.edit");
   
   let myGroups;
+  const availableInstructorUsers = canEditGroups
+    ? (await db.query.users.findMany({
+        where: and(eq(users.isActive, true)),
+        columns: { id: true, username: true, name: true, role: true },
+      }))
+        .filter((user) => user.role !== "student")
+        .map((user) => ({ id: user.id, name: user.name, username: user.username }))
+    : [];
 
   if (canViewAllGroups) {
     myGroups = await db
@@ -288,6 +296,8 @@ export default async function GroupsPage({
                             id: group.id,
                             name: group.name,
                             description: group.description,
+                            instructorId: group.instructorId,
+                            availableInstructors: availableInstructorUsers,
                           }}
                         />
                       ) : null}

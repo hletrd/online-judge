@@ -17,12 +17,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 type EditableGroup = {
   id: string;
   name: string;
   description: string | null;
+  instructorId: string | null;
+  availableInstructors: Array<{ id: string; name: string; username: string }>;
 };
 
 export default function EditGroupDialog({ group }: { group: EditableGroup }) {
@@ -33,10 +36,12 @@ export default function EditGroupDialog({ group }: { group: EditableGroup }) {
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState(group.name);
   const [description, setDescription] = useState(group.description ?? "");
+  const [instructorId, setInstructorId] = useState(group.instructorId ?? "");
 
   function resetState() {
     setName(group.name);
     setDescription(group.description ?? "");
+    setInstructorId(group.instructorId ?? "");
   }
 
   function getErrorMessage(error: unknown) {
@@ -51,6 +56,10 @@ export default function EditGroupDialog({ group }: { group: EditableGroup }) {
         return t("nameTooLong");
       case "descriptionTooLong":
         return t("descriptionTooLong");
+      case "instructorNotFound":
+        return t("instructorNotFound");
+      case "instructorRoleInvalid":
+        return t("instructorRoleInvalid");
       case "updateError":
         return t("updateError");
       default:
@@ -72,7 +81,7 @@ export default function EditGroupDialog({ group }: { group: EditableGroup }) {
         const response = await apiFetch(`/api/v1/groups/${group.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, description }),
+          body: JSON.stringify({ name, description, instructorId: instructorId || null }),
         });
         const data = await response.json();
 
@@ -119,6 +128,30 @@ export default function EditGroupDialog({ group }: { group: EditableGroup }) {
               className="min-h-[140px]"
               disabled={isPending}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("instructorLabelSimple")}</Label>
+            <Select value={instructorId} onValueChange={(value) => setInstructorId(value ?? "")}>
+              <SelectTrigger>
+                <SelectValue>
+                  {group.availableInstructors.find((instructor) => instructor.id === instructorId)
+                    ? `${group.availableInstructors.find((instructor) => instructor.id === instructorId)?.name} (${group.availableInstructors.find((instructor) => instructor.id === instructorId)?.username})`
+                    : t("selectInstructor")}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {group.availableInstructors.map((instructor) => (
+                  <SelectItem
+                    key={instructor.id}
+                    value={instructor.id}
+                    label={`${instructor.name} (${instructor.username})`}
+                  >
+                    {instructor.name} ({instructor.username})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <DialogFooter>
