@@ -62,7 +62,7 @@ if (!RUNNER_AUTH_TOKEN && COMPILER_RUNNER_URL && process.env.NODE_ENV === "produ
   );
 }
 if (!RUNNER_AUTH_TOKEN && !COMPILER_RUNNER_URL && process.env.NODE_ENV === "production") {
-  logger.warn("RUNNER_AUTH_TOKEN is not set — compiler runner auth disabled");
+  logger.debug("RUNNER_AUTH_TOKEN is not set — compiler runner auth disabled (no COMPILER_RUNNER_URL configured)");
 }
 const COMPILER_RUNNER_CONFIG_ERROR =
   COMPILER_RUNNER_URL && !RUNNER_AUTH_TOKEN
