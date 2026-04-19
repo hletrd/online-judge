@@ -10,7 +10,7 @@ describe("mobile UI layout implementation", () => {
   it("uses a collapsible mobile public header with truncated site title", () => {
     const source = read("src/components/layout/public-header.tsx");
 
-    expect(source).toContain("Toggle navigation menu");
+    expect(source).toContain("toggleNavigationMenu");
     expect(source).toContain("aria-controls={menuId}");
     expect(source).toContain("block truncate");
     expect(source).toContain('md:hidden');
