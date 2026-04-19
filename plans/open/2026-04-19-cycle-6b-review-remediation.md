@@ -163,10 +163,10 @@ These findings are explicitly deferred per the review. Each records the file+lin
 
 | Story | Status | Commit |
 |---|---|---|
-| COUNT-01 | TODO | |
-| PROXY-01 | TODO | |
-| COUNT-02 | TODO | |
-| COUNT-03 | TODO | |
-| HANDLER-01 | TODO | |
-| TEST-01 | TODO | |
-| TEST-02 | TODO | |
+| COUNT-01 | Done | `fb67acc8` |
+| PROXY-01 | Done | `fb67acc8` |
+| COUNT-02 | Done | `fb67acc8` |
+| COUNT-03 | Partial (submissions, files, users done; groups/assignments deferred — uses relational query API with `with` clause) | `fb67acc8` |
+| HANDLER-01 | Done | `fb67acc8` |
+| TEST-01 | Done | `37fabda0` |
+| TEST-02 | Done | `37fabda0` |

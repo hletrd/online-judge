@@ -54,13 +54,13 @@
 
 ### M5: Add tests for PublicHeader dropdown role-based rendering
 - **Source**: test-engineer F3, designer F1
-- **Files**: New test file `tests/unit/components/public-header-dropdown.test.tsx`
+- **Files**: `tests/unit/components/public-header-dropdown.test.tsx`
 - **Plan**:
   1. Test `getDropdownItems` for student role: should NOT include Problems, Groups, Admin.
   2. Test `getDropdownItems` for instructor role: should include Problems, Groups but NOT Admin.
   3. Test `getDropdownItems` for admin role: should include all items.
   4. Test PublicHeader rendering in desktop and mobile modes.
-- **Status**: TODO
+- **Status**: DONE (commit 37fabda0) — 7 tests covering student, instructor, admin, super_admin, undefined, custom roles, and item ordering.
 
 ### M6: Add tests for leaderboard live rank and participant timeline (carried from cycle 21)
 - **Source**: test-engineer F5, cycle 21 plan M3/M4, critic F4
@@ -80,10 +80,11 @@
 - **Files**:
   - `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts`
   - `src/app/api/v1/problems/route.ts`
-  - `src/app/api/v1/users/route.ts`
-  - `src/app/api/v1/submissions/route.ts`
+  - `src/app/api/v1/users/route.ts` — DONE (commit fb67acc8)
+  - `src/app/api/v1/submissions/route.ts` — DONE (commit fb67acc8)
+  - `src/app/api/v1/files/route.ts` — DONE (commit fb67acc8)
 - **Plan**: Convert each route to use COUNT(*) OVER() in the data query and extract total from the first row. Create a shared utility if beneficial.
-- **Status**: TODO
+- **Status**: PARTIAL (3 of 5 routes done; anti-cheat and problems routes remain)
 
 ### L2: Continue migrating manual `getApiUser` routes to `createApiHandler`
 - **Source**: code-reviewer F6, architect F1, security-reviewer F5, cycle 4 AGG-12

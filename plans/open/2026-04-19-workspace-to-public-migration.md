@@ -1,7 +1,7 @@
 # Workspace-to-Public Page Migration Plan
 
 **Date:** 2026-04-19
-**Status:** DRAFT (plan only, no implementation this cycle)
+**Status:** Phase 1 COMPLETE, Phase 2 COMPLETE, Phase 3-4 PENDING
 **Source:** User-injected TODO #2, AGG-13
 
 ## Goal
@@ -174,7 +174,7 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 
 ### Phase 2 — Unify navigation into PublicHeader (Medium risk)
 
-**Status:** IN PROGRESS (dropdown added, needs bug fix)
+**Status:** COMPLETE
 
 **Goal:** Replace the dual PublicHeader/Dashboard sidebar with a single top navbar that adapts by role.
 
@@ -182,11 +182,11 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 2. ~~When authenticated, add a "Dashboard" dropdown menu with role-appropriate links (Problems, Groups, Submissions, Profile, Admin).~~ DONE
 3. ~~The dropdown replaces the current "Workspace" action link.~~ DONE
 4. Keep `(dashboard)` route group and its `AppSidebar` for now — Phase 2 only changes the top nav on public pages.
-5. Add a "back to public site" link in the `(dashboard)` layout header.
+5. ~~Add a "back to public site" link in the `(dashboard)` layout header.~~ DONE (commit 2bfcbb89)
 
-**Phase 2 bug fix needed:**
-- The `DropdownItem` type has `adminOnly` and `instructorOnly` flags that are dead code (set but never read during rendering). The actual filtering works correctly via `if (isInstructor)` / `if (isAdmin)` blocks in `getDropdownItems()`, so students do NOT see admin items. However, the dead flags should be removed for clarity. See AGG-1 / rpf-cycle-5 aggregate for details.
-- Mobile menu lacks visual grouping for authenticated navigation items. See L5 in cycle 5 remediation plan.
+**Phase 2 bug fixes completed:**
+- ~~The `DropdownItem` type has `adminOnly` and `instructorOnly` flags that are dead code~~ DONE (commit 84580d50 — removed dead flags)
+- ~~Mobile menu lacks visual grouping for authenticated navigation items~~ DONE (commit 84580d50 — added "Dashboard" heading and sign-out separator)
 
 **Estimated files changed:** ~5-8
 
