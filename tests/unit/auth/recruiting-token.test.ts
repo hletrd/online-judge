@@ -15,6 +15,27 @@ const mocks = vi.hoisted(() => ({
 
 // Mock @/lib/auth/config to avoid top-level validateAuthUrl() which requires AUTH_SECRET
 vi.mock("@/lib/auth/config", () => ({
+  AUTH_USER_COLUMNS: {
+    id: true,
+    username: true,
+    email: true,
+    name: true,
+    className: true,
+    role: true,
+    isActive: true,
+    mustChangePassword: true,
+    tokenInvalidatedAt: true,
+    preferredLanguage: true,
+    preferredTheme: true,
+    shareAcceptedSolutions: true,
+    acceptedSolutionsAnonymous: true,
+    editorTheme: true,
+    editorFontSize: true,
+    editorFontFamily: true,
+    lectureMode: true,
+    lectureFontScale: true,
+    lectureColorScheme: true,
+  },
   createSuccessfulLoginResponse: mocks.createSuccessfulLoginResponse,
   mapUserToAuthFields: (user: any) => ({
     id: user.id ?? "",

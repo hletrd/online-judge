@@ -64,7 +64,7 @@ const AUTH_CORE_FIELDS = [
 ] as const;
 
 /** All columns to select when querying a user for auth purposes. */
-const AUTH_USER_COLUMNS: Record<string, true> = Object.fromEntries(
+export const AUTH_USER_COLUMNS: Record<string, true> = Object.fromEntries(
   [...AUTH_CORE_FIELDS, ...AUTH_PREFERENCE_FIELDS].map((f) => [f, true as const]),
 );
 

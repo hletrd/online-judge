@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { redeemRecruitingToken } from "@/lib/assignments/recruiting-invitations";
 import { extractClientIp } from "@/lib/security/ip";
 import { logger } from "@/lib/logger";
-import { createSuccessfulLoginResponse } from "@/lib/auth/config";
+import { createSuccessfulLoginResponse, AUTH_USER_COLUMNS } from "@/lib/auth/config";
 
 export async function authorizeRecruitingToken(
   token: string,
@@ -20,8 +20,12 @@ export async function authorizeRecruitingToken(
     return null;
   }
 
+  // Use AUTH_USER_COLUMNS to restrict the query to only the columns needed
+  // by createSuccessfulLoginResponse / mapUserToAuthFields. This avoids
+  // fetching passwordHash and other sensitive columns unnecessarily.
   const user = await db.query.users.findFirst({
     where: eq(users.id, result.userId),
+    columns: AUTH_USER_COLUMNS,
   });
 
   if (!user || !user.isActive) return null;
