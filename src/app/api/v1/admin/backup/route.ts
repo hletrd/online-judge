@@ -13,6 +13,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { streamDatabaseExport } from "@/lib/db/export";
 import { streamBackupWithFiles } from "@/lib/db/export-with-files";
+import { contentDispositionAttachment } from "@/lib/http/content-disposition";
 
 export const dynamic = "force-dynamic";
 
@@ -66,9 +67,8 @@ export async function POST(request: NextRequest) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const includeFiles = new URL(request.url).searchParams.get("includeFiles") === "true";
 
-    const filename = includeFiles
-      ? `judgekit-backup-${timestamp}.zip`
-      : `judgekit-backup-${timestamp}.json`;
+    const backupName = `judgekit-backup-${timestamp}`;
+    const backupExtension = includeFiles ? ".zip" : ".json";
 
     recordAuditEvent({
       actorId: user.id,
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       return new Response(body, {
         headers: {
           "Content-Type": "application/zip",
-          "Content-Disposition": `attachment; filename="${filename}"`,
+          "Content-Disposition": contentDispositionAttachment(backupName, backupExtension),
           "Cache-Control": "no-store",
         },
       });
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     return new Response(streamDatabaseExport({ signal: request.signal }), {
       headers: {
         "Content-Type": "application/json",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": contentDispositionAttachment(backupName, backupExtension),
         "Cache-Control": "no-store",
       },
     });
