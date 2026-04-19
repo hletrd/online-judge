@@ -108,8 +108,9 @@ export async function isAdminAsync(role: string): Promise<boolean> {
 }
 
 /**
- * Check if a role has instructor-level access.
- * Supports both built-in roles (sync via ROLE_LEVEL) and custom roles.
+ * Check whether a role is one of the built-in instructor-level roles.
+ * Custom-role-aware instructor checks should use `isInstructorAsync()` or
+ * direct capability resolution instead.
  */
 export function isInstructor(role: string) {
   return (ROLE_LEVEL[role as UserRole] ?? -1) >= ROLE_LEVEL.instructor;
