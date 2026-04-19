@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, desc, eq, gte, inArray, like, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -155,7 +155,7 @@ function buildGroupMemberScopeFilter(groupIds: string[]) {
   return or(
     ...groupIds.map(
       (groupId) =>
-        sql`json_extract(${auditEvents.details}, '$.groupId') = ${groupId}`
+        sql`${auditEvents.details} LIKE '%"groupId":"${groupId}"%'`
     )
   );
 }
@@ -291,7 +291,7 @@ export default async function AdminAuditLogsPage({
   }
 
   if (actionTypeFilter !== "all") {
-    filters.push(like(auditEvents.action, `${actionTypeFilter}%`));
+    filters.push(sql`${auditEvents.action} LIKE ${escapeLikePattern(actionTypeFilter) + '%'} ESCAPE '\\'`);
   }
 
   if (dateFrom) {
