@@ -182,6 +182,8 @@ export const GET = createApiHandler({
     // without a heartbeat during the contest window
     const heartbeatGaps: Array<{ userId: string; gapStartedAt: string; gapEndedAt: string; gapSeconds: number }> = [];
     if (userIdFilter && assignment.enableAntiCheat) {
+      // Limit heartbeat rows to prevent memory spikes for very long contests.
+      // 5000 rows covers ~83 hours of heartbeats at 60-second intervals.
       const heartbeats = await db
         .select({ createdAt: antiCheatEvents.createdAt })
         .from(antiCheatEvents)
@@ -190,7 +192,8 @@ export const GET = createApiHandler({
           eq(antiCheatEvents.userId, userIdFilter),
           eq(antiCheatEvents.eventType, "heartbeat"),
         ))
-        .orderBy(antiCheatEvents.createdAt);
+        .orderBy(antiCheatEvents.createdAt)
+        .limit(5000);
 
       const GAP_THRESHOLD_MS = 120_000; // 2 minutes
       for (let i = 1; i < heartbeats.length; i++) {
