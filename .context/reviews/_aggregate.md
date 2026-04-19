@@ -1,151 +1,114 @@
-# Cycle 12 Aggregate Review (review-plan-fix loop)
+# Cycle 18 Aggregate Review
 
-## Scope
-- Aggregated from: `cycle-12-code-reviewer.md`, `cycle-12-security-reviewer.md`, `cycle-12-perf-reviewer.md`, `cycle-12-architect.md`, `cycle-12-critic.md`, `cycle-12-verifier.md`, `cycle-12-test-engineer.md`, `cycle-12-debugger.md`, `cycle-12-tracer.md`, `cycle-12-designer.md`
-- Base commit: 2339c7ea
+**Date:** 2026-04-19
+**Aggregated from:** code-reviewer, security-reviewer, perf-reviewer, architect, test-engineer, debugger, critic
+**Base commit:** 7c1b65cc
 
-## Deduped findings
+---
 
-### AGG-1 — [MEDIUM] `authorizeRecruitingToken` bypasses `mapUserToAuthFields` — inline field list that will silently miss new preference fields
+## Deduped Findings
 
-- **Severity:** MEDIUM (correctness — new preference fields silently missed)
+### AGG-1 — [MEDIUM] `getRecruitingAccessContext` is called 2-3 times per dashboard page load without caching — systemic N+1 DB queries
+
+- **Severity:** MEDIUM (performance + architecture)
 - **Confidence:** HIGH
-- **Cross-agent agreement:** code-reviewer CR12-CR1, security-reviewer CR12-SR1 (partial), architect CR12-AR1, critic CR12-CT1, verifier CR12-V1/V2, test-engineer CR12-TE1, debugger CR12-DB1, tracer Flow 2
-- **Files:** `src/lib/auth/recruiting-token.ts:55-72`
-- **Evidence:** The function manually constructs the return value with an inline field list (id, username, email, name, className, role, preferredLanguage, etc.) instead of using `mapUserToAuthFields`. This is the exact same anti-pattern that was fixed in `config.ts` during cycle 11 (AGG-1). If a new preference field is added to AUTH_PREFERENCE_FIELDS and mapUserToAuthFields, the recruiting token path will silently miss it, applying defaults instead of DB values. This already caused the `shareAcceptedSolutions` bug in cycle 10.
-- **Suggested fix:** Refactor to use `mapUserToAuthFields(user)` and spread the result, adding `loginEventContext` on top.
+- **Cross-agent agreement:** code-reviewer F1, perf-reviewer F1, architect F1, security-reviewer F2, critic
+- **Files:** `src/lib/recruiting/access.ts:14-66`, called from 15+ pages/routes
+- **Evidence:** `getRecruitingAccessContext()` performs two DB queries (recruitingInvitations + assignmentProblems) on every call. It is called from the dashboard layout AND from individual page components, meaning 4-6 DB queries per page load that return identical data. The function has no caching layer (unlike auth context which is cached via JWT session).
+- **Failure scenario:** During a recruiting contest, 200 candidates refresh the contest page simultaneously. Each page load triggers 6 recruiting-context queries (2 per call x 3 calls). Total: 1,200 DB queries, of which 800 are redundant. This adds measurable latency to every dashboard page load for recruiting candidates.
+- **Suggested fix:** Add React `cache()` wrapper to deduplicate calls within a single server render. This is the lightest-weight fix and doesn't require refactoring call sites. Alternatively, pass the context from layout to page via props.
 
-### AGG-2 — [MEDIUM] `authorizeRecruitingToken` hardcodes `mustChangePassword: false` — bypasses forced password change for recruiting token users
+### AGG-2 — [MEDIUM] `import-transfer.ts` streaming read accumulates full body in memory — OOM risk on constrained containers
 
-- **Severity:** MEDIUM (security — forced password change bypass)
+- **Severity:** MEDIUM (reliability — potential OOM crash)
+- **Confidence:** MEDIUM
+- **Cross-agent agreement:** code-reviewer F2, debugger F1
+- **Files:** `src/lib/db/import-transfer.ts:8-25`
+- **Evidence:** `readStreamTextWithLimit` reads the entire stream into a `text` string variable using `text += decoder.decode(...)`. For a 100 MB upload with multi-byte characters, the `text` variable can grow to ~150-200 MB due to UTF-16 encoding. Combined with `JSON.parse(text)` creating another copy, peak heap usage reaches ~300 MB. The string concatenation also creates intermediate strings, adding GC pressure.
+- **Failure scenario:** Admin uploads a 95 MB database export on a production server running in a 512 MB container. The upload processing consumes 300 MB, leaving only 212 MB for the running Next.js process. If other requests are being processed simultaneously, the container runs out of memory and the process is killed by the OOM killer.
+- **Suggested fix:** For the `readUploadedJsonFileWithLimit` path, use `file.arrayBuffer()` first (since `file.size` is already checked), then decode and parse from the buffer. This avoids the string concatenation overhead. For the streaming path (`readJsonBodyWithLimit`), use `Uint8Array` accumulation instead of string concatenation, then decode once at the end.
+
+### AGG-3 — [LOW] Admin backup/restore/migrate routes discard `needsRehash` — bcrypt hashes persist for admin-only users
+
+- **Severity:** LOW (defense-in-depth — bcrypt-to-argon2 migration stalls for rare user profiles)
 - **Confidence:** HIGH
-- **Cross-agent agreement:** security-reviewer CR12-SR1, verifier CR12-V1/V2, debugger CR12-DB1, tracer Flow 1
-- **Files:** `src/lib/auth/recruiting-token.ts:62`
-- **Evidence:** The function hardcodes `mustChangePassword: false` regardless of the actual DB value. If an admin has set `mustChangePassword = true` for a user, that user can bypass the forced password change by authenticating via a recruiting token. The DB query (lines 28-48) does not select `mustChangePassword` at all. The proxy layer checks `activeUser.mustChangePassword` but only sees the JWT value, which was set to `false` by this function.
-  - Scenario: Admin flags user for password change -> User opens recruiting link -> Logs in with `mustChangePassword: false` -> Never redirected to `/change-password`.
-- **Suggested fix:** (1) Add `mustChangePassword` to the DB query columns. (2) Pass the actual DB value instead of hardcoding `false`.
+- **Cross-agent agreement:** code-reviewer from existing cycle-18 review F2, security-reviewer F1
+- **Files:** `src/app/api/v1/admin/backup/route.ts:62`, `src/app/api/v1/admin/restore/route.ts:56`, `src/app/api/v1/admin/migrate/export/route.ts:56`, `src/app/api/v1/admin/migrate/import/route.ts:58,143`
+- **Evidence:** All four admin data-management routes destructure only `{ valid }` from `verifyPassword()`, discarding `needsRehash`. The recruiting-invitations path was fixed in cycle 17 (now rehashes). The `change-password.ts` path is correctly handled (new password is being set). These admin routes present a genuine (though low-impact) missed rehash opportunity.
+- **Failure scenario:** An admin with a bcrypt hash who only authenticates via backup/restore operations (e.g., automated backup scripts using password auth) never has their hash upgraded to argon2id.
+- **Suggested fix:** Add rehash logic after successful password verification in the backup and export routes (most frequently used). The restore and import routes are lower priority since they run infrequently.
 
-### AGG-3 — [MEDIUM] Dashboard layout has double-header pattern — PublicHeader + SidebarInset header — wastes vertical space and confuses navigation
+### AGG-4 — [LOW] Admin data-management routes have duplicated request-handling logic — DRY violation
 
-- **Severity:** MEDIUM (UX — navigation confusion)
+- **Severity:** LOW (maintainability — risk of divergence)
 - **Confidence:** HIGH
-- **Cross-agent agreement:** architect CR12-AR2, designer CR12-D1, critic CR12-CT2
-- **Files:** `src/app/(dashboard)/layout.tsx:72-93, 104-110`
-- **Evidence:** The dashboard layout renders both `PublicHeader` (full-width top nav) and a `SidebarInset` header (hamburger + lecture toggle). This creates two horizontal bars consuming ~96px of vertical space. The sidebar trigger is separated from the top nav, which is confusing for users. This is a known Phase 3 intermediate state from the workspace-to-public migration plan.
-- **Suggested fix:** Move the sidebar trigger and lecture mode toggle into PublicHeader. Remove the SidebarInset header. This is the next step in the workspace-to-public migration Phase 3.
+- **Cross-agent agreement:** code-reviewer F3, architect F2, critic
+- **Files:** `src/app/api/v1/admin/backup/route.ts`, `src/app/api/v1/admin/restore/route.ts`, `src/app/api/v1/admin/migrate/export/route.ts`, `src/app/api/v1/admin/migrate/import/route.ts`
+- **Evidence:** All four routes share the same authentication/authorization pattern (getApiUser, CSRF check, capability check, rate limit, password verification). This pattern is repeated verbatim. The import route additionally duplicates logic between its form-data and JSON paths.
+- **Failure scenario:** A security fix is applied to the backup route's auth pattern but the export route is missed, creating a bypass.
+- **Suggested fix:** Extract common logic into a shared handler wrapper or middleware function.
 
-### AGG-4 — [MEDIUM] `AuthUserInput` type has `[key: string]: unknown` index signature — weakens type safety across auth module
+### AGG-5 — [LOW] `updateRecruitingInvitation` uses JS-side `new Date()` for `updatedAt` — clock skew inconsistency
 
-- **Severity:** MEDIUM (maintainability — type safety erosion)
+- **Severity:** LOW (correctness — timestamp ordering inconsistency)
+- **Confidence:** MEDIUM
+- **Cross-agent agreement:** debugger F2
+- **Files:** `src/lib/assignments/recruiting-invitations.ts:193`
+- **Evidence:** The `updateRecruitingInvitation` function sets `updatedAt: new Date()` in JavaScript. Other parts of the recruiting flow (e.g., `redeemRecruitingToken`'s SQL WHERE clause) use SQL `NOW()` for date comparisons. In distributed deployments, the app server clock can differ from the DB server clock, creating timestamps that are inconsistent with SQL-generated timestamps.
+- **Failure scenario:** App server clock is 2 seconds ahead of DB server. An invitation is revoked with `updatedAt = T+2s` (JS time), while concurrent queries use DB time `T`. The temporal inconsistency could confuse time-based queries or audit log analysis.
+- **Suggested fix:** Use SQL `NOW()` for `updatedAt` in update queries, or use `sql` template literals with `NOW()` default in the Drizzle schema.
+
+### AGG-6 — [LOW] `db/cleanup.ts` is deprecated but cron endpoint still calls it — operational confusion
+
+- **Severity:** LOW (operations — deprecation without migration path)
 - **Confidence:** HIGH
-- **Cross-agent agreement:** code-reviewer CR12-CR2, architect CR12-AR1
-- **Files:** `src/lib/auth/types.ts:71`
-- **Evidence:** The index signature `[key: string]: unknown` allows any arbitrary key-value pair to be assigned to `AuthUserInput` without TypeScript flagging it. This defeats the purpose of having typed fields. Typos like `user.preferrdLanguage` would not be caught. The signature was added so DB user objects (which have extra fields like passwordHash, isActive) can be passed to `mapUserToAuthFields` without type errors.
-- **Suggested fix:** Remove the index signature from `AuthUserInput`. Use an explicit intersection type (e.g., `AuthUserInput & Record<string, unknown>`) only at call sites where DB user objects are passed.
+- **Cross-agent agreement:** critic F1
+- **Files:** `src/lib/db/cleanup.ts:17-19`, `src/app/api/internal/cleanup/route.ts:23`
+- **Evidence:** `cleanupOldEvents()` is marked `@deprecated` and the comment says it is "superseded by the in-process pruners." However, the `/api/internal/cleanup` cron endpoint still calls it. Operators who read the deprecation notice may disable their cron jobs, but the endpoint is still functional and referenced by external cron configurations.
+- **Failure scenario:** An operator reads the deprecation comment and removes their cron job, expecting the in-process pruners to handle cleanup. The in-process pruners run on 24-hour intervals, so there is no gap in coverage. However, if the operator's monitoring setup expects the cron endpoint to return success, the monitoring alert fires unnecessarily.
+- **Suggested fix:** Add a deprecation log message to the cron endpoint when called, and/or redirect the cron endpoint to call the canonical pruners instead of `cleanupOldEvents()`.
 
-### AGG-5 — [MEDIUM] Dashboard layout makes 5+ DB/IO queries per navigation — capabilities and settings not cached
+### AGG-7 — [LOW] `contest-analytics.ts` student progression uses raw scores without late penalties — inconsistent with leaderboard
 
-- **Severity:** MEDIUM (performance)
-- **Confidence:** MEDIUM
-- **Cross-agent agreement:** perf-reviewer CR12-PR1, code-reviewer CR12-CR7
-- **Files:** `src/app/(dashboard)/layout.tsx:34-62`
-- **Evidence:** The layout calls `resolveCapabilities`, `isPluginEnabled`, `isAiAssistantEnabled`, `getResolvedSystemSettings`, `isInstructorOrAboveAsync`, `getActiveTimedAssignmentsForSidebar` on every dashboard page navigation. Capabilities are per-role and never change between requests. System settings rarely change. These could be cached with short TTLs.
-- **Suggested fix:** Cache `resolveCapabilities` results per role with a 60s TTL. Cache plugin/AI status with a 30s TTL. (This overlaps with the deferred JWT callback cache item D2/D3.)
-
-### AGG-6 — [LOW] `recordRateLimitFailure` uses `blockedUntil || null` while `consumeRateLimitAttemptMulti` uses `blockedUntil > 0 ? blockedUntil : null` — inconsistency
-
-- **Severity:** LOW (correctness — no practical impact, but code smell)
-- **Confidence:** MEDIUM
-- **Cross-agent agreement:** security-reviewer CR12-SR2, debugger CR12-DB3, test-engineer CR12-TE3
-- **Files:** `src/lib/security/rate-limit.ts:175,215,225,253`
-- **Evidence:** `|| null` treats `0` as falsy, converting it to `null`. `> 0 ? x : null` is explicit. While `blockedUntil = 0` never occurs in practice, the inconsistent patterns across the same module increase cognitive load and risk of bugs if the calculation changes.
-- **Suggested fix:** Normalize all three functions to use `blockedUntil > 0 ? blockedUntil : null`.
-
-### AGG-7 — [LOW] No test for `authorizeRecruitingToken` field completeness or mustChangePassword bypass
-
-- **Severity:** LOW (test gap)
+- **Severity:** LOW (UX — confusing score discrepancy)
 - **Confidence:** HIGH
-- **Cross-agent agreement:** test-engineer CR12-TE1, CR12-TE2
-- **Files:** `tests/unit/auth/recruiting-token.test.ts` (missing)
-- **Evidence:** There are no unit tests for `authorizeRecruitingToken`. Given that this function has two confirmed bugs (hardcoded mustChangePassword, inline field list), tests are needed to prevent regression.
-- **Suggested fix:** Add unit tests verifying: (1) returned fields match `mapUserToAuthFields` output keys, (2) `mustChangePassword` is read from DB, not hardcoded.
+- **Cross-agent agreement:** code-reviewer F4
+- **Files:** `src/lib/assignments/contest-analytics.ts:234-276`
+- **Evidence:** The student progression chart computes scores using `rawScaledScore = score / 100 * points` without applying late penalties. The comment at line 234 acknowledges this. For IOI contests with late penalties, a student's progression total can exceed their leaderboard total.
+- **Failure scenario:** In an IOI contest with a 20% late penalty, a student's progression chart shows 500 points (raw) but their leaderboard total shows 400 points (after penalty). The student is confused.
+- **Suggested fix:** Apply the same late penalty logic used in `contest-scoring.ts` to the progression calculation. This can be done by computing adjusted scores in the SQL query instead of in JS.
 
-### AGG-8 — [LOW] `getDropdownItems` capability-based filtering not tested
+### AGG-8 — [LOW] Internal cleanup endpoint has no rate limiting — only `CRON_SECRET` protects it
 
-- **Severity:** LOW (test gap)
+- **Severity:** LOW (security — no defense-in-depth if secret leaks)
 - **Confidence:** MEDIUM
-- **Cross-agent agreement:** test-engineer CR12-TE4
-- **Files:** No test file for `getDropdownItems` in `src/components/layout/public-header.tsx`
-- **Evidence:** The dropdown items are filtered by capabilities, but there's no test verifying the filtering logic produces correct results for different capability sets.
-- **Suggested fix:** Add a unit test for `getDropdownItems` covering various capability combinations.
+- **Cross-agent agreement:** security-reviewer F3
+- **Files:** `src/app/api/internal/cleanup/route.ts:7-24`
+- **Evidence:** The endpoint is protected only by Bearer token. If `CRON_SECRET` leaks, any client can call it without restriction. The endpoint performs expensive batched DELETEs.
+- **Failure scenario:** `CRON_SECRET` is accidentally committed to a public repo. An attacker calls the cleanup endpoint in a tight loop, causing repeated batched DELETEs.
+- **Suggested fix:** Add rate limiting via `consumeApiRateLimit(request, "internal:cleanup")` or restrict to internal IPs.
 
-### AGG-9 — [LOW] Mobile menu lacks "back to public site" link for dashboard users
-
-- **Severity:** LOW (UX)
-- **Confidence:** MEDIUM
-- **Cross-agent agreement:** designer CR12-D2
-- **Files:** `src/components/layout/public-header.tsx:317-343`
-- **Evidence:** When logged in, the mobile menu only shows dashboard navigation items. There's no link back to public pages (Practice, Playground, etc.) in the authenticated section. Users must scroll up to the top navigation items, which are less prominent in the mobile menu.
-- **Suggested fix:** Add a "Public Site" or "Home" link at the top of the authenticated mobile menu section.
-
-### AGG-10 — [LOW] `recordRateLimitFailure` / `recordRateLimitFailureMulti` / `consumeRateLimitAttemptMulti` near-duplicate implementations
-
-- **Severity:** LOW (maintainability)
-- **Confidence:** MEDIUM
-- **Cross-agent agreement:** critic CR12-CT3
-- **Files:** `src/lib/security/rate-limit.ts:144-269`
-- **Evidence:** Three functions implement the same block-duration calculation with subtle differences. Any change to the calculation must be applied in three places.
-- **Suggested fix:** Extract a shared `incrementAndMaybeBlock` helper.
-
-### AGG-11 — [LOW] SSE re-auth IIFE fires DB query even if connection already closed
-
-- **Severity:** LOW (performance — wasted DB query)
-- **Confidence:** MEDIUM
-- **Cross-agent agreement:** debugger CR12-DB2
-- **Files:** `src/app/api/v1/submissions/[id]/events/route.ts:325-381`
-- **Evidence:** The async IIFE starts `await getApiUser(request)` before checking `if (closed) return`. The check happens after the DB query completes, wasting a DB round-trip if the connection closed in the meantime.
-- **Suggested fix:** Add `if (closed) return` at the start of the async IIFE before `getApiUser`.
-
-### AGG-12 — [LOW] `tracking-wide` on mobile menu "DASHBOARD" label — Korean i18n risk (carried from cycle 11 D15)
-
-- **Severity:** LOW (CLAUDE.md rule — future risk)
-- **Confidence:** LOW
-- **Cross-agent agreement:** designer CR12-D3
-- **Files:** `src/components/layout/public-header.tsx:320`
-- **Evidence:** The tracking class is acceptable for current English uppercase text but would violate CLAUDE.md if translated to Korean.
-- **Suggested fix:** Make locale-conditional when Korean i18n is implemented for this label.
-
-## Test Coverage Gaps (Priority Order)
-
-1. `authorizeRecruitingToken` field completeness vs `mapUserToAuthFields` (AGG-7)
-2. `mustChangePassword` bypass via recruiting token (AGG-7)
-3. `getDropdownItems` capability-based filtering (AGG-8)
-4. Rate limit function parity test (AGG-6)
-5. JWT callback DB query TTL cache (deferred from cycle 9)
-6. SSE re-auth integration test (deferred from cycle 9)
+---
 
 ## Previously Deferred Items (Carried Forward)
 
-- D1: JWT authenticatedAt clock skew with DB tokenInvalidatedAt (MEDIUM)
-- D2: JWT callback DB query on every request — add TTL cache (MEDIUM)
-- D3: SSE route refactoring — extract connection tracking and polling (MEDIUM)
-- D4: SSE submission events route capability check incomplete (MEDIUM)
-- D5: Test coverage gaps for workspace-to-public migration (MEDIUM)
-- D6: Metrics endpoint dual auth paths without rate limiting (MEDIUM)
-- D7: Internal cleanup endpoint has no rate limiting (LOW)
-- D8: `localStorage.clear()` clears all storage for origin (LOW)
-- D9: `rateLimits` table used for SSE connections and heartbeats (LOW)
-- D10: Backup/restore/migrate routes use manual auth pattern (LOW)
-- D11: Files/[id] DELETE/PATCH manual auth (LOW)
-- D12: SSE re-auth rate limiting (LOW)
-- D13: PublicHeader click-outside-to-close (LOW)
-- D14: `namedToPositional` regex alignment (LOW)
-- D15: `tracking-wide`/`tracking-wider` Korean text risk (LOW)
-- D16: SSE shared poll timer interval not adjustable at runtime (LOW)
-- D17: Export abort does not cancel in-flight DB queries (LOW)
-- D18: Deprecated `recruitingInvitations.token` column still has unique index (LOW)
-- D19: `validateExport` missing duplicate table name check (LOW)
+| ID | Finding | Severity | Status |
+|----|---------|----------|--------|
+| A7 | Dual encryption key management | MEDIUM | Deferred — consolidation requires migration |
+| A12 | Inconsistent auth/authorization patterns | MEDIUM | Deferred — existing routes work correctly |
+| A2 | Rate limit eviction could delete SSE slots | MEDIUM | Deferred — unlikely with heartbeat refresh |
+| A17 | JWT contains excessive UI preference data | LOW | Deferred — requires session restructure |
+| A25 | Timing-unsafe bcrypt fallback | LOW | Deferred — bcrypt-to-argon2 migration in progress |
+| A26 | Polling-based backpressure wait | LOW | Deferred — no production reports |
+| L2(c13) | Anti-cheat LRU cache single-instance limitation | LOW | Deferred — already guarded by getUnsupportedRealtimeGuard |
+| L5(c13) | Bulk create elevated roles warning | LOW | Deferred — server validates role assignments |
+| D16 | `sanitizeSubmissionForViewer` unexpected DB query | LOW | Deferred — only called from one place, no N+1 risk |
+| D17 | Exam session `new Date()` clock skew | LOW | Deferred — same as A19 |
+| D18 | Contest replay top-10 limit | LOW | Deferred — likely intentional, requires design input |
+| L6(c16) | `sanitizeSubmissionForViewer` N+1 risk for list endpoints | LOW | Deferred — re-open if added to list endpoints |
+| AGG-7(c18-prev) | IOI tie sort non-deterministic within tied entries | LOW | Deferred — tied entries get same rank per IOI convention |
+| AGG-8(c18-prev) | ROUND(score,2)=100 may miss edge-case ACs | LOW | Deferred — PostgreSQL ROUND is exact for decimal values |
 
 ## Agent Failures
 
-None — all reviews completed successfully.
+None — all review angles completed successfully.
