@@ -174,15 +174,33 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
   // adjusted score". The main leaderboard in contest-scoring.ts correctly uses
   // adjusted scores for ranking. A future enhancement could add IOI-aware
   // "first max adjusted score" tracking if needed.
-  const firstAcMap = new Map<string, Map<string, number>>();
-  const allAcSubs = await rawQueryAll<{ userId: string; problemId: string; submittedAt: Date }>(
-    `SELECT s.user_id AS "userId", s.problem_id AS "problemId", s.submitted_at AS "submittedAt"
-     FROM submissions s
-     WHERE s.assignment_id = @assignmentId AND ROUND(s.score, 2) = 100
-     ORDER BY s.submitted_at ASC`,
-    { assignmentId }
-  );
+  //
+  // Parallelize the independent queries: first-AC, contest meta, and cheat
+  // summary can all run concurrently since they don't depend on each other.
+  const [allAcSubs, contestMeta, cheatRows] = await Promise.all([
+    rawQueryAll<{ userId: string; problemId: string; submittedAt: Date }>(
+      `SELECT s.user_id AS "userId", s.problem_id AS "problemId", s.submitted_at AS "submittedAt"
+       FROM submissions s
+       WHERE s.assignment_id = @assignmentId AND ROUND(s.score, 2) = 100
+       ORDER BY s.submitted_at ASC`,
+      { assignmentId }
+    ),
+    rawQueryOne<{ startsAt: Date | null }>(
+      `SELECT starts_at AS "startsAt" FROM assignments WHERE id = @assignmentId`,
+      { assignmentId }
+    ),
+    rawQueryAll<CheatCountRow>(
+      `SELECT ace.user_id AS "userId", u.name, u.username, ace.event_type AS "eventType", COUNT(*) AS count
+       FROM anti_cheat_events ace
+       INNER JOIN users u ON u.id = ace.user_id
+       WHERE ace.assignment_id = @assignmentId
+       GROUP BY ace.user_id, u.name, u.username, ace.event_type
+       ORDER BY count DESC`,
+      { assignmentId }
+    ),
+  ]);
 
+  const firstAcMap = new Map<string, Map<string, number>>();
   for (const sub of allAcSubs) {
     let problemMap = firstAcMap.get(sub.problemId);
     if (!problemMap) {
@@ -239,12 +257,12 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
         userProgressMap.set(sub.userId, { name: sub.name, bestScores: new Map(), progressionPoints: [] });
       }
       const userData = userProgressMap.get(sub.userId)!;
-      const adjustedScore = sub.score != null ? Math.round(Math.min(Math.max(Number(sub.score), 0), 100) / 100 * Number(sub.points) * 100) / 100 : 0;
+      const rawScaledScore = sub.score != null ? Math.round(Math.min(Math.max(Number(sub.score), 0), 100) / 100 * Number(sub.points) * 100) / 100 : 0;
       const currentBest = userData.bestScores.get(sub.problemId) ?? 0;
       const submittedAtMs = new Date(sub.submittedAt).getTime();
 
-      if (adjustedScore > currentBest) {
-        userData.bestScores.set(sub.problemId, adjustedScore);
+      if (rawScaledScore > currentBest) {
+        userData.bestScores.set(sub.problemId, rawScaledScore);
         const totalScore = Array.from(userData.bestScores.values()).reduce((s, v) => s + v, 0);
         userData.progressionPoints.push({ timestamp: submittedAtMs, totalScore });
       }
@@ -258,10 +276,7 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
   }
 
   // 5. Per-problem solve time (median/mean time from contest start to first AC)
-  const contestMeta = await rawQueryOne<{ startsAt: Date | null }>(
-    `SELECT starts_at AS "startsAt" FROM assignments WHERE id = @assignmentId`,
-    { assignmentId }
-  );
+  // contestMeta is already fetched in the parallel batch above.
   const contestStartSec = contestMeta?.startsAt ? Math.floor(new Date(contestMeta.startsAt).getTime() / 1000) : 0;
 
   const problemSolveTimes: ProblemSolveTime[] = problems.map((p) => {
@@ -281,15 +296,7 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
   });
 
   // 6. Cheat summary
-  const cheatRows = await rawQueryAll<CheatCountRow>(
-    `SELECT ace.user_id AS "userId", u.name, u.username, ace.event_type AS "eventType", COUNT(*) AS count
-     FROM anti_cheat_events ace
-     INNER JOIN users u ON u.id = ace.user_id
-     WHERE ace.assignment_id = @assignmentId
-     GROUP BY ace.user_id, u.name, u.username, ace.event_type
-     ORDER BY count DESC`,
-    { assignmentId }
-  );
+  // cheatRows is already fetched in the parallel batch above.
 
   const byType: Record<string, number> = {};
   const studentEventCounts = new Map<string, { name: string; username: string; count: number }>();
