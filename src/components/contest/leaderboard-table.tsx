@@ -353,7 +353,11 @@ export function LeaderboardTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.entries.map((entry, idx) => (
+            {data.entries.map((entry, idx) => {
+              // Pre-build per-entry problem map for O(1) lookup instead of
+              // calling Array.find() (O(m)) per problem cell.
+              const entryProblemMap = new Map(entry.problems.map((pr) => [pr.problemId, pr]));
+              return (
               <TableRow
                 key={entry.userId || `row-${idx}`}
                 className={cn(
@@ -430,9 +434,7 @@ export function LeaderboardTable({
                   </TableCell>
                 )}
                 {data.problems.map((p) => {
-                  const result = entry.problems.find(
-                    (pr) => pr.problemId === p.problemId
-                  );
+                  const result = entryProblemMap.get(p.problemId);
 
                   // Untried
                   if (!result || result.attempts === 0) {
@@ -478,7 +480,8 @@ export function LeaderboardTable({
                   );
                 })}
               </TableRow>
-            ))}
+            );
+            })}
           </TableBody>
         </Table>
       </CardContent>
