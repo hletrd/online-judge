@@ -87,8 +87,8 @@ export const POST = createApiHandler({
     const id = nanoid();
 
     // Atomic uniqueness check + insert in a single transaction to prevent TOCTOU races
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let created: any;
+    type SafeUserRow = { id: string; username: string; email: string | null; name: string | null; className: string | null; role: string; isActive: boolean | null; createdAt: Date; updatedAt: Date };
+    let created: SafeUserRow | undefined;
     try {
       const result = await execTransaction(async (tx) => {
         // Check username uniqueness inside transaction
