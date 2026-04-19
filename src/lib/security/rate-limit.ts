@@ -45,6 +45,10 @@ export function startRateLimitEviction() {
   evictionTimer = setInterval(() => {
     void evictStaleEntries();
   }, EVICTION_INTERVAL_MS);
+  // Allow the process to exit even if the timer is still active
+  if (evictionTimer && typeof evictionTimer === "object" && "unref" in evictionTimer) {
+    evictionTimer.unref();
+  }
 }
 
 export function stopRateLimitEviction() {
