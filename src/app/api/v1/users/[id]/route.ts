@@ -117,7 +117,7 @@ async function ensureActorCanManageTarget(
   ]);
 
   if (targetLevel >= actorLevel) {
-    return apiError("unauthorized", 403);
+    return apiError("cannotManageSameLevelUser", 403);
   }
 
   return null;

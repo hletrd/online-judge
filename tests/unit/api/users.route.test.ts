@@ -808,7 +808,7 @@ describe("PATCH /api/v1/users/[id]", () => {
     const body = await res.json();
 
     expect(res.status).toBe(403);
-    expect(body.error).toBe("unauthorized");
+    expect(body.error).toBe("cannotManageSameLevelUser");
   });
 
   it("admin can update username", async () => {
@@ -1090,7 +1090,7 @@ describe("DELETE /api/v1/users/[id]", () => {
     const body = await res.json();
 
     expect(res.status).toBe(403);
-    expect(body.error).toBe("unauthorized");
+    expect(body.error).toBe("cannotManageSameLevelUser");
   });
 
   it("returns 404 when user not found", async () => {
