@@ -7,18 +7,11 @@ import { getLeaderboardProblems } from "@/lib/assignments/leaderboard";
 import { rawQueryOne, rawQueryAll } from "@/lib/db/queries";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { contentDispositionAttachment } from "@/lib/http/content-disposition";
+import { escapeCsvField } from "@/lib/csv/escape-field";
 
-function escapeCsvCell(cell: string | number): string {
-  const str = String(cell);
-  let escaped = str.includes(",") || str.includes('"') || str.includes("\n")
-    ? `"${str.replace(/"/g, '""')}"`
-    : str;
-  // Prevent CSV formula injection
-  if (/^[=+\-@\t\r]/.test(escaped)) {
-    escaped = `'${escaped}`;
-  }
-  return escaped;
-}
+/** Hard cap to prevent OOM on large contests — matches the CSV-01 limit applied to
+ *  audit-logs, login-logs, and submissions exports in prior cycles. */
+const MAX_EXPORT_ENTRIES = 10_000;
 
 type AssignmentRow = {
   groupId: string;
@@ -65,6 +58,8 @@ export const GET = createApiHandler({
     const isDownload = req.nextUrl.searchParams.get("download") === "1" || format === "csv";
     const problems = await getLeaderboardProblems(assignmentId);
     const { scoringModel, entries } = await computeContestRanking(assignmentId);
+    const truncated = entries.length > MAX_EXPORT_ENTRIES;
+    const limitedEntries = truncated ? entries.slice(0, MAX_EXPORT_ENTRIES) : entries;
 
     // Get anti-cheat event counts per user
     const cheatCounts = await rawQueryAll<CheatCountRow>(
@@ -81,7 +76,7 @@ export const GET = createApiHandler({
     );
     const ipMap = new Map(ipRows.map((r) => [r.userId, r.ips]));
 
-    const exportedEntries = entries.map((entry) => {
+    const exportedEntries = limitedEntries.map((entry) => {
       if (!anonymized) return entry;
       return {
         ...entry,
@@ -128,11 +123,14 @@ export const GET = createApiHandler({
           request: req,
         });
       }
-      return NextResponse.json(data, {
-        headers: {
-          "Content-Disposition": contentDispositionAttachment(`${assignment.title}-${jsonSuffix}`, ".json"),
+      return NextResponse.json(
+        truncated ? { data, truncated: true, totalEntries: entries.length } : data,
+        {
+          headers: {
+            "Content-Disposition": contentDispositionAttachment(`${assignment.title}-${jsonSuffix}`, ".json"),
+          },
         },
-      });
+      );
     }
 
     // CSV export
@@ -171,9 +169,11 @@ export const GET = createApiHandler({
       return row;
     });
 
+    const BOM = "\uFEFF";
     const csvLines = [
-      headers.map(escapeCsvCell).join(","),
-      ...rows.map((row) => row.map(escapeCsvCell).join(",")),
+      headers.map(escapeCsvField).join(","),
+      ...rows.map((row) => row.map(escapeCsvField).join(",")),
+      ...(truncated ? [`# Truncated: showing ${MAX_EXPORT_ENTRIES} of ${entries.length} entries`] : []),
     ];
 
     const csvSuffix = `${anonymized ? "-anonymized" : ""}-export`;
@@ -188,7 +188,7 @@ export const GET = createApiHandler({
       details: { format, anonymized },
       request: req,
     });
-    return new NextResponse(csvLines.join("\n"), {
+    return new NextResponse(BOM + csvLines.join("\r\n") + "\r\n", {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
         "Content-Disposition": contentDispositionAttachment(`${assignment.title}-${csvSuffix}`, ".csv"),
