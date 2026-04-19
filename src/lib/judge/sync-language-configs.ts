@@ -3,6 +3,7 @@ import { languageConfigs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { DEFAULT_JUDGE_LANGUAGES, serializeJudgeCommand } from "./languages";
+import { logger } from "@/lib/logger";
 
 
 async function doSync(): Promise<boolean> {
@@ -55,10 +56,10 @@ async function doSync(): Promise<boolean> {
   }
 
   if (inserted > 0) {
-    console.log(`[language-sync] inserted ${inserted} new language configs`);
+    logger.info({ inserted }, "[language-sync] inserted new language configs");
   }
   if (updated > 0) {
-    console.log(`[language-sync] back-filled commands for ${updated} existing configs`);
+    logger.info({ updated }, "[language-sync] back-filled commands for existing configs");
   }
   return true;
 }
@@ -74,7 +75,7 @@ export async function syncLanguageConfigsOnStartup() {
       return; // success
     } catch {
       if (attempt >= MAX_SYNC_RETRIES) {
-        console.error("[sync] Max retries exceeded, giving up");
+        logger.error("[sync] Max retries exceeded, giving up");
         throw new Error("[sync] Failed to sync language configs after max retries");
       }
       // Table may not exist yet (pre-migration). Retry with exponential backoff.
