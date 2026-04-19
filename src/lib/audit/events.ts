@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { auditEvents } from "@/lib/db/schema";
-import { lt } from "drizzle-orm";
+import { lt, sql } from "drizzle-orm";
 import { normalizeText, getClientIp, getRequestPath, MAX_TEXT_LENGTH, MAX_PATH_LENGTH } from "@/lib/security/request-context";
 import { logger } from "@/lib/logger";
 import { DATA_RETENTION_DAYS, DATA_RETENTION_LEGAL_HOLD, getRetentionCutoff } from "@/lib/data-retention";
@@ -173,6 +173,9 @@ export function getAuditEventHealthSnapshot() {
   } as const;
 }
 
+const PRUNE_BATCH_SIZE = 5000;
+const PRUNE_BATCH_DELAY_MS = 100;
+
 async function pruneOldAuditEvents() {
   if (DATA_RETENTION_LEGAL_HOLD) {
     logger.info("Data retention legal hold is active — skipping audit event pruning");
@@ -180,8 +183,17 @@ async function pruneOldAuditEvents() {
   }
   const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.auditEvents);
   try {
-    await db.delete(auditEvents).where(lt(auditEvents.createdAt, cutoff));
-    logger.debug({ cutoff: cutoff.toISOString() }, "Pruned old audit events");
+    let totalDeleted = 0;
+    while (true) {
+      const result = await db.execute(
+        sql`DELETE FROM ${auditEvents} WHERE ${auditEvents.createdAt} < ${cutoff} LIMIT ${PRUNE_BATCH_SIZE}`
+      );
+      const deleted = Number(result.rowCount ?? 0);
+      totalDeleted += deleted;
+      if (deleted < PRUNE_BATCH_SIZE) break;
+      await new Promise((r) => setTimeout(r, PRUNE_BATCH_DELAY_MS));
+    }
+    logger.debug({ cutoff: cutoff.toISOString(), deleted: totalDeleted }, "Pruned old audit events");
   } catch (error) {
     logger.warn({ err: error }, "Failed to prune old audit events");
   }

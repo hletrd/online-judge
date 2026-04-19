@@ -1,55 +1,80 @@
-import { and, inArray, lt, notInArray, or } from "drizzle-orm";
+import { and, inArray, lt, notInArray, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { antiCheatEvents, chatMessages, loginEvents, recruitingInvitations, submissions } from "@/lib/db/schema";
 import { DATA_RETENTION_DAYS, DATA_RETENTION_LEGAL_HOLD, getRetentionCutoff } from "@/lib/data-retention";
 
+const BATCH_SIZE = 5000;
+const BATCH_DELAY_MS = 100;
+
+/**
+ * Batched DELETE helper. Deletes rows matching the given WHERE clause in
+ * batches of BATCH_SIZE to avoid long-running locks and WAL bloat on large
+ * tables. Returns the total number of deleted rows.
+ */
+async function batchedDelete(
+  table: typeof antiCheatEvents | typeof chatMessages | typeof loginEvents | typeof recruitingInvitations | typeof submissions,
+  whereClause: ReturnType<typeof lt> | ReturnType<typeof and>,
+): Promise<number> {
+  let totalDeleted = 0;
+
+  while (true) {
+    const result = await db.execute(
+      sql`DELETE FROM ${table} WHERE ${whereClause} LIMIT ${BATCH_SIZE}`
+    );
+    const deleted = Number(result.rowCount ?? 0);
+    totalDeleted += deleted;
+    if (deleted < BATCH_SIZE) break;
+    await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+  }
+
+  return totalDeleted;
+}
+
 async function pruneChatMessages() {
   const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.chatMessages);
-  await db.delete(chatMessages).where(lt(chatMessages.createdAt, cutoff));
-  logger.debug({ cutoff: cutoff.toISOString() }, "Pruned expired chat messages");
+  const deleted = await batchedDelete(chatMessages, lt(chatMessages.createdAt, cutoff));
+  logger.debug({ cutoff: cutoff.toISOString(), deleted }, "Pruned expired chat messages");
 }
 
 
 async function pruneRecruitingInvitations() {
   const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.recruitingRecords);
-  await db.delete(recruitingInvitations).where(
-    and(
-      lt(recruitingInvitations.updatedAt, cutoff),
-      or(
-        inArray(recruitingInvitations.status, ["redeemed", "revoked"]),
-        and(
-          inArray(recruitingInvitations.status, ["pending"]),
-          lt(recruitingInvitations.expiresAt, cutoff)
-        )
+  const whereClause = and(
+    lt(recruitingInvitations.updatedAt, cutoff),
+    or(
+      inArray(recruitingInvitations.status, ["redeemed", "revoked"]),
+      and(
+        inArray(recruitingInvitations.status, ["pending"]),
+        lt(recruitingInvitations.expiresAt, cutoff)
       )
     )
   );
-  logger.debug({ cutoff: cutoff.toISOString() }, "Pruned expired recruiting invitations");
+  const deleted = await batchedDelete(recruitingInvitations, whereClause);
+  logger.debug({ cutoff: cutoff.toISOString(), deleted }, "Pruned expired recruiting invitations");
 }
 
 
 async function pruneSubmissions() {
   const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.submissions);
-  await db.delete(submissions).where(
-    and(
-      lt(submissions.submittedAt, cutoff),
-      notInArray(submissions.status, ["pending", "queued", "judging"])
-    )
+  const whereClause = and(
+    lt(submissions.submittedAt, cutoff),
+    notInArray(submissions.status, ["pending", "queued", "judging"])
   );
-  logger.debug({ cutoff: cutoff.toISOString() }, "Pruned expired terminal submissions");
+  const deleted = await batchedDelete(submissions, whereClause);
+  logger.debug({ cutoff: cutoff.toISOString(), deleted }, "Pruned expired terminal submissions");
 }
 
 async function pruneAntiCheatEvents() {
   const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.antiCheatEvents);
-  await db.delete(antiCheatEvents).where(lt(antiCheatEvents.createdAt, cutoff));
-  logger.debug({ cutoff: cutoff.toISOString() }, "Pruned expired anti-cheat events");
+  const deleted = await batchedDelete(antiCheatEvents, lt(antiCheatEvents.createdAt, cutoff));
+  logger.debug({ cutoff: cutoff.toISOString(), deleted }, "Pruned expired anti-cheat events");
 }
 
 async function pruneLoginEvents() {
   const cutoff = getRetentionCutoff(DATA_RETENTION_DAYS.loginEvents);
-  await db.delete(loginEvents).where(lt(loginEvents.createdAt, cutoff));
-  logger.debug({ cutoff: cutoff.toISOString() }, "Pruned expired login events");
+  const deleted = await batchedDelete(loginEvents, lt(loginEvents.createdAt, cutoff));
+  logger.debug({ cutoff: cutoff.toISOString(), deleted }, "Pruned expired login events");
 }
 
 async function pruneSensitiveOperationalData() {
