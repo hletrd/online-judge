@@ -235,7 +235,10 @@ export async function resetRecruitingInvitationAccountPassword(id: string) {
       .update(users)
       .set({
         passwordHash: invalidatedPasswordHash,
-        mustChangePassword: false,
+        // Set mustChangePassword: true as defense-in-depth: even if session
+        // invalidation via tokenInvalidatedAt has a race condition or gap,
+        // the candidate will be forced to change their password on next login.
+        mustChangePassword: true,
         tokenInvalidatedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -258,40 +261,27 @@ export async function deleteRecruitingInvitation(id: string) {
 }
 
 export async function getInvitationStats(assignmentId: string) {
-  const now = new Date();
-  const rows = await db
+  // Single atomic query with conditional aggregation — avoids the race
+  // condition where invitations transition between two separate queries,
+  // and uses NOW() for the expiry comparison to match redeemRecruitingToken.
+  const [row] = await db
     .select({
-      status: recruitingInvitations.status,
-      count: count(),
+      total: count(),
+      pending: sql<number>`SUM(CASE WHEN ${recruitingInvitations.status} = 'pending' THEN 1 ELSE 0 END)`,
+      redeemed: sql<number>`SUM(CASE WHEN ${recruitingInvitations.status} = 'redeemed' THEN 1 ELSE 0 END)`,
+      revoked: sql<number>`SUM(CASE WHEN ${recruitingInvitations.status} = 'revoked' THEN 1 ELSE 0 END)`,
+      expired: sql<number>`SUM(CASE WHEN ${recruitingInvitations.status} = 'pending' AND ${recruitingInvitations.expiresAt} IS NOT NULL AND ${recruitingInvitations.expiresAt} < NOW() THEN 1 ELSE 0 END)`,
     })
     .from(recruitingInvitations)
-    .where(eq(recruitingInvitations.assignmentId, assignmentId))
-    .groupBy(recruitingInvitations.status);
+    .where(eq(recruitingInvitations.assignmentId, assignmentId));
 
-  const stats = { total: 0, pending: 0, redeemed: 0, revoked: 0, expired: 0 };
-  for (const row of rows) {
-    const c = Number(row.count);
-    stats.total += c;
-    if (row.status === "pending") stats.pending += c;
-    else if (row.status === "redeemed") stats.redeemed += c;
-    else if (row.status === "revoked") stats.revoked += c;
-  }
+  const total = Number(row?.total ?? 0);
+  const pending = Number(row?.pending ?? 0) - Number(row?.expired ?? 0);
+  const redeemed = Number(row?.redeemed ?? 0);
+  const revoked = Number(row?.revoked ?? 0);
+  const expired = Number(row?.expired ?? 0);
 
-  // Count expired (pending but past expiresAt)
-  const [expiredRow] = await db
-    .select({ count: count() })
-    .from(recruitingInvitations)
-    .where(
-      and(
-        eq(recruitingInvitations.assignmentId, assignmentId),
-        eq(recruitingInvitations.status, "pending"),
-        sql`${recruitingInvitations.expiresAt} IS NOT NULL AND ${recruitingInvitations.expiresAt} < ${now}`
-      )
-    );
-  stats.expired = Number(expiredRow?.count ?? 0);
-  stats.pending -= stats.expired;
-
-  return stats;
+  return { total, pending: Math.max(pending, 0), redeemed, revoked, expired };
 }
 
 type RedeemResult =
