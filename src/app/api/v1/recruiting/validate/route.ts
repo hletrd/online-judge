@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { db } from "@/lib/db";
 import { recruitingInvitations, assignments } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { validateRecruitingTokenSchema } from "@/lib/validators/recruiting-invitations";
 
@@ -19,14 +19,23 @@ export async function POST(req: NextRequest) {
   }
 
   const tokenHash = createHash("sha256").update(parsed.data.token).digest("hex");
+
+  // Use SQL NOW() for expiry validation instead of new Date() to avoid
+  // clock skew between app server and DB server. The SQL-level check is
+  // authoritative — same rationale as the redeemRecruitingToken fix
+  // (commit b42a7fe4).
   const [invitation] = await db
     .select({
       status: recruitingInvitations.status,
-      expiresAt: recruitingInvitations.expiresAt,
       assignmentId: recruitingInvitations.assignmentId,
     })
     .from(recruitingInvitations)
-    .where(eq(recruitingInvitations.tokenHash, tokenHash))
+    .where(
+      and(
+        eq(recruitingInvitations.tokenHash, tokenHash),
+        sql`(${recruitingInvitations.expiresAt} IS NULL OR ${recruitingInvitations.expiresAt} > NOW())`,
+      )
+    )
     .limit(1);
 
   // Return a uniform invalid response for any failure case to avoid
@@ -36,19 +45,22 @@ export async function POST(req: NextRequest) {
 
   if (!invitation) return invalid();
   if (invitation.status === "revoked") return invalid();
-  if (invitation.expiresAt && invitation.expiresAt < new Date()) return invalid();
 
+  // Use SQL NOW() for deadline validation — avoids the same clock-skew risk.
   const [assignment] = await db
     .select({
       id: assignments.id,
-      deadline: assignments.deadline,
     })
     .from(assignments)
-    .where(eq(assignments.id, invitation.assignmentId))
+    .where(
+      and(
+        eq(assignments.id, invitation.assignmentId),
+        sql`(${assignments.deadline} IS NULL OR ${assignments.deadline} > NOW())`,
+      )
+    )
     .limit(1);
 
   if (!assignment) return invalid();
-  if (assignment.deadline && assignment.deadline < new Date()) return invalid();
 
   return NextResponse.json({
     data: { valid: true },
