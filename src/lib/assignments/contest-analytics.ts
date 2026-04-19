@@ -164,6 +164,16 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
   // Keyed by problemId -> userId -> timestamp (seconds) for O(1) per-problem
   // lookup. Previous `endsWith` matching could produce false matches when one
   // problem ID is a suffix of another.
+  //
+  // SCORING SEMANTICS NOTE: The `ROUND(s.score, 2) = 100` filter checks the
+  // raw submission score, not the adjusted score after late penalties. This is
+  // correct for ICPC scoring where a raw score of 100 means "fully accepted".
+  // For IOI scoring with late penalties, a raw score of 100 may have an
+  // adjusted score < 100 (e.g., 90 after a 10% late penalty), so the "first AC"
+  // concept here represents "first full raw score" rather than "first full
+  // adjusted score". The main leaderboard in contest-scoring.ts correctly uses
+  // adjusted scores for ranking. A future enhancement could add IOI-aware
+  // "first max adjusted score" tracking if needed.
   const firstAcMap = new Map<string, Map<string, number>>();
   const allAcSubs = await rawQueryAll<{ userId: string; problemId: string; submittedAt: Date }>(
     `SELECT s.user_id AS "userId", s.problem_id AS "problemId", s.submitted_at AS "submittedAt"
