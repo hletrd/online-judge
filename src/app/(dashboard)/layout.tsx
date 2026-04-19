@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getTranslations } from "next-intl/server";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
-import { LocaleSwitcher } from "@/components/layout/locale-switcher";
+import { PublicHeader } from "@/components/layout/public-header";
 import { SkipToContent } from "@/components/layout/skip-to-content";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LectureModeProvider } from "@/components/lecture/lecture-mode-provider";
 import { LectureModeToggle } from "@/components/layout/lecture-mode-toggle";
 import { LectureToolbar } from "@/components/lecture/lecture-toolbar";
@@ -25,6 +23,7 @@ import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { isInstructorOrAboveAsync } from "@/lib/auth/role-helpers";
 import { getActiveTimedAssignmentsForSidebar } from "@/lib/assignments/active-timed-assignments";
 import { NO_INDEX_METADATA } from "@/lib/seo";
+import { buildLocalizedHref } from "@/lib/locale-paths";
 
 export const metadata: Metadata = NO_INDEX_METADATA;
 
@@ -70,6 +69,28 @@ export default async function DashboardLayout({ children }: { children: React.Re
       initialColorScheme={session.user.lectureColorScheme ?? "dark"}
       persistAction={updatePreferences}
     >
+      <PublicHeader
+        siteTitle={settings.siteTitle}
+        items={[
+          { href: "/practice", label: t("practice") },
+          { href: "/playground", label: t("playground") },
+          { href: "/contests", label: t("contests") },
+          { href: "/rankings", label: t("rankings") },
+          { href: "/community", label: t("community") },
+          { href: "/languages", label: t("languages") },
+        ]}
+        actions={[
+          { href: "/login", label: t("signIn") },
+          { href: "/signup", label: t("signUp") },
+        ]}
+        loggedInUser={{
+          name: session.user.name || session.user.username || "",
+          href: "/dashboard/profile",
+          label: session.user.name || session.user.username || "",
+          role: session.user.role,
+          capabilities,
+        }}
+      />
       <SidebarProvider>
         <SkipToContent targetId="main-content" label={t("skipToContent")} />
         <AppSidebar
@@ -81,16 +102,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
           activeTimedAssignments={activeTimedAssignments}
         />
         <SidebarInset>
-          <header className="flex h-14 items-center gap-2 px-4">
+          <header className="flex h-10 items-center gap-2 border-b px-4">
             <SidebarTrigger />
-            <div className="hidden min-w-0 flex-1 sm:flex sm:items-center sm:gap-3">
-              <Link href="/dashboard" className="truncate text-sm font-semibold hover:text-primary transition-colors">{settings.siteTitle}</Link>
-              <Link href="/" className="shrink-0 text-xs text-muted-foreground hover:text-primary transition-colors">{t("backToPublicSite")}</Link>
-            </div>
             <div className="ml-auto flex shrink-0 items-center gap-1">
               {canUseLectureMode && <LectureModeToggle />}
-              <ThemeToggle dbTheme={session.user.preferredTheme} />
-              <LocaleSwitcher />
             </div>
           </header>
           <main id="main-content" className="min-w-0 flex-1 p-6">
