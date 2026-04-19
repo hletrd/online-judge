@@ -406,10 +406,10 @@ export async function redeemRecruitingToken(
       if (invitation.status === "revoked") return { ok: false as const, error: "tokenRevoked" };
       if (invitation.status !== "pending") return { ok: false as const, error: "invalidToken" };
 
-      // Check expiry
-      if (invitation.expiresAt && invitation.expiresAt < new Date()) {
-        return { ok: false as const, error: "tokenExpired" };
-      }
+      // Expiry is validated atomically by the SQL WHERE clause at the atomic
+      // claim step below (expires_at > NOW()). No JS-side gate here — that
+      // would introduce a TOCTOU race between app and DB clocks. The SQL
+      // check is the authoritative one.
 
       // Check assignment
       const [assignment] = await tx
@@ -488,6 +488,12 @@ export async function redeemRecruitingToken(
         .returning({ id: recruitingInvitations.id });
 
       if (!updated) {
+        // The atomic update returned no rows — either the invitation was
+        // claimed by another request or it expired between our read and the
+        // claim. Differentiate the error for a better user experience.
+        if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+          throw new Error("tokenExpired");
+        }
         throw new Error("alreadyRedeemed");
       }
 
@@ -502,6 +508,9 @@ export async function redeemRecruitingToken(
   } catch (err: unknown) {
     if (err instanceof Error && err.message === "alreadyRedeemed") {
       return { ok: false, error: "alreadyRedeemed" };
+    }
+    if (err instanceof Error && err.message === "tokenExpired") {
+      return { ok: false, error: "tokenExpired" };
     }
     throw err;
   }
