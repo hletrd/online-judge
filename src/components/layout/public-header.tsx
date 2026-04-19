@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { buildLocalizedHref } from "@/lib/locale-paths";
-import { Menu, X, ChevronDown, LogOut, LayoutDashboard, FileText, Users, ClipboardList, Settings, Shield } from "lucide-react";
+import { Menu, X, ChevronDown, LogOut, LayoutDashboard, FileText, Users, ClipboardList, Settings, Shield, Timer } from "lucide-react";
 
 type HeaderItem = {
   href: string;
@@ -84,6 +84,7 @@ function getDropdownItems(_role?: string, capabilities?: string[]): DropdownItem
   }
 
   items.push({ href: "/dashboard/submissions", label: "mySubmissions", icon: <ClipboardList className="size-4" /> });
+  items.push({ href: "/dashboard/contests", label: "contests", icon: <Timer className="size-4" /> });
   items.push({ href: "/dashboard/profile", label: "profile", icon: <Settings className="size-4" /> });
 
   if (canAdminSystem) {
