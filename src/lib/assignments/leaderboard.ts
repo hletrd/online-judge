@@ -147,6 +147,8 @@ export async function computeSingleUserLiveRank(
   }
 
   // IOI: rank = 1 + count of users with higher total adjusted score
+  // Uses the same scoring logic as contest-scoring.ts, including windowed
+  // exam mode late penalties applied against the per-user personal_deadline.
   type IoiRankRow = { rank: number | null; hasSubmissions: boolean };
   const result = await rawQueryOne<IoiRankRow>(
     `WITH user_scores AS (
@@ -155,8 +157,14 @@ export async function computeSingleUserLiveRank(
         ROUND(SUM(
           CASE WHEN s.score IS NOT NULL THEN
             CASE
+              -- Non-windowed: late penalty against the global deadline
               WHEN @deadline::bigint IS NOT NULL AND @latePenalty::double precision > 0 AND @examMode::text != 'windowed'
                    AND s.submitted_at IS NOT NULL AND EXTRACT(EPOCH FROM s.submitted_at)::bigint > @deadline::bigint
+              THEN ROUND(((LEAST(GREATEST(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100)) * (1.0 - @latePenalty::double precision / 100.0))::numeric, 2)
+              -- Windowed: late penalty against the per-user personal_deadline
+              WHEN @examMode::text = 'windowed' AND @latePenalty::double precision > 0
+                   AND es.personal_deadline IS NOT NULL
+                   AND s.submitted_at IS NOT NULL AND s.submitted_at > es.personal_deadline
               THEN ROUND(((LEAST(GREATEST(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100)) * (1.0 - @latePenalty::double precision / 100.0))::numeric, 2)
               ELSE ROUND((LEAST(GREATEST(s.score, 0), 100) / 100.0 * COALESCE(ap.points, 100))::numeric, 2)
             END
@@ -164,6 +172,7 @@ export async function computeSingleUserLiveRank(
         END), 2) AS total_score
       FROM submissions s
       INNER JOIN assignment_problems ap ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
+      LEFT JOIN exam_sessions es ON es.assignment_id = s.assignment_id AND es.user_id = s.user_id
       WHERE s.assignment_id = @assignmentId AND s.status IN (${TERMINAL_SUBMISSION_STATUSES_SQL_LIST})
       GROUP BY s.user_id
     ),
