@@ -4,8 +4,8 @@ import Image from "next/image";
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { handleSignOutWithCleanup } from "@/lib/auth/sign-out";
 import {
   Sidebar,
   SidebarContent,
@@ -176,6 +176,7 @@ export function AppSidebar({
   activeTimedAssignments = [],
 }: AppSidebarProps) {
   const pathname = usePathname();
+  const locale = useLocale();
   const t = useTranslations("nav");
   const tAuth = useTranslations("auth");
   const tCommon = useTranslations("common");
@@ -227,21 +228,7 @@ export function AppSidebar({
   }
 
   async function handleSignOut() {
-    setIsSigningOut(true);
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-      } catch {
-        // Storage may be inaccessible in some environments
-      }
-    }
-    try {
-      await signOut({ callbackUrl: "/login" });
-    } catch {
-      // Reset loading state so the user can retry instead of being stuck
-      setIsSigningOut(false);
-    }
+    await handleSignOutWithCleanup(setIsSigningOut);
   }
 
   return (
@@ -287,7 +274,7 @@ export function AppSidebar({
           <>
             {/* tracking-wider is for English uppercase text only (e.g. "ADMINISTRATION") — do not apply to Korean labels */}
             <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <SidebarGroupLabel className={`text-xs font-semibold uppercase text-muted-foreground/70${locale !== "ko" ? " tracking-wider" : ""}`}>
                 {t("administration")}
               </SidebarGroupLabel>
             </SidebarGroup>

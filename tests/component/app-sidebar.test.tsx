@@ -20,6 +20,11 @@ vi.mock("next-auth/react", () => ({
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
+  useLocale: () => "en",
+}));
+
+vi.mock("@/lib/auth/sign-out", () => ({
+  handleSignOutWithCleanup: vi.fn(),
 }));
 
 vi.mock("next/link", () => ({
