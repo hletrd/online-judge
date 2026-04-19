@@ -1,176 +1,181 @@
-# Cycle 3 Review Remediation Plan
+# Cycle 3 Review Remediation Plan (review-plan-fix loop — current iteration)
 
-**Date:** 2026-04-19  
-**Source:** `.context/reviews/cycle-3-comprehensive-review.md`, `.context/reviews/_aggregate.md`  
-**Status:** COMPLETE
+**Date:** 2026-04-19
+**Source:** `.context/reviews/cycle-3-aggregate.md`, per-agent reviews under `.context/reviews/cycle-3-*.md`
+**Status:** IN PROGRESS
 
-## Deduplication note
-Cycle 1 and Cycle 2 plans are both COMPLETE. This plan covers findings that are genuinely NEW from the cycle 3 review.
+## Planning notes
+- This pass re-read repo rules first: `CLAUDE.md`, `AGENTS.md`, `.context/development/*.md`.
+- Cycle 1 and cycle 2 remediation plans are fully implemented and archived to `plans/archive/`.
+- The prior cycle 3 plan (from an earlier review-plan-fix iteration) is also complete and archived.
+- Review findings from this cycle's fresh reviews are mapped below to either implementation stories or explicit deferred / invalidated items. No review finding is intentionally dropped.
+- User-injected TODO from `plans/open/2026-04-19-workspace-to-public-migration.md` — Phase 1 implementation is prioritized this cycle.
 
 ---
 
-## Implementation Stories
+## Implementation stories for this pass
 
-### LOG-01: Replace `console.log`/`console.error` with `logger` in sync-language-configs
-**Severity:** LOW | **Confidence:** HIGH | **Effort:** Quick win
+### CSV-02 — Add row limit to admin submissions CSV export
+**Sources:** AGG-1, code-reviewer F2, security-reviewer F1, perf-reviewer F1, debugger F2, critic F1, verifier F3
+**Severity:** HIGH | **Confidence:** HIGH | **Effort:** Quick win
 
 **Files:**
-- `src/lib/judge/sync-language-configs.ts:58` — `console.log(...)` → `logger.info(...)`
-- `src/lib/judge/sync-language-configs.ts:61` — `console.log(...)` → `logger.info(...)`
-- `src/lib/judge/sync-language-configs.ts:77` — `console.error(...)` → `logger.error(...)`
+- `src/app/api/v1/admin/submissions/export/route.ts:95-111`
+- Also: `src/app/api/v1/admin/submissions/export/route.ts:37-46` (replace local `escapeCsvField` with shared import)
 
-**Problem:** Server-side code uses `console.log`/`console.error` instead of pino `logger`. Output bypasses structured logging and is not captured by log aggregation.
-
-**Fix:** Import `logger` from `@/lib/logger` and replace all `console.*` calls.
-
-**Verification:** `npx tsc --noEmit`, `npx vitest run`
-
----
-
-### DATA-01: Restrict column selection in group DELETE handler
-**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Quick win
-
-**File:**
-- `src/app/api/v1/groups/[id]/route.ts:173`
-
-**Problem:** `tx.select().from(groups)` returns all columns from the groups table. Only `id`, `name`, and `isArchived` are needed for the audit log and existence check.
-
-**Fix:** Replace with:
-```ts
-const [group] = await tx.select({
-  id: groups.id,
-  name: groups.name,
-  isArchived: groups.isArchived,
-}).from(groups).where(eq(groups.id, id)).for("update").limit(1);
-```
-
-**Verification:** `npx tsc --noEmit`, `npx vitest run`
-
----
-
-### AUTH-01: Replace hardcoded `super_admin` string comparisons with capability-based check
-**Severity:** MEDIUM | **Confidence:** MEDIUM | **Effort:** Moderate
-
-**Files:**
-- `src/app/api/v1/users/[id]/route.ts:157` — `found.role === "super_admin"`
-- `src/app/api/v1/users/[id]/route.ts:418` — `found.role === "super_admin"`
-- `src/lib/actions/user-management.ts:90` — `targetUser.role === "super_admin"`
-- `src/lib/actions/user-management.ts:172` — `targetUser.role === "super_admin"`
-
-**Problem:** Hardcoded string comparison for `super_admin` is inconsistent with the capability model. Custom roles with equivalent privileges would bypass these safety rails.
-
-**Fix:** Add a helper `isSuperAdminRole(role)` in `src/lib/capabilities/cache.ts` that uses `getRoleLevel(role) >= SUPER_ADMIN_LEVEL` (where SUPER_ADMIN_LEVEL is the highest role level, e.g., 100). Replace all `=== "super_admin"` checks with this helper. This ensures custom roles with super_admin-level capabilities are also protected.
-
-The helper should be:
-```ts
-const SUPER_ADMIN_LEVEL = 100; // or whatever getRoleLevel returns for super_admin
-
-export function isSuperAdminRole(role: string): boolean {
-  return getRoleLevel(role) >= SUPER_ADMIN_LEVEL;
-}
-```
-
-**Verification:** `npx tsc --noEmit`, `npx vitest run`
-
----
-
-### LOGIC-01: Replace `role === "student"` in groups PATCH route with `getRoleLevel`
-**Severity:** LOW | **Confidence:** HIGH | **Effort:** Quick win
-
-**File:**
-- `src/app/api/v1/groups/[id]/route.ts:135`
-
-**Problem:** Same pattern as cycle 2 F7 (fixed in members route) but in the PATCH handler for group updates. Hardcoded `role === "student"` blocks custom roles from being assigned as instructors.
-
-**Fix:** Replace `nextInstructor.role === "student"` with `(await getRoleLevel(nextInstructor.role)) <= 0`.
-
-**Verification:** `npx tsc --noEmit`, `npx vitest run`
-
----
-
-### TEST-01: Add test coverage for `src/lib/judge/ip-allowlist.ts`
-**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Moderate
-
-**Files:**
-- New file: `tests/unit/judge/ip-allowlist.test.ts`
-- Source: `src/lib/judge/ip-allowlist.ts`
-
-**Problem:** Security-critical CIDR matching logic has no tests. Edge cases (e.g., /0 prefix, invalid octets, IPv6) could have subtle bugs.
-
-**Fix:** Add unit tests covering:
-- Exact IP match
-- /24, /16, /32 CIDR matching
-- /0 prefix (match all)
-- Invalid octets (returns false)
-- IPv6 exact match (currently unsupported, returns false for CIDR)
-- Empty allowlist (allows all in dev, denies in production)
-- `isJudgeIpAllowed()` with mocked request headers
-- Cache invalidation via `resetIpAllowlistCache()`
-
-**Verification:** `npx vitest run tests/unit/judge/ip-allowlist.test.ts`
-
----
-
-### VALID-01: Add validation for `AUTH_CACHE_TTL_MS` env var
-**Severity:** LOW | **Confidence:** MEDIUM | **Effort:** Quick win
-
-**File:**
-- `src/proxy.ts:24`
-
-**Problem:** `parseInt(process.env.AUTH_CACHE_TTL_MS ?? '2000', 10)` produces NaN or negative values for invalid inputs, which would effectively disable the auth cache.
+**Problem:** The admin submissions export route has no `.limit()` on its query. All matching submissions are loaded into memory and serialized to CSV. On a deployment with 100K+ submissions, this can exhaust memory and crash the server. This route was missed by cycle 2's CSV-01 fix which covered only audit-logs and login-logs.
 
 **Fix:**
-```ts
-const parsedTtl = parseInt(process.env.AUTH_CACHE_TTL_MS ?? '2000', 10);
-const AUTH_CACHE_TTL_MS = Number.isFinite(parsedTtl) && parsedTtl > 0 ? parsedTtl : 2000;
-```
+1. Replace the local `escapeCsvField` function with an import from `@/lib/csv/escape-field`.
+2. Add `.limit(10000)` to the Drizzle query as a hard cap.
+3. If the result hits the limit, include a `truncated: true` indicator or note in the CSV.
 
-**Verification:** `npx tsc --noEmit`
-
----
-
-### VALID-02: Add Zod validation for user DELETE permanent path body
-**Severity:** LOW | **Confidence:** HIGH | **Effort:** Quick win
-
-**File:**
-- `src/app/api/v1/users/[id]/route.ts:432-434`
-
-**Problem:** `body = await req.json()` parses body without Zod validation. If `confirmUsername` is not a string, `toLowerCase()` would throw.
-
-**Fix:** Add a small Zod schema before the comparison:
-```ts
-const confirmSchema = z.object({ confirmUsername: z.string().min(1) });
-const parsed = confirmSchema.safeParse(body);
-if (!parsed.success) return apiError("confirmUsernameRequired", 400);
-if (parsed.data.confirmUsername.toLowerCase() !== found.username.toLowerCase()) {
-  return apiError("confirmUsernameRequired", 400);
-}
-```
-
-**Verification:** `npx tsc --noEmit`, `npx vitest run`
+**Verification:**
+- `npx vitest run` (unit tests)
+- Manual check that CSV export is bounded
 
 ---
 
-## Deferred Items
+### NAFIX-02 — Migrate admin chat-logs and anti-cheat routes to use `parsePositiveInt`
+**Sources:** AGG-2, AGG-4, code-reviewer F1, debugger F1, critic F3, architect F3
+**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Quick win
 
-These findings are explicitly deferred per the review. Each records the file+line citation, original severity/confidence, concrete reason, and exit criterion.
+**Files:**
+- `src/app/api/v1/admin/chat-logs/route.ts:19`
+- `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:148-149`
 
-| ID | Finding | Severity | Confidence | Reason for deferral | Exit criterion |
-|----|---------|----------|------------|---------------------|----------------|
-| OBS-01 | Error boundary pages use `console.error` instead of server-side reporting | LOW | HIGH | Client-side React error boundaries conventionally use `console.error`. Adding a server-side error reporting hook is a feature request, not a bug fix. The parent `dashboard/error.tsx` does not log at all which is acceptable for client components. | Client-side error monitoring service is adopted (e.g., Sentry) |
-| OPS-01 | No rate limiting on `/api/v1/health` and `/api/v1/judge/register` | LOW | HIGH | `/api/v1/health` is behind auth and returns different data for authenticated users. Judge register is behind IP allowlist and worker secret. The risk of abuse is low given existing protections. | Performance profiling shows these endpoints are being abused |
-| N/A | F8 `compiler-client.tsx` hardcoded `console.log` in sample template | N/A | HIGH | By design — sample code template for users. Not application code. | N/A |
+**Problem:** These routes use bare `parseInt` for query parameters instead of the shared `parsePositiveInt` utility created in cycle 2. The chat-logs route has a confirmed NaN bug: `Math.max(1, parseInt("abc", 10))` returns `NaN`.
+
+**Fix:**
+1. In `chat-logs/route.ts:19`: Replace `Math.max(1, parseInt(url.searchParams.get("page") || "1", 10))` with `parsePositiveInt(url.searchParams.get("page"), 1)`.
+2. In `anti-cheat/route.ts:148-149`: Replace the `parseInt` calls with `parsePositiveInt`.
+3. Add import for `parsePositiveInt` from `@/lib/validators/query-params`.
+
+**Verification:**
+- `npx vitest run` (unit tests)
+- `npx tsc --noEmit`
 
 ---
 
-## Progress Ledger
+### CHAT-LOG-01 — Optimize chat-logs session list to use single query with COUNT(*) OVER()
+**Sources:** AGG-5, perf-reviewer F2, security-reviewer F2
+**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Medium
+
+**Files:**
+- `src/app/api/v1/admin/chat-logs/route.ts:56-119`
+
+**Problem:** The session list endpoint runs two separate queries — one for paginated data and one for total count. Same pattern that was fixed for rankings in cycle 2 (RANK-01).
+
+**Fix:**
+1. Add `COUNT(*) OVER() AS total` to the main CTE query.
+2. Remove the separate count query.
+3. Extract `total` from the first row of results (or 0 if empty).
+
+**Verification:**
+- Visual check on admin chat-logs page
+- `npx vitest run` (unit tests)
+
+---
+
+### WS-PHASE1 — Implement workspace-to-public migration Phase 1
+**Sources:** AGG-6, AGG-8, user-injected TODO, architect F1, critic F4, designer F1, code-reviewer F6
+**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Medium
+
+**Files:**
+- `src/app/(workspace)/layout.tsx`
+- `src/app/(workspace)/workspace/page.tsx`
+- `src/app/(workspace)/workspace/discussions/page.tsx`
+- `src/components/layout/workspace-nav.tsx`
+- `src/app/(public)/community/page.tsx` (add "My Discussions" filter)
+- `src/components/discussions/my-discussions-list.tsx`
+- `src/proxy.ts` (redirect routes, update matcher)
+- `messages/en.json`, `messages/ko.json` (i18n keys)
+
+**Problem:** The workspace route group has only 2 pages and duplicates dashboard navigation. The user wants workspace-only pages moved to public with a new top navbar, deprecating the workspace layout.
+
+**Fix (Phase 1 — eliminate workspace route group):**
+1. Move `/workspace/discussions` functionality into `/community` as a "My Discussions" filter tab.
+2. Update `PublicHeader` nav items: add "My Discussions" link when authenticated.
+3. Add redirect routes: `/workspace` -> `/dashboard`, `/workspace/discussions` -> `/community?filter=mine`.
+4. Remove `src/app/(workspace)/layout.tsx`, `src/app/(workspace)/workspace/page.tsx`, `src/app/(workspace)/workspace/discussions/page.tsx`.
+5. Remove `src/components/layout/workspace-nav.tsx`.
+6. Audit and remove `workspaceShell.*` i18n keys from `messages/en.json` and `messages/ko.json`, merging any unique ones into `community` or `publicShell`.
+7. Update `src/proxy.ts` workspace route matcher entries (remove `/workspace/:path*` from matcher since the layout is gone).
+
+**Verification:**
+- `npm run build` (no broken imports)
+- `npx tsc --noEmit`
+- Manual check: `/workspace` redirects to `/dashboard`
+- Manual check: `/workspace/discussions` redirects to `/community?filter=mine`
+- Manual check: `/community` shows "My Discussions" filter when authenticated
+
+---
+
+### TEST-01 — Add tests for admin submissions export, chat-logs, and anti-cheat GET
+**Sources:** AGG-10, test-engineer F1, F2, F3
+**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Medium
+
+**Files:**
+- New: `tests/unit/api/admin-submissions-export.route.test.ts`
+- New: `tests/unit/api/admin-chat-logs.route.test.ts`
+- New: `tests/unit/api/anti-cheat-get.route.test.ts`
+
+**Problem:** Three admin/instructor endpoints have no test coverage. The unbounded CSV export and parseInt NaN bugs would have been caught by basic tests.
+
+**Fix:**
+1. Add tests for admin submissions export: CSV format, row limit enforcement, escapeCsvField behavior, date/status filtering.
+2. Add tests for admin chat-logs: session list pagination, NaN page parameter, transcript access audit event.
+3. Add tests for anti-cheat GET: pagination, eventType filtering, heartbeat gap detection.
+
+**Verification:**
+- `npx vitest run` (all new tests pass)
+
+---
+
+## Deferred / invalidated review register
+
+| Bucket | Source finding IDs | File + line citation | Original severity / confidence | Disposition | Reason | Exit criterion |
+| --- | --- | --- | --- | --- | --- | --- |
+| CRYPTO-01 | AGG-11 | `src/app/api/v1/plugins/chat-widget/chat/route.ts:176-189` | MEDIUM / HIGH | Deferred (reconfirmed from cycle 2) | Chat widget API key encryption is a broader auth/crypto architecture concern requiring coordinated migration. The keys are only accessible to admin users via the plugin config UI, and the DB access itself requires server compromise. | Re-open when a dedicated plugin secrets encryption plan is approved. |
+| EDITOR-CODE-01 | AGG-9 | `src/app/api/v1/plugins/chat-widget/chat/route.ts:39` | LOW / MEDIUM | Deferred | Chat widget editorCode 100KB limit is a cost/UX concern, not a bug. Current behavior is documented and accepted. | Re-open when AI API costs are shown to be problematic. |
+| UX-SKIP-01 | designer F3 | `src/components/layout/public-header.tsx` | LOW / MEDIUM | Deferred | Skip-to-content link is a worthwhile accessibility improvement but lower priority than correctness and security fixes. | Re-open when a dedicated accessibility pass is scheduled. |
+| UX-MOBILE-01 | designer F4 | `src/components/layout/public-header.tsx:200-259` | LOW / MEDIUM | Deferred | Mobile menu outside-click dismiss is a UX improvement but not a bug. | Re-open when a dedicated mobile UX pass is scheduled. |
+| SSE-CLEANUP-TEST | test-engineer F4 | `src/app/api/v1/submissions/[id]/events/route.ts:66-84` | LOW / MEDIUM | Deferred | SSE cleanup timer test is worthwhile but low priority. | Re-open when SSE connection tracking issues are observed. |
+| EXAM-SESSION-COMMENT | debugger F3 | `src/lib/assignments/exam-sessions.ts:87-94` | LOW / MEDIUM | Deferred | The onConflictDoNothing + re-fetch pattern is correct but should have a comment documenting the unique constraint dependency. | Re-open when exam sessions are next modified. |
+| DEF-01 (carried) | — | Production-only failures on `/practice` and `/rankings` | MEDIUM / HIGH | Deferred (carried from cycle 1) | Browser audit confirms live failures, but current-head static review has not yet isolated a repo-side root cause. | Reproduce the failure against current HEAD with production-like data/config. |
+| SSE-EVICT (carried) | AGG-5 (cycle 1) | `src/app/api/v1/submissions/[id]/events/route.ts:41-44` | LOW / MEDIUM | Deferred (carried from cycle 1) | SSE connection eviction edge case only matters under extreme load. | User reports of connection limit violations. |
+| RATE-DUAL (carried) | AGG-6 (cycle 1) | `src/lib/realtime/realtime-coordination.ts` | LOW / MEDIUM | Deferred (carried from cycle 1) | rateLimits table dual-purpose is an architectural concern, not a bug. | Performance reports of table bloat or query plan issues. |
+| CHAT-HOLD (carried) | AGG-8 (cycle 1) | `src/app/api/v1/plugins/chat-widget/chat/route.ts:386-430` | MEDIUM / MEDIUM | Deferred (carried from cycle 1) | Chat widget HTTP connection hold time is an architectural improvement. | User reports of chat timeout or server resource exhaustion. |
+| DEAD-01 (carried) | AGG-12 (cycle 2) | `src/lib/security/rate-limit.ts:183-258` | LOW / HIGH | Deferred (carried from cycle 2) | Unused dead code, safe to remove but not urgent. | Re-open when a rate-limit cleanup pass is scheduled. |
+| ENV-01 (carried) | AGG-10 (cycle 2) | `src/lib/compiler/execute.ts:56-57`, `src/lib/docker/client.ts:6-7` | MEDIUM / HIGH | Deferred (carried from cycle 2) | Empty-string fallbacks for env vars provide implicit fail-fast. | Re-open when a startup validation pass is scheduled. |
+| PERF-SCORING (carried) | perf-reviewer F4 | `src/lib/assignments/contest-scoring.ts:153-154` | LOW / LOW | Deferred | Window function optimization is correct but marginal improvement. | Re-open when contest scoring performance is a reported issue. |
+| PERF-ANTICHEAT (carried) | perf-reviewer F3 | `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:189-201` | LOW / MEDIUM | Deferred | Anti-cheat heartbeat gap detection caching would help under high concurrent load. | Re-open when anti-cheat page performance is a reported issue. |
+| USER-DELETE-RATE (carried) | security-reviewer F5 | `src/app/api/v1/users/[id]/route.ts:461` | LOW / LOW | Deferred | Stale rate-limit entries after user deletion are cleaned by TTL. | Re-open if rate-limit table bloat is observed. |
+
+---
+
+## Revalidated non-actions from prior cycles
+
+### CLOSED-01: Password-complexity escalation requests are invalid under repo policy
+- `AGENTS.md` explicitly forbids adding complexity requirements
+
+### CLOSED-02: JSON-LD script-escaping is already fixed on current HEAD
+- `src/components/seo/json-ld.tsx` uses `safeJsonForScript()`
+
+### CLOSED-03: Shell-command prefix-bypass is already fixed on current HEAD
+- `src/lib/compiler/execute.ts` uses `isValidCommandPrefix()`
+
+### CLOSED-04: WorkspaceNav tracking on Korean text is safe
+- `tracking-[0.18em]` applies only to English uppercase section label
+
+---
+
+## Progress ledger
 
 | Story | Status | Commit |
-|---|---|---|
-| LOG-01 | Done | `66c8e9b2` |
-| DATA-01 | Done | `56fc0d00` |
-| AUTH-01 | Done | `5119f49c` |
-| LOGIC-01 | Done | `56fc0d00` (included in DATA-01 commit) |
-| TEST-01 | Done | `895286b3` |
-| VALID-01 | Done | `53359b03` |
-| VALID-02 | Done | `5119f49c` (included in AUTH-01 commit) |
+| --- | --- | --- |
+| CSV-02 | Pending | — |
+| NAFIX-02 | Pending | — |
+| CHAT-LOG-01 | Pending | — |
+| WS-PHASE1 | Pending | — |
+| TEST-01 | Pending | — |
