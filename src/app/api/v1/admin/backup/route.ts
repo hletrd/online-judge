@@ -84,8 +84,8 @@ export async function POST(request: NextRequest) {
     });
 
     if (includeFiles) {
-      const body = await streamBackupWithFiles(request.signal);
-      return new Response(body, {
+      const backupStream = await streamBackupWithFiles(request.signal);
+      return new Response(backupStream, {
         headers: {
           "Content-Type": "application/zip",
           "Content-Disposition": contentDispositionAttachment(backupName, backupExtension),
