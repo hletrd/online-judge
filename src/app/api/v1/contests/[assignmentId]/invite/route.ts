@@ -92,56 +92,31 @@ export const POST = createApiHandler({
 
     if (!targetUser) return apiError("userNotFound", 404);
 
-    // Atomically upsert contest access token + enrollment inside a transaction
+    // Atomically upsert contest access token + enrollment inside a transaction.
+    // onConflictDoNothing handles the race condition — no need for a preceding SELECT.
     await execTransaction(async (tx) => {
-      // Upsert contest access token
-      const [existingToken] = await tx
-        .select({ id: contestAccessTokens.id })
-        .from(contestAccessTokens)
-        .where(
-          and(
-            eq(contestAccessTokens.assignmentId, assignmentId),
-            eq(contestAccessTokens.userId, targetUser.id)
-          )
-        );
+      await tx.insert(contestAccessTokens)
+        .values({
+          id: nanoid(),
+          assignmentId,
+          userId: targetUser.id,
+          redeemedAt: new Date(),
+          ipAddress: null,
+        })
+        .onConflictDoNothing({
+          target: [contestAccessTokens.assignmentId, contestAccessTokens.userId],
+        });
 
-      if (!existingToken) {
-        await tx.insert(contestAccessTokens)
-          .values({
-            id: nanoid(),
-            assignmentId,
-            userId: targetUser.id,
-            redeemedAt: new Date(),
-            ipAddress: null,
-          })
-          .onConflictDoNothing({
-            target: [contestAccessTokens.assignmentId, contestAccessTokens.userId],
-          });
-      }
-
-      // Upsert enrollment
-      const [existingEnrollment] = await tx
-        .select({ id: enrollments.id })
-        .from(enrollments)
-        .where(
-          and(
-            eq(enrollments.groupId, assignment.groupId),
-            eq(enrollments.userId, targetUser.id)
-          )
-        );
-
-      if (!existingEnrollment) {
-        await tx.insert(enrollments)
-          .values({
-            id: nanoid(),
-            userId: targetUser.id,
-            groupId: assignment.groupId,
-            enrolledAt: new Date(),
-          })
-          .onConflictDoNothing({
-            target: [enrollments.userId, enrollments.groupId],
-          });
-      }
+      await tx.insert(enrollments)
+        .values({
+          id: nanoid(),
+          userId: targetUser.id,
+          groupId: assignment.groupId,
+          enrolledAt: new Date(),
+        })
+        .onConflictDoNothing({
+          target: [enrollments.userId, enrollments.groupId],
+        });
     });
     return apiSuccess({
       userId: targetUser.id,
