@@ -2618,7 +2618,12 @@
       "community": "커뮤니티",
       "rankings": "랭킹",
       "submissions": "제출내역",
-      "dashboard": "대시보드"
+      "dashboard": "대시보드",
+      "problems": "문제 관리",
+      "groups": "그룹 관리",
+      "mySubmissions": "내 제출내역",
+      "profile": "프로필",
+      "admin": "관리자"
     },
     "home": {
       "eyebrow": "온라인 저지 플랫폼",

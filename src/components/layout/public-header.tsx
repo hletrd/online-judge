@@ -4,15 +4,31 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { buildLocalizedHref } from "@/lib/locale-paths";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ChevronDown, LogOut, LayoutDashboard, FileText, Users, ClipboardList, Settings, Shield } from "lucide-react";
 
 type HeaderItem = {
   href: string;
   label: string;
+};
+
+type DropdownItem = {
+  href: string;
+  label: string;
+  icon?: React.ReactNode;
+  adminOnly?: boolean;
+  instructorOnly?: boolean;
 };
 
 type PublicHeaderProps = {
@@ -23,6 +39,7 @@ type PublicHeaderProps = {
     name: string;
     href: string;
     label: string;
+    role?: string;
   } | null;
 };
 
@@ -31,15 +48,43 @@ function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function getDropdownItems(role?: string): DropdownItem[] {
+  const isInstructor = role === "instructor" || role === "admin" || role === "super_admin";
+  const isAdmin = role === "admin" || role === "super_admin";
+
+  const items: DropdownItem[] = [
+    { href: "/dashboard", label: "dashboard", icon: <LayoutDashboard className="size-4" /> },
+  ];
+
+  if (isInstructor) {
+    items.push({ href: "/dashboard/problems", label: "problems", icon: <FileText className="size-4" />, instructorOnly: true });
+    items.push({ href: "/dashboard/groups", label: "groups", icon: <Users className="size-4" />, instructorOnly: true });
+  }
+
+  items.push({ href: "/dashboard/submissions", label: "mySubmissions", icon: <ClipboardList className="size-4" /> });
+  items.push({ href: "/dashboard/profile", label: "profile", icon: <Settings className="size-4" /> });
+
+  if (isAdmin) {
+    items.push({ href: "/dashboard/admin", label: "admin", icon: <Shield className="size-4" />, adminOnly: true });
+  }
+
+  return items;
+}
+
 export function PublicHeader({ siteTitle, items, actions, loggedInUser }: PublicHeaderProps) {
   const pathname = usePathname();
   const locale = useLocale();
   const tCommon = useTranslations("common");
+  const tAuth = useTranslations("auth");
+  const tShell = useTranslations("publicShell");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const menuId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const previousPathnameRef = useRef(pathname);
+
+  const dropdownItems = getDropdownItems(loggedInUser?.role);
 
   // Close menu on route change
   useEffect(() => {
@@ -112,6 +157,11 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
     requestAnimationFrame(() => toggleRef.current?.focus());
   }, []);
 
+  const handleSignOut = useCallback(async () => {
+    setIsSigningOut(true);
+    await signOut({ callbackUrl: "/login" });
+  }, []);
+
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       {/* Screen reader announcement for menu state */}
@@ -152,12 +202,32 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
           <ThemeToggle />
           <LocaleSwitcher />
           {loggedInUser ? (
-            <Link
-              href={buildLocalizedHref(loggedInUser.href, locale)}
-              className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              {loggedInUser.label}
-            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                {loggedInUser.label}
+                <ChevronDown className="size-3.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {dropdownItems.map((item) => (
+                  <DropdownMenuItem key={item.href}>
+                    <Link
+                      href={buildLocalizedHref(item.href, locale)}
+                      className="flex w-full items-center gap-2"
+                    >
+                      {item.icon}
+                      {tShell(`nav.${item.label}`)}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} disabled={isSigningOut}>
+                  <span className="flex items-center gap-2">
+                    <LogOut className="size-4" />
+                    {isSigningOut ? tCommon("signingOut") : tAuth("signOut")}
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             actions.map((action, index) => (
               <Link
@@ -227,17 +297,32 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
                 );
               })}
             </nav>
-            <div className="mt-2 flex flex-col gap-1 border-t pt-2">
-              {loggedInUser ? (
-                <Link
-                  href={buildLocalizedHref(loggedInUser.href, locale)}
-                  onClick={closeMobileMenu}
-                  className="rounded-md bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            {loggedInUser && (
+              <div className="mt-2 flex flex-col gap-0.5 border-t pt-2">
+                {dropdownItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={buildLocalizedHref(item.href, locale)}
+                    onClick={closeMobileMenu}
+                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    {item.icon}
+                    {tShell(`nav.${item.label}`)}
+                  </Link>
+                ))}
+                <button
+                  onClick={() => { closeMobileMenu(); handleSignOut(); }}
+                  disabled={isSigningOut}
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                 >
-                  {loggedInUser.label}
-                </Link>
-              ) : (
-                actions.map((action, index) => (
+                  <LogOut className="size-4" />
+                  {isSigningOut ? tCommon("signingOut") : tAuth("signOut")}
+                </button>
+              </div>
+            )}
+            {!loggedInUser && (
+              <div className="mt-2 flex flex-col gap-1 border-t pt-2">
+                {actions.map((action, index) => (
                   <Link
                     key={action.href}
                     href={buildLocalizedHref(action.href, locale)}
@@ -251,9 +336,9 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
                   >
                     {action.label}
                   </Link>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

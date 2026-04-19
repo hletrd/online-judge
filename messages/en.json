@@ -2618,7 +2618,12 @@
       "community": "Community",
       "rankings": "Rankings",
       "submissions": "Submissions",
-      "dashboard": "Dashboard"
+      "dashboard": "Dashboard",
+      "problems": "Problems",
+      "groups": "Groups",
+      "mySubmissions": "My Submissions",
+      "profile": "Profile",
+      "admin": "Admin"
     },
     "home": {
       "eyebrow": "Online judge platform",
