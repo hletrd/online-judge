@@ -221,11 +221,9 @@ export async function proxy(request: NextRequest) {
   const isJudgeWorkerRoute = pathname.startsWith("/api/v1/judge/");
   const hasPathPrefix = (prefix: string) =>
     pathname === prefix || pathname.startsWith(`${prefix}/`);
-  const isWorkspaceRoute = hasPathPrefix("/workspace");
   const isControlRoute = hasPathPrefix("/control");
   const isDashboardCompatibilityRoute = hasPathPrefix("/dashboard");
   const isProtectedRoute =
-    isWorkspaceRoute ||
     isControlRoute ||
     isDashboardCompatibilityRoute ||
     (isApiRoute && !isJudgeWorkerRoute && !isPublicLanguagesRoute && !isPublicPlaygroundRunRoute);
@@ -308,7 +306,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
-    "/workspace/:path*",
     "/control/:path*",
     "/dashboard/:path*",
     "/practice/:path*",

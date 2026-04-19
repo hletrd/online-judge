@@ -180,7 +180,6 @@ describe("proxy", () => {
       expect(config.matcher).toEqual(
         expect.arrayContaining([
           "/",
-          "/workspace/:path*",
           "/control/:path*",
           "/dashboard/:path*",
           "/practice/:path*",
@@ -402,30 +401,12 @@ describe("proxy", () => {
     });
   });
 
-  describe("protected workspace and control routes", () => {
-    it("redirects unauthenticated users from /workspace to /login with callbackUrl", async () => {
-      const response = await proxy(makeRequest("/workspace"));
-
-      const redirectUrl = isRedirectTo(response, "/login");
-      expect(redirectUrl.searchParams.get("callbackUrl")).toBe("/workspace");
-    });
-
+  describe("protected control routes", () => {
     it("redirects unauthenticated users from /control to /login with callbackUrl", async () => {
       const response = await proxy(makeRequest("/control"));
 
       const redirectUrl = isRedirectTo(response, "/login");
       expect(redirectUrl.searchParams.get("callbackUrl")).toBe("/control");
-    });
-
-    it("allows authenticated active users to access /workspace", async () => {
-      getTokenMock.mockResolvedValue(fakeToken());
-      getTokenUserIdMock.mockReturnValue("user-1");
-      getTokenAuthenticatedAtSecondsMock.mockReturnValue(Math.trunc(Date.now() / 1000));
-      getActiveAuthUserByIdMock.mockResolvedValue(activeUser());
-
-      const response = await proxy(makeRequest("/workspace"));
-
-      expect(response.status).toBe(200);
     });
   });
 
