@@ -29,7 +29,7 @@ export const GET = createApiHandler({
     if (!query) return apiSuccess([]);
 
     // Escape LIKE wildcards in user input
-    const likePattern = `%${escapeLikePattern(query.toLowerCase())}%`;
+    const likePattern = `%${escapeLikePattern(query)}%`;
     const results = await db
       .select({
         id: users.id,
@@ -42,8 +42,8 @@ export const GET = createApiHandler({
         and(
           eq(users.isActive, true),
           or(
-            sql`lower(${users.username}) like ${likePattern} escape '\\'`,
-            sql`lower(${users.name}) like ${likePattern} escape '\\'`
+            sql`${users.username} ILIKE ${likePattern} ESCAPE '\\'`,
+            sql`${users.name} ILIKE ${likePattern} ESCAPE '\\'`
           )
         )
       )
