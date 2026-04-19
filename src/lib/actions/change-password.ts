@@ -8,7 +8,7 @@ import { buildServerActionAuditContext, recordAuditEvent } from "@/lib/audit/eve
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { withUpdatedAt } from "@/lib/db/helpers";
-import { clearRateLimit, isRateLimited, recordRateLimitFailure } from "@/lib/security/rate-limit";
+import { clearRateLimit, consumeRateLimitAttemptMulti } from "@/lib/security/rate-limit";
 import { getPasswordValidationError } from "@/lib/security/password";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { logger } from "@/lib/logger";
@@ -39,7 +39,11 @@ export async function changePassword(
 
   const rateLimitKey = getChangePasswordRateLimitKey(user.id);
 
-  if (await isRateLimited(rateLimitKey)) {
+  // Atomic check+increment: consumes one rate-limit attempt inside the same
+  // transaction that checks the threshold. This closes the TOCTOU race that
+  // existed when isRateLimited() and recordRateLimitFailure() were called
+  // as separate transactions.
+  if (await consumeRateLimitAttemptMulti(rateLimitKey)) {
     return { success: false, error: "changePasswordRateLimited" };
   }
 
@@ -49,7 +53,6 @@ export async function changePassword(
   // be replaced.
   const { valid: isValid } = await verifyPassword(currentPassword, user.passwordHash);
   if (!isValid) {
-    await recordRateLimitFailure(rateLimitKey);
     return { success: false, error: "currentPasswordIncorrect" };
   }
 
