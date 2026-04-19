@@ -79,7 +79,7 @@ export function Breadcrumb({ className, overrides }: BreadcrumbProps) {
   }
 
   return (
-    <nav aria-label="Breadcrumb" className={cn("mb-4", className)}>
+    <nav aria-label="Breadcrumb" className={cn(className)}>
       <ol
         itemScope
         itemType="https://schema.org/BreadcrumbList"
