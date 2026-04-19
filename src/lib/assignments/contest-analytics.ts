@@ -213,6 +213,12 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
   }
 
   // 4. Student score progression (only when requested)
+  // NOTE: The progression chart uses raw scores (score / 100 * points) without
+  // applying late penalties. For IOI contests with late penalties, a student's
+  // progression total may exceed their leaderboard total. This is intentional —
+  // the progression chart shows the raw score trajectory, while the leaderboard
+  // applies penalty adjustments. A future enhancement could apply late penalties
+  // here for full consistency with the leaderboard.
   let studentProgressions: StudentProgression[] | undefined;
   if (includeTimeline) {
     const submissionRows = await rawQueryAll<SubmissionTimeRow>(
