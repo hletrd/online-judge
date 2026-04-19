@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, desc, eq, like, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { files, users } from "@/lib/db/schema";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
+import { escapeLikePattern } from "@/lib/db/like";
 import { FileManagementClient } from "./file-management-client";
 
 const PAGE_SIZE = 24;
@@ -85,7 +86,7 @@ export default async function AdminFilesPage({
     conditions.push(eq(files.category, categoryFilter));
   }
   if (searchQuery) {
-    conditions.push(like(files.originalName, `%${searchQuery}%`));
+    conditions.push(sql`${files.originalName} LIKE ${`%${escapeLikePattern(searchQuery)}%`} ESCAPE '\\'`);
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
