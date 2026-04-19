@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => {
     isValidRole: vi.fn<() => Promise<boolean>>(),
     canManageRole: vi.fn<() => boolean>(),
     canManageRoleAsync: vi.fn<() => Promise<boolean>>(),
+    isSuperAdminRole: vi.fn<(role: string) => Promise<boolean>>(),
     eq: vi.fn((_field: unknown, value: unknown) => ({ _eq: value })),
     sql: vi.fn((...args: unknown[]) => ({ _sql: args })),
   };
@@ -53,6 +54,7 @@ vi.mock("@/lib/security/constants", () => ({
 
 vi.mock("@/lib/capabilities/cache", () => ({
   isValidRole: mocks.isValidRole,
+  isSuperAdminRole: mocks.isSuperAdminRole,
 }));
 
 vi.mock("@/lib/security/password", () => ({
@@ -313,6 +315,7 @@ describe("validateRoleChangeAsync", () => {
     const { validateRoleChangeAsync } = await import("@/lib/users/core");
     mocks.isUserRole.mockReturnValue(true);
     mocks.canManageRoleAsync.mockResolvedValue(true);
+    mocks.isSuperAdminRole.mockImplementation(async (role: string) => role === "super_admin");
 
     const result = await validateRoleChangeAsync("super_admin", "admin", "super_admin");
     expect(result).toBe("cannotChangeSuperAdminRole");
