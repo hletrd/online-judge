@@ -105,9 +105,9 @@ describe("GET /api/v1/admin/chat-logs", () => {
         lastMessageAt: "2026-04-12T00:05:00Z",
         userName: "Candidate",
         username: "candidate",
+        total: 1,
       },
     ]);
-    rawQueryOneMock.mockResolvedValue({ total: 1 });
 
     const { GET } = await import("@/app/api/v1/admin/chat-logs/route");
     const res = await GET(new NextRequest("http://localhost/api/v1/admin/chat-logs?page=1"));
@@ -115,8 +115,8 @@ describe("GET /api/v1/admin/chat-logs", () => {
 
     expect(res.status).toBe(200);
     expect(body.sessions).toHaveLength(1);
+    expect(body.total).toBe(1);
     expect(rawQueryAllMock).toHaveBeenCalledOnce();
-    expect(rawQueryOneMock).toHaveBeenCalledOnce();
     expect(recordAuditEventMock).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "chat_log.list_viewed",

@@ -2097,7 +2097,6 @@
       "flaggedPairs": "표절 의심 쌍",
       "student1": "사용자 1",
       "student2": "사용자 2",
-      "language": "언어",
       "similarityPercent": "유사도",
       "flagged": "검토",
       "eventCount": "{count}건의 이벤트",
@@ -2349,26 +2348,26 @@
         "notSolved": "미풀이",
         "noAttempts": "시도 없음"
       },
-    "submissionHistory": {
-      "title": "제출 내역",
-      "noSubmissions": "이 문제에 대한 제출이 없습니다."
-    },
-    "problemSummary": {
-      "bestScore": "최고 점수",
-      "attempts": "{count}회 시도",
-      "snapshots": "스냅샷 {count}개",
-      "timeToFirstSubmission": "첫 제출까지",
-      "timeToSolve": "풀이까지",
-      "wrongBeforeAc": "AC 전 오답 {count}회",
-      "relativeTime": "+{minutes}분 {seconds}초"
-    },
-    "antiCheatSummary": {
-      "title": "무결성 신호 요약",
-      "totalEvents": "기록된 신호 {count}건"
-    },
-    "antiCheatTimeline": {
-      "title": "부정행위 신호 타임라인",
-      "noEvents": "이 참가자에 대한 부정행위 신호가 없습니다."
+      "submissionHistory": {
+        "title": "제출 내역",
+        "noSubmissions": "이 문제에 대한 제출이 없습니다."
+      },
+      "problemSummary": {
+        "bestScore": "최고 점수",
+        "attempts": "{count}회 시도",
+        "snapshots": "스냅샷 {count}개",
+        "timeToFirstSubmission": "첫 제출까지",
+        "timeToSolve": "풀이까지",
+        "wrongBeforeAc": "AC 전 오답 {count}회",
+        "relativeTime": "+{minutes}분 {seconds}초"
+      },
+      "antiCheatSummary": {
+        "title": "무결성 신호 요약",
+        "totalEvents": "기록된 신호 {count}건"
+      },
+      "antiCheatTimeline": {
+        "title": "부정행위 신호 타임라인",
+        "noEvents": "이 참가자에 대한 부정행위 신호가 없습니다."
       }
     }
   },
@@ -2619,13 +2618,13 @@
       "community": "커뮤니티",
       "rankings": "랭킹",
       "submissions": "제출내역",
-      "workspace": "워크스페이스"
+      "dashboard": "대시보드"
     },
     "home": {
       "eyebrow": "온라인 저지 플랫폼",
       "title": "코드를 제출하고 바로 결과를 확인하세요.",
       "description": "JudgeKit은 프로그래밍 연습, 대회, 과제를 한곳에서 다룰 수 있는 온라인 저지입니다. 문제를 풀고 제출 결과를 확인하면서 실력을 쌓아 보세요.",
-      "primaryCta": "워크스페이스 열기",
+      "primaryCta": "대시보드 열기",
       "secondaryCta": "로그인",
       "workersTitle": "채점 워커 현황",
       "workersDescription": "전용 채점 워커가 플랫폼과 동일한 샌드박스 규칙으로 제출과 플레이그라운드 실행을 처리합니다.",
@@ -2931,7 +2930,16 @@
       "sortPopular": "인기순",
       "upvote": "추천",
       "downvote": "비추천",
-      "scopeSolution": "풀이 공유"
+      "scopeSolution": "풀이 공유",
+      "myDiscussions": {
+        "title": "내 토론",
+        "description": "내가 글을 쓰거나 답글을 남긴 토론을 다시 볼 수 있습니다.",
+        "empty": "아직 참여한 토론이 없습니다.",
+        "openThread": "스레드 열기",
+        "authored": "내가 시작함",
+        "participated": "내가 답글 작성",
+        "tabLabel": "내 토론"
+      }
     }
   },
   "userProfile": {
@@ -2947,42 +2955,6 @@
     "categoryBreakdown": "카테고리 분포",
     "languageBreakdown": "언어 분포",
     "noStats": "아직 통계가 없습니다."
-  },
-  "workspaceShell": {
-    "sectionLabel": "워크스페이스",
-    "title": "워크스페이스 홈",
-    "description": "워크스페이스 셸이 인증 사용자용 진입점입니다. 기존 기능 페이지도 전환 기간 동안 그대로 사용할 수 있습니다.",
-    "openLink": "열기",
-    "nav": {
-      "home": "워크스페이스 홈",
-      "homeDescription": "새 워크스페이스 진입점입니다.",
-      "problemsDescription": "전환 기간에는 기존 문제 풀이 화면으로 이어집니다.",
-      "contestsDescription": "새 워크스페이스 셸에서 기존 대회 화면으로 이어집니다.",
-      "submissionsDescription": "제출 기록과 결과를 확인합니다.",
-      "profileDescription": "프로필과 환경설정.",
-      "discussions": "내 토론",
-      "discussionsDescription": "내가 쓴 글이나 참여한 토론을 다시 봅니다."
-    },
-    "cards": {
-      "problems": "지금 쓰는 문제 풀이 화면으로 이동합니다.",
-      "contests": "기존 대회 화면으로 이동합니다.",
-      "submissions": "제출 기록과 상태를 확인합니다.",
-      "profile": "계정과 에디터 환경설정.",
-      "discussions": "내가 시작했거나 참여한 토론 스레드를 확인합니다."
-    },
-    "controlCard": {
-      "title": "컨트롤 센터",
-      "description": "교수자나 상위 권한은 여기서 제어 셸로 이동할 수 있습니다. 기존 운영 화면도 그대로 쓸 수 있습니다.",
-      "link": "컨트롤 센터 열기"
-    },
-    "discussions": {
-      "title": "내 토론",
-      "description": "내가 글을 쓰거나 답글을 남긴 토론을 다시 볼 수 있습니다.",
-      "empty": "아직 참여한 토론이 없습니다.",
-      "openThread": "스레드 열기",
-      "authored": "내가 시작함",
-      "participated": "내가 답글 작성"
-    }
   },
   "controlShell": {
     "sectionLabel": "제어",

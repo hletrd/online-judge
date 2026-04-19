@@ -31,11 +31,10 @@ export default async function PublicLayout({ children }: { children: React.React
           { href: "/community", label: tShell("nav.community") },
         ]}
         actions={[
-          { href: "/workspace", label: tShell("nav.workspace") },
           { href: "/login", label: tAuth("signIn") },
           ...(settings.publicSignupEnabled ? [{ href: "/signup", label: tAuth("signUp") }] : []),
         ]}
-        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.workspace") } : null}
+        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.dashboard") } : null}
       />
       <main id="main-content" className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">{children}</main>
       <PublicFooter siteTitle={settings.siteTitle} footerContent={settings.footerContent} />

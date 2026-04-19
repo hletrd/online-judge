@@ -2097,7 +2097,6 @@
       "flaggedPairs": "Flagged Pairs",
       "student1": "User 1",
       "student2": "User 2",
-      "language": "Language",
       "similarityPercent": "Similarity",
       "flagged": "Review",
       "eventCount": "{count} events",
@@ -2349,26 +2348,26 @@
         "notSolved": "Not Solved",
         "noAttempts": "No Attempts"
       },
-    "submissionHistory": {
-      "title": "Submission History",
-      "noSubmissions": "No submissions for this problem."
-    },
-    "problemSummary": {
-      "bestScore": "Best Score",
-      "attempts": "{count} attempts",
-      "snapshots": "{count} snapshots",
-      "timeToFirstSubmission": "First submission",
-      "timeToSolve": "Time to solve",
-      "wrongBeforeAc": "{count} wrong before AC",
-      "relativeTime": "+{minutes}m {seconds}s"
-    },
-    "antiCheatSummary": {
-      "title": "Integrity Signal Summary",
-      "totalEvents": "{count} recorded signals"
-    },
-    "antiCheatTimeline": {
-      "title": "Anti-Cheat Signals Timeline",
-      "noEvents": "No anti-cheat signals for this participant."
+      "submissionHistory": {
+        "title": "Submission History",
+        "noSubmissions": "No submissions for this problem."
+      },
+      "problemSummary": {
+        "bestScore": "Best Score",
+        "attempts": "{count} attempts",
+        "snapshots": "{count} snapshots",
+        "timeToFirstSubmission": "First submission",
+        "timeToSolve": "Time to solve",
+        "wrongBeforeAc": "{count} wrong before AC",
+        "relativeTime": "+{minutes}m {seconds}s"
+      },
+      "antiCheatSummary": {
+        "title": "Integrity Signal Summary",
+        "totalEvents": "{count} recorded signals"
+      },
+      "antiCheatTimeline": {
+        "title": "Anti-Cheat Signals Timeline",
+        "noEvents": "No anti-cheat signals for this participant."
       }
     }
   },
@@ -2619,13 +2618,13 @@
       "community": "Community",
       "rankings": "Rankings",
       "submissions": "Submissions",
-      "workspace": "Workspace"
+      "dashboard": "Dashboard"
     },
     "home": {
       "eyebrow": "Online judge platform",
       "title": "Write code. Submit. Get judged.",
       "description": "Solve problems, compete in contests, and track your progress.",
-      "primaryCta": "Open workspace",
+      "primaryCta": "Open dashboard",
       "secondaryCta": "Sign in",
       "workersTitle": "Judge worker fleet",
       "workersDescription": "Dedicated judge workers execute submissions and playground runs under the same sandbox contract used by the platform.",
@@ -2931,7 +2930,16 @@
       "sortPopular": "Popular",
       "upvote": "Upvote",
       "downvote": "Downvote",
-      "scopeSolution": "Solution sharing"
+      "scopeSolution": "Solution sharing",
+      "myDiscussions": {
+        "title": "My discussions",
+        "description": "Threads you started or replied to appear here so you can jump back into ongoing conversations.",
+        "empty": "You have not participated in any discussions yet.",
+        "openThread": "Open thread",
+        "authored": "Started by you",
+        "participated": "You replied here",
+        "tabLabel": "My discussions"
+      }
     }
   },
   "userProfile": {
@@ -2947,42 +2955,6 @@
     "categoryBreakdown": "Category Breakdown",
     "languageBreakdown": "Language Breakdown",
     "noStats": "No stats yet."
-  },
-  "workspaceShell": {
-    "sectionLabel": "Workspace",
-    "title": "Workspace home",
-    "description": "The workspace shell is the authenticated entry point. Existing feature pages remain available during migration.",
-    "openLink": "Open",
-    "nav": {
-      "home": "Workspace home",
-      "homeDescription": "Use the new workspace shell as your authenticated starting point.",
-      "problemsDescription": "Continue into the existing problem workflows during the migration.",
-      "contestsDescription": "Open your current contest flows from the new workspace shell.",
-      "submissionsDescription": "Review your current submission history and results.",
-      "profileDescription": "Manage your profile and preferences.",
-      "discussions": "My discussions",
-      "discussionsDescription": "Review your own threads and recent discussion activity."
-    },
-    "cards": {
-      "problems": "Jump to the current problem workflows.",
-      "contests": "Continue into the current contest experience.",
-      "submissions": "Open your submission history and statuses.",
-      "profile": "Manage your account and editor preferences.",
-      "discussions": "Open your authored and participated discussion threads."
-    },
-    "controlCard": {
-      "title": "Control center",
-      "description": "Staff and elevated roles can enter the new control shell from here while legacy routes remain available.",
-      "link": "Open control center"
-    },
-    "discussions": {
-      "title": "My discussions",
-      "description": "Threads you started or replied to appear here so you can jump back into ongoing conversations.",
-      "empty": "You have not participated in any discussions yet.",
-      "openThread": "Open thread",
-      "authored": "Started by you",
-      "participated": "You replied here"
-    }
   },
   "controlShell": {
     "sectionLabel": "Control",

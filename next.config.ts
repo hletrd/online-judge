@@ -13,6 +13,21 @@ const nextConfig: NextConfig = {
   experimental: {
     proxyClientMaxBodySize: "100mb",
   },
+  async redirects() {
+    return [
+      // Workspace-to-public migration: redirect legacy workspace routes
+      {
+        source: "/workspace",
+        destination: "/dashboard",
+        permanent: false,
+      },
+      {
+        source: "/workspace/discussions",
+        destination: "/community?filter=mine",
+        permanent: false,
+      },
+    ];
+  },
   webpack: disableMinify
     ? (config) => {
         config.optimization.minimize = false;

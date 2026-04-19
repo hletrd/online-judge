@@ -5,7 +5,8 @@ import { auth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { DiscussionThreadList } from "@/components/discussions/discussion-thread-list";
 import { DiscussionVoteButtons } from "@/components/discussions/discussion-vote-buttons";
-import { listGeneralDiscussionThreads } from "@/lib/discussions/data";
+import { MyDiscussionsList } from "@/components/discussions/my-discussions-list";
+import { listGeneralDiscussionThreads, listUserDiscussionThreads } from "@/lib/discussions/data";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata, summarizeTextForMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
@@ -39,18 +40,53 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function CommunityPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ sort?: string }>;
+  searchParams?: Promise<{ sort?: string; filter?: string }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const sort = resolvedSearchParams?.sort === "popular" ? "popular" : "newest";
-  const [t, session, locale] = await Promise.all([
+  const filter = resolvedSearchParams?.filter === "mine" ? "mine" : "all";
+  const [t, tCommon, session, locale] = await Promise.all([
     getTranslations("publicShell"),
+    getTranslations("common"),
     auth(),
     getLocale(),
   ]);
-  const threads = await listGeneralDiscussionThreads(sort, session?.user?.id ?? null);
   const communityHref = buildLocalePath("/community", locale);
   const popularHref = `${communityHref}?sort=popular`;
+  const myDiscussionsHref = `${communityHref}?filter=mine`;
+
+  // "My Discussions" tab — only shown when authenticated
+  if (filter === "mine" && session?.user) {
+    const myThreads = await listUserDiscussionThreads(session.user.id);
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap gap-2">
+          <Link href={communityHref}>
+            <Button variant="outline" size="sm">{t("community.sortNewest")}</Button>
+          </Link>
+          <Link href={myDiscussionsHref}>
+            <Button variant="default" size="sm">{t("community.myDiscussions.tabLabel")}</Button>
+          </Link>
+        </div>
+        <MyDiscussionsList
+          title={t("community.myDiscussions.title")}
+          description={t("community.myDiscussions.description")}
+          emptyLabel={t("community.myDiscussions.empty")}
+          openLabel={t("community.myDiscussions.openThread")}
+          items={myThreads.map((thread) => ({
+            id: thread.id,
+            title: thread.title,
+            authorName: thread.author?.name ?? tCommon("unknown"),
+            replyCountLabel: t("community.replyCount", { count: thread.posts.length }),
+            authoredBadge: thread.authoredByViewer ? t("community.myDiscussions.authored") : null,
+            participatedBadge: thread.participated ? t("community.myDiscussions.participated") : null,
+          }))}
+        />
+      </div>
+    );
+  }
+
+  const threads = await listGeneralDiscussionThreads(sort, session?.user?.id ?? null);
   const communityJsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
@@ -85,6 +121,11 @@ export default async function CommunityPage({
               {t("community.sortPopular")}
             </Button>
           </Link>
+          {session?.user ? (
+            <Link href={myDiscussionsHref}>
+              <Button variant="outline" size="sm">{t("community.myDiscussions.tabLabel")}</Button>
+            </Link>
+          ) : null}
         </div>
         {session?.user ? (
           <div className="flex justify-end">
