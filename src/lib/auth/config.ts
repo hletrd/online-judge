@@ -61,6 +61,16 @@ function createSuccessfulLoginResponse(
     className: user.className,
     role: user.role,
     mustChangePassword: user.mustChangePassword ?? false,
+    preferredLanguage: user.preferredLanguage ?? null,
+    preferredTheme: user.preferredTheme ?? null,
+    shareAcceptedSolutions: user.shareAcceptedSolutions ?? true,
+    acceptedSolutionsAnonymous: user.acceptedSolutionsAnonymous ?? false,
+    editorTheme: user.editorTheme ?? null,
+    editorFontSize: user.editorFontSize ?? null,
+    editorFontFamily: user.editorFontFamily ?? null,
+    lectureMode: user.lectureMode ?? null,
+    lectureFontScale: user.lectureFontScale ?? null,
+    lectureColorScheme: user.lectureColorScheme ?? null,
     loginEventContext,
   };
 }
