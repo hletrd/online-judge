@@ -7,6 +7,7 @@ import { createApiHandler } from "@/lib/api/handler";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { rawQueryAll, rawQueryOne } from "@/lib/db/queries";
+import { parsePositiveInt } from "@/lib/validators/query-params";
 
 export const GET = createApiHandler({
   handler: async (req: NextRequest, { user }) => {
@@ -16,7 +17,7 @@ export const GET = createApiHandler({
     const url = new URL(req.url);
     const userId = url.searchParams.get("userId");
     const sessionId = url.searchParams.get("sessionId");
-    const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
+    const page = parsePositiveInt(url.searchParams.get("page"), 1);
     const limit = 50;
     const offset = (page - 1) * limit;
 

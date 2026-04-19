@@ -33,17 +33,7 @@ function normalizeGroupFilter(value?: string | null) {
 
 import { escapeLikePattern } from "@/lib/db/like";
 import { contentDispositionAttachment } from "@/lib/http/content-disposition";
-
-function escapeCsvField(value: string | number | null | undefined) {
-  let str = value == null ? "" : String(value);
-  if (/^[=+\-@\t\r]/.test(str)) {
-    str = "\t" + str;
-  }
-  if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
-    return '"' + str.replace(/"/g, '""') + '"';
-  }
-  return str;
-}
+import { escapeCsvField } from "@/lib/csv/escape-field";
 
 export const GET = createApiHandler({
   auth: {
@@ -92,6 +82,10 @@ export const GET = createApiHandler({
       searchWhereClause
     );
 
+    // Hard cap to prevent OOM on large deployments — matches the CSV-01 limit
+    // applied to audit-logs and login-logs in cycle 2.
+    const MAX_EXPORT_ROWS = 10_000;
+
     const rows = await db
       .select({
         id: submissions.id,
@@ -108,7 +102,8 @@ export const GET = createApiHandler({
       .leftJoin(groups, eq(assignments.groupId, groups.id))
       .leftJoin(users, eq(submissions.userId, users.id))
       .leftJoin(problems, eq(submissions.problemId, problems.id))
-      .where(whereClause);
+      .where(whereClause)
+      .limit(MAX_EXPORT_ROWS);
 
     const BOM = "\uFEFF";
     const header = [
