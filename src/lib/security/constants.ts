@@ -1,6 +1,6 @@
 import type { SubmissionStatus, UserRole } from "@/types";
 import { DEFAULT_ROLE_LEVELS } from "@/lib/capabilities/defaults";
-import { getRoleLevel, isSuperAdminRole, SUPER_ADMIN_LEVEL } from "@/lib/capabilities/cache";
+import { getRoleLevel, isSuperAdminRole } from "@/lib/capabilities/cache";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
 
 export function getMinPasswordLength() {
@@ -64,20 +64,6 @@ export const SUBMISSION_STATUSES: readonly SubmissionStatus[] = [
  */
 export function isUserRole(value: string): value is UserRole {
   return USER_ROLES.includes(value as UserRole);
-}
-
-/**
- * Check if actor can manage (assign/change) the target role.
- * Works with both built-in and custom roles via level comparison.
- */
-export function canManageRole(actorRole: string, requestedRole: string): boolean {
-  const actorLevel = getBuiltinRoleLevel(actorRole);
-  const requestedLevel = getBuiltinRoleLevel(requestedRole);
-
-  // Roles at super_admin level can only be assigned by super_admin
-  if (requestedLevel >= SUPER_ADMIN_LEVEL) return actorLevel >= SUPER_ADMIN_LEVEL;
-  // Actor must have strictly higher level than the target role
-  return actorLevel > requestedLevel;
 }
 
 /**

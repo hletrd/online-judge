@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   assertUserRole,
-  canManageRole,
   canManageRoleAsync,
   getBuiltinRoleLevel,
   getMinPasswordLength,
@@ -89,40 +88,6 @@ describe("security constants", () => {
       expect(isSubmissionStatus("invalid")).toBe(false);
       expect(isSubmissionStatus("")).toBe(false);
       expect(isSubmissionStatus("custom_status")).toBe(false);
-    });
-  });
-
-  describe("canManageRole", () => {
-    it("allows higher-level roles to manage lower-level roles", () => {
-      expect(canManageRole("admin", "instructor")).toBe(true);
-      expect(canManageRole("instructor", "student")).toBe(true);
-      expect(canManageRole("super_admin", "admin")).toBe(true);
-    });
-
-    it("rejects lower-level roles managing higher-level roles", () => {
-      expect(canManageRole("student", "instructor")).toBe(false);
-      expect(canManageRole("instructor", "admin")).toBe(false);
-      expect(canManageRole("admin", "super_admin")).toBe(false);
-    });
-
-    it("does not allow roles to manage their own level", () => {
-      expect(canManageRole("admin", "admin")).toBe(false);
-      expect(canManageRole("student", "student")).toBe(false);
-    });
-
-    it("only allows super_admin to manage super_admin role", () => {
-      expect(canManageRole("super_admin", "super_admin")).toBe(true);
-      expect(canManageRole("admin", "super_admin")).toBe(false);
-      expect(canManageRole("instructor", "super_admin")).toBe(false);
-    });
-
-    it("handles unknown custom roles correctly", () => {
-      // Unknown role (-1) managing student (0): -1 > 0 is false
-      expect(canManageRole("unknown_custom_role", "student")).toBe(false);
-      // Admin (2) managing unknown role (-1): 2 > -1 is true
-      expect(canManageRole("admin", "unknown_custom_role")).toBe(true);
-      // Unknown role (-1) managing admin (2): -1 > 2 is false
-      expect(canManageRole("unknown_custom_role", "admin")).toBe(false);
     });
   });
 
