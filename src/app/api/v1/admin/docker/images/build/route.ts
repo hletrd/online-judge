@@ -22,7 +22,7 @@ export const POST = createApiHandler({
   handler: async (req: NextRequest, { body, user }) => {
     // Look up the language config to find the docker image name
     const [langConfig] = await db
-      .select()
+      .select({ dockerImage: languageConfigs.dockerImage })
       .from(languageConfigs)
       .where(eq(languageConfigs.language, body.language))
       .limit(1);
