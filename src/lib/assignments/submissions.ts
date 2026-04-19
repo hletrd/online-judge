@@ -14,7 +14,6 @@ import {
 } from "@/lib/db/schema";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { SubmissionStatus } from "@/types";
-import { isAdmin } from "@/lib/api/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { getAssignedTeachingGroupIds, hasGroupInstructorRole } from "@/lib/assignments/management";
@@ -202,7 +201,10 @@ export async function validateAssignmentSubmission(
     };
   }
 
-  if (!isAdmin(role)) {
+  const caps = await resolveCapabilities(role);
+  const isAdminLevel = caps.has("system.settings");
+
+  if (!isAdminLevel) {
     const now = Date.now();
     const startsAt = assignment.startsAt?.valueOf() ?? null;
     const effectiveCloseAt = assignment.lateDeadline?.valueOf() ?? assignment.deadline?.valueOf() ?? null;
@@ -224,7 +226,7 @@ export async function validateAssignmentSubmission(
     }
   }
 
-  if (!isAdmin(role)) {
+  if (!isAdminLevel) {
     const [enrollment, examSession] = await Promise.all([
       db.query.enrollments.findFirst({
         where: and(eq(enrollments.groupId, assignment.groupId), eq(enrollments.userId, userId)),
