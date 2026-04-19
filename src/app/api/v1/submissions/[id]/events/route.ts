@@ -80,6 +80,7 @@ declare global {
 
 if (globalThis.__sseCleanupTimer) clearInterval(globalThis.__sseCleanupTimer);
 globalThis.__sseCleanupTimer = setInterval(() => {
+  if (connectionInfoMap.size === 0) return;
   const now = Date.now();
   const staleThreshold = Math.min(getConfiguredSettings().sseTimeoutMs + 30_000, 2 * 60 * 60 * 1000);
   for (const [connId, info] of connectionInfoMap) {
@@ -351,13 +352,13 @@ export async function GET(
                   const sanitized = fullSubmission
                     ? await sanitizeSubmissionForViewer(fullSubmission, user.id, caps)
                     : null;
+                  if (closed) return;
                   controller.enqueue(
                     encoder.encode(`event: result\ndata: ${JSON.stringify(sanitized)}\n\n`)
                   );
                 } catch (err) {
                   if (!closed) {
                     logger.error({ err }, "SSE final fetch error for submission %s", id);
-                    controller.enqueue(encoder.encode(`event: error\ndata: {"error":"fetch_failed"}\n\n`));
                   }
                 } finally {
                   close();

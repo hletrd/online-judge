@@ -86,6 +86,9 @@ function mapUserToAuthFields(user: AuthUserInput) {
     mustChangePassword: user.mustChangePassword ?? false,
     preferredLanguage: user.preferredLanguage ?? null,
     preferredTheme: user.preferredTheme ?? null,
+    // shareAcceptedSolutions defaults to true (opt-out) for the educational
+    // use case: students are expected to share solutions for collaborative
+    // learning unless they explicitly opt out.
     shareAcceptedSolutions: user.shareAcceptedSolutions ?? true,
     acceptedSolutionsAnonymous: user.acceptedSolutionsAnonymous ?? false,
     editorTheme: user.editorTheme ?? null,
