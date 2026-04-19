@@ -1,55 +1,171 @@
-# Cycle 2 Review Remediation Plan (current loop pass)
+# Cycle 2 Review Remediation Plan (review-plan-fix loop)
 
 **Date:** 2026-04-19  
-**Source:** `.context/reviews/_aggregate.md`, per-agent reviews under `.context/reviews/`  
-**Status:** PARTIALLY COMPLETE
+**Source:** `.context/reviews/cycle-2-aggregate.md`, per-agent reviews under `.context/reviews/cycle-2-*.md`  
+**Status:** IN PROGRESS
 
 ## Planning notes
-- This pass re-read repo rules first: `CLAUDE.md`, `AGENTS.md`, `.context/development/*.md`, and `docs/deployment.md`.
-- The prior `plans/open/2026-04-19-cycle-2-review-remediation.md` was already complete and has been archived to `plans/archive/2026-04-19-cycle-2-review-remediation-initial.md`.
-- Review findings are mapped below to either implementation stories or explicit deferred / invalidated items. No review finding is intentionally dropped.
+- This pass re-read repo rules first: `CLAUDE.md`, `AGENTS.md`, `.context/development/*.md`.
+- The prior `plans/open/2026-04-19-cycle-2-review-remediation.md` was partially complete (AUTH-01 and UX-01 done). It has been archived to `plans/archive/2026-04-19-cycle-2-review-remediation-initial.md`.
+- Review findings from cycle 2 are mapped below to either implementation stories or explicit deferred / invalidated items. No review finding is intentionally dropped.
+- User-injected TODOs from `plans/open/user-injected/pending-next-cycle.md` are incorporated as stories.
 
 ---
 
 ## Implementation stories for this pass
 
-### AUTH-01 — Honor reverse-proxy trusted-host mode for auth route validation
-**Sources:** AGG-1  
+### AUTH-02 — Verify and ensure AUTH_TRUST_HOST=true in production deployment config
+**Sources:** AGG-4, user-injected TODO #1  
 **Severity:** HIGH | **Confidence:** HIGH | **Effort:** Quick win
 
 **Files:**
-- `src/lib/auth/trusted-host.ts`
-- `tests/unit/auth/trusted-host.test.ts`
+- `.env.deploy.algo` (deployment env file, not in repo)
+- `deploy-docker.sh`
+- `docker-compose.production.yml`
 
-**Problem:** Live browser audit showed `/login` submits to `/api/auth/error` with `{"error":"UntrustedHost"}` on `algo.xylolabs.com`. The custom auth-route wrapper validates trusted hosts before delegating to Auth.js, but it does not honor `AUTH_TRUST_HOST=true`, even though the repo already uses that flag in `authConfig` and deployment docs.
+**Problem:** The UntrustedHost fix (commit 5353f41f) added `shouldTrustAuthHost()` to `validateTrustedAuthHost()`, but the production deployment on algo.xylolabs.com still shows `{"error":"UntrustedHost"}`. The code fix only works if `AUTH_TRUST_HOST=true` is set in the production environment. Either the env var is not set, or the nginx/reverse-proxy is stripping `x-forwarded-host` before it reaches the auth route.
 
 **Fix:**
-- Import and honor `shouldTrustAuthHost()` in `validateTrustedAuthHost()`.
-- When trusted-proxy mode is enabled, skip the custom host rejection and let Auth.js trust the forwarded host.
-- Add regression coverage for the trusted-proxy path without weakening the existing explicit-host checks.
+1. Verify that `.env.deploy.algo` includes `AUTH_TRUST_HOST=true`. If not, add it.
+2. Verify that nginx passes `x-forwarded-host` to the Next.js app on auth routes (`/api/auth/`).
+3. If the env var was missing, redeploy after adding it.
+4. Add a deployment check in `deploy-docker.sh` that warns if `AUTH_TRUST_HOST` is not set in production.
 
 **Verification:**
-- `npx vitest run tests/unit/auth/trusted-host.test.ts`
-- targeted browser reasoning against the captured live failure (`browser-audit-input-cycle-2.md`)
+- Test login on algo.xylolabs.com after deploy
+- Verify `validateTrustedAuthHost` returns `null` in production logs when `AUTH_TRUST_HOST=true`
 
 ---
 
-### UX-01 — Remove the raw `compiler.testCaseLabel` leak from the public playground
-**Sources:** AGG-2  
+### LANG-01 — Add grading server hardware and OS info to languages page
+**Sources:** AGG-7, user-injected TODO #3  
+**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Medium
+
+**Files:**
+- `src/app/(public)/languages/page.tsx`
+- `src/lib/judge/dashboard-data.ts`
+- `src/lib/system-info.ts`
+- `messages/ko.json`, `messages/en.json` (i18n keys)
+
+**Problem:** The languages page shows language variants and commands but does not display the grading server hardware/OS info. Users need to know what environment their code runs on.
+
+**Fix:**
+1. Extend `getJudgeSystemSnapshot()` to include grading server system info (CPU, architecture, OS) from `getRuntimeSystemInfo()`.
+2. Add i18n keys for the grading environment card.
+3. Add a "Grading Environment" card above the language table showing: CPU model, architecture, OS, default time limit, default memory limit.
+4. Ensure the system info is fetched from the judge worker host, not the app server (the worker runs on a different machine in production).
+
+**Verification:**
+- `npx vitest run` (unit tests)
+- Visual check on the languages page
+
+---
+
+### NAFIX-01 — Fix NaN propagation in admin audit-logs and login-logs query params
+**Sources:** AGG-1  
 **Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Quick win
 
 **Files:**
-- `src/app/(dashboard)/dashboard/compiler/compiler-client.tsx`
-- `tests/component/compiler-client.test.tsx`
+- `src/app/api/v1/admin/audit-logs/route.ts:47-48`
+- `src/app/api/v1/admin/login-logs/route.ts:34-35`
+- New: `src/lib/validators/query-params.ts` (shared utility)
+- Tests: `tests/unit/api/admin-audit-logs.route.test.ts`, `tests/unit/api/admin-login-logs.route.test.ts`
 
-**Problem:** The public playground currently renders the untranslated key `compiler.testCaseLabel` for the active test-case label. The label uses the `compiler.testCaseLabel` message without providing the required `{number}` interpolation value.
+**Problem:** `Number(searchParams.get("page") ?? "1")` produces `NaN` for non-numeric strings. `Math.max(1, NaN)` returns `NaN`, causing invalid offset computation. Same bug class as the tags route NaN fix in cycle 1.
 
 **Fix:**
-- Render the label with a concrete number (derived from the active tab index), or switch to a non-interpolated label string.
-- Add a regression test asserting the rendered label is user-facing text, not the message key.
+1. Create a shared `parsePositiveInt(value: string | null | undefined, defaultValue: number): number` utility in `src/lib/validators/query-params.ts`.
+2. Replace all `Number(searchParams.get(...))` patterns in audit-logs and login-logs with `parsePositiveInt`.
+3. Also update the tags route to use the shared utility.
+4. Add tests for non-numeric, negative, zero, and decimal inputs.
 
 **Verification:**
-- `npx vitest run tests/component/compiler-client.test.tsx`
+- `npx vitest run tests/unit/api/admin-audit-logs.route.test.ts`
+- `npx vitest run tests/unit/api/admin-login-logs.route.test.ts`
+
+---
+
+### CSV-01 — Add row limit to admin CSV exports
+**Sources:** AGG-2  
+**Severity:** HIGH | **Confidence:** HIGH | **Effort:** Quick win
+
+**Files:**
+- `src/app/api/v1/admin/audit-logs/route.ts:127-175`
+- `src/app/api/v1/admin/login-logs/route.ts:98-132`
+- New: `src/lib/csv/escape-field.ts` (extracted shared utility)
+- Tests: corresponding test files
+
+**Problem:** CSV export paths omit `.limit().offset()`, potentially returning millions of rows and causing memory exhaustion DoS.
+
+**Fix:**
+1. Extract `escapeCsvField` to shared utility `src/lib/csv/escape-field.ts`.
+2. Apply the same `limit`/`offset` to CSV exports as JSON exports.
+3. Add a maximum CSV export row count (e.g., 10000) as a safeguard.
+4. Add tests verifying CSV export is bounded.
+
+**Verification:**
+- `npx vitest run` (all unit tests)
+
+---
+
+### PRACTICE-01 — Optimize practice page Path B to not load all problems into memory
+**Sources:** AGG-3  
+**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Medium
+
+**Files:**
+- `src/app/(public)/practice/page.tsx:410-447`
+
+**Problem:** Path B (progress filter active) fetches all problem IDs and user submissions into memory, then filters in JS. Scales poorly with problem count.
+
+**Fix:**
+1. In the initial `allProblemRows` query, only select `{ id: true }` instead of `{ id, sequenceNumber, title, description }`.
+2. Consider moving progress filtering into SQL using a CTE or subquery (longer-term).
+3. Add a comment documenting the scaling concern.
+
+**Verification:**
+- Manual check that progress filtering still works after column reduction
+- `npx vitest run` (unit tests)
+
+---
+
+### RANK-01 — Optimize rankings page to use single query with window function
+**Sources:** AGG-5  
+**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Medium
+
+**Files:**
+- `src/app/(public)/rankings/page.tsx:115-172`
+
+**Problem:** The `first_accepts` CTE is computed twice (count + data), doubling query cost and allowing race conditions.
+
+**Fix:**
+1. Refactor to use `COUNT(*) OVER()` window function in a single query.
+2. Remove the separate count query.
+3. Add a test verifying pagination consistency.
+
+**Verification:**
+- Visual check on rankings page
+- `npx vitest run` (unit tests)
+
+---
+
+### WS-MIGRATE-01 — Plan workspace-to-public page migration
+**Sources:** AGG-13, user-injected TODO #2  
+**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Planning only (no implementation this cycle)
+
+**Files:**
+- New plan: `plans/open/2026-04-19-workspace-to-public-migration.md`
+
+**Problem:** User wants to deprecate workspace-only pages and bring menus to public with new top navbar layout. This is a large architectural change that requires careful planning before implementation.
+
+**Fix (plan only):**
+1. Inventory all workspace-only pages and control pages.
+2. Categorize each page: can move to public, must stay in authenticated area (with reason).
+3. Design the new top navbar layout.
+4. Define phased migration order.
+5. Write the plan document for review in a future cycle.
+
+**Verification:**
+- Plan reviewed and approved before any implementation
 
 ---
 
@@ -57,25 +173,18 @@
 
 | Bucket | Source finding IDs | File + line citation | Original severity / confidence | Disposition | Reason | Exit criterion |
 | --- | --- | --- | --- | --- | --- | --- |
-| LIVE-01 | AGG-3 | `src/app/(public)/practice/page.tsx` | High / High (live), Medium (repo root cause) | Deferred | Confirmed live failure on `algo.xylolabs.com`, but root cause was not reproducible from current repo state within this pass; needs production-like data/log inspection before a safe code change. | Re-open when the failure is reproduced locally or a production stack trace identifies the failing query/render path. |
-| LIVE-02 | AGG-4 | `src/app/(public)/rankings/page.tsx` | High / High (live), Medium (repo root cause) | Deferred | Same as above: confirmed live failure, but root cause needs reproducible evidence before changing the ranking query/render path. | Re-open when current HEAD reproduces the failure locally or live logs isolate the failing statement/component. |
-| LIVE-03 | AGG-5 | `src/app/(public)/languages/page.tsx`, `src/lib/judge/dashboard-data.ts` | Medium / High (live), Medium (repo root cause) | Deferred | Confirmed live hanging state only. No safe code-level root cause isolated in this pass. | Re-open when the loading hang is reproduced against current HEAD or traced to a specific data fetch / hydration failure. |
-| REVIEW-INVALID-01 | F1, S1, C1, T1 | `src/lib/security/password.ts:1-73` | High / High | Invalidated by repo policy | `AGENTS.md` explicitly requires password validation to check **only** minimum length (8 chars) and forbids complexity/similarity/dictionary rules. These review requests cannot be implemented as written. | Re-open only if the repository's password policy changes. |
-| REVIEW-STALE-01 | V1 | `src/lib/security/password.ts:36-73` | High / Confirmed | Invalidated as stale | Current HEAD already uses `context?.username` and `context?.email`; the review claim that the parameter is dead code no longer matches the file. | Re-open if the context checks are removed/regressed in a future change. |
-| ARCH-01 | F7, C3, V2, A2, D1, T4 | `src/lib/security/rate-limit.ts:35-43`, `src/lib/realtime/realtime-coordination.ts:92-128` | High / High | Deferred | Real architectural risk, but fixing it safely requires a schema / migration / coordination redesign beyond this pass. | Re-open when a dedicated persistence-lane plan exists for separating SSE coordination from generic rate-limit rows. |
-| PERF-EXPORT-01 | P1, P3, P4, C4, D2 | `src/lib/db/export.ts:36-76,332-364` | High / High | Deferred | Deprecated export helpers are not on the critical user path; cleanup should happen in a focused export-subsystem pass with compatibility review. | Re-open when the export subsystem cleanup lane is scheduled. |
-| DATA-ACCESS-01 | F3, S4 | `src/app/api/v1/languages/route.ts:12`, `src/app/api/v1/admin/roles/[id]/route.ts:20`, representative multi-file pattern | Medium / High | Deferred | Plausible repo-wide hardening opportunity, but the safe fix is a larger explicit-column audit that exceeds this pass. | Re-open when a repository-wide sensitive-column selection audit is scheduled. |
-| PERF-RATE-01 | P2 | `src/lib/security/rate-limit.ts:130-178` | Medium / High | Deferred | Multi-key batching is worthwhile but needs benchmarking and careful SQL changes in the auth path. | Re-open when auth/rate-limit performance profiling shows this path is material. |
-| SEC-CRYPTO-01 | S2, C2, A1 | `src/lib/security/password-hash.ts`, `src/lib/security/encryption.ts`, `src/lib/security/derive-key.ts` | Medium / High | Deferred | These are broader auth/crypto architecture concerns requiring coordinated migration planning. | Re-open when a dedicated auth/crypto migration plan is approved. |
-| SEC-REVIEW-STALE-01 | S5, C6, V5 | `src/components/seo/json-ld.tsx:19` | Low / Medium | Invalidated as stale | Current HEAD already uses `safeJsonForScript(data)` rather than raw `JSON.stringify(...)` into `dangerouslySetInnerHTML`. | Re-open if `safeJsonForScript` is removed or bypassed. |
-| SEC-REVIEW-STALE-02 | S6, V3 | `src/lib/compiler/execute.ts:188-221` | Medium / Confirmed | Invalidated as stale | Current HEAD already replaced raw `startsWith()` command validation with `isValidCommandPrefix()` and suffix validation. | Re-open if strict command-prefix validation regresses. |
-| SEC-LOW-01 | S7, S9 | `src/lib/security/rate-limit.ts:27-32`, `src/lib/security/ip.ts:71` | Low / Low-High | Deferred | Low-severity defense-in-depth ideas; not cycle-critical next to live-user failures. | Re-open when rate-limit / IP extraction behavior is revisited. |
-| AUTH-DATA-01 | S8, A5 | `src/lib/auth/config.ts:68-93,354-377` | Low / Medium | Deferred | JWT payload trimming is a broader auth/session optimization and not tied to the confirmed live failures in this pass. | Re-open when auth/session payload optimization is prioritized. |
-| CODE-LOW-01 | F4, F5, F6, C5 | representative: `src/hooks/use-source-draft.ts`, `src/app/api/v1/users/route.ts:89-90`, `src/lib/audit/events.ts:89-121` | Low-Medium / Medium-High | Deferred | Valid maintainability concerns, but secondary to confirmed public regressions. | Re-open when a focused cleanup / observability pass is scheduled. |
-| PERF-LOW-01 | P5, P6, P7 | representative: `src/lib/security/rate-limiter-client.ts`, `src/lib/docker/client.ts`, `src/lib/audit/events.ts:118-121` | Low-Medium / Medium | Deferred | Lower-risk performance hardening items; not critical this pass. | Re-open when performance profiling or incident evidence elevates them. |
-| DEBUG-LOW-01 | D3, D4, D5 | representative: `src/lib/db/import-transfer.ts`, `src/lib/actions/*.ts`, `src/lib/docker/client.ts:28` | Low-Medium / Low-Medium | Deferred | Useful hardening items, but not the highest-signal cycle-2 fixes. | Re-open when import/runtime hardening is the active lane. |
-| UX-LOW-01 | UX1, UX2, UX3, UX5, UX6 | representative: `src/app/(dashboard)/dashboard/*/error.tsx`, `src/components/layout/skip-to-content.tsx`, `src/components/exam/countdown-timer.tsx`, `src/components/code/code-editor-skeleton.tsx` | Low / Medium-High | Deferred | Worthwhile UX polish, but lower priority than confirmed live public breakages. | Re-open when the next dedicated UX/accessibility pass is scheduled. |
-| UX-PASS-01 | UX4 | CLAUDE Korean letter-spacing rule | N/A / High | Closed / pass | Review explicitly confirmed compliance with current repo rule. | Re-open only if Korean typography changes. |
+| CRYPTO-01 | AGG-8 | `src/app/api/v1/plugins/chat-widget/chat/route.ts:176-189` | MEDIUM / HIGH | Deferred | Chat widget API key encryption is a broader auth/crypto architecture concern requiring coordinated migration. The keys are only accessible to admin users via the plugin config UI, and the DB access itself requires server compromise. | Re-open when a dedicated plugin secrets encryption plan is approved. |
+| CHAT-01 | AGG-9 | `src/app/api/v1/plugins/chat-widget/chat/route.ts:428` | LOW / MEDIUM | Deferred | Tool result truncation is a low-risk improvement. Current LLM APIs have their own context limits that effectively bound tool result sizes. | Re-open when chat widget tool result sizes are shown to cause issues. |
+| ENV-01 | AGG-10 | `src/lib/compiler/execute.ts:56-57`, `src/lib/docker/client.ts:6-7` | MEDIUM / HIGH | Deferred | Empty-string fallbacks for `COMPILER_RUNNER_URL` and `RUNNER_AUTH_TOKEN` are a code-quality concern, but the existing behavior (connection refused on empty URL) provides an implicit fail-fast. A proper startup validation would require understanding the deployment topology (some deployments may not use the compiler runner at all). | Re-open when a startup validation pass is scheduled. |
+| SSE-01 | AGG-11 | `src/app/api/v1/submissions/[id]/events/route.ts:41-49` | LOW / MEDIUM | Deferred | SSE connection eviction is a low-risk edge case that only matters under extreme load approaching 1000 concurrent SSE connections. The `MAX_TRACKED_CONNECTIONS = 1000` cap is generous for the current deployment. | Re-open when SSE connection tracking issues are observed in production or load testing. |
+| DEAD-01 | AGG-12 | `src/lib/security/rate-limit.ts:183-258` | LOW / HIGH | Deferred | `recordRateLimitFailure` and `recordRateLimitFailureMulti` are unused dead code. Safe to remove but not urgent. | Re-open when a rate-limit cleanup pass is scheduled. |
+| REVIEW-INVALID-01 | — | `src/lib/security/password.ts` | HIGH / HIGH | Invalidated by repo policy | `AGENTS.md` explicitly requires password validation to check only minimum length (8 chars) and forbids complexity/similarity/dictionary rules. | Re-open only if the repository's password policy changes. |
+| REVIEW-STALE-01 | — | `src/components/seo/json-ld.tsx:19` | LOW / MEDIUM | Invalidated as stale | Current HEAD already uses `safeJsonForScript(data)`. | Re-open if `safeJsonForScript` is removed or bypassed. |
+| REVIEW-STALE-02 | — | `src/lib/compiler/execute.ts` | MEDIUM / CONFIRMED | Invalidated as stale | Current HEAD already uses `isValidCommandPrefix()`. | Re-open if strict command-prefix validation regresses. |
+| UX-LOW-01 | designer F1, F5 | `src/components/layout/public-header.tsx`, `src/app/(public)/practice/page.tsx` | LOW / MEDIUM | Deferred | Skip-to-content link and loading state are worthwhile UX improvements but lower priority than the correctness and security fixes in this cycle. | Re-open when a dedicated UX/accessibility pass is scheduled. |
+| UX-LOW-02 | designer F3 | `src/components/layout/workspace-nav.tsx:31` | LOW / LOW | Closed / pass | The `tracking-[0.18em]` applies to an English uppercase section label, not Korean text. Confirmed compliance with CLAUDE.md rule. | Re-open only if the section label becomes Korean. |
+| SECURITY-LOW-01 | security-reviewer F5 | `src/app/api/v1/admin/audit-logs/route.ts:171`, `src/app/api/v1/admin/login-logs/route.ts:129` | LOW / MEDIUM | Closed / pass | CSV filenames are hardcoded; no user-controlled input in filenames. | Re-open if filenames become dynamic. |
+| SQL-01 | code-reviewer F5 | `src/app/(public)/rankings/page.tsx:31-39` | LOW / HIGH | Deferred | Raw SQL string interpolation in `getPeriodClause` is currently safe due to validation, but the pattern is fragile. | Re-open when the rankings page query is refactored (covered by RANK-01). |
 
 ---
 
@@ -83,5 +192,10 @@
 
 | Story | Status | Commit |
 | --- | --- | --- |
-| AUTH-01 | Done | `5353f41f` |
-| UX-01 | Done | `c5363d87` |
+| AUTH-02 | Pending | — |
+| LANG-01 | Pending | — |
+| NAFIX-01 | Pending | — |
+| CSV-01 | Pending | — |
+| PRACTICE-01 | Pending | — |
+| RANK-01 | Pending | — |
+| WS-MIGRATE-01 | Pending (plan only) | — |
