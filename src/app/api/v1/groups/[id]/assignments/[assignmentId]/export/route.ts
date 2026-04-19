@@ -1,24 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api/responses";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { assignments, groups } from "@/lib/db/schema";
-import { getApiUser, unauthorized, forbidden, notFound } from "@/lib/api/auth";
+import { forbidden, notFound } from "@/lib/api/handler";
 import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
 import { getAssignmentStatusRows } from "@/lib/assignments/submissions";
-import { logger } from "@/lib/logger";
 import { contentDispositionAttachment } from "@/lib/http/content-disposition";
 import { escapeCsvField } from "@/lib/csv/escape-field";
+import { createApiHandler } from "@/lib/api/handler";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; assignmentId: string }> }
-) {
-  try {
-    const user = await getApiUser(request);
-    if (!user) return unauthorized();
+/** Hard cap to prevent OOM on large groups — matches the CSV-01 limit applied to
+ *  contest export, audit-logs, login-logs, and submissions exports in prior cycles. */
+const MAX_EXPORT_ROWS = 10_000;
 
-    const { id, assignmentId } = await params;
+export const GET = createApiHandler({
+  rateLimit: "export",
+  handler: async (req: NextRequest, { user, params }) => {
+    const { id, assignmentId } = params;
 
     const group = await db.query.groups.findFirst({
       where: eq(groups.id, id),
@@ -53,6 +51,10 @@ export async function GET(
       return notFound("Assignment");
     }
 
+    // Truncate to prevent OOM on very large groups
+    const truncated = statusData.rows.length > MAX_EXPORT_ROWS;
+    const rows = truncated ? statusData.rows.slice(0, MAX_EXPORT_ROWS) : statusData.rows;
+
     // BOM for Excel UTF-8 compatibility
     const BOM = "\uFEFF";
 
@@ -60,19 +62,19 @@ export async function GET(
       .map(escapeCsvField)
       .join(",");
 
-    const dataRows = statusData.rows.map((row) => {
+    const dataRows = rows.map((row) => {
       const submittedAt = row.latestSubmittedAt
         ? row.latestSubmittedAt.toISOString()
         : "";
       const status = row.latestStatus ?? "";
-      const score = String(row.bestTotalScore);
+      const score = row.bestTotalScore ?? "";
 
-      return [row.name, row.username, row.className, status, score, submittedAt]
+      return [row.name, row.username, row.className, status, String(score), submittedAt]
         .map(escapeCsvField)
         .join(",");
     });
 
-    const csv = BOM + [header, ...dataRows].join("\r\n") + "\r\n";
+    const csv = BOM + [header, ...dataRows, ...(truncated ? [`# Truncated: showing ${MAX_EXPORT_ROWS} of ${statusData.rows.length} entries`] : [])].join("\r\n") + "\r\n";
 
     return new NextResponse(csv, {
       status: 200,
@@ -81,8 +83,5 @@ export async function GET(
         "Content-Disposition": contentDispositionAttachment(`assignment-${assignment.title}-grades`, ".csv"),
       },
     });
-  } catch (error) {
-    logger.error({ err: error }, "GET /api/v1/groups/[id]/assignments/[assignmentId]/export error");
-    return apiError("exportFailed", 500);
-  }
-}
+  },
+});
