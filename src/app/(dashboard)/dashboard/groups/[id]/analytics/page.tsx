@@ -1,4 +1,4 @@
-import { and, avg, count, eq, max, min, sql, sum } from "drizzle-orm";
+import { and, avg, count, eq, inArray, max, min, notInArray, sql, sum } from "drizzle-orm";
 import { getLocale, getTranslations } from "next-intl/server";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { assignments, enrollments, groups, submissions, assignmentProblems } from "@/lib/db/schema";
 import { canAccessGroup } from "@/lib/auth/permissions";
+import { ACTIVE_SUBMISSION_STATUSES } from "@/lib/submissions/status";
 import { redirect, notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -57,19 +58,26 @@ export default async function GroupAnalyticsPage({ params }: PageProps) {
     .where(eq(assignments.groupId, groupId))
     .groupBy(assignments.id, assignments.title, assignments.deadline);
 
-  // Get submission stats per assignment
-  const submissionStats = await db
-    .select({
-      assignmentId: submissions.assignmentId,
-      submissionCount: count(submissions.id),
-      avgScore: avg(submissions.score),
-      maxScore: max(submissions.score),
-      minScore: min(submissions.score),
-      uniqueSubmitters: count(sql`DISTINCT ${submissions.userId}`),
-    })
-    .from(submissions)
-    .where(and(eq(submissions.assignmentId, sql`ANY (${db.select({ id: assignments.id }).from(assignments).where(eq(assignments.groupId, groupId))})`), sql`${submissions.status} NOT IN ('pending', 'queued', 'judging')`))
-    .groupBy(submissions.assignmentId);
+  // Get submission stats per assignment (excluding in-flight statuses)
+  const groupAssignmentIds = (await db.select({ id: assignments.id }).from(assignments).where(eq(assignments.groupId, groupId))).map(r => r.id);
+  const activeStatuses = [...ACTIVE_SUBMISSION_STATUSES];
+  const submissionStats = groupAssignmentIds.length > 0
+    ? await db
+        .select({
+          assignmentId: submissions.assignmentId,
+          submissionCount: count(submissions.id),
+          avgScore: avg(submissions.score),
+          maxScore: max(submissions.score),
+          minScore: min(submissions.score),
+          uniqueSubmitters: count(sql`DISTINCT ${submissions.userId}`),
+        })
+        .from(submissions)
+        .where(and(
+          inArray(submissions.assignmentId, groupAssignmentIds),
+          notInArray(submissions.status, activeStatuses),
+        ))
+        .groupBy(submissions.assignmentId)
+    : [];
 
   const statsMap = new Map(submissionStats.map((s) => [s.assignmentId, s]));
 
