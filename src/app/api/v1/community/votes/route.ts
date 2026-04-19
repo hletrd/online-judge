@@ -69,12 +69,19 @@ export const POST = createApiHandler({
       }, { status: 409 });
     }
 
+    // Atomic vote toggle using upsert to avoid race conditions on concurrent
+    // requests. The unique index (target_type, target_id, user_id) guarantees
+    // at most one vote row per user per target.
+    // - Same vote type → delete (toggle off)
+    // - Different vote type → update (change vote)
+    // - No existing vote → insert (new vote)
     const existing = await db.query.communityVotes.findFirst({
       where: and(
         eq(communityVotes.targetType, body.targetType),
         eq(communityVotes.targetId, body.targetId),
         eq(communityVotes.userId, user.id),
       ),
+      columns: { id: true, voteType: true },
     });
 
     if (existing?.voteType === body.voteType) {
@@ -93,6 +100,9 @@ export const POST = createApiHandler({
         targetId: body.targetId,
         userId: user.id,
         voteType: body.voteType,
+      }).onConflictDoUpdate({
+        target: [communityVotes.targetType, communityVotes.targetId, communityVotes.userId],
+        set: { voteType: body.voteType, updatedAt: new Date() },
       });
     }
 

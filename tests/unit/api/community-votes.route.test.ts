@@ -9,6 +9,7 @@ const {
   voteFindFirstMock,
   insertValuesMock,
   insertReturningMock,
+  insertOnConflictDoUpdateMock,
   updateSetMock,
   updateWhereMock,
   deleteWhereMock,
@@ -21,6 +22,7 @@ const {
   voteFindFirstMock: vi.fn(),
   insertValuesMock: vi.fn(),
   insertReturningMock: vi.fn(),
+  insertOnConflictDoUpdateMock: vi.fn(),
   updateSetMock: vi.fn(),
   updateWhereMock: vi.fn(),
   deleteWhereMock: vi.fn(),
@@ -72,7 +74,8 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-insertValuesMock.mockReturnValue({ returning: insertReturningMock });
+insertValuesMock.mockReturnValue({ returning: insertReturningMock, onConflictDoUpdate: insertOnConflictDoUpdateMock });
+insertOnConflictDoUpdateMock.mockResolvedValue(undefined);
 updateSetMock.mockReturnValue({ where: updateWhereMock });
 
 function selectChain(result: unknown) {
