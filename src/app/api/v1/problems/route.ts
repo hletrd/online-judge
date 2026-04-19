@@ -30,7 +30,27 @@ export const GET = createApiHandler({
         .where(visibilityFilter);
 
       const results = await db
-        .select()
+        .select({
+          id: problems.id,
+          sequenceNumber: problems.sequenceNumber,
+          title: problems.title,
+          timeLimitMs: problems.timeLimitMs,
+          memoryLimitMb: problems.memoryLimitMb,
+          problemType: problems.problemType,
+          visibility: problems.visibility,
+          showCompileOutput: problems.showCompileOutput,
+          showDetailedResults: problems.showDetailedResults,
+          showRuntimeErrors: problems.showRuntimeErrors,
+          allowAiAssistant: problems.allowAiAssistant,
+          comparisonMode: problems.comparisonMode,
+          floatAbsoluteError: problems.floatAbsoluteError,
+          floatRelativeError: problems.floatRelativeError,
+          difficulty: problems.difficulty,
+          defaultLanguage: problems.defaultLanguage,
+          authorId: problems.authorId,
+          createdAt: problems.createdAt,
+          updatedAt: problems.updatedAt,
+        })
         .from(problems)
         .where(visibilityFilter)
         .orderBy(desc(problems.createdAt))
@@ -60,7 +80,27 @@ export const GET = createApiHandler({
       .where(whereClause);
 
     const paginatedProblems = await db
-      .select()
+      .select({
+          id: problems.id,
+          sequenceNumber: problems.sequenceNumber,
+          title: problems.title,
+          timeLimitMs: problems.timeLimitMs,
+          memoryLimitMb: problems.memoryLimitMb,
+          problemType: problems.problemType,
+          visibility: problems.visibility,
+          showCompileOutput: problems.showCompileOutput,
+          showDetailedResults: problems.showDetailedResults,
+          showRuntimeErrors: problems.showRuntimeErrors,
+          allowAiAssistant: problems.allowAiAssistant,
+          comparisonMode: problems.comparisonMode,
+          floatAbsoluteError: problems.floatAbsoluteError,
+          floatRelativeError: problems.floatRelativeError,
+          difficulty: problems.difficulty,
+          defaultLanguage: problems.defaultLanguage,
+          authorId: problems.authorId,
+          createdAt: problems.createdAt,
+          updatedAt: problems.updatedAt,
+        })
       .from(problems)
       .where(whereClause)
       .orderBy(desc(problems.createdAt))
