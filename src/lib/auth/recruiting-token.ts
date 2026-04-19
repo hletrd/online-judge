@@ -27,6 +27,25 @@ export async function authorizeRecruitingToken(
 
   const user = await db.query.users.findFirst({
     where: eq(users.id, result.userId),
+    columns: {
+      id: true,
+      username: true,
+      email: true,
+      name: true,
+      className: true,
+      role: true,
+      isActive: true,
+      preferredLanguage: true,
+      preferredTheme: true,
+      shareAcceptedSolutions: true,
+      acceptedSolutionsAnonymous: true,
+      editorTheme: true,
+      editorFontSize: true,
+      editorFontFamily: true,
+      lectureMode: true,
+      lectureFontScale: true,
+      lectureColorScheme: true,
+    },
   });
 
   if (!user || !user.isActive) return null;
