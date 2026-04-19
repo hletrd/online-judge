@@ -116,24 +116,10 @@ function syncTokenWithUser(
   authenticatedAtSeconds = getTokenAuthenticatedAtSeconds(token) ?? Math.trunc(Date.now() / 1000)
 ) {
   const fields = mapUserToAuthFields(user);
+  // Spread all auth fields onto the token in one step so new preference
+  // fields are automatically included without a separate manual assignment.
+  Object.assign(token, fields);
   token.sub = fields.id;
-  token.id = fields.id;
-  token.role = fields.role;
-  token.username = fields.username;
-  token.email = fields.email;
-  token.name = fields.name;
-  token.className = fields.className;
-  token.mustChangePassword = fields.mustChangePassword;
-  token.preferredLanguage = fields.preferredLanguage;
-  token.preferredTheme = fields.preferredTheme;
-  token.shareAcceptedSolutions = fields.shareAcceptedSolutions;
-  token.acceptedSolutionsAnonymous = fields.acceptedSolutionsAnonymous;
-  token.editorTheme = fields.editorTheme;
-  token.editorFontSize = fields.editorFontSize;
-  token.editorFontFamily = fields.editorFontFamily;
-  token.lectureMode = fields.lectureMode;
-  token.lectureFontScale = fields.lectureFontScale;
-  token.lectureColorScheme = fields.lectureColorScheme;
   token.authenticatedAt = authenticatedAtSeconds;
 
   return token;
@@ -141,29 +127,34 @@ function syncTokenWithUser(
 
 /**
  * Map JWT token fields to the NextAuth session.user object.
- * Mirrors the fields set by syncTokenWithUser so the session
- * stays in sync with the JWT payload.
+ * Core fields are assigned explicitly; preference fields are mapped
+ * via AUTH_PREFERENCE_FIELDS so new preferences are automatically included.
  */
 function mapTokenToSession(token: JWT, session: Session) {
+  // Core fields — each has a specific default pattern
   session.user.id = token.id ?? "";
   session.user.role = token.role ?? "";
   session.user.username = token.username ?? "";
   session.user.name = token.name ?? session.user.name ?? "";
   session.user.className = token.className ?? null;
   session.user.mustChangePassword = token.mustChangePassword ?? false;
-  session.user.preferredLanguage = token.preferredLanguage ?? null;
-  session.user.preferredTheme = token.preferredTheme ?? null;
-  session.user.shareAcceptedSolutions = token.shareAcceptedSolutions ?? true;
-  session.user.acceptedSolutionsAnonymous = token.acceptedSolutionsAnonymous ?? false;
-  session.user.editorTheme = token.editorTheme ?? null;
-  session.user.editorFontSize = token.editorFontSize ?? null;
-  session.user.editorFontFamily = token.editorFontFamily ?? null;
-  session.user.lectureMode = token.lectureMode ?? null;
-  session.user.lectureFontScale = token.lectureFontScale ?? null;
-  session.user.lectureColorScheme = token.lectureColorScheme ?? null;
 
   if (typeof token.email === "string") {
     session.user.email = token.email;
+  }
+
+  // Preference fields — mapped from AUTH_PREFERENCE_FIELDS so new
+  // preferences are automatically included without a manual assignment.
+  for (const field of AUTH_PREFERENCE_FIELDS) {
+    const tokenVal = token[field as keyof JWT];
+    if (field === "shareAcceptedSolutions") {
+      // shareAcceptedSolutions defaults to true (opt-out model)
+      (session.user as Record<string, unknown>)[field] = (tokenVal as boolean | undefined) ?? true;
+    } else if (field === "acceptedSolutionsAnonymous") {
+      (session.user as Record<string, unknown>)[field] = (tokenVal as boolean | undefined) ?? false;
+    } else {
+      (session.user as Record<string, unknown>)[field] = tokenVal ?? null;
+    }
   }
 }
 
