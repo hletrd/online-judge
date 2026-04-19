@@ -6,6 +6,7 @@ import { getApiUser, unauthorized } from "@/lib/api/auth";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { logger } from "@/lib/logger";
 import { escapeLikePattern } from "@/lib/db/like";
+import { parsePositiveInt } from "@/lib/validators/query-params";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("q")?.trim() ?? "";
-    const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10) || 50, 100);
+    const limit = Math.min(parsePositiveInt(searchParams.get("limit"), 50), 100);
 
     const whereClause = query
       ? sql`${tags.name} LIKE ${`%${escapeLikePattern(query)}%`} ESCAPE '\\'`

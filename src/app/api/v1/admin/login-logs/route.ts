@@ -5,8 +5,13 @@ import { db } from "@/lib/db";
 import { loginEvents, users } from "@/lib/db/schema";
 import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
 import { contentDispositionAttachment } from "@/lib/http/content-disposition";
+import { escapeCsvField } from "@/lib/csv/escape-field";
+import { parsePositiveInt } from "@/lib/validators/query-params";
 
 const VALID_OUTCOMES = ["success", "invalid_credentials", "rate_limited", "policy_denied"] as const;
+
+/** Maximum rows returned by CSV exports to prevent memory exhaustion DoS. */
+const MAX_CSV_EXPORT_ROWS = 10_000;
 
 import { escapeLikePattern } from "@/lib/db/like";
 
@@ -16,23 +21,12 @@ function normalizeDateFilter(value?: string | null) {
   return isNaN(parsed.getTime()) ? "" : value;
 }
 
-function escapeCsvField(value: string | number | null | undefined) {
-  let str = value == null ? "" : String(value);
-  if (/^[=+\-@\t\r]/.test(str)) {
-    str = "\t" + str;
-  }
-  if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
-    return '"' + str.replace(/"/g, '""') + '"';
-  }
-  return str;
-}
-
 export const GET = createApiHandler({
   auth: { capabilities: ["system.login_logs"] },
   handler: async (req: NextRequest) => {
     const searchParams = req.nextUrl.searchParams;
-    const page = Math.max(1, Math.floor(Number(searchParams.get("page") ?? "1")) || 1);
-    const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? "50") || 50));
+    const page = parsePositiveInt(searchParams.get("page"), 1);
+    const limit = Math.min(100, parsePositiveInt(searchParams.get("limit"), 50));
     const outcome = searchParams.get("outcome") ?? undefined;
     const search = searchParams.get("search")?.trim().slice(0, 100) ?? "";
     const dateFrom = normalizeDateFilter(searchParams.get("dateFrom"));
@@ -96,7 +90,7 @@ export const GET = createApiHandler({
 
     const filteredQuery = whereClause ? eventsQuery.where(whereClause) : eventsQuery;
     if (format === "csv") {
-      const rows = await filteredQuery.orderBy(desc(loginEvents.createdAt));
+      const rows = await filteredQuery.orderBy(desc(loginEvents.createdAt)).limit(MAX_CSV_EXPORT_ROWS);
       const BOM = "\uFEFF";
       const header = [
         "Timestamp",
