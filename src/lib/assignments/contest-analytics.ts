@@ -161,7 +161,10 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
   });
 
   // 3. First-AC map — needed for both timeline and solve times
-  const firstAcMap = new Map<string, number>(); // "userId:problemId" -> timestamp (seconds)
+  // Keyed by problemId -> userId -> timestamp (seconds) for O(1) per-problem
+  // lookup. Previous `endsWith` matching could produce false matches when one
+  // problem ID is a suffix of another.
+  const firstAcMap = new Map<string, Map<string, number>>();
   const allAcSubs = await rawQueryAll<{ userId: string; problemId: string; submittedAt: Date }>(
     `SELECT s.user_id AS "userId", s.problem_id AS "problemId", s.submitted_at AS "submittedAt"
      FROM submissions s
@@ -171,10 +174,14 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
   );
 
   for (const sub of allAcSubs) {
-    const key = `${sub.userId}:${sub.problemId}`;
-    if (!firstAcMap.has(key)) {
+    let problemMap = firstAcMap.get(sub.problemId);
+    if (!problemMap) {
+      problemMap = new Map();
+      firstAcMap.set(sub.problemId, problemMap);
+    }
+    if (!problemMap.has(sub.userId)) {
       // Store as unix seconds for compatibility with existing logic
-      firstAcMap.set(key, Math.floor(new Date(sub.submittedAt).getTime() / 1000));
+      problemMap.set(sub.userId, Math.floor(new Date(sub.submittedAt).getTime() / 1000));
     }
   }
 
@@ -182,12 +189,8 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
   let solveTimelines: ProblemTimeline[] | undefined;
   if (includeTimeline) {
     solveTimelines = problems.map((p) => {
-      const firstAcTimes: number[] = [];
-      for (const [key, ts] of firstAcMap) {
-        if (key.endsWith(`:${p.problemId}`)) {
-          firstAcTimes.push(ts);
-        }
-      }
+      const problemMap = firstAcMap.get(p.problemId);
+      const firstAcTimes: number[] = problemMap ? Array.from(problemMap.values()) : [];
       firstAcTimes.sort((a, b) => a - b);
 
       const points: TimelinePoint[] = firstAcTimes.map((ts, idx) => ({
@@ -246,13 +249,10 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
   const contestStartSec = contestMeta?.startsAt ? Math.floor(new Date(contestMeta.startsAt).getTime() / 1000) : 0;
 
   const problemSolveTimes: ProblemSolveTime[] = problems.map((p) => {
-    const solveTimes: number[] = [];
-    for (const [key, ts] of firstAcMap) {
-      if (key.endsWith(`:${p.problemId}`)) {
-        const minutes = Math.max(0, (ts - contestStartSec) / 60);
-        solveTimes.push(minutes);
-      }
-    }
+    const problemMap = firstAcMap.get(p.problemId);
+    const solveTimes: number[] = problemMap
+      ? Array.from(problemMap.values()).map((ts) => Math.max(0, (ts - contestStartSec) / 60))
+      : [];
     solveTimes.sort((a, b) => a - b);
 
     const solveCount = solveTimes.length;
