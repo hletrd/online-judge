@@ -69,7 +69,13 @@ export async function authenticateApiKey(authHeader: string | null) {
   const keyHash = hashApiKey(rawKey);
 
   const [candidate] = await db
-    .select()
+    .select({
+      id: apiKeys.id,
+      role: apiKeys.role,
+      createdById: apiKeys.createdById,
+      expiresAt: apiKeys.expiresAt,
+      isActive: apiKeys.isActive,
+    })
     .from(apiKeys)
     .where(and(eq(apiKeys.keyHash, keyHash), eq(apiKeys.isActive, true)))
     .limit(1);
