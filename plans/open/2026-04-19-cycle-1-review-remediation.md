@@ -1,152 +1,126 @@
-# Cycle 1 Review Remediation Plan
+# Cycle 1 Review Remediation Plan (review-plan-fix loop)
 
 **Date:** 2026-04-19  
-**Source:** `.context/reviews/cycle-1-comprehensive-review.md`, `.context/reviews/_aggregate.md`  
-**Status:** COMPLETE
+**Source:** `.context/reviews/_aggregate.md` + preserved per-agent review files under `.context/reviews/`  
+**Status:** IN PROGRESS
 
-## Deduplication note
-The existing plan at `plans/open/2026-04-18-comprehensive-review-remediation.md` already addressed CRIT-1 (heartbeat plaintext token), HIGH-4 (heartbeat activeTasks clobber), CRIT-7 (loginEvents retention + legal hold). This plan covers findings that are genuinely NEW or were not addressed in the prior plan.
+## Scope and revalidation rules
+- This plan revalidates all preserved review artifacts against **current HEAD** before scheduling work.
+- Findings that are already fixed on current HEAD or that directly contradict repo policy are recorded explicitly below and are **not** rescheduled.
+- Actionable work for this cycle is limited to issues confirmed by current code review and/or the mandatory `algo.xylolabs.com` browser audit.
 
----
+## Archived prior plan
+- Archived fully implemented prior plan: `plans/archive/2026-04-19-cycle-1-review-remediation-pre-loop.md`
 
-## Implementation Stories
+## Implementation stories for this cycle
 
-### SEC-01: Fix timing leak in judge worker secret comparison
+### UX-01: Restore semantic page headings on public/auth entry routes
 **Severity:** HIGH | **Confidence:** HIGH | **Effort:** Quick win
 
 **Files:**
-- `src/app/api/v1/judge/deregister/route.ts:43-47`
-- `src/app/api/v1/judge/heartbeat/route.ts:55-59`
+- `src/app/(auth)/login/page.tsx`
+- `src/app/(auth)/signup/page.tsx`
+- `src/app/(public)/community/page.tsx`
+- `src/components/discussions/discussion-thread-list.tsx`
+- Related tests under `tests/component/`
 
-**Problem:** Both routes do `a.length !== b.length || !timingSafeEqual(a, b)` which leaks the hash length via timing. The codebase already has `safeTokenCompare()` in `src/lib/security/timing.ts` that avoids this by HMAC'ing both inputs first.
+**Problem:** The browser audit on `algo.xylolabs.com` showed no semantic heading on `/login` and `/signup`, and only an `h2` on `/community`. Current source confirms the auth pages render `CardTitle`/`CardDescription` as plain `<div>` nodes and the community page delegates its visible title to a component that always renders `<h2>`.
 
-**Fix:** Replace manual `timingSafeEqual` + length check with `safeTokenCompare(hashToken(workerSecret), worker.secretTokenHash)`. Remove the `timingSafeEqual` import from `node:crypto` and add `safeTokenCompare` import from `@/lib/security/timing`.
+**Fix:**
+1. Render explicit `h1` headings on login and signup pages.
+2. Let the community route expose a page-level `h1` without duplicating the visible title.
+3. Add component tests that assert heading roles/levels.
 
-**Verification:** `npx tsc --noEmit`, `npx vitest run`
+**Verification:** `npm run test:component`, `npm run test:e2e`
 
 ---
 
-### SEC-02: Add missing `updatedAt` on submission update operations [FALSE POSITIVE]
-**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Quick win
-
-**Status:** FALSE POSITIVE -- The `submissions` table does NOT have an `updatedAt` column (only `submittedAt`). The original finding was based on an incorrect assumption about the schema. No code change needed.
-
----
-
-### LOGIC-02: Restrict column selection in apiKeys PATCH/DELETE
+### UX-02: Localize public-header accessibility labels
 **Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Quick win
 
 **Files:**
-- `src/app/api/v1/admin/api-keys/[id]/route.ts:49,99`
+- `src/components/layout/public-header.tsx`
+- `messages/en.json`
+- `messages/ko.json`
+- Related tests under `tests/component/` or `tests/unit/`
 
-**Problem:** `db.select().from(apiKeys)` returns all columns including `keyHash` and `encryptedKey`. Only `id` and `name` are needed for audit logging.
+**Problem:** `public-header.tsx` still hard-codes English ARIA labels such as `Main navigation`, `Toggle navigation menu`, `Mobile navigation`, and `Mobile menu`. This creates an accessibility i18n gap in Korean locale.
 
-**Fix:** Replace with `db.select({ id: apiKeys.id, name: apiKeys.name }).from(apiKeys)`.
+**Fix:** Move the ARIA labels into translations and update tests to cover the localized labels.
 
-**Verification:** `npx tsc --noEmit`, `npx vitest run`
+**Verification:** `npm run test:component`, `npm run test:e2e`
 
 ---
 
-### ARCH-02: Start rate limit eviction timer on application bootstrap [FALSE POSITIVE]
+### UI-01: Bring `FilterSelect` into compliance with the Base UI `SelectValue` contract
 **Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Quick win
 
-**Status:** FALSE POSITIVE -- `startRateLimitEviction()` is already called in `src/instrumentation.ts` line 20 alongside `startAuditEventPruning()` and `startSensitiveDataPruning()`. No code change needed.
-
----
-
-### ARCH-01: Add error handler to fire-and-forget API key lastUsedAt update
-**Severity:** MEDIUM | **Confidence:** MEDIUM | **Effort:** Quick win
-
-**File:** `src/lib/api/api-key-auth.ts:91-93`
-
-**Problem:** `void db.update(apiKeys).set({ lastUsedAt: new Date() }).where(...)` has no `.catch()`. If the update fails, the error is silently swallowed with no logging.
-
-**Fix:** Add `.catch((err) => logger.warn({ err, apiKeyId: candidate.id }, "[api-key-auth] Failed to update lastUsedAt"))` and import `logger` if not already imported.
-
-**Verification:** `npx tsc --noEmit`, `npx vitest run`
-
----
-
-### ARCH-03: Replace `console.warn` with `logger` in encryption module
-**Severity:** LOW | **Confidence:** HIGH | **Effort:** Quick win
-
-**File:** `src/lib/security/encryption.ts:36,70`
-
-**Problem:** Uses `console.warn()` instead of the project's pino logger. These warnings won't appear in structured logs.
-
-**Fix:** Import `logger` from `@/lib/logger` and replace `console.warn(...)` with `logger.warn(...)`.
-
-**Verification:** `npx tsc --noEmit`
-
----
-
-### PERF-01: Batched DELETE for data retention pruning
-**Severity:** MEDIUM | **Confidence:** HIGH | **Effort:** Moderate
-
 **Files:**
-- `src/lib/data-retention-maintenance.ts:7-53`
-- `src/lib/audit/events.ts:176-188`
+- `src/components/filter-select.tsx`
+- Related tests under `tests/component/`
+- Repo rule: `AGENTS.md` select/dropdown contract
 
-**Problem:** Each prune function issues an unbounded `DELETE ... WHERE createdAt < cutoff` with no `LIMIT`. For large tables, this holds locks for a long time and generates huge WAL.
+**Problem:** The shared filter select uses a nested `<span>` and inline label lookup inside `<SelectValue>`, which violates the repo rule requiring a simple state-based child expression.
 
-**Fix:** Refactor each prune function to use batched deletion in a loop (e.g., 5000 rows per batch) until no more rows match. Follow the pattern from `src/lib/db/cleanup.ts` which already uses `LIMIT ${BATCH_SIZE}`.
+**Fix:** Precompute the selected label from state and pass a simple text child to `SelectValue`. Add a regression test that verifies the selected label, not the raw value, is rendered.
 
-**Verification:** `npx tsc --noEmit`, `npx vitest run`
-
----
-
-### LOGIC-01: Remove dead `claimValid` code in judge/poll
-**Severity:** LOW | **Confidence:** MEDIUM | **Effort:** Quick win
-
-**File:** `src/app/api/v1/judge/poll/route.ts:129-179`
-
-**Problem:** The `claimValid` flag can never be `false` at line 177 because the `"invalidJudgeClaim"` error is caught and returned at line 171-172, and any other error is re-thrown.
-
-**Fix:** Remove the `claimValid` variable and the `if (!claimValid)` check on line 177-179.
-
-**Verification:** `npx tsc --noEmit`, `npx vitest run`
+**Verification:** `npm run test:component`, `npx tsc --noEmit`
 
 ---
 
-### DOCS-01: Remove obsolete `better-sqlite3.d.ts` type declaration
-**Severity:** LOW | **Confidence:** HIGH | **Effort:** Quick win
+## Deferred / investigation-required items
 
-**File:** `src/types/better-sqlite3.d.ts`
+### DEF-01: Investigate production-only failures on `/practice` and `/rankings`
+- **Original finding:** `.context/reviews/_aggregate.md` → `MEDIUM-3`
+- **File/route citations:**
+  - `https://algo.xylolabs.com/practice`
+  - `https://algo.xylolabs.com/rankings`
+  - Related repo files: `src/app/(public)/practice/page.tsx`, `src/app/(public)/rankings/page.tsx`
+- **Original severity / confidence:** Medium / Medium
+- **Reason for deferral:** The browser audit confirms live failures, but current-head static review has not yet isolated a repo-side root cause. This may be deployment drift, production schema drift, or state/data specific to the deployed environment.
+- **Exit criterion:** Reproduce the failure against current HEAD with production-like data/config or prove a specific code-level fault from logs/stack traces.
 
-**Problem:** The project has fully migrated to PostgreSQL. This type declaration is leftover from the SQLite era.
+## Revalidated non-actions from preserved review files
 
-**Fix:** Delete the file.
+These findings were reviewed and explicitly closed for this cycle so they are not silently dropped.
 
-**Verification:** `npx tsc --noEmit`
+### CLOSED-01: Password-complexity escalation requests are invalid under repo policy
+- **Original citations:** `.context/reviews/code-reviewer.md Finding 1`, `.context/reviews/security-reviewer.md Finding S1`, `.context/reviews/critic.md Finding C1`, `.context/reviews/verifier.md Finding V1`, `.context/reviews/test-engineer.md Finding T1`
+- **Original severity / confidence:** High / High (or Confirmed)
+- **Closure reason:** Repo policy explicitly forbids adding complexity requirements and requires exactly an 8-character minimum length rule only. See:
+  - `AGENTS.md` → `Password validation MUST only check minimum length — exactly 8 characters minimum, no other rules.`
+  - `.context/plans/README.md` → `Password policy remains minimum-length-only by project rule; plans must not add complexity requirements without explicit approval.`
+- **Current-head check:** `src/lib/security/password.ts` already implements the repo-approved checks (minimum length, common-password blocklist, username/email matching) and `tests/unit/security/password.test.ts` covers them.
 
----
+### CLOSED-02: JSON-LD script-escaping finding is already fixed on current HEAD
+- **Original citations:** `.context/reviews/security-reviewer.md Finding S5`, `.context/reviews/critic.md Finding C6`, `.context/reviews/verifier.md Finding V5`
+- **Original severity / confidence:** Low / High-Medium
+- **Closure reason:** `src/components/seo/json-ld.tsx` already uses `safeJsonForScript()` to escape `</script` sequences before injecting JSON-LD.
 
-## Deferred Items
+### CLOSED-03: Shell-command prefix-bypass finding is already fixed on current HEAD
+- **Original citations:** `.context/reviews/security-reviewer.md Finding S6`, `.context/reviews/verifier.md Finding V3`, `.context/reviews/test-engineer.md Finding T5`
+- **Original severity / confidence:** Medium / Medium-High
+- **Closure reason:** `src/lib/compiler/execute.ts` now routes command-prefix validation through `isValidCommandPrefix()`, which only permits exact matches or version-style suffixes.
 
-These findings are explicitly deferred per the review. Each records the file+line citation, original severity/confidence, concrete reason, and exit criterion.
+### CLOSED-04: Deprecated rate-limit constant finding is stale
+- **Original citations:** `.context/reviews/code-reviewer.md Finding 2`, `.context/reviews/verifier.md Finding V4`
+- **Original severity / confidence:** Medium / High
+- **Closure reason:** Current files `src/lib/security/api-rate-limit.ts` and `src/lib/security/rate-limit.ts` no longer expose the deprecated module-level constants described by the preserved review files.
 
-| ID | Finding | Severity | Confidence | Reason for deferral | Exit criterion |
-|----|---------|----------|------------|---------------------|----------------|
-| SEC-03 | Judge claim sends hidden test case expectedOutput | LOW | HIGH | By-design: judge worker is in the trusted boundary and needs expectedOutput for comparison. Mitigating would require a fundamentally different architecture (e.g., homomorphic comparison). | Architect review determines the trust boundary must be narrowed |
-| PERF-02 | Unbounded `select().from(testCases)` in claim route | LOW | HIGH | The judge worker needs all test case data. Column restriction would require restructuring the wire protocol. | Performance profiling shows this is a bottleneck for large problem sets |
-| OPS-01 | IPv6 CIDR matching in judge IP allowlist | LOW | HIGH | Current deployment uses IPv4-only internal networking. IPv6 support is nice-to-have but not currently needed. | Deployment moves to IPv6-capable internal network |
-| OPS-02 | `judgeWorkers` table lacks `updatedAt` column | LOW | HIGH | Adding a column requires a DB migration and coordination with the Rust worker. The `lastHeartbeatAt` column partially serves this purpose. | Next scheduled DB migration window |
-| TEST-01 | Missing tests for judge claim/poll/deregister/heartbeat | MEDIUM | HIGH | Test infrastructure for judge routes requires mocking the worker protocol. Will be addressed in a dedicated test sprint. | Next test coverage sprint |
-| TEST-02 | Missing tests for submission visibility sanitization | LOW | HIGH | Will be addressed alongside TEST-01 in the test sprint. | Next test coverage sprint |
-| TEST-03 | Missing tests for CSRF validation | LOW | HIGH | Will be addressed alongside TEST-01 in the test sprint. | Next test coverage sprint |
+## Progress ledger
 
----
-
-## Progress Ledger
-
-| Story | Status | Commit |
+| Story | Status | Notes |
 |---|---|---|
-| SEC-01 | Done | `1b7af7b9` |
-| SEC-02 | False Positive | N/A (submissions table has no updatedAt column) |
-| LOGIC-02 | Done | `7a5e8fa7` |
-| ARCH-02 | False Positive | N/A (startRateLimitEviction already called in instrumentation.ts) |
-| ARCH-01 | Done | `ce53912c` |
-| ARCH-03 | Done | `5043452d` |
-| PERF-01 | Done | `05f2ae9d` |
-| LOGIC-01 | Done | `06c88695` |
-| DOCS-01 | Done | `9acf6bba` |
+| UX-01 | Done | Added semantic `h1` coverage for login, signup, and community surfaces plus component tests |
+| UX-02 | Done | Localized public-header ARIA labels and aligned remote-smoke E2E expectations |
+| UI-01 | Done | Simplified `FilterSelect` selected-label rendering to the repo-approved `SelectValue` contract and added regression coverage |
+| DEF-01 | Deferred | Needs reproduction against current-head runtime/data |
+| CLOSED-01 | Closed | Policy conflict + current-head revalidation |
+| CLOSED-02 | Closed | Already fixed on current HEAD |
+| CLOSED-03 | Closed | Already fixed on current HEAD |
+| CLOSED-04 | Closed | Preserved review artifact is stale |
+
+## Gate notes
+
+- Full gate set completed this cycle: `npm run lint`, `npx tsc --noEmit`, `npm run build`, `npm run test:unit`, `npm run test:integration`, `npm run test:component`, `npm run test:e2e`, `(cd judge-worker-rs && cargo test)`.
+- `npm run lint` still reports **13 warnings** from unrelated untracked local scratch scripts (`add-stress-tests.mjs`, `auto-solver.mjs`, `gen_test_cases.mjs`, `playwright.visual.config.ts`, `solve-fixes.mjs`, `stress-tests.mjs`). These are warning-level only, outside the repo-managed remediation scope for this cycle, and left unchanged to avoid mixing unrelated personal scratch-file cleanup into the review-remediation commit set.
