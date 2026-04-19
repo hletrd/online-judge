@@ -10,7 +10,7 @@ import { updateGroupSchema } from "@/lib/validators/groups";
 import { withUpdatedAt } from "@/lib/db/helpers";
 import { execTransaction } from "@/lib/db";
 import { createApiHandler, notFound, forbidden } from "@/lib/api/handler";
-import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { resolveCapabilities, getRoleLevel } from "@/lib/capabilities/cache";
 import { parsePagination } from "@/lib/api/pagination";
 
 export const GET = createApiHandler({
@@ -132,7 +132,7 @@ export const PATCH = createApiHandler({
       if (!nextInstructor) {
         return apiError("instructorNotFound", 404);
       }
-      if (!nextInstructor.isActive || nextInstructor.role === "student") {
+      if (!nextInstructor.isActive || (await getRoleLevel(nextInstructor.role)) <= 0) {
         return apiError("instructorRoleInvalid", 409);
       }
       updates.instructorId = instructorId;
@@ -170,7 +170,11 @@ export const DELETE = createApiHandler({
   handler: async (req: NextRequest, { user, params }) => {
     const { id } = params;
     const result = await execTransaction(async (tx) => {
-      const [group] = await tx.select().from(groups).where(eq(groups.id, id)).for("update").limit(1);
+      const [group] = await tx.select({
+        id: groups.id,
+        name: groups.name,
+        isArchived: groups.isArchived,
+      }).from(groups).where(eq(groups.id, id)).for("update").limit(1);
       if (!group) return { error: "notFound" as const };
 
       const [countRow] = await tx
