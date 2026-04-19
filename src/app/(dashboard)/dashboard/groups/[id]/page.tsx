@@ -17,7 +17,7 @@ import {
   getManageableProblemsForGroup,
 } from "@/lib/assignments/management";
 import { canAccessGroup } from "@/lib/auth/permissions";
-import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { resolveCapabilities, getAllRoleLevels } from "@/lib/capabilities/cache";
 import AssignmentFormDialog, { type AssignmentEditorValue } from "./assignment-form-dialog";
 import { AssignmentDeleteButton } from "./assignment-delete-button";
 import { GroupMembersManager } from "./group-members-manager";
@@ -193,12 +193,13 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
         .where(eq(groupInstructors.groupId, groupId))
     : [];
 
+  const roleLevels = canManageGroup ? await getAllRoleLevels() : new Map<string, number>();
   const availableInstructorUsers = canManageGroup
     ? (await db.query.users.findMany({
         where: and(eq(users.isActive, true)),
         columns: { id: true, username: true, name: true, role: true },
       }))
-        .filter((u) => u.role !== "student" && u.id !== group.instructorId)
+        .filter((u) => (roleLevels.get(u.role) ?? -1) > 0 && u.id !== group.instructorId)
         .map((u) => ({ id: u.id, username: u.username, name: u.name }))
     : [];
 

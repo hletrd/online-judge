@@ -10,6 +10,7 @@ import { groupMembershipSchema } from "@/lib/validators/groups";
 import { canAccessGroup } from "@/lib/auth/permissions";
 import { createApiHandler, forbidden, notFound } from "@/lib/api/handler";
 import { parsePagination } from "@/lib/api/pagination";
+import { getRoleLevel } from "@/lib/capabilities/cache";
 
 export const GET = createApiHandler({
   handler: async (req: NextRequest, { user, params }) => {
@@ -91,7 +92,8 @@ export const POST = createApiHandler({
       return apiError("studentInactive", 409);
     }
 
-    if (student.role !== "student") {
+    const studentLevel = await getRoleLevel(student.role);
+    if (studentLevel > 0) {
       return apiError("studentRoleInvalid", 409);
     }
 

@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import CreateGroupDialog from "./create-group-dialog";
 import EditGroupDialog from "./edit-group-dialog";
 import { PaginationControls } from "@/components/pagination-controls";
-import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { resolveCapabilities, getAllRoleLevels } from "@/lib/capabilities/cache";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { Input } from "@/components/ui/input";
 import { FilterSelect } from "@/components/filter-select";
@@ -79,12 +79,13 @@ export default async function GroupsPage({
   const canEditGroups = caps.has("groups.edit");
   
   let myGroups;
+  const roleLevels = canEditGroups ? await getAllRoleLevels() : new Map<string, number>();
   const availableInstructorUsers = canEditGroups
     ? (await db.query.users.findMany({
         where: and(eq(users.isActive, true)),
         columns: { id: true, username: true, name: true, role: true },
       }))
-        .filter((user) => user.role !== "student")
+        .filter((user) => (roleLevels.get(user.role) ?? -1) > 0)
         .map((user) => ({ id: user.id, name: user.name, username: user.username }))
     : [];
 
