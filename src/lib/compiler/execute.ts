@@ -140,6 +140,12 @@ interface DockerRunResult {
  *   - Control chars: \n \r
  *   - Null byte: \0
  *   - eval keyword (word-boundary match)
+ *   - source keyword (word-boundary match)
+ *
+ * Note: \bexec\b was removed from the denylist because (a) the Docker
+ * sandbox is the primary security boundary, and (b) "exec" is a common
+ * prefix for legitimate tool names (e.g., "exec-compiler"), causing
+ * false rejections. The Rust-side validator also does not include "exec".
  *
  * Minor divergence from Rust: \beval\b also rejects tokens like "eval-xxx"
  * where hyphen follows "eval"; the Rust split_whitespace check only rejects
@@ -153,7 +159,7 @@ interface DockerRunResult {
 function validateShellCommand(cmd: string): boolean {
   if (!cmd || cmd.length > 10_000) return false;
   if (cmd.includes("\0")) return false;
-  const dangerous = /`|\$\(|\$\{|[<>]\(|\|\||\||>|<|\n|\r|\beval\b|\bexec\b|\bsource\b/;
+  const dangerous = /`|\$\(|\$\{|[<>]\(|\|\||\||>|<|\n|\r|\beval\b|\bsource\b/;
   return !dangerous.test(cmd);
 }
 

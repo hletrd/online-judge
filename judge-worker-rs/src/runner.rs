@@ -121,10 +121,10 @@ fn validate_shell_command(cmd: &str) -> bool {
         return false;
     }
     // Block command/process substitution, I/O redirection, piping, control
-    // characters, and the `eval` word. `&&` and `;` are intentionally permitted:
-    // trust-boundary note — compile/run commands come from admin-configured
-    // language_configs rows and frequently legitimately chain steps
-    // (e.g. `mkdir -p out && javac …`).
+    // characters, and the `eval`/`source` words. `&&` and `;` are intentionally
+    // permitted: trust-boundary note — compile/run commands come from
+    // admin-configured language_configs rows and frequently legitimately chain
+    // steps (e.g. `mkdir -p out && javac …`).
     //
     // Denylist (must match src/lib/compiler/execute.ts#validateShellCommand):
     //   Backtick: `
@@ -137,6 +137,12 @@ fn validate_shell_command(cmd: &str) -> bool {
     //   Control chars: \n \r
     //   Null byte: \0
     //   eval keyword (exact whitespace-delimited token)
+    //   source keyword (exact whitespace-delimited token)
+    //
+    // Note: "exec" is NOT blocked because (a) the Docker sandbox is the primary
+    // security boundary, and (b) "exec" is a common prefix for legitimate tool
+    // names. Previously blocked on the TS side via \bexec\b but removed due to
+    // false positives.
     //
     // Minor divergence from TS: split_whitespace only rejects the exact token
     // "eval", whereas the TS \beval\b regex also rejects "eval-xxx" (hyphen
@@ -153,8 +159,8 @@ fn validate_shell_command(cmd: &str) -> bool {
             return false;
         }
     }
-    // Block eval as a word
-    if cmd.split_whitespace().any(|w| w == "eval") {
+    // Block eval and source as words
+    if cmd.split_whitespace().any(|w| w == "eval" || w == "source") {
         return false;
     }
     true
