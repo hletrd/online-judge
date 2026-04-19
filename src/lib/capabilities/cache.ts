@@ -27,7 +27,7 @@ async function loadRolesFromDb(): Promise<void> {
   const { db } = await import("@/lib/db");
   const { roles } = await import("@/lib/db/schema");
 
-  const allRoles = await db.select().from(roles);
+  const allRoles = await db.select({ name: roles.name, capabilities: roles.capabilities, level: roles.level }).from(roles);
 
   const cache = new Map<string, { capabilities: Set<string>; level: number }>();
 

@@ -96,7 +96,7 @@ export default async function ProblemDetailPage({
   }
 
   // Fetch languages
-  const langs = await db.select().from(languageConfigs).where(eq(languageConfigs.isEnabled, true));
+  const langs = await db.select({ id: languageConfigs.id, language: languageConfigs.language, displayName: languageConfigs.displayName, standard: languageConfigs.standard, isEnabled: languageConfigs.isEnabled }).from(languageConfigs).where(eq(languageConfigs.isEnabled, true));
   const enabledLanguages = langs.flatMap((language) => {
     const definition = getJudgeLanguageDefinition(language.language);
 

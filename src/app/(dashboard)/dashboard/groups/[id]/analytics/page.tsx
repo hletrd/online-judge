@@ -27,7 +27,7 @@ export default async function GroupAnalyticsPage({ params }: PageProps) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+  const [group] = await db.select({ id: groups.id, name: groups.name }).from(groups).where(eq(groups.id, groupId)).limit(1);
   if (!group) notFound();
 
   const canAccess = await canAccessGroup(groupId, session.user.id, session.user.role);

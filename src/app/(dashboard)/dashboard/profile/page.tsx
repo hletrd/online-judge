@@ -22,7 +22,7 @@ export default async function ProfilePage() {
   const t = await getTranslations("profile");
   const tCommon = await getTranslations("common");
   const [langs, actorRoleLevel, roleRecord] = await Promise.all([
-    db.select().from(languageConfigs).where(eq(languageConfigs.isEnabled, true)),
+    db.select({ language: languageConfigs.language, displayName: languageConfigs.displayName, standard: languageConfigs.standard, isEnabled: languageConfigs.isEnabled }).from(languageConfigs).where(eq(languageConfigs.isEnabled, true)),
     getRoleLevel(session.user.role),
     db.query.roles.findFirst({
       where: eq(roles.name, session.user.role),
