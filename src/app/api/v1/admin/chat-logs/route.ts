@@ -6,7 +6,7 @@ import { forbidden } from "@/lib/api/auth";
 import { createApiHandler } from "@/lib/api/handler";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { recordAuditEvent } from "@/lib/audit/events";
-import { rawQueryAll, rawQueryOne } from "@/lib/db/queries";
+import { rawQueryAll } from "@/lib/db/queries";
 import { parsePositiveInt } from "@/lib/validators/query-params";
 
 export const GET = createApiHandler({
@@ -66,6 +66,7 @@ export const GET = createApiHandler({
       lastMessageAt: string;
       userName: string | null;
       username: string | null;
+      total: number;
     }>(
       `WITH filtered AS (
          SELECT *
@@ -103,7 +104,8 @@ export const GET = createApiHandler({
          bounds."startedAt",
          bounds."lastMessageAt",
          u.name AS "userName",
-         u.username
+         u.username,
+         COUNT(*) OVER() AS total
        FROM session_bounds bounds
        INNER JOIN session_first first_row ON first_row."sessionId" = bounds.session_id
        LEFT JOIN users u ON u.id = first_row."userId"
@@ -112,12 +114,8 @@ export const GET = createApiHandler({
       { userId, limit, offset }
     );
 
-    const totalRow = await rawQueryOne<{ total: number }>(
-      `SELECT COUNT(DISTINCT session_id)::int AS total
-       FROM chat_messages
-       WHERE (@userId IS NULL OR user_id = @userId)`,
-      { userId }
-    );
+    // Extract total from the first row (COUNT(*) OVER() is the same for all rows)
+    const total = sessions.length > 0 ? Number(sessions[0].total) : 0;
 
     recordAuditEvent({
       actorId: user.id,
@@ -133,6 +131,6 @@ export const GET = createApiHandler({
       request: req,
     });
 
-    return NextResponse.json({ sessions, total: Number(totalRow?.total ?? 0), page, limit });
+    return NextResponse.json({ sessions, total, page, limit });
   },
 });
