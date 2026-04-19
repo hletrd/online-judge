@@ -192,10 +192,10 @@
 
 | Story | Status | Commit |
 | --- | --- | --- |
-| AUTH-02 | Pending | — |
-| LANG-01 | Pending | — |
-| NAFIX-01 | Pending | — |
-| CSV-01 | Pending | — |
-| PRACTICE-01 | Pending | — |
-| RANK-01 | Pending | — |
-| WS-MIGRATE-01 | Pending (plan only) | — |
+| AUTH-02 | Done | c803ee1d |
+| CSV-01 | Done | ed01e45f |
+| NAFIX-01 | Done | ed01e45f |
+| LANG-01 | Done | 60cecf3e |
+| PRACTICE-01 | Done | 5eeb680d |
+| RANK-01 | Done | 2e3cadd6 |
+| WS-MIGRATE-01 | Done (plan only) | 38d3e3cf |
