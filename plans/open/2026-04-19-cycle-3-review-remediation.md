@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-19
 **Source:** `.context/reviews/cycle-3-aggregate.md`, per-agent reviews under `.context/reviews/cycle-3-*.md`
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 
 ## Planning notes
 - This pass re-read repo rules first: `CLAUDE.md`, `AGENTS.md`, `.context/development/*.md`.
@@ -174,8 +174,8 @@
 
 | Story | Status | Commit |
 | --- | --- | --- |
-| CSV-02 | Pending | — |
-| NAFIX-02 | Pending | — |
-| CHAT-LOG-01 | Pending | — |
-| WS-PHASE1 | Pending | — |
-| TEST-01 | Pending | — |
+| CSV-02 | DONE | `4ae85b95` |
+| NAFIX-02 | DONE | `4ae85b95` |
+| CHAT-LOG-01 | DONE | `de7c72ef` |
+| WS-PHASE1 | DONE | `effd7c74` |
+| TEST-01 | DONE | `6c37b244` |
