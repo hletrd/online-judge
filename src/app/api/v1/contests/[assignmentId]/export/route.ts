@@ -6,10 +6,7 @@ import { computeContestRanking } from "@/lib/assignments/contest-scoring";
 import { getLeaderboardProblems } from "@/lib/assignments/leaderboard";
 import { rawQueryOne, rawQueryAll } from "@/lib/db/queries";
 import { recordAuditEvent } from "@/lib/audit/events";
-
-function sanitizeFilename(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_\- ]/g, "_").slice(0, 100);
-}
+import { contentDispositionAttachment } from "@/lib/http/content-disposition";
 
 function escapeCsvCell(cell: string | number): string {
   const str = String(cell);
@@ -117,7 +114,7 @@ export const GET = createApiHandler({
         ipAddresses: anonymized ? "" : (ipMap.get(entry.userId) ?? ""),
       }));
 
-      const safeName = sanitizeFilename(assignment.title);
+      const jsonSuffix = `${anonymized ? "-anonymized" : ""}-export`;
       if (isDownload) {
         recordAuditEvent({
           actorId: user.id,
@@ -133,7 +130,7 @@ export const GET = createApiHandler({
       }
       return NextResponse.json(data, {
         headers: {
-          "Content-Disposition": `attachment; filename="${safeName}${anonymized ? "-anonymized" : ""}-export.json"`,
+          "Content-Disposition": contentDispositionAttachment(`${assignment.title}-${jsonSuffix}`, ".json"),
         },
       });
     }
@@ -179,7 +176,7 @@ export const GET = createApiHandler({
       ...rows.map((row) => row.map(escapeCsvCell).join(",")),
     ];
 
-    const safeName = sanitizeFilename(assignment.title);
+    const csvSuffix = `${anonymized ? "-anonymized" : ""}-export`;
     recordAuditEvent({
       actorId: user.id,
       actorRole: user.role,
@@ -194,7 +191,7 @@ export const GET = createApiHandler({
     return new NextResponse(csvLines.join("\n"), {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${safeName}${anonymized ? "-anonymized" : ""}-export.csv"`,
+        "Content-Disposition": contentDispositionAttachment(`${assignment.title}-${csvSuffix}`, ".csv"),
       },
     });
   },

@@ -7,6 +7,7 @@ import { getApiUser, unauthorized, forbidden, notFound } from "@/lib/api/auth";
 import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
 import { getAssignmentStatusRows } from "@/lib/assignments/submissions";
 import { logger } from "@/lib/logger";
+import { contentDispositionAttachment } from "@/lib/http/content-disposition";
 
 function escapeCsvField(value: string | null | undefined): string {
   let str = value == null ? "" : String(value);
@@ -97,14 +98,11 @@ export async function GET(
 
     const csv = BOM + [header, ...dataRows].join("\r\n") + "\r\n";
 
-    const safeTitle = assignment.title.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
-    const filename = `assignment-${safeTitle}-grades.csv`;
-
     return new NextResponse(csv, {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": contentDispositionAttachment(`assignment-${assignment.title}-grades`, ".csv"),
       },
     });
   } catch (error) {

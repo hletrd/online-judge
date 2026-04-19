@@ -11,6 +11,7 @@ import { readUploadedFile, deleteUploadedFile } from "@/lib/files/storage";
 import { logger } from "@/lib/logger";
 import { isImageMimeType } from "@/lib/files/image-processing";
 import { getAccessibleProblemIds } from "@/lib/auth/permissions";
+import { contentDispositionAttachment } from "@/lib/http/content-disposition";
 
 async function canAccessFile(
   fileId: string,
@@ -97,9 +98,10 @@ export async function GET(
     }
 
     const isImage = isImageMimeType(file.mimeType);
+    const ext = file.originalName.includes(".") ? `.${file.originalName.split(".").pop()}` : "";
     const disposition = isImage
       ? "inline"
-      : `attachment; filename="${encodeURIComponent(file.originalName)}"`;
+      : contentDispositionAttachment(file.originalName.replace(/\.[^.]+$/, ""), ext);
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
