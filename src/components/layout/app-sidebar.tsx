@@ -18,7 +18,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { BookOpen, FileCode, Send, Users, User, LayoutDashboard, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy, MessageCircle, Timer, KeyRound, Code, Settings, Server, Play, Upload, Tags, Loader2 } from "lucide-react";
+import { BookOpen, FileCode, Send, Users, User, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, Trophy, MessageCircle, Timer, KeyRound, Code, Settings, Server, Play, Upload, Tags, Loader2 } from "lucide-react";
 import type { PlatformMode } from "@/types";
 import type { ActiveTimedAssignmentSummary } from "@/lib/assignments/active-timed-assignments";
 import { getPlatformModePolicy } from "@/lib/platform-mode";
@@ -42,7 +42,7 @@ interface AppSidebarProps {
 type NavItem = {
   titleKey: string;
   href: string;
-  icon: typeof LayoutDashboard;
+  icon: typeof BookOpen;
   capability?: string;
   hiddenInModes?: PlatformMode[];
   titleKeyByMode?: Partial<Record<PlatformMode, string>>;
@@ -54,12 +54,6 @@ type NavGroup = {
 };
 
 const navGroups: NavGroup[] = [
-  {
-    labelKey: "",
-    items: [
-      { titleKey: "dashboard", href: "/dashboard", icon: LayoutDashboard },
-    ],
-  },
   {
     labelKey: "learning",
     items: [
@@ -106,7 +100,6 @@ const navGroups: NavGroup[] = [
         capability: "problem_sets.create",
         hiddenInModes: ["recruiting"],
       },
-      { titleKey: "profile", href: "/dashboard/profile", icon: User },
     ],
   },
 ];
