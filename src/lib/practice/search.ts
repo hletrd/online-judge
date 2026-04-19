@@ -5,9 +5,7 @@ export function normalizePracticeSearch(value?: string) {
   return value.trim().slice(0, 200);
 }
 
-export function escapePracticeLike(value: string) {
-  return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
-}
+export { escapeLikePattern as escapePracticeLike } from "@/lib/db/like";
 
 export function getPracticeSearchMatchKinds(
   problem: {
