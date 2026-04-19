@@ -56,9 +56,12 @@ export async function computeContestReplay(
     return null;
   }
 
-  // Compute snapshots with bounded concurrency (4 parallel) instead of
+  // Compute snapshots with bounded concurrency (2 parallel) instead of
   // sequential queries — reduces wall-clock time for large contests.
-  const snapshotLimiter = pLimit(4);
+  // Each snapshot computation runs up to 3 SQL queries (meta + scoring +
+  // assignment problems), so pLimit(2) means at most 6 concurrent queries,
+  // well within a 20-connection pool even with overlapping replay requests.
+  const snapshotLimiter = pLimit(2);
   const snapshotResults = await Promise.all(
     sampledCutoffs.map((cutoffSec) =>
       snapshotLimiter(async () => {
