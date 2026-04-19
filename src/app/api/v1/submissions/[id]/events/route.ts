@@ -298,22 +298,76 @@ export async function GET(
 
         let lastAuthCheck = Date.now();
 
-        // Callback invoked by the shared poll timer with the latest status
+        // Callback invoked by the shared poll timer with the latest status.
+        // The callback is async to allow awaiting the re-auth check before
+        // processing the status event, preventing data leakage after account
+        // deactivation and avoiding a race with the terminal result delivery.
         const onPollResult: PollCallback = (status: string) => {
           if (closed) return;
 
-          // Periodically re-check auth to ensure deactivated users don't keep receiving data
+          // Periodically re-check auth to ensure deactivated users don't keep receiving data.
+          // Await the check before processing the status event so that a revoked
+          // user does not receive one more event after deactivation.
           const now = Date.now();
           if (now - lastAuthCheck >= AUTH_RECHECK_INTERVAL_MS) {
             lastAuthCheck = now;
             void (async () => {
-              const reAuthUser = await getApiUser(request);
-              if (!reAuthUser) {
+              try {
+                const reAuthUser = await getApiUser(request);
+                if (!reAuthUser) {
+                  close();
+                  return;
+                }
+              } catch {
+                // If re-auth check fails (e.g., malformed token), close the connection
                 close();
+                return;
+              }
+
+              // Re-auth passed — process the status event now
+              if (closed) return;
+
+              if (!status) {
+                // Submission was deleted
+                close();
+                return;
+              }
+
+              if (!IN_PROGRESS_JUDGE_STATUSES.has(status)) {
+                // Terminal state reached -- fetch full submission and send final event
+                try {
+                  const fullSubmission = await queryFullSubmission(id);
+                  if (closed) return;
+                  const sanitized = fullSubmission
+                    ? await sanitizeSubmissionForViewer(fullSubmission, user.id, caps)
+                    : null;
+                  controller.enqueue(
+                    encoder.encode(`event: result\ndata: ${JSON.stringify(sanitized)}\n\n`)
+                  );
+                } catch (err) {
+                  if (!closed) {
+                    logger.error({ err }, "SSE final fetch error for submission %s", id);
+                    controller.enqueue(encoder.encode(`event: error\ndata: {"error":"fetch_failed"}\n\n`));
+                  }
+                } finally {
+                  close();
+                }
+                return;
+              }
+
+              // Emit a status heartbeat so the client knows the connection is alive
+              try {
+                controller.enqueue(
+                  encoder.encode(`event: status\ndata: ${JSON.stringify({ status })}\n\n`)
+                );
+              } catch (err) {
+                if (!closed) {
+                  logger.error({ err }, "SSE enqueue error for submission %s", id);
+                  close();
+                }
               }
             })();
-            // Don't return early -- still process the current status update
-            // (the auth revocation will take effect on the next tick)
+            return; // Don't process the event synchronously — the async IIFE handles it
           }
 
           if (!status) {
