@@ -23,7 +23,6 @@ import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { isInstructorOrAboveAsync } from "@/lib/auth/role-helpers";
 import { getActiveTimedAssignmentsForSidebar } from "@/lib/assignments/active-timed-assignments";
 import { NO_INDEX_METADATA } from "@/lib/seo";
-import { buildLocalizedHref } from "@/lib/locale-paths";
 
 export const metadata: Metadata = NO_INDEX_METADATA;
 
@@ -69,29 +68,31 @@ export default async function DashboardLayout({ children }: { children: React.Re
       initialColorScheme={session.user.lectureColorScheme ?? "dark"}
       persistAction={updatePreferences}
     >
-      <PublicHeader
-        siteTitle={settings.siteTitle}
-        items={[
-          { href: "/practice", label: t("practice") },
-          { href: "/playground", label: t("playground") },
-          { href: "/contests", label: t("contests") },
-          { href: "/rankings", label: t("rankings") },
-          { href: "/community", label: t("community") },
-          { href: "/languages", label: t("languages") },
-        ]}
-        actions={[
-          { href: "/login", label: t("signIn") },
-          { href: "/signup", label: t("signUp") },
-        ]}
-        loggedInUser={{
-          name: session.user.name || session.user.username || "",
-          href: "/dashboard/profile",
-          label: session.user.name || session.user.username || "",
-          role: session.user.role,
-          capabilities,
-        }}
-      />
       <SidebarProvider>
+        <PublicHeader
+          siteTitle={settings.siteTitle}
+          items={[
+            { href: "/practice", label: t("practice") },
+            { href: "/playground", label: t("playground") },
+            { href: "/contests", label: t("contests") },
+            { href: "/rankings", label: t("rankings") },
+            { href: "/community", label: t("community") },
+            { href: "/languages", label: t("languages") },
+          ]}
+          actions={[
+            { href: "/login", label: t("signIn") },
+            { href: "/signup", label: t("signUp") },
+          ]}
+          loggedInUser={{
+            name: session.user.name || session.user.username || "",
+            href: "/dashboard/profile",
+            label: session.user.name || session.user.username || "",
+            role: session.user.role,
+            capabilities,
+          }}
+          leadingSlot={<SidebarTrigger />}
+          trailingSlot={canUseLectureMode ? <LectureModeToggle /> : undefined}
+        />
         <SkipToContent targetId="main-content" label={t("skipToContent")} />
         <AppSidebar
           user={session.user}
@@ -102,12 +103,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
           activeTimedAssignments={activeTimedAssignments}
         />
         <SidebarInset>
-          <header className="flex h-10 items-center gap-2 border-b px-4">
-            <SidebarTrigger />
-            <div className="ml-auto flex shrink-0 items-center gap-1">
-              {canUseLectureMode && <LectureModeToggle />}
-            </div>
-          </header>
           <main id="main-content" className="min-w-0 flex-1 p-6">
             <Breadcrumb className="mb-4" />
             {children}

@@ -46,6 +46,10 @@ type PublicHeaderProps = {
     /** User role — may be a built-in UserRole or a custom role string */
     role?: string;
   } | null;
+  /** Optional element rendered before the site title (e.g., SidebarTrigger for dashboard pages) */
+  leadingSlot?: React.ReactNode;
+  /** Optional element rendered in the right actions area (e.g., LectureModeToggle for dashboard pages) */
+  trailingSlot?: React.ReactNode;
 };
 
 function isActivePath(pathname: string, href: string) {
@@ -88,7 +92,7 @@ function getDropdownItems(role?: string, capabilities?: string[]): DropdownItem[
   return items;
 }
 
-export function PublicHeader({ siteTitle, items, actions, loggedInUser }: PublicHeaderProps) {
+export function PublicHeader({ siteTitle, items, actions, loggedInUser, leadingSlot, trailingSlot }: PublicHeaderProps) {
   const pathname = usePathname();
   const locale = useLocale();
   const tCommon = useTranslations("common");
@@ -189,6 +193,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
       )}
 
       <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 py-3 sm:gap-4">
+        {leadingSlot}
         <Link
           href={buildLocalizedHref("/", locale)}
           className="min-w-0 flex-1 text-base font-semibold md:flex-none md:shrink-0"
@@ -216,6 +221,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
         </nav>
 
         <div className="ml-auto hidden items-center gap-1 md:flex">
+          {trailingSlot}
           <ThemeToggle />
           <LocaleSwitcher />
           {loggedInUser ? (
@@ -264,6 +270,7 @@ export function PublicHeader({ siteTitle, items, actions, loggedInUser }: Public
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-1 md:hidden">
+          {trailingSlot}
           <ThemeToggle />
           <LocaleSwitcher />
           <button

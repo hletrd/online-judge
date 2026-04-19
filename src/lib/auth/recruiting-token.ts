@@ -5,8 +5,7 @@ import { eq } from "drizzle-orm";
 import { redeemRecruitingToken } from "@/lib/assignments/recruiting-invitations";
 import { extractClientIp } from "@/lib/security/ip";
 import { logger } from "@/lib/logger";
-import type { LoginEventRequestSummary } from "@/lib/auth/login-events";
-import { mapUserToAuthFields, createSuccessfulLoginResponse } from "@/lib/auth/config";
+import { createSuccessfulLoginResponse } from "@/lib/auth/config";
 
 export async function authorizeRecruitingToken(
   token: string,
