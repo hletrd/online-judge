@@ -118,7 +118,7 @@ export async function authenticateApiKey(authHeader: string | null) {
     email: user.email,
     name: user.name,
     className: user.className,
-    mustChangePassword: false,
+    mustChangePassword: Boolean(user.mustChangePassword),
     _apiKeyAuth: true as const,
   };
 }
