@@ -63,7 +63,12 @@ async function getEntry(
   queryDb: Pick<typeof db, "select"> | Pick<TransactionClient, "select"> = db
 ) {
   const now = Date.now();
-  const [existing] = await queryDb.select().from(rateLimits).where(eq(rateLimits.key, key)).limit(1).for("update");
+  const [existing] = await queryDb.select({
+    attempts: rateLimits.attempts,
+    windowStartedAt: rateLimits.windowStartedAt,
+    blockedUntil: rateLimits.blockedUntil,
+    consecutiveBlocks: rateLimits.consecutiveBlocks,
+  }).from(rateLimits).where(eq(rateLimits.key, key)).limit(1).for("update");
 
   if (!existing) {
     return {
