@@ -42,14 +42,23 @@ const problemPatchSchema = z.object({
 export const GET = createApiHandler({
   handler: async (req: NextRequest, { user, params }) => {
     const { id } = params;
-    const problem = await db.query.problems.findFirst({ where: eq(problems.id, id) });
-    if (!problem) return notFound("Problem");
-    const caps = await resolveCapabilities(user.role);
+
+    // Minimal fetch for access check — avoid loading full row before authorization
+    const problemStub = await db.query.problems.findFirst({
+      where: eq(problems.id, id),
+      columns: { id: true, authorId: true, visibility: true },
+    });
+    if (!problemStub) return notFound("Problem");
 
     const hasAccess = await canAccessProblem(id, user.id, user.role);
     if (!hasAccess) return forbidden();
 
-    const canManageProblem = caps.has("problems.edit") || problem.authorId === user.id;
+    const caps = await resolveCapabilities(user.role);
+    const canManageProblem = caps.has("problems.edit") || problemStub.authorId === user.id;
+
+    // Full fetch only after access is confirmed
+    const problem = await db.query.problems.findFirst({ where: eq(problems.id, id) });
+    if (!problem) return notFound("Problem");
 
     if (!canManageProblem) {
       return apiSuccess(problem);
