@@ -143,7 +143,12 @@ export async function DELETE(
     const { id } = await params;
 
     const [file] = await db
-      .select()
+      .select({
+        id: files.id,
+        storedName: files.storedName,
+        originalName: files.originalName,
+        uploadedBy: files.uploadedBy,
+      })
       .from(files)
       .where(eq(files.id, id))
       .limit(1);
