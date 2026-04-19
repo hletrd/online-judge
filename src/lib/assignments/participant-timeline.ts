@@ -2,6 +2,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   antiCheatEvents,
+  assignments,
   assignmentProblems,
   codeSnapshots,
   contestAccessTokens,
@@ -92,6 +93,7 @@ export async function getParticipantTimeline(
     participant,
     examSession,
     contestAccess,
+    assignmentMeta,
     assignmentProblemRows,
     submissionRows,
     snapshotRows,
@@ -120,6 +122,12 @@ export async function getParticipantTimeline(
       ),
       columns: {
         redeemedAt: true,
+      },
+    }),
+    db.query.assignments.findFirst({
+      where: eq(assignments.id, assignmentId),
+      columns: {
+        scoringModel: true,
       },
     }),
     db
@@ -187,17 +195,29 @@ export async function getParticipantTimeline(
     snapshotsByProblem.set(row.problemId, current);
   }
 
+  const scoringModel = assignmentMeta?.scoringModel ?? "ioi";
+
   const problemsTimeline = assignmentProblemRows.map((problemRow) => {
     const problemSubmissions = submissionsByProblem.get(problemRow.problemId) ?? [];
     const problemSnapshots = snapshotsByProblem.get(problemRow.problemId) ?? [];
     const firstSubmission = problemSubmissions[0] ?? null;
     const lastSubmission = problemSubmissions.at(-1) ?? null;
-    const firstAccepted = problemSubmissions.find((submission) => submission.status === "accepted") ?? null;
+    const problemPoints = problemRow.points ?? 100;
+    // For ICPC: "accepted" status means full score (binary accept/reject).
+    // For IOI: submissions are typically "scored" rather than "accepted", so
+    // use score >= full points as the "first AC" condition. This is consistent
+    // with the `solved` field in contest-scoring.ts which uses
+    // `bestScore >= ap.points` for IOI.
+    const isFirstAc = scoringModel === "icpc"
+      ? (submission: typeof problemSubmissions[number]) => submission.status === "accepted"
+      : (submission: typeof problemSubmissions[number]) =>
+          submission.score !== null && submission.score !== undefined && submission.score >= problemPoints;
+    const firstAccepted = problemSubmissions.find(isFirstAc) ?? null;
     const wrongBeforeAc = firstAccepted
       ? problemSubmissions.filter(
           (submission) =>
             submission !== firstAccepted
-            && submission.status !== "accepted"
+            && !isFirstAc(submission)
             && submission.submittedAt
             && firstAccepted.submittedAt
             && submission.submittedAt.getTime() < firstAccepted.submittedAt.getTime()
