@@ -27,6 +27,7 @@ const AUTH_CACHE_TTL_MS = (() => {
 })();
 const AUTH_CACHE_MAX_SIZE = 500;
 
+// Edge Runtime: Buffer is not available; use btoa instead.
 function bytesToBase64(bytes: Uint8Array) {
   let binary = "";
   for (const byte of bytes) {
