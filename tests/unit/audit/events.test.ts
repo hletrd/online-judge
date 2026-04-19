@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   dbInsertValues: vi.fn<(...args: unknown[]) => Promise<void>>(),
-  dbDeleteWhere: vi.fn<(...args: unknown[]) => Promise<void>>(),
+  dbExecute: vi.fn<(...args: unknown[]) => Promise<{ rowCount: number }>>(),
   normalizeText: vi.fn((text: unknown, _max: number) => (text == null ? null : String(text))),
   getClientIp: vi.fn(() => "127.0.0.1"),
   getRequestPath: vi.fn(() => "/test"),
@@ -20,9 +20,7 @@ vi.mock("@/lib/db", () => ({
     insert: vi.fn(() => ({
       values: mocks.dbInsertValues,
     })),
-    delete: vi.fn(() => ({
-      where: mocks.dbDeleteWhere,
-    })),
+    execute: mocks.dbExecute,
   },
 }));
 
@@ -65,7 +63,7 @@ beforeEach(() => {
   vi.useFakeTimers();
 
   mocks.dbInsertValues.mockResolvedValue(undefined);
-  mocks.dbDeleteWhere.mockResolvedValue(undefined);
+  mocks.dbExecute.mockResolvedValue({ rowCount: 0 });
   mocks.normalizeText.mockImplementation((text: unknown, _max: number) =>
     text == null ? null : String(text)
   );
@@ -297,16 +295,18 @@ describe("startAuditEventPruning / stopAuditEventPruning", () => {
     const { startAuditEventPruning, stopAuditEventPruning } = await import("@/lib/audit/events");
 
     stopAuditEventPruning();
+    mocks.dbExecute.mockResolvedValue({ rowCount: 0 });
     startAuditEventPruning();
     await Promise.resolve();
 
-    expect(mocks.dbDeleteWhere).toHaveBeenCalledTimes(1);
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(1);
     expect(() => stopAuditEventPruning()).not.toThrow();
   });
 
   it("stopAuditEventPruning clears interval", async () => {
     const { startAuditEventPruning, stopAuditEventPruning } = await import("@/lib/audit/events");
 
+    mocks.dbExecute.mockResolvedValue({ rowCount: 0 });
     startAuditEventPruning();
     stopAuditEventPruning();
 
@@ -317,16 +317,17 @@ describe("startAuditEventPruning / stopAuditEventPruning", () => {
     const { startAuditEventPruning, stopAuditEventPruning } = await import("@/lib/audit/events");
 
     stopAuditEventPruning();
+    mocks.dbExecute.mockResolvedValue({ rowCount: 0 });
     startAuditEventPruning();
     startAuditEventPruning();
     await Promise.resolve();
 
-    const initialPruneCalls = mocks.dbDeleteWhere.mock.calls.length;
+    const initialPruneCalls = mocks.dbExecute.mock.calls.length;
     expect(initialPruneCalls).toBe(2);
 
     await vi.advanceTimersByTimeAsync(24 * 60 * 60 * 1000);
 
-    expect(mocks.dbDeleteWhere).toHaveBeenCalledTimes(initialPruneCalls + 1);
+    expect(mocks.dbExecute).toHaveBeenCalledTimes(initialPruneCalls + 1);
     stopAuditEventPruning();
   });
 });
