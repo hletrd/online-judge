@@ -115,6 +115,14 @@ async function getEntry(
   };
 }
 
+/**
+ * Check if a key is currently rate-limited (read-only).
+ *
+ * WARNING: This is a read-only status check — do NOT use it to gate write
+ * operations. The check and any subsequent action run in separate transactions,
+ * creating a TOCTOU race. For atomic check+increment, use
+ * `consumeRateLimitAttemptMulti` instead.
+ */
 export async function isRateLimited(key: string) {
   return execTransaction(async (tx) => {
     const { now, entry } = await getEntry(key, tx);
@@ -122,6 +130,13 @@ export async function isRateLimited(key: string) {
   });
 }
 
+/**
+ * Check if any of the given keys is currently rate-limited (read-only).
+ *
+ * WARNING: This is a read-only status check — do NOT use it to gate write
+ * operations. For atomic check+increment, use `consumeRateLimitAttemptMulti`
+ * instead.
+ */
 export async function isAnyKeyRateLimited(...keys: string[]) {
   return execTransaction(async (tx) => {
     const results = await Promise.all(keys.map(async (key) => {
