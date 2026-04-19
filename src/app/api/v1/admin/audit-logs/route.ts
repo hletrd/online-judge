@@ -3,7 +3,7 @@ import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { auditEvents, users } from "@/lib/db/schema";
-import { and, desc, eq, gte, like, lte, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
 
 const VALID_RESOURCE_TYPES = [
   "system_settings",
@@ -64,7 +64,7 @@ export const GET = createApiHandler({
     }
 
     if (action && action !== "all") {
-      filters.push(like(auditEvents.action, `${action}%`));
+      filters.push(sql`${auditEvents.action} LIKE ${escapeLikePattern(action) + '%'} ESCAPE '\\'`);
     }
 
     if (search) {
