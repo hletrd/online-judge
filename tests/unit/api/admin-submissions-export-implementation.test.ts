@@ -22,6 +22,6 @@ describe("admin submissions export implementation", () => {
     expect(source).toContain('searchParams.get("dateTo")');
     expect(source).toContain("groupName: groups.name");
     expect(source).toContain('"text/csv; charset=utf-8"');
-    expect(source).toContain('"submissions-export.csv"');
+    expect(source).toContain('contentDispositionAttachment("submissions-export", ".csv")');
   });
 });

@@ -4,6 +4,7 @@ import { apiSuccess } from "@/lib/api/responses";
 import { db } from "@/lib/db";
 import { loginEvents, users } from "@/lib/db/schema";
 import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
+import { contentDispositionAttachment } from "@/lib/http/content-disposition";
 
 const VALID_OUTCOMES = ["success", "invalid_credentials", "rate_limited", "policy_denied"] as const;
 
@@ -125,7 +126,7 @@ export const GET = createApiHandler({
       return new NextResponse(BOM + [header, ...csvRows].join("\r\n") + "\r\n", {
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition": 'attachment; filename="login-logs.csv"',
+          "Content-Disposition": contentDispositionAttachment("login-logs", ".csv"),
         },
       });
     }

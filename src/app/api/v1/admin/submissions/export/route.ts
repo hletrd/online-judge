@@ -32,6 +32,7 @@ function normalizeGroupFilter(value?: string | null) {
 }
 
 import { escapeLikePattern } from "@/lib/db/like";
+import { contentDispositionAttachment } from "@/lib/http/content-disposition";
 
 function escapeCsvField(value: string | number | null | undefined) {
   let str = value == null ? "" : String(value);
@@ -140,7 +141,7 @@ export const GET = createApiHandler({
     return new NextResponse(BOM + [header, ...csvRows].join("\r\n") + "\r\n", {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="submissions-export.csv"',
+        "Content-Disposition": contentDispositionAttachment("submissions-export", ".csv"),
       },
     });
   },

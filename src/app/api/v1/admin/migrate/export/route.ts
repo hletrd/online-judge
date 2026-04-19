@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { contentDispositionAttachment } from "@/lib/http/content-disposition";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     return new Response(streamDatabaseExport({ signal: request.signal, sanitize: !wantFull }), {
       headers: {
         "Content-Type": "application/json",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": contentDispositionAttachment(filename.replace(/\.json$/, ""), ".json"),
         "Cache-Control": "no-store",
       },
     });
