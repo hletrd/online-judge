@@ -223,22 +223,7 @@ export function stopAuditEventPruning() {
   }
 }
 
-// --- Graceful shutdown: flush audit buffer before process exits ---
-
-function handleGracefulShutdown() {
-  // Flush synchronously-ish: fire the flush and give it a brief window.
-  // This is best-effort — SIGKILL cannot be caught.
-  void flushAuditBuffer().then(() => {
-    process.exit(0);
-  }).catch(() => {
-    process.exit(1);
-  });
-}
-
-process.on("SIGTERM", () => handleGracefulShutdown());
-process.on("SIGINT", () => handleGracefulShutdown());
-process.on("beforeExit", () => {
-  // beforeExit fires when the event loop is empty but before the process exits.
-  // No exit is forced, so we just flush without calling process.exit().
-  void flushAuditBuffer();
-});
+// Graceful shutdown is handled by registerAuditFlushOnShutdown() in
+// src/lib/audit/node-shutdown.ts, which is called from instrumentation.ts.
+// That module registers process.once handlers for SIGTERM/SIGINT/beforeExit
+// that flush the audit buffer before the process exits.
