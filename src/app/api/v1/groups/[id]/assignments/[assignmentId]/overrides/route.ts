@@ -145,7 +145,16 @@ export const GET = createApiHandler({
     if ("error" in access) return access.error;
 
     const overrides = await db
-      .select()
+      .select({
+        id: scoreOverrides.id,
+        assignmentId: scoreOverrides.assignmentId,
+        problemId: scoreOverrides.problemId,
+        userId: scoreOverrides.userId,
+        overrideScore: scoreOverrides.overrideScore,
+        reason: scoreOverrides.reason,
+        createdBy: scoreOverrides.createdBy,
+        createdAt: scoreOverrides.createdAt,
+      })
       .from(scoreOverrides)
       .where(eq(scoreOverrides.assignmentId, access.assignment.id));
     return apiSuccess(overrides);
