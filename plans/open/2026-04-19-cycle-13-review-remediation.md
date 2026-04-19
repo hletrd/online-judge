@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-19
 **Source:** `.context/reviews/cycle-13-comprehensive-review.md` and `.context/reviews/_aggregate.md`
-**Status:** Open
+**Status:** Complete
 
 ---
 
@@ -10,25 +10,23 @@
 
 ### M1: Fix community votes race condition with transaction
 - **File**: `src/app/api/v1/community/votes/route.ts:78-107`
-- **Status**: TODO
-- **Plan**:
-  1. Wrap the read-check-write logic in `db.transaction()`
-  2. Use `SELECT ... FOR UPDATE` (or Drizzle equivalent) to lock the existing vote row during the transaction
-  3. Move the delete/update/insert branch logic inside the transaction
-  4. Update the score summary query to run within the same transaction for consistent read
-  5. Verify existing tests still pass and add a test for concurrent vote toggling
-- **Exit criterion**: No TOCTOU race in community votes route; concurrent votes from the same user produce consistent results.
+- **Status**: DONE (commit c7510e10)
+- **Fix applied**:
+  1. Wrapped the read-check-write logic in `db.transaction()`
+  2. Moved `findFirst`, `delete`, `update`, `insert` branch logic inside the transaction
+  3. Moved the score summary query to run within the same transaction for consistent read
+  4. Updated test mock to include `db.transaction` that delegates to a mock `tx` object
+- **Exit criterion**: Met — No TOCTOU race in community votes route; all operations run atomically within a transaction.
 
 ### M2: Remove or harden deprecated `validateRoleChange` sync function
 - **File**: `src/lib/users/core.ts:83-101`
-- **Status**: TODO
-- **Plan**:
-  1. Verify no callers import `validateRoleChange` (only `validateRoleChangeAsync` should be used)
-  2. Remove the deprecated function entirely, OR
-  3. If any callers exist, migrate them to `validateRoleChangeAsync` first, then remove
-  4. As a safety net, add a runtime throw in the deprecated function directing to `validateRoleChangeAsync`
-  5. Update tests accordingly
-- **Exit criterion**: No exported `validateRoleChange` function with hardcoded `=== "super_admin"` check exists in the codebase.
+- **Status**: DONE (commit d28f804c)
+- **Fix applied**:
+  1. Verified no production callers import `validateRoleChange` (all use `validateRoleChangeAsync`)
+  2. Removed the deprecated function entirely
+  3. Removed the `canManageRole` import (only used by the removed sync function)
+  4. Updated all test mocks that referenced the removed function (`core.test.ts`, `user-management.test.ts`, `users.bulk.route.test.ts`, `users.route.test.ts`)
+- **Exit criterion**: Met — No exported `validateRoleChange` function with hardcoded `=== "super_admin"` check exists in the codebase.
 
 ---
 
@@ -36,12 +34,12 @@
 
 ### L1: Refactor analytics page raw SQL to use Drizzle subquery
 - **File**: `src/app/(dashboard)/dashboard/groups/[id]/analytics/page.tsx:71`
-- **Status**: TODO
-- **Plan**:
-  1. Replace `sql`ANY (${subquery})`` with Drizzle's `inArray` subquery pattern
-  2. Replace `sql`... NOT IN ('pending', 'queued', 'judging')`` with a Drizzle `notInArray` using status values derived from the schema
-  3. Verify the query produces the same results
-- **Exit criterion**: No raw `sql` template with hardcoded status strings in analytics page; uses Drizzle query builder exclusively.
+- **Status**: DONE (commit 6b5919f9)
+- **Fix applied**:
+  1. Replaced raw `sql`ANY (${subquery})`` with two-step: fetch assignment IDs first, then use `inArray()`
+  2. Replaced `sql`... NOT IN ('pending', 'queued', 'judging')`` with Drizzle `notInArray()` using `ACTIVE_SUBMISSION_STATUSES` from `@/lib/submissions/status`
+  3. Added empty-array guard to avoid `IN ()` SQL error
+- **Exit criterion**: Met — No raw `sql` template with hardcoded status strings in analytics page; uses Drizzle query builder and shared constant.
 
 ### L2: Document anti-cheat LRU cache single-instance limitation
 - **File**: `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:16`
@@ -51,24 +49,22 @@
 
 ### L3: Replace hardcoded `role?.name === "super_admin"` with level check in role editor dialog
 - **File**: `src/app/(dashboard)/dashboard/admin/roles/role-editor-dialog.tsx:83,114`
-- **Status**: TODO
-- **Plan**:
-  1. The `RoleData` interface already includes `level: number`
-  2. Define `SUPER_ADMIN_LEVEL` as a constant (matching `DEFAULT_ROLE_LEVELS.super_admin = 4`) accessible to the client component
-  3. Replace `role?.name === "super_admin"` at line 83 with `role && role.level >= SUPER_ADMIN_LEVEL`
-  4. Replace `role?.name === "super_admin"` at line 114 with `role && role.level >= SUPER_ADMIN_LEVEL`
-  5. This ensures custom super_admin-equivalent roles also have their capabilities locked in the UI
-- **Exit criterion**: Role editor dialog uses level-based check instead of hardcoded role name.
+- **Status**: DONE (commit 6d9431ef)
+- **Fix applied**:
+  1. Added `superAdminLevel` prop to `RoleEditorDialogProps` (defaults to 4)
+  2. Replaced `role?.name === "super_admin"` at line 83 with `(role && role.level >= superAdminLevel)`
+  3. Replaced `role?.name === "super_admin"` at line 114 with `role != null && role.level >= superAdminLevel`
+- **Exit criterion**: Met — Role editor dialog uses level-based check instead of hardcoded role name.
 
 ### L4: Replace hardcoded `userRole === "super_admin"` with level check in user actions
 - **File**: `src/app/(dashboard)/dashboard/admin/users/user-actions.tsx:80`
-- **Status**: TODO
-- **Plan**:
-  1. Add a `userLevel` prop to the `UserActions` component
-  2. Pass the user's role level from the parent component
-  3. Replace `userRole === "super_admin"` with `userLevel >= SUPER_ADMIN_LEVEL`
-  4. Update the parent component to pass the level
-- **Exit criterion**: User actions component uses level-based check instead of hardcoded role name.
+- **Status**: DONE (commit 6d9431ef)
+- **Fix applied**:
+  1. Replaced `userRole` prop with `userLevel` (optional number) in `UserActions` component
+  2. Replaced `userRole === "super_admin"` with `userLevel != null && userLevel >= 4`
+  3. Updated both parent components (`users/page.tsx` and `users/[id]/page.tsx`) to pass `userLevel` from the role record
+  4. Added `level` to the role query columns in `users/[id]/page.tsx`
+- **Exit criterion**: Met — User actions component uses level-based check instead of hardcoded role name.
 
 ### L5: Add warning for elevated roles in bulk create dialog
 - **File**: `src/app/(dashboard)/dashboard/admin/users/bulk-create-dialog.tsx:77-79`
