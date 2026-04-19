@@ -5,12 +5,18 @@ import { isPluginEnabled, getPluginState } from "@/lib/plugins/data";
 import { getProvider } from "@/lib/plugins/chat-widget/providers";
 import { isAiAssistantEnabledForContext } from "@/lib/platform-mode-context";
 import { logger } from "@/lib/logger";
+import pLimit from "p-limit";
+
+/** Concurrency limiter for auto-review AI API calls. Prevents burst API usage
+ *  when multiple submissions are judged and accepted simultaneously. */
+const reviewLimiter = pLimit(2);
 
 /**
  * Trigger an AI code review for an accepted submission.
  * Runs in the background — errors are logged but do not affect the judge result.
  */
 export async function triggerAutoCodeReview(submissionId: string): Promise<void> {
+  return reviewLimiter(async () => {
   try {
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
@@ -173,4 +179,5 @@ ${submission.memoryUsedKb !== null ? `Memory used: ${submission.memoryUsedKb}KB`
     // Never let review errors affect the judge pipeline
     logger.error({ err: error, submissionId }, "Auto code review failed");
   }
+  });
 }
