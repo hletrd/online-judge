@@ -7,9 +7,7 @@ import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
 
 const VALID_OUTCOMES = ["success", "invalid_credentials", "rate_limited", "policy_denied"] as const;
 
-function escapeLikePattern(value: string) {
-  return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
-}
+import { escapeLikePattern } from "@/lib/db/like";
 
 function normalizeDateFilter(value?: string | null) {
   if (typeof value !== "string" || !value) return "";

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
-import { eq, desc, like, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { files, users } from "@/lib/db/schema";
 import { getApiUser, unauthorized, forbidden, csrfForbidden } from "@/lib/api/auth";
@@ -15,6 +15,7 @@ import { isImageMimeType, processImage } from "@/lib/files/image-processing";
 import { isAllowedMimeType, validateFileSize, getExtensionForMime, isZipMimeType, validateZipDecompressedSize } from "@/lib/files/validation";
 import { writeUploadedFile } from "@/lib/files/storage";
 import { logger } from "@/lib/logger";
+import { escapeLikePattern } from "@/lib/db/like";
 
 export async function POST(request: NextRequest) {
   try {
@@ -150,8 +151,7 @@ export const GET = createApiHandler({
       conditions.push(eq(files.category, category));
     }
     if (search) {
-      const escaped = search.replace(/[%_\\]/g, "\\$&");
-      conditions.push(like(files.originalName, `%${escaped}%`));
+      conditions.push(sql`${files.originalName} LIKE ${`%${escapeLikePattern(search)}%`} ESCAPE '\\'`);
     }
     if (!caps.has("files.manage")) {
       conditions.push(eq(files.uploadedBy, user.id));

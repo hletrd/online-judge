@@ -18,6 +18,7 @@ import { db } from "@/lib/db";
 import { users, roles } from "@/lib/db/schema";
 import { safeUserSelect } from "@/lib/db/selects";
 import { and, desc, eq, or, sql } from "drizzle-orm";
+import { escapeLikePattern } from "@/lib/db/like";
 import { auth } from "@/lib/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { canManageRoleAsync } from "@/lib/security/constants";
@@ -101,8 +102,7 @@ export default async function UserManagementPage({
   const filters = [];
 
   if (searchQuery) {
-    const escaped = searchQuery.toLowerCase().replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
-    const likePattern = `%${escaped}%`;
+    const likePattern = `%${escapeLikePattern(searchQuery.toLowerCase())}%`;
     filters.push(
       or(
         sql`lower(${users.username}) like ${likePattern} escape '\\'`,

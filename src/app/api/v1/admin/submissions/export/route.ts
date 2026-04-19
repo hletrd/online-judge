@@ -31,9 +31,7 @@ function normalizeGroupFilter(value?: string | null) {
   return typeof value === "string" ? value.trim().slice(0, 64) : "";
 }
 
-function escapeLike(value: string) {
-  return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
-}
+import { escapeLikePattern as escapeLike } from "@/lib/db/like";
 
 function escapeCsvField(value: string | number | null | undefined) {
   let str = value == null ? "" : String(value);

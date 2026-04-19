@@ -7,6 +7,7 @@ import { getContestAssignment, canManageContest } from "@/lib/assignments/contes
 import { db, execTransaction } from "@/lib/db";
 import { users, enrollments, contestAccessTokens } from "@/lib/db/schema";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { escapeLikePattern } from "@/lib/db/like";
 
 
 const inviteSchema = z.object({
@@ -28,8 +29,7 @@ export const GET = createApiHandler({
     if (!query) return apiSuccess([]);
 
     // Escape LIKE wildcards in user input
-    const escaped = query.toLowerCase().replace(/[%_]/g, "\\$&");
-    const likePattern = `%${escaped}%`;
+    const likePattern = `%${escapeLikePattern(query.toLowerCase())}%`;
     const results = await db
       .select({
         id: users.id,

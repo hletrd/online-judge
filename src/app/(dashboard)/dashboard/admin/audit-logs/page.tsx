@@ -17,6 +17,7 @@ import { db } from "@/lib/db";
 import { auditEvents, users } from "@/lib/db/schema";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
+import { escapeLikePattern } from "@/lib/db/like";
 
 const PAGE_SIZE = 50;
 const PAGE_PATH = "/dashboard/admin/audit-logs";
@@ -84,10 +85,6 @@ function normalizeSearchQuery(value?: string) {
   }
 
   return value.trim().slice(0, 100);
-}
-
-function escapeLikePattern(value: string) {
-  return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
 }
 
 function buildPageHref(page: number, resourceType: ResourceFilter, search: string, actionType: ActionFilter, dateFrom: string, dateTo: string) {

@@ -20,9 +20,7 @@ const VALID_RESOURCE_TYPES = [
   "plugin",
 ] as const;
 
-function escapeLikePattern(value: string) {
-  return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
-}
+import { escapeLikePattern } from "@/lib/db/like";
 
 function normalizeDateFilter(value?: string | null) {
   if (typeof value !== "string" || !value) return "";

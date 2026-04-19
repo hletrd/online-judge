@@ -23,6 +23,7 @@ import { db } from "@/lib/db";
 import { loginEvents, users } from "@/lib/db/schema";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
+import { escapeLikePattern } from "@/lib/db/like";
 
 const PAGE_SIZE = 50;
 const PAGE_PATH = "/dashboard/admin/login-logs";
@@ -73,10 +74,6 @@ function normalizeDateFilter(value?: string) {
   if (typeof value !== "string" || !value) return "";
   const parsed = new Date(value);
   return isNaN(parsed.getTime()) ? "" : value;
-}
-
-function escapeLikePattern(value: string) {
-  return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
 }
 
 function summarizeUserAgent(value: string | null) {

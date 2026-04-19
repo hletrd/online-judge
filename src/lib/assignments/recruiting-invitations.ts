@@ -13,6 +13,7 @@ import {
 import { and, eq, sql, count } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import type { TransactionClient } from "@/lib/db";
+import { escapeLikePattern } from "@/lib/db/like";
 
 type RecruitingInvitationExecutor =
   Pick<TransactionClient, "insert" | "select" | "update" | "delete">
@@ -103,10 +104,9 @@ export async function getRecruitingInvitations(
     conditions.push(eq(recruitingInvitations.status, filters.status));
   }
   if (filters?.search) {
-    const escaped = filters.search.replace(/[%_\\]/g, '\\$&');
-    const pattern = `%${escaped}%`;
+    const pattern = `%${escapeLikePattern(filters.search)}%`;
     conditions.push(
-      sql`(${recruitingInvitations.candidateName} ILIKE ${pattern} OR ${recruitingInvitations.candidateEmail} ILIKE ${pattern})`
+      sql`(${recruitingInvitations.candidateName} ILIKE ${pattern} ESCAPE '\\' OR ${recruitingInvitations.candidateEmail} ILIKE ${pattern} ESCAPE '\\')`
     );
   }
 

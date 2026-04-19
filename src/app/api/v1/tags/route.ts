@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { tags } from "@/lib/db/schema";
-import { like, asc } from "drizzle-orm";
+import { asc, sql } from "drizzle-orm";
 import { getApiUser, unauthorized } from "@/lib/api/auth";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { logger } from "@/lib/logger";
+import { escapeLikePattern } from "@/lib/db/like";
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Number(searchParams.get("limit") ?? "50"), 100);
 
     const whereClause = query
-      ? like(tags.name, `%${query.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`)
+      ? sql`${tags.name} LIKE ${`%${escapeLikePattern(query)}%`} ESCAPE '\\'`
       : undefined;
 
     const results = await db
