@@ -101,11 +101,12 @@ export default async function UserManagementPage({
   const filters = [];
 
   if (searchQuery) {
-    const likePattern = `%${searchQuery.toLowerCase()}%`;
+    const escaped = searchQuery.toLowerCase().replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
+    const likePattern = `%${escaped}%`;
     filters.push(
       or(
-        sql`lower(${users.username}) like ${likePattern}`,
-        sql`lower(${users.name}) like ${likePattern}`
+        sql`lower(${users.username}) like ${likePattern} escape '\\'`,
+        sql`lower(${users.name}) like ${likePattern} escape '\\'`
       )
     );
   }
