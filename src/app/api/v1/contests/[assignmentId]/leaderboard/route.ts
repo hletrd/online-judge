@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { canManageContest } from "@/lib/assignments/contests";
-import { computeLeaderboard, getLeaderboardProblems } from "@/lib/assignments/leaderboard";
+import { computeLeaderboard, computeSingleUserLiveRank, getLeaderboardProblems } from "@/lib/assignments/leaderboard";
 import { rawQueryOne } from "@/lib/db/queries";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 
@@ -55,9 +55,9 @@ export const GET = createApiHandler({
 
     const problems = await getLeaderboardProblems(assignmentId);
     const leaderboard = await computeLeaderboard(assignmentId, isInstructorView);
-    const liveCurrentEntry =
+    const liveRank =
       !isInstructorView && leaderboard.frozen
-        ? (await computeLeaderboard(assignmentId, true)).entries.find((entry) => entry.userId === user.id) ?? null
+        ? await computeSingleUserLiveRank(assignmentId, user.id)
         : null;
 
     // Anonymize in exam mode for non-instructors, but not in recruiting mode
@@ -73,7 +73,7 @@ export const GET = createApiHandler({
           ...rest,
           userId: "",
           isCurrentUser: _userId === user.id,
-          liveRank: _userId === user.id ? liveCurrentEntry?.rank ?? null : null,
+          liveRank: _userId === user.id ? liveRank : null,
           ...(isAnonymous && {
             username: `Participant ${rest.rank}`,
             name: "",
