@@ -4,6 +4,7 @@ import type { PlatformMode } from "@/types";
 import { db } from "@/lib/db";
 import { assignmentProblems, recruitingInvitations } from "@/lib/db/schema";
 import { getResolvedPlatformMode } from "@/lib/system-settings";
+import { getCachedRecruitingContext, setCachedRecruitingContext } from "@/lib/recruiting/request-cache";
 
 export type RecruitingAccessContext = {
   assignmentIds: string[];
@@ -15,26 +16,39 @@ export type RecruitingAccessContext = {
 /**
  * Load the recruiting access context for a user.
  *
- * Wrapped with React `cache()` so that repeated calls within the same server
- * component render return the cached result without hitting the database again.
- * This eliminates the N+1 pattern where the dashboard layout AND individual page
- * components each call `getRecruitingAccessContext` for the same user.
+ * This function uses a dual caching strategy:
  *
- * The cache is request-scoped (per React Server Component render) and does not
- * persist across requests, so stale data is not a concern.
+ * 1. **React `cache()`**: Deduplicates calls within a single RSC render.
+ *    This is the primary cache for dashboard page loads where the layout
+ *    and individual page components both call this function.
+ *
+ * 2. **AsyncLocalStorage**: Bridges the gap for API route handlers, which
+ *    are outside the React rendering lifecycle and therefore not covered by
+ *    React `cache()`. Without this fallback, every call from an API route
+ *    (e.g., permission checks in `canAccessProblem`) would hit the database.
+ *
+ * Both caches are request-scoped and do not persist across requests, so stale
+ * data is not a concern. If AsyncLocalStorage is not available (e.g., outside
+ * a Next.js request context), the cache gracefully degrades to uncached queries.
  */
 async function loadRecruitingAccessContext(
   userId: string
 ): Promise<RecruitingAccessContext> {
+  // Check AsyncLocalStorage cache first (covers API routes)
+  const cached = getCachedRecruitingContext(userId);
+  if (cached) return cached;
+
   const platformMode = await getResolvedPlatformMode();
 
   if (!userId) {
-    return {
+    const result = {
       assignmentIds: [],
       problemIds: [],
       isRecruitingCandidate: false,
       effectivePlatformMode: platformMode,
     };
+    setCachedRecruitingContext(userId, result);
+    return result;
   }
 
   const invitationRows = await db
@@ -60,21 +74,30 @@ async function loadRecruitingAccessContext(
 
   const isRecruitingCandidate = assignmentIds.length > 0;
 
-  return {
+  const result: RecruitingAccessContext = {
     assignmentIds,
     problemIds,
     isRecruitingCandidate,
     effectivePlatformMode:
-      platformMode === "recruiting" || isRecruitingCandidate
+      (platformMode === "recruiting" || isRecruitingCandidate
         ? "recruiting"
-        : platformMode,
+        : platformMode) as PlatformMode,
   };
+
+  // Store in AsyncLocalStorage for subsequent calls in the same request
+  setCachedRecruitingContext(userId, result);
+
+  return result;
 }
 
 /**
  * Get the recruiting access context for a user, cached per-request.
- * Uses React `cache()` to deduplicate DB queries within a single server
- * component render. Call sites do not need any changes.
+ *
+ * Uses a dual caching strategy:
+ * - React `cache()` deduplicates within a single server component render
+ * - AsyncLocalStorage deduplicates across API route handlers
+ *
+ * Call sites do not need any changes.
  */
 export const getRecruitingAccessContext = cache(
   async function getRecruitingAccessContextInner(
