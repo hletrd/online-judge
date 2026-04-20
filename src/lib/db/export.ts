@@ -43,7 +43,7 @@ async function waitForReadableStreamDemand(
   }
 }
 
-export function streamDatabaseExport(options: { signal?: AbortSignal; sanitize?: boolean } = {}): ReadableStream<Uint8Array> {
+export function streamDatabaseExport(options: { signal?: AbortSignal; sanitize?: boolean; dbNow?: Date } = {}): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   const redactionMode = getExportRedactionMode(options.sanitize);
   let cancelled = false;
@@ -61,8 +61,9 @@ export function streamDatabaseExport(options: { signal?: AbortSignal; sanitize?:
           await waitForReadableStreamDemand(controller, () => cancelled);
 
           // Use DB server time for exportedAt so the timestamp matches the
-          // REPEATABLE READ snapshot, not the app server clock.
-          const dbNow = await getDbNowUncached();
+          // REPEATABLE READ snapshot, not the app server clock. Accept a
+          // pre-fetched value from the caller to avoid redundant round-trips.
+          const dbNow = options.dbNow ?? await getDbNowUncached();
 
           controller.enqueue(
             encoder.encode(

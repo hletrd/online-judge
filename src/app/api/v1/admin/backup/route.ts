@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (includeFiles) {
-      const backupStream = await streamBackupWithFiles(request.signal);
+      const backupStream = await streamBackupWithFiles(request.signal, dbNow);
       return new Response(backupStream, {
         headers: {
           "Content-Type": "application/zip",
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return new Response(streamDatabaseExport({ signal: request.signal }), {
+    return new Response(streamDatabaseExport({ signal: request.signal, dbNow }), {
       headers: {
         "Content-Type": "application/json",
         "Content-Disposition": contentDispositionAttachment(backupName, backupExtension),

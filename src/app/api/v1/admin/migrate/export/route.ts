@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       request,
     });
 
-    return new Response(streamDatabaseExport({ signal: request.signal, sanitize: !wantFull }), {
+    return new Response(streamDatabaseExport({ signal: request.signal, sanitize: !wantFull, dbNow }), {
       headers: {
         "Content-Type": "application/json",
         "Content-Disposition": contentDispositionAttachment(filename.replace(/\.json$/, ""), ".json"),
