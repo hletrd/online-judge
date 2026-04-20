@@ -31,8 +31,8 @@ vi.mock("lucide-react", () => ({
   ),
 }));
 
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string, values?: { page?: number; size?: number }) => {
+vi.mock("next-intl/server", () => ({
+  getTranslations: async () => (key: string, values?: { page?: number; size?: number }) => {
     switch (key) {
       case "paginationNav":
         return "Pagination";
@@ -65,7 +65,9 @@ const buildHref = (page: number, pageSize: number) => {
 };
 
 function renderPagination(currentPage: number, totalPages: number, pageSize = 50) {
-  render(<PaginationControls currentPage={currentPage} totalPages={totalPages} pageSize={pageSize} buildHref={buildHref} />);
+  return PaginationControls({ currentPage, totalPages, pageSize, buildHref }).then((node) => {
+    render(node);
+  });
 }
 
 describe("PaginationControls", () => {
@@ -74,7 +76,7 @@ describe("PaginationControls", () => {
   });
 
   it("renders page size controls even when only one page exists", async () => {
-    renderPagination(1, 1);
+    await renderPagination(1, 1);
 
     expect(screen.getByText("Page size")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Show 10 items per page" })).toBeInTheDocument();
@@ -82,7 +84,7 @@ describe("PaginationControls", () => {
   });
 
   it("renders page size controls even when there are zero results", async () => {
-    renderPagination(1, 0);
+    await renderPagination(1, 0);
 
     expect(screen.getByText("Page size")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Show 100 items per page" })).toBeInTheDocument();
@@ -90,25 +92,25 @@ describe("PaginationControls", () => {
   });
 
   it("renders page number links for small total (5 pages)", async () => {
-    renderPagination(1, 5);
+    await renderPagination(1, 5);
     for (let i = 1; i <= 5; i++) {
       expect(screen.getByRole("link", { name: `Page ${i}` })).toBeInTheDocument();
     }
   });
 
   it("marks current page with aria-current=page", async () => {
-    renderPagination(3, 5);
+    await renderPagination(3, 5);
     const currentLink = screen.getByRole("link", { name: "Page 3" });
     expect(currentLink).toHaveAttribute("aria-current", "page");
   });
 
   it("marks current page size with aria-current=page", async () => {
-    renderPagination(1, 5, 20);
+    await renderPagination(1, 5, 20);
     expect(screen.getByRole("link", { name: "Show 20 items per page" })).toHaveAttribute("aria-current", "page");
   });
 
   it("renders first/prev as disabled buttons on page 1", async () => {
-    renderPagination(1, 5);
+    await renderPagination(1, 5);
     expect(screen.queryByRole("link", { name: "First page" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Previous page" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "First page" })).toBeDisabled();
@@ -116,13 +118,13 @@ describe("PaginationControls", () => {
   });
 
   it("renders next/last as links on page 1", async () => {
-    renderPagination(1, 5);
+    await renderPagination(1, 5);
     expect(screen.getByRole("link", { name: "Next page" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Last page" })).toBeInTheDocument();
   });
 
   it("renders next/last as disabled buttons on last page", async () => {
-    renderPagination(5, 5);
+    await renderPagination(5, 5);
     expect(screen.queryByRole("link", { name: "Next page" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Last page" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
@@ -130,19 +132,19 @@ describe("PaginationControls", () => {
   });
 
   it("shows ellipsis for large page counts (20 pages, current=10)", async () => {
-    renderPagination(10, 20);
+    await renderPagination(10, 20);
     const ellipsisItems = screen.getAllByText("...");
     expect(ellipsisItems.length).toBeGreaterThanOrEqual(1);
   });
 
   it("page size links reset to the first page when changing size", async () => {
-    renderPagination(3, 5, 50);
+    await renderPagination(3, 5, 50);
     expect(screen.getByRole("link", { name: "Show 10 items per page" })).toHaveAttribute("href", "/submissions?pageSize=10");
     expect(screen.getByRole("link", { name: "Show 50 items per page" })).toHaveAttribute("href", "/submissions");
   });
 
   it("page navigation links preserve the selected page size", async () => {
-    renderPagination(3, 5, 20);
+    await renderPagination(3, 5, 20);
     expect(screen.getByRole("link", { name: "First page" })).toHaveAttribute("href", "/submissions?pageSize=20");
     expect(screen.getByRole("link", { name: "Previous page" })).toHaveAttribute("href", "/submissions?page=2&pageSize=20");
     expect(screen.getByRole("link", { name: "Next page" })).toHaveAttribute("href", "/submissions?page=4&pageSize=20");

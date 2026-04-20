@@ -1,6 +1,3 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -8,9 +5,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/pagination";
-import { Input } from "@/components/ui/input";
 
 interface PaginationControlsProps {
   currentPage: number;
@@ -51,13 +47,13 @@ function getPageNumbers(current: number, total: number): (number | "...")[] {
   return pages;
 }
 
-export function PaginationControls({
+export async function PaginationControls({
   currentPage,
   totalPages,
   pageSize = DEFAULT_PAGE_SIZE,
   buildHref,
 }: PaginationControlsProps) {
-  const t = useTranslations("common");
+  const t = await getTranslations("common");
   const shouldRenderPageNav = totalPages > 1;
   const shouldRenderSizeSelector = PAGE_SIZE_OPTIONS.length > 1;
 
@@ -150,44 +146,6 @@ export function PaginationControls({
           )}
         </nav>
       )}
-
-      {totalPages > 10 && (
-        <GoToPage totalPages={totalPages} buildHref={buildHref} pageSize={pageSize} />
-      )}
-    </div>
-  );
-}
-
-function GoToPage({
-  totalPages,
-  buildHref,
-  pageSize,
-}: {
-  totalPages: number;
-  buildHref: (page: number, pageSize: number) => string;
-  pageSize: number;
-}) {
-  const [value, setValue] = useState("");
-
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      <span className="text-muted-foreground whitespace-nowrap">Go to page</span>
-      <Input
-        type="number"
-        min={1}
-        max={totalPages}
-        className="w-16 h-8 text-center text-sm"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            const page = Math.max(1, Math.min(totalPages, Number(value) || 1));
-            window.location.href = buildHref(page, pageSize);
-          }
-        }}
-        placeholder="..."
-      />
-      <span className="text-muted-foreground">/ {totalPages}</span>
     </div>
   );
 }
