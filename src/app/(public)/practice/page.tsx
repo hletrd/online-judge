@@ -10,7 +10,7 @@ import { PaginationControls } from "@/components/pagination-controls";
 import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings, getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { formatDateInTimeZone } from "@/lib/datetime";
-import { formatNumber, formatDifficulty } from "@/lib/formatting";
+import { formatDifficulty } from "@/lib/formatting";
 import { auth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
