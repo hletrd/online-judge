@@ -79,7 +79,7 @@ test.describe.serial("Rankings Page", () => {
       // Either a rankings link exists in nav or the page is at dashboard (acceptable)
       expect(page.url()).toContain("/dashboard");
     } else {
-      expect(page.url()).toContain("/dashboard");
+      expect(page.url()).toMatch(/\/(rankings|dashboard\/leaderboard|dashboard\/scoreboard)(\?|$)/);
     }
   });
 

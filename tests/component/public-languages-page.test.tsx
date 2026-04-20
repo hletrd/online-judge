@@ -3,9 +3,11 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PublicLanguagesPage from "@/app/(public)/languages/page";
 
-const { getJudgeSystemSnapshotMock, getResolvedSystemSettingsMock } = vi.hoisted(() => ({
+const { getJudgeSystemSnapshotMock, getResolvedSystemSettingsMock, authMock, resolveCapabilitiesMock } = vi.hoisted(() => ({
   getJudgeSystemSnapshotMock: vi.fn(),
   getResolvedSystemSettingsMock: vi.fn(),
+  authMock: vi.fn(),
+  resolveCapabilitiesMock: vi.fn(),
 }));
 
 vi.mock("next/link", () => ({
@@ -27,6 +29,14 @@ vi.mock("next-intl/server", () => ({
         "languages.featuredDescription": "Major language families.",
         "languages.allLanguages": "All enabled languages",
         "languages.allLanguagesDescription": "Full catalog.",
+        "languages.gradingEnvironment": "Grading Environment",
+        "languages.gradingEnvironmentDescription": "Hardware and software environment for code execution and judging.",
+        "languages.gradingCpu": "CPU",
+        "languages.gradingOs": "Operating system",
+        "languages.gradingArchitecture": "Architecture",
+        "languages.defaultTimeLimit": "Default time limit",
+        "languages.defaultMemoryLimit": "Default memory limit",
+        "languages.onlineWorkers": "Workers online",
         "languages.language": "Language",
         "languages.extension": "Extension",
         "languages.runtime": "Runtime",
@@ -52,9 +62,19 @@ vi.mock("@/lib/system-settings", () => ({
   getResolvedSystemSettings: getResolvedSystemSettingsMock,
 }));
 
+vi.mock("@/lib/auth", () => ({
+  auth: authMock,
+}));
+
+vi.mock("@/lib/capabilities/cache", () => ({
+  resolveCapabilities: resolveCapabilitiesMock,
+}));
+
 describe("PublicLanguagesPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    authMock.mockResolvedValue(null);
+    resolveCapabilitiesMock.mockResolvedValue(new Set());
     getResolvedSystemSettingsMock.mockResolvedValue({
       siteTitle: "JudgeKit",
       siteDescription: "Online judge",
@@ -67,6 +87,11 @@ describe("PublicLanguagesPage", () => {
       activeJudgeTasks: 0,
       totalWorkerCapacity: 8,
       architectureSummary: "x86_64",
+      gradingCpu: "unknown",
+      gradingOs: "Alpine Linux",
+      gradingArchitecture: "ARM64",
+      defaultTimeLimitMs: 2000,
+      defaultMemoryLimitMb: 512,
       additionalLanguageCount: 2,
       featuredEnvironments: [
         {
@@ -109,6 +134,11 @@ describe("PublicLanguagesPage", () => {
       activeJudgeTasks: 0,
       totalWorkerCapacity: 0,
       architectureSummary: "unknown",
+      gradingCpu: null,
+      gradingOs: null,
+      gradingArchitecture: null,
+      defaultTimeLimitMs: 2000,
+      defaultMemoryLimitMb: 512,
       additionalLanguageCount: 0,
       featuredEnvironments: [],
       allLanguages: [],

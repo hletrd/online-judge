@@ -1,12 +1,19 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+async function expectNoPublicErrorShell(page: Page) {
+  await expect(page.getByRole("heading", { name: /This page couldn’t load/i })).toHaveCount(0);
+  await expect(page.getByText(/A server error occurred\\. Reload to try again\\./i)).toHaveCount(0);
+}
 
 test.describe("Public shell", () => {
   test("guest can open the public home page", async ({ page }) => {
     await page.goto("/", { waitUntil: "networkidle" });
 
+    await expectNoPublicErrorShell(page);
     await expect(page.getByRole("heading", { name: /JudgeKit|구조/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Practice|연습/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Community|커뮤니티/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Dashboard|대시보드/i })).toBeVisible();
   });
 
   test("guest is redirected to login when opening workspace", async ({ page }) => {
@@ -17,6 +24,7 @@ test.describe("Public shell", () => {
   test("guest can open the public playground route", async ({ page }) => {
     await page.goto("/playground", { waitUntil: "networkidle" });
 
+    await expectNoPublicErrorShell(page);
     await expect(page.getByRole("heading", { name: /Public playground|공개 플레이그라운드/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Run code|실행/i })).toBeVisible();
   });
@@ -24,7 +32,15 @@ test.describe("Public shell", () => {
   test("guest can open the public practice catalog", async ({ page }) => {
     await page.goto("/practice", { waitUntil: "networkidle" });
 
+    await expectNoPublicErrorShell(page);
     await expect(page.getByRole("heading", { name: /Public problem catalog|공개 문제 카탈로그/i })).toBeVisible();
+  });
+
+  test("guest can open the public rankings page without the global error shell", async ({ page }) => {
+    await page.goto("/rankings", { waitUntil: "networkidle" });
+
+    await expectNoPublicErrorShell(page);
+    await expect(page.getByRole("heading", { name: /Rankings|랭킹/i })).toBeVisible();
   });
 
   test("public routes expose crawlable SEO metadata and robots directives", async ({ page, request }) => {
@@ -41,6 +57,7 @@ test.describe("Public shell", () => {
     expect(sitemapText).toContain("/community");
 
     await page.goto("/practice", { waitUntil: "networkidle" });
+    await expectNoPublicErrorShell(page);
     await expect(page).toHaveTitle(/Public problem catalog|공개 문제 카탈로그/i);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "/practice");
   });
@@ -48,6 +65,7 @@ test.describe("Public shell", () => {
   test("guest can open the community board", async ({ page }) => {
     await page.goto("/community", { waitUntil: "networkidle" });
 
+    await expectNoPublicErrorShell(page);
     await expect(page.getByRole("heading", { name: /Community board|커뮤니티 게시판/i })).toBeVisible();
   });
 });
