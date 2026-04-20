@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { useSystemTimezone } from "@/contexts/timezone-context";
+import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { AssistantMarkdown } from "@/components/assistant-markdown";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +42,7 @@ export function ChatLogsClient() {
   const t = useTranslations("plugins.chatWidget");
   const tCommon = useTranslations("common");
   const locale = useLocale();
+  const timeZone = useSystemTimezone();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -108,7 +111,7 @@ export function ChatLogsClient() {
                     <span><MessageCircle className="inline h-3 w-3" /> {t("name")}</span>
                   )}
                   {msg.createdAt && (
-                    <span>{new Date(msg.createdAt).toLocaleString(locale)}</span>
+                    <span>{formatDateTimeInTimeZone(msg.createdAt, locale, timeZone)}</span>
                   )}
                 </div>
                 {msg.role === "assistant" ? (
@@ -152,7 +155,7 @@ export function ChatLogsClient() {
                 {s.provider && <Badge variant="outline">{s.provider}</Badge>}
                 {s.model && <Badge variant="secondary">{s.model}</Badge>}
                 <Badge variant="outline">{s.messageCount} messages</Badge>
-                <span>{s.lastMessageAt ? new Date(Number(s.lastMessageAt) * 1000).toLocaleString(locale) : ""}</span>
+                <span>{s.lastMessageAt ? formatDateTimeInTimeZone(new Date(Number(s.lastMessageAt) * 1000), locale, timeZone) : ""}</span>
               </div>
             </div>
           </CardContent>

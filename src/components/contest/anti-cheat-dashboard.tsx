@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { useSystemTimezone } from "@/contexts/timezone-context";
+import { formatDateTimeInTimeZone } from "@/lib/datetime";
 
 // i18n keys used from "contests.antiCheat" and "common"
 import { toast } from "sonner";
@@ -90,6 +92,7 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
   const t = useTranslations("contests.antiCheat");
   const tCommon = useTranslations("common");
   const locale = useLocale();
+  const timeZone = useSystemTimezone();
   const [events, setEvents] = useState<AntiCheatEvent[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -254,7 +257,7 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
   function formatEventTime(ts: string | number): string {
     const d = typeof ts === "number" ? new Date(ts * 1000) : new Date(ts);
     if (isNaN(d.getTime())) return "-";
-    return d.toLocaleString(locale);
+    return formatDateTimeInTimeZone(d, locale, timeZone);
   }
 
   if (error && events.length === 0) {

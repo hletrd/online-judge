@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { useSystemTimezone } from "@/contexts/timezone-context";
+import { formatDateInTimeZone } from "@/lib/datetime";
 import {
   Card,
   CardContent,
@@ -87,6 +89,7 @@ export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
   const t = useTranslations("admin.apiKeys");
   const tCommon = useTranslations("common");
   const locale = useLocale();
+  const timeZone = useSystemTimezone();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [createdKey, setCreatedKey] = useState<CreatedKey | null>(null);
@@ -281,11 +284,7 @@ export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
 
   function formatDate(dateStr: string | null) {
     if (!dateStr) return t("never");
-    return new Date(dateStr).toLocaleDateString(locale, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return formatDateInTimeZone(dateStr, locale, timeZone);
   }
 
   return (

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { useSystemTimezone } from "@/contexts/timezone-context";
+import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { apiFetch } from "@/lib/api/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,7 @@ export function CodeTimelinePanel({
 }) {
   const t = useTranslations("contests.codeTimeline");
   const locale = useLocale();
+  const timeZone = useSystemTimezone();
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIdx, setSelectedIdx] = useState(0);
@@ -73,11 +76,7 @@ export function CodeTimelinePanel({
   const current = snapshots[selectedIdx];
 
   function formatTime(dateStr: string) {
-    return new Date(dateStr).toLocaleTimeString(locale, {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
+    return formatDateTimeInTimeZone(dateStr, locale, timeZone);
   }
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;

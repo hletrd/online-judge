@@ -8,7 +8,8 @@ import { PublicProblemList } from "../_components/public-problem-list";
 import { JsonLd } from "@/components/seo/json-ld";
 import { PaginationControls } from "@/components/pagination-controls";
 import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata } from "@/lib/seo";
-import { getResolvedSystemSettings } from "@/lib/system-settings";
+import { getResolvedSystemSettings, getResolvedSystemTimeZone } from "@/lib/system-settings";
+import { formatDateInTimeZone } from "@/lib/datetime";
 import { auth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -133,10 +134,11 @@ export default async function PracticePage({
   const currentDifficultyRange = normalizeDifficultyRange(resolvedSearchParams?.difficulty);
   const currentDifficultyParam = serializeDifficultyRange(currentDifficultyRange);
 
-  const [t, tProblems, locale] = await Promise.all([
+  const [t, tProblems, locale, timeZone] = await Promise.all([
     getTranslations("publicShell"),
     getTranslations("problems"),
     getLocale(),
+    getResolvedSystemTimeZone(),
   ]);
   const searchMatchLabelMap: Record<PracticeSearchMatchKind, string> = {
     number: t("practice.searchMatches.number"),
@@ -694,7 +696,7 @@ export default async function PracticePage({
             successRate,
             progress: problem.progress,
             createdAt: problem.createdAt
-              ? problem.createdAt.toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })
+              ? formatDateInTimeZone(problem.createdAt, locale, timeZone)
               : null,
           };
         })}

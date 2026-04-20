@@ -16,7 +16,7 @@ import { AcceptedSolutions } from "@/components/problem/accepted-solutions";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
-import { formatDateTimeInTimeZone } from "@/lib/datetime";
+import { formatDateTimeInTimeZone, formatDateInTimeZone } from "@/lib/datetime";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -552,7 +552,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                         <div className="text-xs text-muted-foreground">
                           {editorial.author?.name ?? t("practice.unknownAuthor")}
                           {editorial.createdAt && (
-                            <> · {new Date(editorial.createdAt).toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" })}</>
+                            <> · {formatDateInTimeZone(editorial.createdAt, locale, timeZone)}</>
                           )}
                         </div>
                       </div>

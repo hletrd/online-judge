@@ -6,9 +6,10 @@ import Script from "next/script";
 import localFont from "next/font/local";
 import { ThemeProvider } from "@/components/theme-provider";
 import { NonceProvider } from "@/components/nonce-provider";
+import { SystemTimezoneProvider } from "@/contexts/timezone-context";
 import { getAuthUrlObject } from "@/lib/security/env";
 import { buildSeoKeywords, buildSocialImageUrl, getAlternateOpenGraphLocales, getOpenGraphLocale } from "@/lib/seo";
-import { getResolvedSystemSettings } from "@/lib/system-settings";
+import { getResolvedSystemSettings, getResolvedSystemTimeZone } from "@/lib/system-settings";
 import "./globals.css";
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
@@ -87,9 +88,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = await getLocale();
-  const messages = await getMessages();
-  const headersList = await headers();
+  const [locale, messages, headersList, timeZone] = await Promise.all([
+    getLocale(),
+    getMessages(),
+    headers(),
+    getResolvedSystemTimeZone(),
+  ]);
   const nonce = headersList.get("x-nonce") ?? undefined;
 
   return (
@@ -113,6 +117,7 @@ export default async function RootLayout({
         )}
         <NonceProvider nonce={nonce}>
           <NextIntlClientProvider messages={messages}>
+            <SystemTimezoneProvider timeZone={timeZone}>
             <ThemeProvider
               attribute="class"
               defaultTheme="system"
@@ -122,6 +127,7 @@ export default async function RootLayout({
             >
               {children}
             </ThemeProvider>
+            </SystemTimezoneProvider>
           </NextIntlClientProvider>
         </NonceProvider>
       </body>
