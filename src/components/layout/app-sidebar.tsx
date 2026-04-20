@@ -18,7 +18,7 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { BookOpen, FileCode, Send, Users, User, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, MessageCircle, MessageCircleWarning, KeyRound, Code, Settings, Server, Play, Upload, Tags, Loader2 } from "lucide-react";
+import { BookOpen, FileCode, Send, Users, User, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, MessageCircle, MessageCircleWarning, KeyRound, Code, Settings, Server, Upload, Tags, Loader2 } from "lucide-react";
 import type { PlatformMode } from "@/types";
 import type { ActiveTimedAssignmentSummary } from "@/lib/assignments/active-timed-assignments";
 import { getPlatformModePolicy } from "@/lib/platform-mode";
@@ -70,10 +70,9 @@ const navGroups: NavGroup[] = [
         icon: Send,
         titleKeyByMode: { recruiting: "attempts" },
       },
-      // Contests and Rankings are available in the PublicHeader dropdown,
-      // so they are omitted from the sidebar to reduce navigation overlap.
-      // Students can still reach them from the top navbar.
-      { titleKey: "compiler", href: "/playground", icon: Play, hiddenInModes: ["recruiting"] },
+      // Contests, Rankings, and Compiler are available in the PublicHeader
+      // top nav, so they are omitted from the sidebar to reduce navigation
+      // overlap. Students can reach them from the top navbar.
     ],
   },
   {
