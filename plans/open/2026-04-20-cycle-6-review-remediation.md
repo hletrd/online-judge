@@ -163,3 +163,4 @@ No cycle-6 review finding is silently dropped. No new refactor-only work is adde
 - 2026-04-20: H2 DONE — problem detail page uses `getDbNow()` for access gate and deadline blocking.
 - 2026-04-20: M1 DONE — quick-create contest uses `getDbNowUncached()` for default scheduling.
 - 2026-04-20: L1 DEFERRED — test coverage for server component temporal logic is low priority since `getDbNow()` uses React.cache() which is difficult to mock in unit tests. The behavior is verified by the next build gate and manual testing.
+- 2026-04-20: Deploy failed — `deploy-docker.sh` requires configured remote server (REMOTE_HOST). Some language images (Simula, APL) fail to build from source. `docker-compose` command not found (local env). This is an infrastructure issue, not a code issue.
