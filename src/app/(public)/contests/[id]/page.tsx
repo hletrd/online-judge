@@ -233,8 +233,8 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
           locale,
         )}
         signInLabel={t("contests.signInToJoin")}
-        workspaceHref={buildLocalePath("/workspace", locale)}
-        workspaceLabel={t("contests.openWorkspace")}
+        dashboardHref={buildLocalePath("/dashboard", locale)}
+        dashboardLabel={t("contests.openDashboard")}
       />
 
       {showArchiveInsights && replay ? (

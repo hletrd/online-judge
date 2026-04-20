@@ -55,8 +55,8 @@ type PublicContestDetailProps = {
   }>;
   signInHref: string;
   signInLabel: string;
-  workspaceHref: string;
-  workspaceLabel: string;
+  dashboardHref: string;
+  dashboardLabel: string;
 };
 
 export function PublicContestDetail({
@@ -89,8 +89,8 @@ export function PublicContestDetail({
   finalRankings = [],
   signInHref,
   signInLabel,
-  workspaceHref,
-  workspaceLabel,
+  dashboardHref,
+  dashboardLabel,
 }: PublicContestDetailProps) {
   return (
     <div className="space-y-6">
@@ -114,8 +114,8 @@ export function PublicContestDetail({
               <p className="text-sm text-muted-foreground">{groupLabel}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link href={workspaceHref}>
-                <Button variant="outline">{workspaceLabel}</Button>
+              <Link href={dashboardHref}>
+                <Button variant="outline">{dashboardLabel}</Button>
               </Link>
               <Link href={signInHref}>
                 <Button>{signInLabel}</Button>

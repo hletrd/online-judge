@@ -47,8 +47,8 @@ describe("PublicContestDetail", () => {
         finalRankings={[{ userId: "user-1", name: "Alice", rank: 1, totalScoreLabel: "300", penaltyLabel: "42" }]}
         signInHref="/login"
         signInLabel="Sign in to join"
-        workspaceHref="/workspace"
-        workspaceLabel="Open workspace"
+        dashboardHref="/dashboard"
+        dashboardLabel="Open dashboard"
       />
     );
 
