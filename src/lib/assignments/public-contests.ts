@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { assignments } from "@/lib/db/schema";
 import { getContestStatus, type ContestStatus } from "@/lib/assignments/contests";
 import type { ExamMode, ScoringModel } from "@/types";
+import { getDbNow } from "@/lib/db-time";
 
 export type PublicContestEntry = {
   id: string;
@@ -27,7 +28,7 @@ export type PublicContestDetail = PublicContestEntry & {
 };
 
 export async function getPublicContests(): Promise<PublicContestEntry[]> {
-  const now = new Date();
+  const now = await getDbNow();
   const rows = await db.query.assignments.findMany({
     where: and(eq(assignments.visibility, "public"), ne(assignments.examMode, "none")),
     with: {
@@ -109,6 +110,8 @@ export async function getPublicContestById(assignmentId: string): Promise<Public
     publicProblemCount: assignment.assignmentProblems.filter((entry) => entry.problem?.visibility === "public").length,
   };
 
+  const now = await getDbNow();
+
   return {
     ...base,
     status: getContestStatus(
@@ -121,7 +124,7 @@ export async function getPublicContestById(assignmentId: string): Promise<Public
         startedAt: null,
         personalDeadline: null,
       },
-      new Date()
+      now
     ),
     publicProblems: assignment.assignmentProblems
       .filter((entry) => entry.problem?.visibility === "public")

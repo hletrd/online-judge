@@ -1,4 +1,5 @@
 import { getContestStatus, getContestsForUser, type ContestEntry } from "@/lib/assignments/contests";
+import { getDbNow } from "@/lib/db-time";
 
 export type ActiveTimedAssignmentSummary = {
   assignmentId: string;
@@ -41,8 +42,9 @@ export function selectActiveTimedAssignments(
 export async function getActiveTimedAssignmentsForSidebar(
   userId: string,
   role: string,
-  now: Date = new Date()
+  now?: Date
 ): Promise<ActiveTimedAssignmentSummary[]> {
+  const dbNow = now ?? await getDbNow();
   const contests = await getContestsForUser(userId, role);
-  return selectActiveTimedAssignments(contests, now);
+  return selectActiveTimedAssignments(contests, dbNow);
 }
