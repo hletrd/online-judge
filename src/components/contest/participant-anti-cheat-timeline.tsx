@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { apiFetch } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +71,7 @@ export function ParticipantAntiCheatTimeline({
   const t = useTranslations("contests.antiCheat");
   const tAudit = useTranslations("contests.participantAudit");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const [events, setEvents] = useState<AntiCheatEvent[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -146,7 +147,7 @@ export function ParticipantAntiCheatTimeline({
   function formatEventTime(ts: string | number): string {
     const d = typeof ts === "number" ? new Date(ts * 1000) : new Date(ts);
     if (isNaN(d.getTime())) return "-";
-    return d.toLocaleString();
+    return d.toLocaleString(locale);
   }
 
   if (error && events.length === 0) {

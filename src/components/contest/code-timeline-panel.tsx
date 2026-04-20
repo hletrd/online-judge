@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { apiFetch } from "@/lib/api/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ export function CodeTimelinePanel({
   userName: string;
 }) {
   const t = useTranslations("contests.codeTimeline");
+  const locale = useLocale();
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIdx, setSelectedIdx] = useState(0);
@@ -72,7 +73,7 @@ export function CodeTimelinePanel({
   const current = snapshots[selectedIdx];
 
   function formatTime(dateStr: string) {
-    return new Date(dateStr).toLocaleTimeString(undefined, {
+    return new Date(dateStr).toLocaleTimeString(locale, {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import {
   Card,
   CardContent,
@@ -84,6 +84,7 @@ function buildMaskedApiKeyPreview(keyPrefix: string) {
 
 export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
   const t = useTranslations("admin.apiKeys");
+  const locale = useLocale();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [createdKey, setCreatedKey] = useState<CreatedKey | null>(null);
@@ -277,7 +278,7 @@ export function ApiKeysClient({ roleOptions }: { roleOptions?: RoleOption[] }) {
 
   function formatDate(dateStr: string | null) {
     if (!dateStr) return t("never");
-    return new Date(dateStr).toLocaleDateString(undefined, {
+    return new Date(dateStr).toLocaleDateString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",

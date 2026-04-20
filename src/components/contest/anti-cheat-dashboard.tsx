@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 // i18n keys used from "contests.antiCheat" and "common"
 import { toast } from "sonner";
@@ -89,6 +89,7 @@ function formatDetailsJson(raw: string): string {
 export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
   const t = useTranslations("contests.antiCheat");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const [events, setEvents] = useState<AntiCheatEvent[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -253,7 +254,7 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
   function formatEventTime(ts: string | number): string {
     const d = typeof ts === "number" ? new Date(ts * 1000) : new Date(ts);
     if (isNaN(d.getTime())) return "-";
-    return d.toLocaleString();
+    return d.toLocaleString(locale);
   }
 
   if (error && events.length === 0) {
