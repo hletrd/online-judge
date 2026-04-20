@@ -2,53 +2,29 @@
 
 **Date:** 2026-04-20
 **Source:** `rpf-cycle-18-aggregate.md`
-**Status:** In Progress
+**Status:** All priority items DONE
 
 ## Priority Items (implement this cycle)
 
-### H1: Add `formatNumber` locale-aware utility and replace hardcoded `toLocaleString("en-US")` [AGG-1]
+### H1: Add `formatNumber` locale-aware utility and replace hardcoded `toLocaleString("en-US")` [AGG-1] — DONE
 
-**Severity:** MEDIUM/MEDIUM (4-agent signal)
-**Files:** `src/lib/datetime.ts`, `src/components/submission-status-badge.tsx`
-**Plan:**
-1. Add `formatNumber(value: number, locale?: string | string[]): string` to `src/lib/datetime.ts`
-2. Replace `n.toLocaleString("en-US")` in `submission-status-badge.tsx:45` with `formatNumber(n, locale)`
-3. Pass `locale` prop through `SubmissionStatusBadge` -> `TooltipBody` -> `formatNumber`
-4. Add unit test for `formatNumber` with "en-US" and "ko-KR" locales
+Commit: 131dc046
 
-### H2: Fix access code share link to include locale prefix [AGG-2]
+### H2: Fix access code share link to include locale prefix [AGG-2] — DONE
 
-**Severity:** LOW/MEDIUM (3-agent signal)
-**Files:** `src/components/contest/access-code-manager.tsx:126`
-**Plan:**
-1. Import `useLocale` from `next-intl` and `buildLocalizedHref` from `@/lib/locale-paths`
-2. Replace `const url = `${window.location.origin}/dashboard/contests/join?code=${code}`;` with locale-aware URL construction
-3. This is a one-line fix
+Commit: 51ea6980
 
-### M1: Replace hardcoded English string in api-keys clipboard fallback [AGG-4]
+### M1: Replace hardcoded English string in api-keys clipboard fallback [AGG-4] — DONE
 
-**Severity:** LOW/MEDIUM
-**Files:** `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx:201`, `messages/en.json`, `messages/ko.json`
-**Plan:**
-1. Add `copyFailed` key to `admin.apiKeys` namespace in both `en.json` and `ko.json`
-2. Replace hardcoded `"Failed to copy — please select and copy manually"` with `t("copyFailed")`
+Commit: f52c7fe9
 
-### M2: Replace `userId!` non-null assertion with explicit capture [AGG-5]
+### M2: Replace `userId!` non-null assertion with explicit capture [AGG-5] — DONE
 
-**Severity:** LOW/MEDIUM
-**Files:** `src/app/(public)/practice/page.tsx:431`
-**Plan:**
-1. Add `const uid = userId!; /* guaranteed by currentProgressFilter check */` at the start of the else block (line ~411)
-2. Replace `userId!` on line 431 with `uid`
+Commit: c8ce897a
 
-### M3: Add clipboard error feedback to copy-code-button [AGG-6]
+### M3: Add clipboard error feedback to copy-code-button [AGG-6] — DONE
 
-**Severity:** LOW/LOW
-**Files:** `src/components/code/copy-code-button.tsx:20-31`
-**Plan:**
-1. Add a `catch` block after `document.execCommand("copy")` that shows a toast error
-2. Add `copyFailed` i18n key to `common` namespace if not already present (it may already exist from previous cycles)
-3. If `execCommand` returns false, show the toast error
+Commit: 337e306e
 
 ## Deferred Items
 
@@ -86,15 +62,6 @@ Dashboard pages that now have public counterparts and redirect:
 
 These pages redirect but the page components still exist. Removing them would clean up the codebase. This will be addressed as an additional implementation item this cycle.
 
-### M4: Remove redundant dashboard page components that redirect to public counterparts
+### M4: Remove redundant dashboard page components that redirect to public counterparts — SKIPPED
 
-**Files to remove:**
-- `src/app/(dashboard)/dashboard/rankings/` (if it exists as a separate directory)
-- `src/app/(dashboard)/dashboard/languages/` (if it exists as a separate directory)
-- `src/app/(dashboard)/dashboard/compiler/` (if it exists as a separate directory)
-
-**Plan:**
-1. Verify that redirect pages exist and work correctly
-2. Verify that sidebar links point to public URLs
-3. Remove the page component directories (keep the redirect files if they are at the route level)
-4. Run gates to verify no breakage
+Investigated: The directories `src/app/(dashboard)/dashboard/rankings/`, `src/app/(dashboard)/dashboard/languages/`, and `src/app/(dashboard)/dashboard/compiler/` do not exist — they were already removed in previous cycles. The redirects are already in place.
