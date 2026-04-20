@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { apiFetch } from "@/lib/api/client";
 import {
   Card,
@@ -41,6 +41,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Trash2, RefreshCw, Pencil, Check, X, Plus, Copy } from "lucide-react";
+import { formatRelativeTimeFromNow } from "@/lib/datetime";
 import { toast } from "sonner";
 
 interface Worker {
@@ -80,18 +81,6 @@ function statusVariant(status: string): "default" | "secondary" | "destructive" 
     default:
       return "outline";
   }
-}
-
-function formatRelativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const seconds = Math.floor(diff / 1000);
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
 }
 
 function AliasCell({ worker, onUpdate }: { worker: Worker; onUpdate: () => void }) {
@@ -226,6 +215,7 @@ docker compose -f docker-compose.worker.yml up -d`;
 
 export function WorkersPageClient() {
   const t = useTranslations("admin.workers");
+  const locale = useLocale();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [stats, setStats] = useState<WorkerStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -365,7 +355,7 @@ export function WorkersPageClient() {
                       {w.version ?? "-"}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {formatRelativeTime(w.lastHeartbeatAt)}
+                      {formatRelativeTimeFromNow(w.lastHeartbeatAt, locale)}
                     </TableCell>
                     <TableCell>
                       <AlertDialog>
