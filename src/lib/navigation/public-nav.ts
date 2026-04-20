@@ -29,7 +29,6 @@ export function getPublicNavItems(t: (key: string) => string): HeaderItem[] {
     { href: "/rankings", label: t("nav.rankings") },
     { href: "/submissions", label: t("nav.submissions") },
     { href: "/community", label: t("nav.community") },
-    { href: "/languages", label: t("nav.languages") },
   ];
 }
 

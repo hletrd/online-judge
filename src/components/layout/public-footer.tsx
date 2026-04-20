@@ -15,21 +15,29 @@ type PublicFooterProps = {
 };
 
 export async function PublicFooter({ siteTitle, footerContent }: PublicFooterProps) {
-  const [locale, tCommon] = await Promise.all([getLocale(), getTranslations("common")]);
+  const [locale, tCommon, tShell] = await Promise.all([getLocale(), getTranslations("common"), getTranslations("publicShell")]);
   const content = footerContent?.[locale] ?? footerContent?.[DEFAULT_LOCALE];
   const copyrightText = content?.copyrightText || `© ${new Date().getFullYear()} ${siteTitle}`;
   const links = content?.links ?? [];
+
+  // Always include "Languages" as a footer link so it remains reachable
+  // after being removed from the top-level nav bar.
+  const languagesLink: FooterLink = {
+    label: tShell("nav.languages"),
+    url: "/languages",
+  };
+  const allLinks = [...links, languagesLink];
 
   return (
     <footer className="border-t bg-muted/40">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 py-6 text-center text-sm text-muted-foreground sm:flex-row sm:justify-between sm:px-6 sm:text-left lg:px-8">
         <span className="max-w-full break-words">{copyrightText}</span>
-        {links.length > 0 && (
+        {allLinks.length > 0 && (
           <nav
             className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:justify-end"
             aria-label={tCommon("footerNavigation")}
           >
-            {links.map((link) => (
+            {allLinks.map((link) => (
               <Link
                 key={link.url}
                 href={buildLocalizedHref(link.url, locale)}
