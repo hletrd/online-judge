@@ -52,6 +52,10 @@ vi.mock("node:fs/promises", () => ({
   access: accessMock,
 }));
 
+vi.mock("@/lib/db-time", () => ({
+  getDbNowUncached: vi.fn().mockResolvedValue(new Date("2026-04-20T12:00:00Z")),
+}));
+
 vi.mock("@/lib/logger", () => ({
   logger: {
     info: vi.fn(),
