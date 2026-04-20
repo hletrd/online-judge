@@ -26,6 +26,7 @@ import { ProblemExportButton } from "./problem-export-button";
 import { ArrowLeft, Trophy } from "lucide-react";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { getDbNow } from "@/lib/db-time";
 
 function formatDifficultyValue(value: number) {
   return value.toFixed(2).replace(/\.?0+$/, "");
@@ -153,10 +154,13 @@ export default async function ProblemDetailPage({
       },
     });
 
+    // Use DB server time for all temporal comparisons to avoid clock skew
+    const now = await getDbNow();
+
     // Block access before contest start for non-admin users
     if (
       assignment?.startsAt &&
-      new Date(assignment.startsAt) > new Date() &&
+      new Date(assignment.startsAt) > now &&
       !caps.has("groups.view_all") &&
       !caps.has("assignments.view_status") &&
       !caps.has("contests.view_analytics") &&
@@ -184,7 +188,6 @@ export default async function ProblemDetailPage({
     }
 
     // Determine if submissions are blocked (past deadline)
-    const now = new Date();
     const effectiveDeadline = personalDeadline ?? assignment?.lateDeadline ?? assignment?.deadline ?? null;
     const isSubmissionBlocked = effectiveDeadline ? new Date(effectiveDeadline) < now : false;
 
