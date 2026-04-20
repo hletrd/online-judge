@@ -27,6 +27,7 @@ export const POST = createApiHandler({
     try {
       // Fetch DB time once for all invitations in the batch.
       const dbNow = await getDbNowUncached();
+      const MAX_EXPIRY_MS = 10 * 365.25 * 24 * 60 * 60 * 1000; // ~10 years
 
       const created = await execTransaction(async (tx) => {
         const orderedEmails = [...uniqueEmails].sort();
@@ -60,6 +61,10 @@ export const POST = createApiHandler({
               expiresAt = new Date(dbNow.getTime() + inv.expiryDays * 86400000);
             } else if (inv.expiryDate) {
               expiresAt = new Date(`${inv.expiryDate}T23:59:59Z`);
+              // Reject unreasonably far-future expiry (consistent with expiryDays max 3650)
+              if ((expiresAt.getTime() - dbNow.getTime()) > MAX_EXPIRY_MS) {
+                throw new Error("expiryDateTooFar");
+              }
             }
             return {
               candidateName: inv.candidateName,
@@ -88,6 +93,9 @@ export const POST = createApiHandler({
     } catch (error) {
       if (error instanceof Error && error.message === "emailAlreadyInvited") {
         return apiError("emailAlreadyInvited", 409);
+      }
+      if (error instanceof Error && error.message === "expiryDateTooFar") {
+        return apiError("expiryDateTooFar", 400);
       }
       throw error;
     }
