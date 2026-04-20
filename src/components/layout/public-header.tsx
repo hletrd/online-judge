@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { handleSignOutWithCleanup } from "@/lib/auth/sign-out";
 import { buildLocalizedHref } from "@/lib/locale-paths";
 import { getDropdownItems } from "@/lib/navigation/public-nav";
-import { Menu, X, ChevronDown, LogOut, LayoutDashboard, FileText, Users, ClipboardList, Settings, Shield, Timer } from "lucide-react";
+import { Menu, X, ChevronDown, LogOut, LayoutDashboard, FileText, Users, ClipboardList, Settings, Shield, Timer, FolderOpen } from "lucide-react";
 
 type HeaderItem = {
   href: string;
@@ -59,6 +59,7 @@ function isActivePath(pathname: string, href: string) {
 const DROPDOWN_ICONS: Record<string, React.ReactNode> = {
   "/dashboard": <LayoutDashboard className="size-4" />,
   "/dashboard/problems": <FileText className="size-4" />,
+  "/dashboard/problem-sets": <FolderOpen className="size-4" />,
   "/dashboard/groups": <Users className="size-4" />,
   "/dashboard/submissions": <ClipboardList className="size-4" />,
   "/dashboard/contests": <Timer className="size-4" />,

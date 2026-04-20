@@ -59,6 +59,7 @@ export function getPublicNavActions(
 const DROPDOWN_ITEM_DEFINITIONS: DropdownItem[] = [
   { href: "/dashboard", label: "dashboard" },
   { href: "/dashboard/problems", label: "problems", capability: "problems.create" },
+  { href: "/dashboard/problem-sets", label: "problemSets", capability: "problem_sets.create" },
   { href: "/dashboard/groups", label: "groups", capability: "groups.view_all" },
   { href: "/dashboard/submissions", label: "mySubmissions" },
   { href: "/dashboard/contests", label: "contests" },
