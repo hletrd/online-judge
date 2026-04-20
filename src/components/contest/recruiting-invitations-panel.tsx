@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { toast } from "sonner";
 import { Plus, Check, Ban, Trash2, Link, Copy, ShieldAlert } from "lucide-react";
 import { apiFetch } from "@/lib/api/client";
@@ -69,6 +69,7 @@ type Stats = {
 
 export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: string }) {
   const t = useTranslations("contests.invitations");
+  const locale = useLocale();
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, redeemed: 0, revoked: 0, expired: 0 });
   const [loading, setLoading] = useState(true);
@@ -249,7 +250,7 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
 
   function formatDate(dateStr: string | null) {
     if (!dateStr) return "-";
-    return new Date(dateStr).toLocaleDateString(undefined, {
+    return new Date(dateStr).toLocaleDateString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",
