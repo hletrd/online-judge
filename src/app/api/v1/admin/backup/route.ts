@@ -14,6 +14,7 @@ import { eq } from "drizzle-orm";
 import { streamDatabaseExport } from "@/lib/db/export";
 import { streamBackupWithFiles } from "@/lib/db/export-with-files";
 import { contentDispositionAttachment } from "@/lib/http/content-disposition";
+import { getDbNowUncached } from "@/lib/db-time";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +81,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    // Use DB server time for the backup filename so it matches the export snapshot
+    const dbNow = await getDbNowUncached();
+    const timestamp = dbNow.toISOString().replace(/[:.]/g, "-");
     const includeFiles = new URL(request.url).searchParams.get("includeFiles") === "true";
 
     const backupName = `judgekit-backup-${timestamp}`;

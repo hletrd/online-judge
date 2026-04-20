@@ -7,6 +7,7 @@ import { logger } from "@/lib/logger";
 import { asc } from "drizzle-orm";
 import { access } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import { getDbNowUncached } from "@/lib/db-time";
 
 interface BackupIntegrityEntry {
   path: string;
@@ -37,12 +38,13 @@ function sha256Hex(data: Buffer | Uint8Array | string) {
 function createBackupIntegrityManifest(
   dbJson: string,
   dbExport: JudgeKitExport,
-  uploads: BackupIntegrityManifest["uploads"]
+  uploads: BackupIntegrityManifest["uploads"],
+  dbNow?: Date
 ): BackupIntegrityManifest {
   return {
     version: 1,
     format: "judgekit-backup-integrity",
-    createdAt: new Date().toISOString(),
+    createdAt: (dbNow ?? new Date()).toISOString(),
     database: {
       path: "database.json",
       sha256: sha256Hex(dbJson),
@@ -108,6 +110,8 @@ function parseBackupIntegrityManifest(raw: string): BackupIntegrityManifest {
  *   uploads/       – uploaded files keyed by their storedName
  */
 export async function streamBackupWithFiles(signal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
+  // Fetch DB time once so the manifest createdAt matches the export snapshot
+  const dbNow = await getDbNowUncached();
   const zip = new JSZip();
 
   // 1. Collect database export as JSON
@@ -160,7 +164,7 @@ export async function streamBackupWithFiles(signal?: AbortSignal): Promise<Reada
   logger.info({ included, skipped, total: fileRecords.length }, "Backup file upload collection complete");
   zip.file(
     BACKUP_MANIFEST_PATH,
-    JSON.stringify(createBackupIntegrityManifest(dbJson, dbExport, manifestUploads), null, 2)
+    JSON.stringify(createBackupIntegrityManifest(dbJson, dbExport, manifestUploads, dbNow), null, 2)
   );
 
   // 4. Generate ZIP as a Web ReadableStream
