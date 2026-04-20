@@ -1,104 +1,72 @@
-# Cycle 19 Aggregate Review
+# Cycle 20 Aggregate Review
 
 **Date:** 2026-04-19
 **Aggregated from:** code-reviewer, security-reviewer, perf-reviewer, architect, test-engineer, debugger, critic, verifier, designer
-**Base commit:** 301afe7f
+**Base commit:** 95f06e5b
 
 ---
 
 ## Deduped Findings
 
-### AGG-1 — [MEDIUM] React `cache()` does not deduplicate `getRecruitingAccessContext` in API routes — N+1 DB queries persist for permission checks
+### AGG-1 — [HIGH] ALS recruiting cache is dead code — `withRecruitingContextCache` never called, N+1 DB queries persist in API routes
 
-- **Severity:** MEDIUM (performance + architecture)
+- **Severity:** HIGH (performance + architecture — the most critical fix from cycle 19 is non-functional)
 - **Confidence:** HIGH
-- **Cross-agent agreement:** code-reviewer F1, perf-reviewer F1, architect F1, critic F1, verifier F1
-- **Files:** `src/lib/recruiting/access.ts:79-85`, `src/lib/auth/permissions.ts:22,115,158`
-- **Evidence:** `getRecruitingAccessContext` is wrapped with React `cache()`, which only deduplicates within a single RSC render. When called from API route handlers (which are not RSCs), the cache is not in scope, so every call hits the database. The permission functions `canAccessGroup`, `canAccessProblem`, and `getAccessibleProblemIds` all independently call `getRecruitingAccessContext`. For API routes that check permissions per-item, this results in 2+ redundant DB queries per check.
-- **Failure scenario:** An instructor requests the submissions list API. The handler calls `canAccessSubmission` for each submission row. For 20 submissions, that's 40 redundant DB queries for recruiting context data that's identical across all checks.
-- **Suggested fix:** Implement a per-request cache via `AsyncLocalStorage` that works in both RSC and API route contexts. Document the limitation of React `cache()` for non-RSC callers. Alternatively, pass the recruiting context explicitly through the permission check chain.
+- **Cross-agent agreement:** code-reviewer F1, security-reviewer F1, perf-reviewer F1, architect F1, test-engineer F1, debugger F1, critic F1, verifier F1 (8/9 agents)
+- **Files:** `src/lib/recruiting/request-cache.ts:67`, `src/lib/recruiting/access.ts:38,50,88`, `src/lib/api/handler.ts` (missing initialization)
+- **Evidence:** The `withRecruitingContextCache` function is defined but never called from any production code. Grep confirms zero callers outside the test file. Without calling `withRecruitingContextCache.run()`, `AsyncLocalStorage.getStore()` always returns `undefined`, making `getCachedRecruitingContext` always return `undefined` and `setCachedRecruitingContext` silently no-op. The ALS cache added in cycle 19 (commit a5628451) to fix AGG-1 from cycle 19 is completely non-functional in production. The test suite passes because tests manually initialize the ALS context, giving a false sense of correctness.
+- **Failure scenario:** An API route handler calls `canAccessProblem` for each item in a list of 20 problems. Each call triggers `loadRecruitingAccessContext`, which calls `getCachedRecruitingContext` (always returns undefined), queries the DB twice for recruiting context, then calls `setCachedRecruitingContext` (silently no-ops). This results in 40+ redundant DB queries — the exact problem the ALS cache was supposed to solve.
+- **Suggested fix:** Wire `withRecruitingContextCache` into the API handler pipeline. The cleanest approach is to wrap the handler execution in `createApiHandler` (in `src/lib/api/handler.ts`) with the ALS context. This ensures the cache is always available for API routes without requiring changes to individual route handlers. Additionally, add a dev-mode warning log in `setCachedRecruitingContext` when the store is not active (debugger F2).
 
-### AGG-2 — [LOW] Admin import and restore routes still discard `needsRehash` — inconsistent with backup/export routes
+### AGG-2 — [LOW] `setCachedRecruitingContext` silently no-ops when store is not active — should warn in dev mode
 
-- **Severity:** LOW (security — bcrypt-to-argon2 migration stalls for rare admin profiles)
+- **Severity:** LOW (developer experience — masks critical integration bugs)
 - **Confidence:** HIGH
-- **Cross-agent agreement:** code-reviewer F3, security-reviewer F1, architect F2, debugger F1, critic F2, verifier F2
-- **Files:** `src/app/api/v1/admin/migrate/import/route.ts:58,143`, `src/app/api/v1/admin/restore/route.ts:56`
-- **Evidence:** The backup and export routes were fixed for `needsRehash` in cycle 18b, but the import route (both form-data and JSON paths) and the restore route still destructure only `{ valid }` from `verifyPassword()`. This inconsistency is exactly the divergence risk that the DRY concern was raising.
-- **Failure scenario:** An admin with a bcrypt hash who only authenticates via the import or restore route never has their hash upgraded to argon2id. The inconsistent coverage creates a false sense of security.
-- **Suggested fix:** Add `needsRehash` handling to both paths in the import route and the restore route, matching the 6-line pattern used in backup and export routes.
+- **Cross-agent agreement:** debugger F2
+- **Files:** `src/lib/recruiting/request-cache.ts:51-55`
+- **Evidence:** When `recruitingContextStore.getStore()` returns `undefined`, the function silently returns without setting anything. This is documented as "graceful degradation" but it masks the critical bug where the store is never initialized.
+- **Suggested fix:** Add a `logger.warn` call when `store` is undefined and `NODE_ENV !== "production"`, similar to `isTrustedServerActionOrigin` in server-actions.ts.
 
-### AGG-3 — [LOW] `updateRecruitingInvitation` uses `Record<string, unknown>` — loses type safety
+### AGG-3 — [LOW] Dashboard layout has two sequential `Promise.all` blocks — some calls can be parallelized
 
-- **Severity:** LOW (maintainability — potential for silent runtime errors)
+- **Severity:** LOW (performance — ~50-100ms unnecessary latency on dashboard page loads)
 - **Confidence:** MEDIUM
-- **Cross-agent agreement:** code-reviewer F2, debugger F2
-- **Files:** `src/lib/assignments/recruiting-invitations.ts:193`
-- **Evidence:** The function builds updates as `Record<string, unknown>`, bypassing Drizzle's type checking. Other update functions in the codebase use `withUpdatedAt()` which preserves type safety.
-- **Failure scenario:** A developer adds a new field to the update data but misspells the column name. The update silently sets the wrong key, and the actual column is not updated. Drizzle's error message is opaque for dynamically constructed keys.
-- **Suggested fix:** Use `Partial<typeof recruitingInvitations.$inferInsert>` or the `withUpdatedAt()` pattern for the updates object.
+- **Cross-agent agreement:** perf-reviewer F2, architect F3
+- **Files:** `src/app/(dashboard)/layout.tsx:34-48,55-64`
+- **Evidence:** The first `Promise.all` block resolves `getRecruitingAccessContext`, translations, and capabilities. The second block resolves system settings and lecture mode check. `getResolvedSystemSettings` and `isInstructorOrAboveAsync` do not depend on the first block's results but are not included in it.
+- **Suggested fix:** Move `getResolvedSystemSettings` and `isInstructorOrAboveAsync` into the first `Promise.all` block since they don't depend on its results. Keep `getActiveTimedAssignmentsForSidebar` in the second block since it depends on `canBypassTimedAssignmentPanel`.
 
-### AGG-4 — [LOW] `isTrustedServerActionOrigin` falls back to `NODE_ENV !== "production"` when Origin is missing — allows untrusted origins in misconfigured environments
+### AGG-4 — [LOW] Breadcrumb sticky header adds ~44px of chrome on mobile — consider hiding on small viewports
 
-- **Severity:** LOW (security — defense-in-depth gap for misconfigured staging environments)
-- **Confidence:** HIGH
-- **Cross-agent agreement:** security-reviewer F3
-- **Files:** `src/lib/security/server-actions.ts:26-27,29-30`
-- **Evidence:** When the `Origin` header is missing, the function returns `true` in development mode. If a developer accidentally sets `NODE_ENV=development` in a staging or test environment for verbose logging, all server action origin checks are bypassed.
-- **Failure scenario:** A staging server is deployed with `NODE_ENV=development` for verbose logging. An attacker crafts a CSRF page that triggers server actions. Since `NODE_ENV=development`, the origin check passes regardless of the actual origin.
-- **Suggested fix:** Add a warning log when the origin check is bypassed in development mode. Consider using a separate flag (e.g., `SKIP_ORIGIN_CHECK`) instead of relying solely on `NODE_ENV`.
-
-### AGG-5 — [LOW] No tests for `withUpdatedAt()` helper, `readStreamBytesWithLimit`, and admin route `needsRehash` handling
-
-- **Severity:** LOW (test coverage — untested security-critical and performance-critical paths)
-- **Confidence:** HIGH
-- **Cross-agent agreement:** test-engineer F1, F2, F3
-- **Files:** `src/lib/db/helpers.ts:11-15`, `src/lib/db/import-transfer.ts:14-40`, `src/app/api/v1/admin/backup/route.ts:71-80`
-- **Evidence:** Three critical functions have no test coverage: (1) `withUpdatedAt()` is used across ~15 call sites but has no unit tests, (2) `readStreamBytesWithLimit` was rewritten for OOM prevention but has no tests for edge cases (multi-byte boundaries, exact limit match), (3) `needsRehash` handling in admin backup/export routes has no integration tests.
-- **Failure scenario:** A regression in `readStreamBytesWithLimit` corrupts multi-byte characters at chunk boundaries. No test catches this because the function was refactored without tests. Production imports fail with JSON parse errors for Korean-language content.
-- **Suggested fix:** Add unit tests for `withUpdatedAt()` (3 cases), `readStreamBytesWithLimit` (4 cases including multi-byte boundaries), and integration tests for admin route `needsRehash` handling (2 cases: bcrypt user -> backup -> verify argon2id hash).
-
-### AGG-6 — [LOW] Breadcrumb is in main content area instead of top navbar — navigation inconsistency per migration plan
-
-- **Severity:** LOW (UX — navigation pattern inconsistency)
-- **Confidence:** HIGH
-- **Cross-agent agreement:** architect F3, designer F3
-- **Files:** `src/app/(dashboard)/layout.tsx:100`
-- **Evidence:** The breadcrumb is rendered inside `<main>` as `<Breadcrumb className="mb-4" />`. Per the workspace-to-public migration plan Phase 3, it should be moved to the top navbar area. Current placement means the breadcrumb is not visible when content is scrolled down.
-- **Failure scenario:** A user scrolls down in a long student submission page. The breadcrumb is no longer visible. The user has to scroll back to the top to see where they are in the navigation hierarchy.
-- **Suggested fix:** Move the breadcrumb into the `SidebarInset` header area or the `PublicHeader` component so it remains visible while scrolling.
-
-### AGG-7 — [LOW] Mobile menu focus not restored on route-change close — keyboard accessibility gap
-
-- **Severity:** LOW (accessibility — WCAG 2.2 SC 2.4.3 focus order)
+- **Severity:** LOW (UX — 33% of viewport height consumed by chrome on small phones)
 - **Confidence:** MEDIUM
 - **Cross-agent agreement:** designer F1
-- **Files:** `src/components/layout/public-header.tsx:113-128`
-- **Evidence:** When the mobile menu closes due to a route change (line 113-128), focus is not explicitly restored to the toggle button. The `closeMobileMenu` function (line 177-181) does restore focus, but it's not called from the route-change effect.
-- **Failure scenario:** A keyboard user opens the mobile menu, navigates to a link, and presses Enter. The route changes, the menu closes, but focus is not restored to the toggle button. The user must Tab through the entire page to find their place.
-- **Suggested fix:** In the route-change effect, after closing the menu, also restore focus to `toggleRef.current` using the same `requestAnimationFrame` pattern as `closeMobileMenu`.
+- **Files:** `src/app/(dashboard)/layout.tsx:99-101`
+- **Evidence:** On a 375px mobile viewport, the PublicHeader (~56px) + breadcrumb header (~44px) + content padding (24px) = ~124px before any content. Mobile users navigate via hamburger menu and back button, not breadcrumbs.
+- **Suggested fix:** Consider adding `hidden md:block` to the breadcrumb header container on mobile, since breadcrumbs are not useful on mobile navigation patterns.
 
-### AGG-8 — [LOW] `canAccessProblem` per-item permission checks are not batched for API list endpoints — redundant DB round-trips
+### AGG-5 — [LOW] ALS cache tests give false confidence — no integration test verifying cache is wired into request pipeline
 
-- **Severity:** LOW (performance — O(N) DB round-trips for N items)
-- **Confidence:** MEDIUM
-- **Cross-agent agreement:** security-reviewer F2, perf-reviewer F3
-- **Files:** `src/lib/auth/permissions.ts:107-145`
-- **Evidence:** `canAccessProblem` performs multiple sequential DB queries per problem. The batched alternative `getAccessibleProblemIds` (line 147) exists but is not used by all API routes. For list endpoints, calling `canAccessProblem` N times results in O(N) sequential DB round-trips.
-- **Failure scenario:** The practice problems page loads 50 problems. For each problem, `canAccessProblem` is called, resulting in ~100 DB round-trips. The batched `getAccessibleProblemIds` would do it in ~3 queries.
-- **Suggested fix:** Ensure all list endpoints use `getAccessibleProblemIds` instead of per-item `canAccessProblem` checks.
-
-### AGG-9 — [LOW] `eslint-disable` for `no-explicit-any` in `users/route.ts` — should use proper type
-
-- **Severity:** LOW (code quality — type safety bypass)
+- **Severity:** LOW (test coverage — critical integration gap)
 - **Confidence:** HIGH
-- **Cross-agent agreement:** code-reviewer F5
-- **Files:** `src/app/api/v1/users/route.ts:90-91`
-- **Evidence:** The `let created: any` variable uses `eslint-disable-next-line @typescript-eslint/no-explicit-any` to suppress the type error. The proper type is available from `safeUserSelect` return type.
-- **Failure scenario:** A developer accesses a property on `created` that doesn't exist in the actual return type. No compile-time error is raised because the type is `any`.
-- **Suggested fix:** Replace `let created: any` with a properly typed variable using the return type of `safeUserSelect`.
+- **Cross-agent agreement:** test-engineer F1, F2
+- **Files:** `tests/unit/recruiting/request-cache.test.ts`, `src/lib/api/handler.ts`
+- **Evidence:** The unit tests pass because they manually call `withRecruitingContextCache` to set up the ALS context. No integration test verifies that the cache is actually wired into the API handler pipeline. This allowed a critical integration bug (AGG-1) to go undetected.
+- **Suggested fix:** Add an integration test that verifies `getRecruitingAccessContext` returns the same context when called twice within a simulated API request handler pipeline (using `createApiHandler`).
 
 ---
+
+## Carry-Forward Items (Unchanged from Cycle 19)
+
+| ID | Finding | Severity | Status |
+|----|---------|----------|--------|
+| AGG-2(c19) | Admin import/restore `needsRehash` | LOW | **FIXED** in cycle 19 (commit bdee3c23) |
+| AGG-3(c19) | `updateRecruitingInvitation` uses `Record<string, unknown>` | LOW | Deferred — no runtime impact |
+| AGG-4(c19) | Server action origin bypass warning | LOW | **FIXED** in cycle 19 (commit 267fbafd) |
+| AGG-6(c19) | Breadcrumb in main content instead of top navbar | LOW | **FIXED** in cycle 19 (commit a06bd712) |
+| AGG-7(c19) | Mobile menu focus not restored on route change | LOW | **FIXED** in cycle 19 (commit 74560445) |
+| AGG-8(c19) | `canAccessProblem` not batched for API list endpoints | LOW | Deferred — `getAccessibleProblemIds` exists as alternative |
+| AGG-9(c19) | `eslint-disable` for `no-explicit-any` in users route | LOW | **FIXED** in cycle 19 (commit 401dd117) |
 
 ## Previously Deferred Items (Carried Forward)
 
@@ -122,6 +90,8 @@
 | AGG-5(c18) | updateRecruitingInvitation uses JS new Date() | LOW | Deferred — only affects distributed deployments |
 | AGG-7(c18) | contest-analytics progression raw scores | LOW | Deferred — already documented in code comments |
 | AGG-4(c18b) | Admin route DRY violation (same as AGG-4(c18)) | LOW | Deferred — next time admin routes are modified |
+| AGG-3(c19) | updateRecruitingInvitation Record<string, unknown> | LOW | Deferred — no runtime impact |
+| AGG-8(c19) | canAccessProblem not batched for list endpoints | LOW | Deferred — getAccessibleProblemIds exists as alternative |
 
 ## Agent Failures
 
