@@ -12,6 +12,7 @@ import { isHcaptchaConfigured } from "@/lib/security/hcaptcha";
 import { encrypt } from "@/lib/security/encryption";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
+import { getDbNowUncached } from "@/lib/db-time";
 import {
   type SystemSettingsInput,
   systemSettingsSchema,
@@ -115,7 +116,7 @@ export async function updateSystemSettings(
 
   const baseValues: Record<string, unknown> = {
     ...configValues,
-    updatedAt: new Date(),
+    updatedAt: await getDbNowUncached(),
   };
 
   if (hasOwnInput("siteTitle")) {

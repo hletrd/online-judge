@@ -9,6 +9,7 @@ import { languageConfigs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
+import { getDbNowUncached } from "@/lib/db-time";
 import { JUDGE_LANGUAGE_CONFIGS, serializeJudgeCommand } from "@/lib/judge/languages";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
@@ -58,7 +59,7 @@ export async function toggleLanguage(
   try {
     await db
       .update(languageConfigs)
-      .set({ isEnabled: enabled, updatedAt: new Date() })
+      .set({ isEnabled: enabled, updatedAt: await getDbNowUncached() })
       .where(eq(languageConfigs.language, language));
 
     const auditContext = await buildServerActionAuditContext("/dashboard/admin/languages");
@@ -113,7 +114,7 @@ export async function updateLanguageConfig(
         compileCommand: data.compileCommand || null,
         runCommand: data.runCommand,
         dockerfile: data.dockerfile || null,
-        updatedAt: new Date(),
+        updatedAt: await getDbNowUncached(),
       })
       .where(eq(languageConfigs.language, language));
 
@@ -201,7 +202,7 @@ export async function addLanguageConfig(input: {
       runCommand: input.runCommand.trim(),
       dockerfile: input.dockerfile?.trim() || null,
       isEnabled: true,
-      updatedAt: new Date(),
+      updatedAt: await getDbNowUncached(),
     });
 
     const auditContext = await buildServerActionAuditContext("/dashboard/admin/languages");
@@ -260,7 +261,7 @@ export async function resetLanguageToDefaults(
         compiler: definition.compiler ?? null,
         compileCommand: serializeJudgeCommand(definition.compileCommand),
         runCommand: definition.runCommand.join(" "),
-        updatedAt: new Date(),
+        updatedAt: await getDbNowUncached(),
       })
       .where(eq(languageConfigs.language, language));
 
@@ -301,6 +302,7 @@ export async function resetAllLanguagesToDefaults(): Promise<LanguageConfigActio
   if (rateLimit) return { success: false, error: "rateLimited" };
 
   try {
+    const now = await getDbNowUncached();
     await db.transaction(async (tx) => {
       for (const [lang, definition] of Object.entries(JUDGE_LANGUAGE_CONFIGS)) {
         await tx
@@ -310,7 +312,7 @@ export async function resetAllLanguagesToDefaults(): Promise<LanguageConfigActio
             compiler: definition.compiler ?? null,
             compileCommand: serializeJudgeCommand(definition.compileCommand),
             runCommand: definition.runCommand.join(" "),
-            updatedAt: new Date(),
+            updatedAt: now,
           })
           .where(eq(languageConfigs.language, lang));
       }

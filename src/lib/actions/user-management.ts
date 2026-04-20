@@ -410,6 +410,7 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
     }
 
     try {
+      const now = await getDbNowUncached();
       await execTransaction(async (tx) => {
         if (await isUsernameTaken(data.username, undefined, tx)) {
           throw new Error("usernameInUse");
@@ -429,8 +430,8 @@ export async function createUser(data: ManagedUserInput): Promise<UserManagement
           passwordHash,
           isActive: true,
           mustChangePassword: true, // force new user to change password on first login
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          createdAt: now,
+          updatedAt: now,
         });
       });
     } catch (error) {

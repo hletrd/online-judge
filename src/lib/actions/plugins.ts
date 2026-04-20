@@ -9,6 +9,7 @@ import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { getPluginDefinition } from "@/lib/plugins/registry";
 import { isTrustedServerActionOrigin } from "@/lib/security/server-actions";
 import { checkServerActionRateLimit } from "@/lib/security/api-rate-limit";
+import { getDbNowUncached } from "@/lib/db-time";
 import { logger } from "@/lib/logger";
 import { preparePluginConfigForStorage, redactPluginConfigForAudit } from "@/lib/plugins/secrets";
 import { eq } from "drizzle-orm";
@@ -41,13 +42,14 @@ export async function togglePlugin(pluginId: string, enabled: boolean): Promise<
   }
 
   try {
+    const now = await getDbNowUncached();
     await db.insert(plugins).values({
       id: pluginId,
       enabled,
-      updatedAt: new Date(),
+      updatedAt: now,
     }).onConflictDoUpdate({
       target: plugins.id,
-      set: withUpdatedAt({ enabled }),
+      set: withUpdatedAt({ enabled }, now),
     });
 
     const auditContext = await buildServerActionAuditContext("/dashboard/admin/plugins");
@@ -110,17 +112,18 @@ export async function updatePluginConfig(pluginId: string, rawConfig: unknown): 
       (existingRow?.config as Record<string, unknown>) ?? null
     );
 
+    const now = await getDbNowUncached();
     await db.insert(plugins).values({
       id: pluginId,
       enabled: existingRow?.enabled ?? false,
       config: storedConfig,
-      updatedAt: new Date(),
+      updatedAt: now,
     }).onConflictDoUpdate({
       target: plugins.id,
       set: withUpdatedAt({
         config: storedConfig,
         ...(existingRow?.enabled !== undefined ? { enabled: existingRow.enabled } : {}),
-      }),
+      }, now),
     });
 
     const auditContext = await buildServerActionAuditContext("/dashboard/admin/plugins");
