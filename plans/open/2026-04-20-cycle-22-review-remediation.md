@@ -27,7 +27,7 @@ No cycle-22 review finding is silently dropped. No new refactor-only work is add
   2. Replace `getTranslations` from `next-intl/server` with `useTranslations` from `next-intl`.
   3. Keep the existing `GoToPage` interactivity client-side.
   4. Run route-level verification against public pages that render pagination.
-- **Status:** TODO
+- **Status:** DONE (commit f5251f3a)
 
 ### M1: Remove home / 404 public-header drift and align the label path with the shared public shell
 - **Source:** AGG-2
@@ -39,7 +39,7 @@ No cycle-22 review finding is silently dropped. No new refactor-only work is add
   2. Replace the stale workspace label path with the dashboard label path on the home / 404 entry points.
   3. Update any affected component tests.
   4. Re-verify the browser-visible label on the home page.
-- **Status:** TODO
+- **Status:** DONE (commit 97c4544b)
 
 ### M2: Add regression coverage for the real pagination/public-shell contract
 - **Source:** AGG-3
@@ -50,7 +50,7 @@ No cycle-22 review finding is silently dropped. No new refactor-only work is add
   1. Update the component test to render `<PaginationControls />` as a normal client component.
   2. Add assertions that public pagination routes do not render the server-error shell.
   3. Extend public-shell browser coverage to include `/rankings`.
-- **Status:** TODO
+- **Status:** DONE (commit 743dddf0)
 
 ---
 
@@ -67,3 +67,4 @@ None. Every cycle-22 finding above is planned for implementation in this cycle.
 
 ## Progress log
 - 2026-04-20: Plan created from cycle-22 aggregate review.
+- 2026-04-20: H1, M1, M2 all DONE. All cycle-22 findings resolved. Quality gates pass (tsc, unit, component, build).
