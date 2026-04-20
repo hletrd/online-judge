@@ -56,7 +56,8 @@ export default async function NotFoundPage() {
       <main id="main-content" className="mx-auto flex min-h-[calc(100dvh-80px)] w-full max-w-6xl items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
         <div className="w-full max-w-xl rounded-3xl border bg-background p-8 text-center shadow-sm sm:p-10">
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">404</p>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+          {/* tracking-tight is for Latin headings — skip for Korean to preserve readability */}
+          <h1 className={`mt-4 text-3xl font-semibold${locale !== "ko" ? " tracking-tight" : ""} sm:text-4xl`}>
             {tState("notFoundTitle")}
           </h1>
           <p className="mt-4 text-base leading-7 text-muted-foreground">

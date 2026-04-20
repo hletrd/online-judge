@@ -15,6 +15,7 @@ describe("PublicContestList", () => {
         description="Browse public contests"
         noContestsLabel="No public contests"
         archiveTitle="Past Contests"
+        locale="en"
         contests={[
           {
             id: "contest-1",
@@ -53,6 +54,7 @@ describe("PublicContestList", () => {
         description="Browse public contests"
         noContestsLabel="No public contests"
         archiveTitle="Past Contests"
+        locale="en"
         contests={[
           {
             id: "contest-2026",

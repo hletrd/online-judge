@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLocale } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,11 @@ export function DashboardJudgeSystemTabs({
   viewAllLanguagesHref,
   viewAllLanguagesLabel,
 }: DashboardJudgeSystemTabsProps) {
+  const locale = useLocale();
+  // Per CLAUDE.md: Korean text must use default letter-spacing.
+  const sectionLabelTracking = locale !== "ko" ? " tracking-[0.16em]" : "";
+  const headingTracking = locale !== "ko" ? " tracking-tight" : "";
+
   return (
     <Card>
       <CardHeader>
@@ -70,7 +76,7 @@ export function DashboardJudgeSystemTabs({
               {statusCards.map((card) => (
                 <div key={card.label} className="rounded-xl border bg-muted/20 p-4">
                   <p className="text-sm text-muted-foreground">{card.label}</p>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight">{card.value}</p>
+                  <p className={`mt-2 text-2xl font-semibold${headingTracking}`}>{card.value}</p>
                   {card.description ? (
                     <p className="mt-2 text-xs leading-5 text-muted-foreground">{card.description}</p>
                   ) : null}
@@ -85,7 +91,7 @@ export function DashboardJudgeSystemTabs({
           <TabsContent value="languages" className="mt-4 space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-1">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                <h3 className={`text-sm font-semibold uppercase${sectionLabelTracking} text-muted-foreground`}>
                   {featuredEnvironmentsTitle}
                 </h3>
                 <p className="text-sm text-muted-foreground">{featuredEnvironmentsDescription}</p>
@@ -100,7 +106,7 @@ export function DashboardJudgeSystemTabs({
                 {featuredEnvironments.map((environment) => (
                   <div key={environment.key} className="rounded-xl border p-4">
                     <div className="space-y-1">
-                      <p className="text-lg font-semibold tracking-tight">{environment.title}</p>
+                      <p className={`text-lg font-semibold${headingTracking}`}>{environment.title}</p>
                       <p className="text-sm text-muted-foreground">{environment.runtime}</p>
                     </div>
                     {environment.compiler ? (

@@ -7,6 +7,7 @@ type PublicContestListProps = {
   description: string;
   noContestsLabel: string;
   archiveTitle: string;
+  locale: string;
   contests: Array<{
     id: string;
     href: string;
@@ -45,8 +46,12 @@ export function PublicContestList({
   description,
   noContestsLabel,
   archiveTitle,
+  locale,
   contests,
 }: PublicContestListProps) {
+  // Per CLAUDE.md: Korean text must use default letter-spacing.
+  const headingTracking = locale !== "ko" ? " tracking-tight" : "";
+  const labelTracking = locale !== "ko" ? " tracking-wide" : "";
   const activeContests = contests.filter((c) => c.statusKey !== "expired" && c.statusKey !== "closed");
   const archivedContests = contests.filter((c) => c.statusKey === "expired" || c.statusKey === "closed");
   const archivedContestGroups = Array.from(
@@ -61,7 +66,7 @@ export function PublicContestList({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+        <h1 className={`text-3xl font-semibold${headingTracking}`}>{title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{description}</p>
       </div>
       {contests.length === 0 ? (
@@ -115,7 +120,7 @@ export function PublicContestList({
               <h2 className="text-xl font-semibold text-muted-foreground">{archiveTitle}</h2>
               {archivedContestGroups.map(([groupLabel, groupedContests]) => (
                 <div key={groupLabel} className="space-y-2">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{groupLabel}</h3>
+                  <h3 className={`text-sm font-semibold uppercase${labelTracking} text-muted-foreground`}>{groupLabel}</h3>
                   <div className="space-y-2">
                     {groupedContests.map((contest) => (
                       <Link key={contest.id} href={contest.href} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">

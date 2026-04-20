@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { toast } from "sonner";
 import { updateSystemSettings } from "@/lib/actions/system-settings";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,9 @@ export function HomePageContentForm({ initialContent, defaultContent }: HomePage
   const router = useRouter();
   const t = useTranslations("admin.settings");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
+  // Per CLAUDE.md: Korean text must use default letter-spacing.
+  const labelTracking = locale !== "ko" ? " tracking-wide" : "";
 
   const [content, setContent] = useState<HomePageContent>(initialContent ?? {});
   const [activeLocale, setActiveLocale] = useState<string>("en");
@@ -150,7 +153,7 @@ export function HomePageContentForm({ initialContent, defaultContent }: HomePage
               <h3 className="pt-4 text-sm font-semibold">{t("homepageCards")}</h3>
               {CARD_KEYS.map(card => (
                 <div key={card} className="rounded-lg border p-3 space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <p className={`text-xs font-medium text-muted-foreground uppercase${labelTracking}`}>
                     {t(`homepageCard${card.charAt(0).toUpperCase()}${card.slice(1)}`)}
                   </p>
                   <div className="space-y-2">

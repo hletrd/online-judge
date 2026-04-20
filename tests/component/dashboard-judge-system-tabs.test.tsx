@@ -10,6 +10,10 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("next-intl", () => ({
+  useLocale: () => "en",
+}));
+
 describe("DashboardJudgeSystemTabs", () => {
   it("renders the judge overview by default and switches to featured languages", async () => {
     const user = userEvent.setup();

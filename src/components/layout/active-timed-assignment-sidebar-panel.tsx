@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Timer } from "lucide-react";
 import type { ActiveTimedAssignmentSummary } from "@/lib/assignments/active-timed-assignments";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,10 @@ export function ActiveTimedAssignmentSidebarPanel({
   const searchParams = useSearchParams();
   const tNav = useTranslations("nav");
   const tContests = useTranslations("contests");
+  const locale = useLocale();
+  // Per CLAUDE.md: Korean text must use default letter-spacing.
+  const labelTracking = locale !== "ko" ? " tracking-[0.16em]" : "";
+  const smallLabelTracking = locale !== "ko" ? " tracking-wide" : "";
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -115,7 +119,7 @@ export function ActiveTimedAssignmentSidebarPanel({
             <Timer className="size-4" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/70">
+            <div className={`text-[11px] font-semibold uppercase${labelTracking} text-sidebar-foreground/70`}>
               {tNav("activeTimedAssignment")}
             </div>
             <div className="truncate text-sm font-semibold text-sidebar-foreground" data-testid="active-timed-assignment-title">
@@ -129,13 +133,13 @@ export function ActiveTimedAssignmentSidebarPanel({
 
         <div className="mt-3 grid grid-cols-2 gap-2">
           <div className="rounded-lg border border-sidebar-border/70 bg-sidebar/60 p-2">
-            <div className="text-[11px] uppercase tracking-wide text-sidebar-foreground/65">{tNav("remaining")}</div>
+            <div className={`text-[11px] uppercase${smallLabelTracking} text-sidebar-foreground/65`}>{tNav("remaining")}</div>
             <div className={cn("mt-1 font-mono text-base font-semibold", isUrgent && "text-red-600 dark:text-red-300")} data-testid="active-timed-assignment-remaining">
               {formatDuration(remainingMs)}
             </div>
           </div>
           <div className="rounded-lg border border-sidebar-border/70 bg-sidebar/60 p-2">
-            <div className="text-[11px] uppercase tracking-wide text-sidebar-foreground/65">{tNav("elapsed")}</div>
+            <div className={`text-[11px] uppercase${smallLabelTracking} text-sidebar-foreground/65`}>{tNav("elapsed")}</div>
             <div className="mt-1 font-mono text-base font-semibold text-sidebar-foreground" data-testid="active-timed-assignment-elapsed">
               {formatDuration(elapsedMs)}
             </div>
@@ -143,7 +147,7 @@ export function ActiveTimedAssignmentSidebarPanel({
         </div>
 
         <div className="mt-3">
-          <div className="mb-1 flex items-center justify-between text-[11px] font-medium uppercase tracking-wide text-sidebar-foreground/65">
+          <div className={`mb-1 flex items-center justify-between text-[11px] font-medium uppercase${smallLabelTracking} text-sidebar-foreground/65`}>
             <span>{tNav("progress")}</span>
             <span data-testid="active-timed-assignment-progress-label">{progressPercent.toFixed(1)}%</span>
           </div>

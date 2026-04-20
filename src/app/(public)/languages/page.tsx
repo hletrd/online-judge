@@ -42,12 +42,15 @@ export default async function PublicLanguagesPage() {
 
   // Show worker count stat for authenticated users with admin access
   const showWorkerCount = session?.user && (await resolveCapabilities(session.user.role)).has("system.settings");
+  // Per CLAUDE.md: Korean text must use default letter-spacing.
+  const labelTracking = locale !== "ko" ? " tracking-wide" : "";
+  const headingTracking = locale !== "ko" ? " tracking-tight" : "";
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight">{t("languages.title")}</h1>
+          <h1 className={`text-2xl font-bold${headingTracking}`}>{t("languages.title")}</h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
             {t("languages.description")}
           </p>
@@ -66,33 +69,33 @@ export default async function PublicLanguagesPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {snapshot.gradingCpu ? (
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("languages.gradingCpu")}</p>
+                <p className={`text-xs font-medium uppercase${labelTracking} text-muted-foreground`}>{t("languages.gradingCpu")}</p>
                 <p className="mt-1 text-sm font-medium">{snapshot.gradingCpu}</p>
               </div>
             ) : null}
             {snapshot.gradingOs ? (
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("languages.gradingOs")}</p>
+                <p className={`text-xs font-medium uppercase${labelTracking} text-muted-foreground`}>{t("languages.gradingOs")}</p>
                 <p className="mt-1 text-sm font-medium">{snapshot.gradingOs}</p>
               </div>
             ) : null}
             {snapshot.gradingArchitecture ? (
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("languages.gradingArchitecture")}</p>
+                <p className={`text-xs font-medium uppercase${labelTracking} text-muted-foreground`}>{t("languages.gradingArchitecture")}</p>
                 <p className="mt-1 text-sm font-medium">{snapshot.gradingArchitecture}</p>
               </div>
             ) : null}
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("languages.defaultTimeLimit")}</p>
+              <p className={`text-xs font-medium uppercase${labelTracking} text-muted-foreground`}>{t("languages.defaultTimeLimit")}</p>
               <p className="mt-1 text-sm font-medium">{(snapshot.defaultTimeLimitMs / 1000).toFixed(1)}s</p>
             </div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("languages.defaultMemoryLimit")}</p>
+              <p className={`text-xs font-medium uppercase${labelTracking} text-muted-foreground`}>{t("languages.defaultMemoryLimit")}</p>
               <p className="mt-1 text-sm font-medium">{snapshot.defaultMemoryLimitMb} MB</p>
             </div>
             {showWorkerCount ? (
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("languages.onlineWorkers")}</p>
+                <p className={`text-xs font-medium uppercase${labelTracking} text-muted-foreground`}>{t("languages.onlineWorkers")}</p>
                 <p className="mt-1 text-sm font-medium">{new Intl.NumberFormat(locale).format(snapshot.onlineWorkerCount)}</p>
               </div>
             ) : null}
@@ -111,7 +114,7 @@ export default async function PublicLanguagesPage() {
               {snapshot.featuredEnvironments.map((env) => (
                 <div key={env.key} className="rounded-xl border p-4">
                   <div className="space-y-1">
-                    <p className="text-lg font-semibold tracking-tight">{env.title}</p>
+                    <p className={`text-lg font-semibold${headingTracking}`}>{env.title}</p>
                     <p className="text-sm text-muted-foreground">{env.runtime}</p>
                   </div>
                   {env.compiler ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLocale } from "next-intl";
 import { Code, Trophy, Users, MessageCircle, BookOpen, Send, Languages, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -61,11 +62,19 @@ export function PublicHomePage({
   secondaryCta,
   judgeInfo,
 }: PublicHomePageProps) {
+  const locale = useLocale();
+  // Per CLAUDE.md: Korean text must use default letter-spacing.
+  // tracking-[0.2em] is for uppercase Latin text only (eyebrow/label).
+  // tracking-tight is a heading style — skip for Korean to preserve readability.
+  const labelTracking = locale !== "ko" ? " tracking-[0.2em]" : "";
+  const headingTracking = locale !== "ko" ? " tracking-tight" : "";
+
   return (
     <div className="space-y-10">
       <section className="rounded-3xl border bg-background px-6 py-10 shadow-sm sm:px-10">
-        <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">{eyebrow}</p>
-        <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">{title}</h1>
+        {/* tracking-[0.2em] is for uppercase Latin eyebrow text only — Korean uses default spacing */}
+        <p className={`text-sm font-medium uppercase${labelTracking} text-muted-foreground`}>{eyebrow}</p>
+        <h1 className={`mt-4 text-4xl font-semibold${headingTracking} sm:text-5xl`}>{title}</h1>
         <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">{description}</p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button render={<Link href={primaryCta.href} />}>{primaryCta.label}</Button>
@@ -84,7 +93,7 @@ export function PublicHomePage({
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-muted-foreground">{insight.label}</p>
-                  <div className="mt-2 text-3xl font-semibold tracking-tight">{insight.value}</div>
+                  <div className={`mt-2 text-3xl font-semibold${headingTracking}`}>{insight.value}</div>
                 </div>
                 <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <Icon className="size-5" aria-hidden="true" />
@@ -105,7 +114,7 @@ export function PublicHomePage({
             <Server className="size-5" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-semibold tracking-tight">{judgeInfo.title}</h2>
+            <h2 className={`text-lg font-semibold${headingTracking}`}>{judgeInfo.title}</h2>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">{judgeInfo.description}</p>
           </div>
         </div>
@@ -113,7 +122,7 @@ export function PublicHomePage({
           {judgeInfo.stats.map((stat) => (
             <div key={stat.label} className="rounded-xl border bg-muted/20 p-4">
               <p className="text-sm text-muted-foreground">{stat.label}</p>
-              <p className="mt-1 text-2xl font-semibold tracking-tight">{stat.value}</p>
+              <p className={`mt-1 text-2xl font-semibold${headingTracking}`}>{stat.value}</p>
             </div>
           ))}
         </div>
@@ -135,7 +144,7 @@ export function PublicHomePage({
                   <Icon className="size-5" aria-hidden="true" />
                 </div>
               )}
-              <div className="text-lg font-semibold tracking-tight">{section.title}</div>
+              <div className={`text-lg font-semibold${headingTracking}`}>{section.title}</div>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{section.description}</p>
             </Link>
           );

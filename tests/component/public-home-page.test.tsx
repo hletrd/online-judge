@@ -7,6 +7,10 @@ vi.mock("next/link", () => ({
   default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a>,
 }));
 
+vi.mock("next-intl", () => ({
+  useLocale: () => "en",
+}));
+
 describe("PublicHomePage", () => {
   it("renders the hero, insight cards, and surface cards", () => {
     render(
