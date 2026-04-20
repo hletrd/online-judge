@@ -1,7 +1,7 @@
 # Workspace-to-Public Page Migration Plan
 
 **Date:** 2026-04-19
-**Status:** Phase 1 COMPLETE, Phase 2 COMPLETE, Phase 3 IN PROGRESS (cycle 17 — remaining: slim down AppSidebar, move breadcrumb to top navbar, evaluate control route merge), Phase 4 PENDING
+**Status:** Phase 1 COMPLETE, Phase 2 COMPLETE, Phase 3 IN PROGRESS (cycle 20 — breadcrumb moved to sticky header DONE, remaining: slim down AppSidebar, consider hiding breadcrumb on mobile, evaluate control route merge), Phase 4 PENDING
 **Source:** User-injected TODO #2, AGG-13
 
 ## Goal
@@ -192,13 +192,13 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 
 ### Phase 3 — Dashboard layout refinement (Medium risk)
 
-**Status:** IN PROGRESS (cycle 19 — breadcrumb move pending)
+**Status:** IN PROGRESS (cycle 20 — breadcrumb moved to sticky header DONE; remaining: slim down AppSidebar, hide breadcrumb on mobile, evaluate control route merge)
 
 **Goal:** Simplify the dashboard layout to complement the top navbar.
 
 1. ~~Ensure the top navbar is visible on dashboard pages (currently it is not — dashboard has its own header).~~ DONE (commit bbf36ec2 — PublicHeader added to dashboard layout)
 2. ~~Consider converting `AppSidebar` from a full sidebar to a slimmer icon rail or contextual sub-navigation within each section.~~ PARTIALLY DONE (cycle 13 — removed duplicate items from AppSidebar that are already in PublicHeader dropdown; remaining items: problems, submissions, contests, compiler, rankings, groups, problem sets, admin)
-3. Move breadcrumb to top navbar area. **(cycle 19 — L4 scheduled)**
+3. Move breadcrumb to top navbar area. **DONE** (commit a06bd712 — moved to sticky header above main content)
 4. Evaluate whether `(control)` route group should merge into `(dashboard)/admin` or remain separate.
 
 **Additional Phase 3 improvements identified in cycle 10 review:**
@@ -220,7 +220,7 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 
 **Remaining Phase 3 work:**
 - Further slim down `AppSidebar` to icon-only mode or contextual sub-navigation
-- Move breadcrumb to top navbar area
+- Consider hiding breadcrumb on mobile viewports (designer recommendation — breadcrumbs not useful on mobile)
 - Evaluate `(control)` route group merge into `(dashboard)/admin`
 
 **Estimated files changed:** ~15-20
