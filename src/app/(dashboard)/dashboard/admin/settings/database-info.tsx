@@ -1,6 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { formatBytes } from "@/lib/formatting";
 
 interface DbInfo {
   dialect: "postgresql";
@@ -10,20 +11,14 @@ interface DbInfo {
   tableCount: number;
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-}
-
 export function DatabaseInfo({ dbInfo }: { dbInfo: DbInfo }) {
   const t = useTranslations("admin.settings");
+  const locale = useLocale();
 
   const rows = [
     { label: t("dbDialect"), value: "PostgreSQL" },
     { label: t("dbPath"), value: dbInfo.path },
-    { label: t("dbSize"), value: formatBytes(dbInfo.sizeBytes) },
+    { label: t("dbSize"), value: formatBytes(dbInfo.sizeBytes, locale) },
     { label: t("dbVersion"), value: dbInfo.version },
     { label: t("dbTableCount"), value: dbInfo.tableCount.toString() },
   ];

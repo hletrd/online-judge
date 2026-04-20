@@ -13,7 +13,7 @@ import {
   getSubmissionStatusVariant,
   isActiveSubmissionStatus,
 } from "@/lib/submissions/status";
-import { formatNumber } from "@/lib/datetime";
+import { formatNumber } from "@/lib/formatting";
 
 type SubmissionStatusBadgeProps = {
   status: string | null | undefined;

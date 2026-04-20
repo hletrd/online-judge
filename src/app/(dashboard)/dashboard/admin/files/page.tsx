@@ -12,6 +12,7 @@ import { FilterSelect } from "@/components/filter-select";
 import { db } from "@/lib/db";
 import { files, users } from "@/lib/db/schema";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
+import { formatBytes } from "@/lib/formatting";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
 import { escapeLikePattern } from "@/lib/db/like";
@@ -45,12 +46,6 @@ function buildPageHref(page: number, category: CategoryFilter, search: string) {
   if (search) params.set("search", search);
   const qs = params.toString();
   return qs ? `${PAGE_PATH}?${qs}` : PAGE_PATH;
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default async function AdminFilesPage({
@@ -125,7 +120,7 @@ export default async function AdminFilesPage({
   const serializedRows = rows.map((row) => ({
     ...row,
     createdAt: row.createdAt ? row.createdAt.toISOString() : null,
-    formattedSize: formatFileSize(row.sizeBytes),
+    formattedSize: formatBytes(row.sizeBytes, locale),
     formattedDate: row.createdAt
       ? formatDateTimeInTimeZone(row.createdAt, locale, timeZone)
       : "-",

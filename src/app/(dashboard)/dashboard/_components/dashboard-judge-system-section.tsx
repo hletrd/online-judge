@@ -1,10 +1,7 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { DashboardJudgeSystemTabs } from "@/app/(dashboard)/dashboard/_components/dashboard-judge-system-tabs";
 import { getJudgeSystemSnapshot } from "@/lib/judge/dashboard-data";
-
-function formatNumber(value: number, locale: string) {
-  return new Intl.NumberFormat(locale).format(value);
-}
+import { formatNumber } from "@/lib/formatting";
 
 export async function DashboardJudgeSystemSection() {
   const [snapshot, locale, tDashboard, tJudge] = await Promise.all([
