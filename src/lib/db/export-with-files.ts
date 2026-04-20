@@ -108,6 +108,11 @@ function parseBackupIntegrityManifest(raw: string): BackupIntegrityManifest {
  * The ZIP contains:
  *   database.json  – standard JudgeKitExport
  *   uploads/       – uploaded files keyed by their storedName
+ *
+ * @param signal - Optional AbortSignal to cancel the export
+ * @param dbNow - Optional DB server timestamp. When provided, avoids an extra
+ *   SELECT NOW() round-trip and ensures consistency with the caller's time
+ *   reference. Falls back to getDbNowUncached() when omitted.
  */
 export async function streamBackupWithFiles(signal?: AbortSignal, dbNow?: Date): Promise<ReadableStream<Uint8Array>> {
   // Use caller-provided DB time or fetch once so the manifest createdAt
