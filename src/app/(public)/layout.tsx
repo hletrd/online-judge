@@ -28,7 +28,7 @@ export default async function PublicLayout({ children }: { children: React.React
         siteTitle={settings.siteTitle}
         items={getPublicNavItems(tShell)}
         actions={getPublicNavActions(tAuth, settings.publicSignupEnabled)}
-        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.dashboard"), role: session.user.role, capabilities } : null}
+        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.dashboard"), capabilities } : null}
       />
       <main id="main-content" className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">{children}</main>
       <PublicFooter siteTitle={settings.siteTitle} footerContent={settings.footerContent} />

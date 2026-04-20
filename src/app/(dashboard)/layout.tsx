@@ -80,7 +80,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
             name: session.user.name || session.user.username || "",
             href: "/dashboard/profile",
             label: session.user.name || session.user.username || "",
-            role: session.user.role,
             capabilities,
           }}
           leadingSlot={<SidebarTrigger />}

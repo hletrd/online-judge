@@ -38,8 +38,6 @@ type PublicHeaderProps = {
      * When absent, falls back to role-based checks for backwards compatibility.
      */
     capabilities?: string[];
-    /** User role — may be a built-in UserRole or a custom role string */
-    role?: string;
   } | null;
   /** Optional element rendered before the site title (e.g., SidebarTrigger for dashboard pages) */
   leadingSlot?: React.ReactNode;

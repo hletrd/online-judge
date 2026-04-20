@@ -94,7 +94,7 @@ export default async function HomePage() {
           { href: "/login", label: tAuth("signIn") },
           ...(settings.publicSignupEnabled ? [{ href: "/signup", label: tAuth("signUp") }] : []),
         ]}
-        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.dashboard"), role: session.user.role, capabilities } : null}
+        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.dashboard"), capabilities } : null}
       />
       <main id="main-content" className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         <PublicHomePage

@@ -51,7 +51,7 @@ export default async function NotFoundPage() {
           { href: "/login", label: tAuth("signIn") },
           ...(settings.publicSignupEnabled ? [{ href: "/signup", label: tAuth("signUp") }] : []),
         ]}
-        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.dashboard"), role: session.user.role, capabilities } : null}
+        loggedInUser={session?.user ? { name: session.user.name, href: "/dashboard", label: tShell("nav.dashboard"), capabilities } : null}
       />
       <main id="main-content" className="mx-auto flex min-h-[calc(100dvh-80px)] w-full max-w-6xl items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
         <div className="w-full max-w-xl rounded-3xl border bg-background p-8 text-center shadow-sm sm:p-10">
