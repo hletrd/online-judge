@@ -7,6 +7,7 @@ import { canAccessSubmission } from "@/lib/auth/permissions";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { apiSuccess } from "@/lib/api/responses";
 import { createApiHandler } from "@/lib/api/handler";
+import { getDbNowUncached } from "@/lib/db-time";
 
 export const POST = createApiHandler({
   auth: { capabilities: ["submissions.rejudge"] },
@@ -76,7 +77,7 @@ export const POST = createApiHandler({
         where: eq(assignments.id, submission.assignmentId),
         columns: { id: true, deadline: true },
       });
-      if (assignment?.deadline && new Date() > assignment.deadline) {
+      if (assignment?.deadline && (await getDbNowUncached()) > assignment.deadline) {
         contestFinished = true;
       }
     }

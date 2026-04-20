@@ -7,6 +7,7 @@ import { contestAnnouncements } from "@/lib/db/schema";
 import { canManageContest, getContestAssignment } from "@/lib/assignments/contests";
 import { sanitizeMarkdown } from "@/lib/security/sanitize-html";
 import { contestAnnouncementUpdateSchema } from "@/lib/validators/contest-announcements";
+import { getDbNowUncached } from "@/lib/db-time";
 
 async function requireManageAccess(assignmentId: string, userId: string, role: string) {
   const assignment = await getContestAssignment(assignmentId);
@@ -51,7 +52,7 @@ export const PATCH = createApiHandler({
         title: body.title?.trim() ?? existing.title,
         content: body.content !== undefined ? sanitizeMarkdown(body.content) : existing.content,
         isPinned: body.isPinned ?? existing.isPinned,
-        updatedAt: new Date(),
+        updatedAt: await getDbNowUncached(),
       })
       .where(
         and(

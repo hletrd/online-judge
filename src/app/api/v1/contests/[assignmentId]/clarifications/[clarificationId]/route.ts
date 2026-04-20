@@ -7,6 +7,7 @@ import { contestClarifications } from "@/lib/db/schema";
 import { canManageContest, getContestAssignment } from "@/lib/assignments/contests";
 import { sanitizeMarkdown } from "@/lib/security/sanitize-html";
 import { contestClarificationUpdateSchema } from "@/lib/validators/contest-clarifications";
+import { getDbNowUncached } from "@/lib/db-time";
 
 async function requireManageAccess(assignmentId: string, userId: string, role: string) {
   const assignment = await getContestAssignment(assignmentId);
@@ -45,6 +46,7 @@ export const PATCH = createApiHandler({
       return apiError("notFound", 404);
     }
 
+    const now = await getDbNowUncached();
     const [updated] = await db
       .update(contestClarifications)
       .set({
@@ -52,8 +54,8 @@ export const PATCH = createApiHandler({
         answerType: body.answerType ?? existing.answerType,
         isPublic: body.isPublic ?? existing.isPublic,
         answeredBy: body.answer !== undefined || body.answerType !== undefined ? user.id : existing.answeredBy,
-        answeredAt: body.answer !== undefined || body.answerType !== undefined ? new Date() : existing.answeredAt,
-        updatedAt: new Date(),
+        answeredAt: body.answer !== undefined || body.answerType !== undefined ? now : existing.answeredAt,
+        updatedAt: now,
       })
       .where(
         and(
