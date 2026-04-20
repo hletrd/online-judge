@@ -21,6 +21,7 @@ import { isSubmissionStatus } from "@/lib/security/constants";
 import { judgeStatusReportSchema } from "@/lib/validators/api";
 import { triggerAutoCodeReview } from "@/lib/judge/auto-review";
 import { logger } from "@/lib/logger";
+import { getDbNowUncached } from "@/lib/db-time";
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
           .update(submissions)
           .set({
             status,
-            judgeClaimedAt: new Date(),
+            judgeClaimedAt: await getDbNowUncached(),
             failedTestCaseIndex,
             runtimeErrorType,
           })
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
           memoryUsedKb: maxMemoryUsedKb,
           failedTestCaseIndex,
           runtimeErrorType,
-          judgedAt: new Date(),
+          judgedAt: await getDbNowUncached(),
         }).where(
           and(eq(submissions.id, submissionId), eq(submissions.judgeClaimToken, claimToken))
         );
