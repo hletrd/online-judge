@@ -11,6 +11,21 @@ const eslintConfig = defineConfig([
       "@next/next/no-img-element": "error",
     },
   },
+  // Allow _-prefixed destructured variables (used to strip fields from objects,
+  // e.g. rows.map(({ _total, ...rest }) => rest) in paginated API routes).
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          destructuredArrayIgnorePattern: "^_",
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
   {
     files: ["tests/**/*.{ts,tsx,js,jsx,mjs,cjs}"],
     rules: {
