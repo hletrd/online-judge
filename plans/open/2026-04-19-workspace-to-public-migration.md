@@ -1,7 +1,7 @@
 # Workspace-to-Public Page Migration Plan
 
 **Date:** 2026-04-19
-**Status:** Phase 1 COMPLETE, Phase 2 COMPLETE, Phase 3 COMPLETE, Phase 4 IN PROGRESS (cycle 19 — consolidated formatting utilities with locale-aware formatNumber/formatBytes, replaced .toFixed() in public pages, fixed clipboard error feedback; remaining: remove dashboard duplicate pages)
+**Status:** Phase 1 COMPLETE, Phase 2 COMPLETE, Phase 3 COMPLETE, Phase 4 IN PROGRESS (cycle 20 — removed submissions from AppSidebar, added formatDifficulty to shared module, replaced native confirm() with AlertDialog in language config)
 **Source:** User-injected TODO #2, AGG-13
 
 ## Goal
@@ -213,6 +213,9 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 
 **Cycle 14 improvements:**
 - ~~Add "contests" to PublicHeader dropdown~~ DONE (already present in `getDropdownItems`)
+
+**Cycle 20 improvements:**
+- ~~Remove "submissions" from AppSidebar~~ DONE (commit 73fbe539 — already in PublicHeader dropdown)
 
 **Cycle 15 improvements:**
 - Fix `tracking-wide` on PublicHeader mobile menu dashboard label — now conditional, skipped for Korean locale (commit 1416cbce)
