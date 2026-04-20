@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { cache } from "react";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { getRecruitingInvitationByToken } from "@/lib/assignments/recruiting-invitations";
 import { getEnabledCompilerLanguages } from "@/lib/compiler/catalog";
+import { getDbNow } from "@/lib/db-time";
+import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { db } from "@/lib/db";
 import { assignmentProblems, assignments } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
@@ -30,7 +32,10 @@ export async function generateMetadata({
   if (!invitation || invitation.status === "revoked") {
     return { title: t("invalidToken") };
   }
-  if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+  // Use DB server time for expiry/deadline checks to avoid clock skew
+  // between the app server and DB server (same rationale as commit b42a7fe4).
+  const now = await getDbNow();
+  if (invitation.expiresAt && invitation.expiresAt < now) {
     return { title: t("expired") };
   }
   if (invitation.status === "redeemed") {
@@ -60,9 +65,14 @@ export default async function RecruitPage({
 }) {
   const { token } = await params;
   const t = await getTranslations("recruit");
+  const locale = await getLocale();
   const session = await auth();
 
   const invitation = await getCachedInvitation(token);
+
+  // Use DB server time for expiry/deadline checks to avoid clock skew
+  // between the app server and DB server (same rationale as commit b42a7fe4).
+  const now = await getDbNow();
 
   if (!invitation) {
     return (
@@ -86,7 +96,7 @@ export default async function RecruitPage({
     );
   }
 
-  if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+  if (invitation.expiresAt && invitation.expiresAt < now) {
     return (
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
@@ -164,7 +174,7 @@ export default async function RecruitPage({
     );
   }
 
-  if (assignment.deadline && assignment.deadline < new Date()) {
+  if (assignment.deadline && assignment.deadline < now) {
     return (
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
@@ -215,7 +225,7 @@ export default async function RecruitPage({
               <p>{t("durationDetail", { minutes: assignment.examDurationMinutes })}</p>
             )}
             {assignment.deadline && (
-              <p>{t("deadlineInfo", { date: new Date(assignment.deadline).toLocaleString() })}</p>
+              <p>{t("deadlineInfo", { date: formatDateTimeInTimeZone(assignment.deadline, locale) })}</p>
             )}
             <p>{t("languageCountDetail", { count: enabledLanguageCount })}</p>
             {visibleLanguages.length > 0 && (

@@ -43,6 +43,12 @@ vi.mock("@/lib/compiler/catalog", () => ({
   getEnabledCompilerLanguages: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock("@/lib/db-time", () => ({
+  // getDbNow uses React.cache() which calls rawQueryOne internally;
+  // mock it to return a fixed date so tests don't need a DB pool.
+  getDbNow: vi.fn().mockResolvedValue(new Date("2026-04-20T12:00:00Z")),
+}));
+
 vi.mock("@/lib/db/schema", () => ({
   assignments: { id: "id", title: "title", description: "description", examDurationMinutes: "examDurationMinutes", deadline: "deadline" },
   assignmentProblems: { assignmentId: "assignmentId" },
