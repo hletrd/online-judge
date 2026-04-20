@@ -84,8 +84,8 @@ export async function authenticateApiKey(authHeader: string | null) {
   if (!candidate) return null;
 
   // Check expiry using DB server time to avoid clock skew
+  const now = await getDbNowUncached();
   if (candidate.expiresAt) {
-    const now = await getDbNowUncached();
     if (candidate.expiresAt < now) return null;
   }
 
@@ -99,8 +99,10 @@ export async function authenticateApiKey(authHeader: string | null) {
   if (!user?.isActive) return null;
 
   // Update lastUsedAt (fire-and-forget with error logging)
+  // Use the DB-server time already fetched above for the expiry check,
+  // keeping lastUsedAt consistent with the same authoritative time source.
   void db.update(apiKeys)
-    .set({ lastUsedAt: new Date() })
+    .set({ lastUsedAt: now })
     .where(eq(apiKeys.id, candidate.id))
     .catch((err) => {
       logger.warn({ err, apiKeyId: candidate.id }, "[api-key-auth] Failed to update lastUsedAt");
