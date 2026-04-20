@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { rawQueryAll } from "@/lib/db/queries";
 import { antiCheatEvents } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { getDbNowUncached } from "@/lib/db-time";
 import { computeSimilarityRust } from "./code-similarity-client";
 
 /**
@@ -394,7 +395,7 @@ export async function runAndStoreSimilarityCheck(
   const { pairs } = result;
 
   // Batch all similarity events at once (before transaction — no DB access needed)
-  const now = new Date();
+  const now = await getDbNowUncached();
   const eventValues = pairs.flatMap((pair) =>
     [pair.userId1, pair.userId2].map((userId) => {
       const otherUserId = userId === pair.userId1 ? pair.userId2 : pair.userId1;
