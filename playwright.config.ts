@@ -19,6 +19,7 @@ const remoteSafeSpecs = [
   "tests/e2e/auth-flow.spec.ts",
   "tests/e2e/contest-nav-test.spec.ts",
   "tests/e2e/ops-health.spec.ts",
+  "tests/e2e/public-shell.spec.ts",
   "tests/e2e/rankings.spec.ts",
 ];
 
