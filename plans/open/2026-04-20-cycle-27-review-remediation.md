@@ -127,3 +127,4 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
 - 2026-04-20: M2 DONE — moved `viewerId` capture before closure in SSE events route.
 - 2026-04-20: M3 NOT APPLICABLE — assignment query cannot be parallelized due to control flow dependencies (early-return branches depend on assignment data).
 - 2026-04-20: L1 DONE — added 2 test cases verifying getDbNow usage and expired invitation behavior.
+- 2026-04-20: All gates green (eslint, tsc, vitest 288/2029, next build). Deployed successfully.
