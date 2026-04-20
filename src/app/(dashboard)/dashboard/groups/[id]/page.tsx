@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { assignments, groupInstructors, groups, submissions, users } from "@/lib/db/schema";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
+import { getDbNow } from "@/lib/db-time";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { redirect, notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -76,6 +77,10 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
   const role = session.user.role;
   const roleCapabilities = await resolveCapabilities(role);
   const canOverrideLockedProblems = roleCapabilities.has("groups.view_all");
+
+  // Use DB server time for assignment status checks to avoid clock skew
+  // between the app server and DB server (same rationale as recruit page fix).
+  const now = await getDbNow();
 
   const group = await db.query.groups.findFirst({
     where: eq(groups.id, groupId),
@@ -301,7 +306,6 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
             </TableHeader>
             <TableBody>
               {assignmentsWithSubmissionState.map((assignment) => {
-                const now = new Date();
                 const isUpcoming = assignment.startsAt && new Date(assignment.startsAt) > now;
                 const isPast =
                   (assignment.lateDeadline && new Date(assignment.lateDeadline) < now) ||

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { assignments, enrollments, groups, problems, submissions } from "@/lib/db/schema";
 import { desc, eq, sql, countDistinct } from "drizzle-orm";
 import { formatDateTimeInTimeZone, formatRelativeTimeFromNow } from "@/lib/datetime";
+import { getDbNow } from "@/lib/db-time";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { getTranslations, getLocale } from "next-intl/server";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
@@ -21,7 +22,9 @@ export async function StudentDashboard({ userId }: StudentDashboardProps) {
     siteDescription: tCommon("appDescription"),
   });
   const locale = await getLocale();
-  const now = new Date();
+  // Use DB server time for assignment deadline checks to avoid clock skew
+  // between the app server and DB server (same rationale as recruit page fix).
+  const now = await getDbNow();
 
   // Progress stats
   const [progressStats] = await db

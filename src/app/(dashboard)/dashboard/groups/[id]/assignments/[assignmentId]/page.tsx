@@ -19,6 +19,7 @@ import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
 import { db } from "@/lib/db";
 import { assignments } from "@/lib/db/schema";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
+import { getDbNow } from "@/lib/db-time";
 import { notFound, redirect } from "next/navigation";
 import { getExamSession, getExamSessionsForAssignment } from "@/lib/assignments/exam-sessions";
 import { CountdownTimer } from "@/components/exam/countdown-timer";
@@ -117,7 +118,9 @@ export default async function GroupAssignmentDetailPage({
     (left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0)
   );
   const totalPoints = sortedProblems.reduce((sum, p) => sum + (p.points ?? 100), 0);
-  const now = new Date();
+  // Use DB server time for assignment status checks to avoid clock skew
+  // between the app server and DB server (same rationale as recruit page fix).
+  const now = await getDbNow();
   const isUpcoming = assignment.startsAt != null && new Date(assignment.startsAt) > now;
   const isPast =
     (assignment.lateDeadline != null && new Date(assignment.lateDeadline) < now) ||

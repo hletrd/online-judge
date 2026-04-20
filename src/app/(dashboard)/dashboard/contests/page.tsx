@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { getContestsForUser, getContestStatus } from "@/lib/assignments/contests";
 import type { ContestStatus } from "@/lib/assignments/contests";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
+import { getDbNow } from "@/lib/db-time";
 import { CountdownTimer } from "@/components/exam/countdown-timer";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { KeyRound, Plus } from "lucide-react";
@@ -92,7 +93,9 @@ export default async function ContestsPage({
     redirect("/dashboard");
   }
   const contests = await getContestsForUser(session.user.id, role);
-  const now = new Date();
+  // Use DB server time for contest status checks to avoid clock skew
+  // between the app server and DB server (same rationale as recruit page fix).
+  const now = await getDbNow();
   const filter = normalizeFilter(resolvedSearchParams?.filter);
   const PAGE_SIZE = 25;
   const currentPage = Math.max(1, Math.floor(Number(resolvedSearchParams?.page ?? "1")) || 1);
