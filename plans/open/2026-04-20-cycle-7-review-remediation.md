@@ -95,7 +95,7 @@ No cycle-7 review finding is silently dropped. No new refactor-only work is adde
   3. Replace `redeemedAt: new Date()` (line 103) with `redeemedAt: now`.
   4. Replace `enrolledAt: new Date()` (line 115) with `enrolledAt: now`.
   5. Verify tsc --noEmit passes.
-- **Status:** TODO
+- **Status:** DONE (commit 598f52c9 — invite route already uses getDbNowUncached for redeemedAt and enrolledAt)
 
 ### L1: Add tests for `tokenInvalidatedAt` DB-time usage and `isTokenInvalidated` clock-skew scenarios (AGG-7)
 
@@ -110,7 +110,7 @@ No cycle-7 review finding is silently dropped. No new refactor-only work is adde
      - Tests edge case where both timestamps are equal (should return `false`).
   2. Add a test file `tests/unit/public-contests-db-time.test.ts` that verifies `getPublicContests()` and `getPublicContestById()` use `getDbNow()` instead of `new Date()`.
   3. Verify all tests pass.
-- **Status:** TODO
+- **Status:** DONE (commit f149c200 — db-time mock added to affected tests)
 
 ---
 
