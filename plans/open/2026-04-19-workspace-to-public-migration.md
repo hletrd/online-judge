@@ -1,7 +1,7 @@
 # Workspace-to-Public Page Migration Plan
 
 **Date:** 2026-04-19
-**Status:** Phase 1 COMPLETE, Phase 2 COMPLETE, Phase 3 COMPLETE, Phase 4 IN PROGRESS (cycle 23 — control route group merge into dashboard in progress)
+**Status:** Phase 1 COMPLETE, Phase 2 COMPLETE, Phase 3 COMPLETE, Phase 4 IN PROGRESS (cycle 23 — control route group merge DONE; remaining: auth-aware public pages, remove remaining dashboard duplicates)
 **Source:** User-injected TODO #2, AGG-13
 
 ## Goal
@@ -237,11 +237,13 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 - ~~Redirect `/dashboard/compiler` to `/playground`~~ DONE (commit 662b71ec)
 
 **Cycle 23 progress (control group merge):**
-- Move `/control/discussions` to `/dashboard/admin/discussions` with `community.moderate` capability check
-- Migrate `controlShell` i18n keys to `publicShell` and `nav` namespaces
-- Add `/control` and `/control/discussions` redirects
-- Remove `(control)` route group directory, `ControlNav` component, and `controlShell` namespace
-- Add "Discussion Moderation" to `AppSidebar` admin section
+- ~~Move `/control/discussions` to `/dashboard/admin/discussions` with `community.moderate` capability check~~ DONE (commit 03dc313d)
+- ~~Migrate `controlShell` i18n keys to `publicShell` and `nav` namespaces~~ DONE (commit d3e890df)
+- ~~Add `/control` and `/control/discussions` redirects~~ DONE (commit 03dc313d)
+- ~~Remove `(control)` route group directory, `ControlNav` component, and `controlShell` namespace~~ DONE (commit 03dc313d)
+- ~~Add "Discussion Moderation" to `AppSidebar` admin section~~ DONE (commit 03dc313d)
+- ~~Remove stale `publicShell.nav.workspace` i18n key~~ DONE (commit d3e890df)
+- ~~Centralize dropdown items in shared nav module~~ DONE (commit 4bbc65aa)
 
 **Remaining Phase 4 work:**
 1. Make public pages auth-aware: render additional sections or edit buttons when the user is authenticated and has the right capabilities.
