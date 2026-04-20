@@ -23,6 +23,7 @@ import { parsePagination, parseCursorParams } from "@/lib/api/pagination";
 import { apiError, apiPaginated, apiSuccess } from "@/lib/api/responses";
 import { createApiHandler } from "@/lib/api/handler";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { getDbNowUncached } from "@/lib/db-time";
 
 export const GET = createApiHandler({
   handler: async (req: NextRequest, { user }) => {
@@ -314,7 +315,7 @@ export const POST = createApiHandler({
         assignmentId: normalizedAssignmentId,
         status: initialStatus,
         ipAddress: ip,
-        submittedAt: new Date(),
+        submittedAt: await getDbNowUncached(),
       });
 
       return null; // success
