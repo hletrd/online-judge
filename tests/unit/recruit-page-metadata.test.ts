@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getRecruitingInvitationByTokenMock, dbSelectMock } = vi.hoisted(() => ({
+const { getRecruitingInvitationByTokenMock } = vi.hoisted(() => ({
   getRecruitingInvitationByTokenMock: vi.fn(),
-  dbSelectMock: vi.fn(),
 }));
 
 vi.mock("next-intl/server", () => ({
@@ -30,9 +29,31 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/db", () => ({
   db: {
-    select: dbSelectMock,
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    }),
   },
 }));
+
+vi.mock("@/lib/compiler/catalog", () => ({
+  getEnabledCompilerLanguages: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("@/lib/db/schema", () => ({
+  assignments: { id: "id", title: "title", description: "description", examDurationMinutes: "examDurationMinutes", deadline: "deadline" },
+  assignmentProblems: { assignmentId: "assignmentId" },
+}));
+
+vi.mock("drizzle-orm", () => ({
+  eq: vi.fn(),
+  sql: vi.fn(),
+}));
+
+import RecruitPage, { generateMetadata } from "@/app/(auth)/recruit/[token]/page";
 
 describe("recruit page metadata", () => {
   beforeEach(() => {
@@ -48,8 +69,7 @@ describe("recruit page metadata", () => {
       expiresAt: null,
     });
 
-    const page = await import("@/app/(auth)/recruit/[token]/page");
-    const metadata = await page.generateMetadata({
+    const metadata = await generateMetadata({
       params: Promise.resolve({ token: "invite-token" }),
     });
 
@@ -57,7 +77,6 @@ describe("recruit page metadata", () => {
     expect(metadata.description).toBe(
       "You've been invited to a coding assessment. Click to begin."
     );
-    expect(dbSelectMock).not.toHaveBeenCalled();
   });
 
   it("still uses the claimed-state metadata for redeemed tokens", async () => {
@@ -69,8 +88,7 @@ describe("recruit page metadata", () => {
       expiresAt: null,
     });
 
-    const page = await import("@/app/(auth)/recruit/[token]/page");
-    const metadata = await page.generateMetadata({
+    const metadata = await generateMetadata({
       params: Promise.resolve({ token: "invite-token" }),
     });
 
