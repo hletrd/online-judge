@@ -28,6 +28,9 @@ export const GET = createApiHandler({
         createdByName: users.name,
         lastUsedAt: apiKeys.lastUsedAt,
         expiresAt: apiKeys.expiresAt,
+        // Compute isExpired server-side using DB time so the client doesn't need
+        // to compare raw timestamps against the browser clock.
+        isExpired: sql<boolean>`CASE WHEN ${apiKeys.expiresAt} IS NOT NULL AND ${apiKeys.expiresAt} < NOW() THEN true ELSE false END`,
         isActive: apiKeys.isActive,
         createdAt: apiKeys.createdAt,
         hasEncryptedKey: sql<boolean>`${apiKeys.encryptedKey} IS NOT NULL`,
