@@ -2332,6 +2332,7 @@
       "answered": "답변 완료",
       "public": "공개",
       "askedByMe": "내 질문",
+      "askedByOther": "다른 참가자",
       "makePublic": "공개 전환",
       "makePrivate": "비공개 전환",
       "delete": "삭제",

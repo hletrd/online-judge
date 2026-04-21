@@ -2332,6 +2332,7 @@
       "answered": "Answered",
       "public": "Public",
       "askedByMe": "You",
+      "askedByOther": "Other participant",
       "makePublic": "Make public",
       "makePrivate": "Make private",
       "delete": "Delete",
