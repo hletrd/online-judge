@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api/client";
+import { formatContestTimestamp } from "@/lib/formatting";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,16 +28,6 @@ type ContestAnnouncementsProps = {
   refreshInterval?: number;
 };
 
-function formatTimestamp(value: ContestAnnouncement["createdAt"], locale: string) {
-  if (!value) return null;
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
 export function ContestAnnouncements({
   assignmentId,
   canManage = false,
@@ -52,6 +43,8 @@ export function ContestAnnouncements({
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  const initialLoadDoneRef = useRef(false);
+
   const loadAnnouncements = useCallback(async () => {
     try {
       const response = await apiFetch(`/api/v1/contests/${assignmentId}/announcements`, {
@@ -63,8 +56,13 @@ export function ContestAnnouncements({
       const payload = await response.json() as { data?: ContestAnnouncement[] };
       setAnnouncements(Array.isArray(payload.data) ? payload.data : []);
     } catch {
-      toast.error(t("fetchError"));
+      // Only show toast on the initial load — polling refreshes should fail
+      // silently to avoid spamming the user with error toasts every 30 seconds.
+      if (!initialLoadDoneRef.current) {
+        toast.error(t("fetchError"));
+      }
     } finally {
+      initialLoadDoneRef.current = true;
       setLoading(false);
     }
   }, [assignmentId, t]);
@@ -214,7 +212,7 @@ export function ContestAnnouncements({
                       {announcement.isPinned ? <Badge variant="secondary">{t("pinned")}</Badge> : null}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {t("postedAt", { value: formatTimestamp(announcement.createdAt, locale) ?? "-" })}
+                      {t("postedAt", { value: formatContestTimestamp(announcement.createdAt, locale) ?? "-" })}
                     </p>
                   </div>
                   {canManage ? (
