@@ -18,7 +18,7 @@ export function SubmissionListAutoRefresh({
   idleIntervalMs?: number;
 }) {
   const router = useRouter();
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const errorCountRef = useRef(0);
 
   useEffect(() => {
@@ -29,42 +29,39 @@ export function SubmissionListAutoRefresh({
       return Math.min(baseInterval * Math.pow(BACKOFF_MULTIPLIER, errorCountRef.current), MAX_BACKOFF_MS);
     }
 
-    // Use router.refresh() wrapped in startTransition to detect errors.
-    // When router.refresh() throws or the page is unreachable, increment
-    // error count for exponential backoff. Reset on success.
-    function tick() {
+    async function tick() {
       if (document.visibilityState === "hidden") return;
 
       try {
+        // Use a lightweight fetch to detect network/server errors.
+        // router.refresh() never throws on errors, so we cannot rely on it
+        // for backoff. We fetch /api/v1/time (a tiny endpoint) first; only
+        // on success do we trigger the actual page revalidation.
+        const res = await fetch("/api/v1/time", { cache: "no-store" });
+        if (!res.ok) throw new Error(`time endpoint returned ${res.status}`);
         router.refresh();
-        // If we get here without throwing, reset backoff
         errorCountRef.current = 0;
       } catch {
         errorCountRef.current += 1;
       }
     }
 
-    // Initial tick
-    tick();
-
-    // Schedule subsequent ticks with backoff-aware interval
     function scheduleNext() {
-      intervalRef.current = setInterval(() => {
-        tick();
+      timerRef.current = setTimeout(async () => {
+        await tick();
         // Reschedule with potentially changed interval after error
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          scheduleNext();
-        }
+        scheduleNext();
       }, getBackoffInterval());
     }
 
+    // Initial tick
+    void tick();
     scheduleNext();
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
       }
     };
   }, [hasActiveSubmissions, activeIntervalMs, idleIntervalMs, router]);
