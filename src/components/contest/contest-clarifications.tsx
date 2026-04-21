@@ -92,19 +92,25 @@ export function ContestClarifications({
   }, [assignmentId, t]);
 
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | null = null;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    function clearPollingInterval() {
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    }
 
     const syncVisibility = () => {
       if (document.visibilityState === "visible") {
         void loadClarifications();
-        if (!interval) {
-          interval = setInterval(() => {
-            void loadClarifications();
-          }, refreshInterval);
-        }
-      } else if (interval) {
-        clearInterval(interval);
-        interval = null;
+        // Always clear before creating to prevent duplicate intervals
+        clearPollingInterval();
+        intervalId = setInterval(() => {
+          void loadClarifications();
+        }, refreshInterval);
+      } else {
+        clearPollingInterval();
       }
     };
 
@@ -113,7 +119,7 @@ export function ContestClarifications({
 
     return () => {
       document.removeEventListener("visibilitychange", syncVisibility);
-      if (interval) clearInterval(interval);
+      clearPollingInterval();
     };
   }, [loadClarifications, refreshInterval]);
 
@@ -260,7 +266,7 @@ export function ContestClarifications({
                     </div>
                     <p className="text-sm font-medium whitespace-pre-wrap">{clarification.question}</p>
                     <p className="text-xs text-muted-foreground">
-                      {clarification.userId === currentUserId ? t("askedByMe") : clarification.userId}
+                      {clarification.userId === currentUserId ? t("askedByMe") : t("askedByOther")}
                       {" · "}
                       {formatTimestamp(clarification.createdAt, locale) ?? "-"}
                     </p>
