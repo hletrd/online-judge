@@ -89,3 +89,23 @@ export function formatScore(
   if (score == null) return "-";
   return formatNumber(Math.round(score * 100) / 100, { locale, maximumFractionDigits: 2 });
 }
+
+/**
+ * Format a timestamp value for display in contest components.
+ *
+ * Handles `string | number | Date | null` values commonly returned from API
+ * responses. Returns `null` if the value is falsy or produces an invalid date,
+ * so callers can provide a fallback (e.g., "-").
+ */
+export function formatContestTimestamp(
+  value: string | number | Date | null | undefined,
+  locale: string | string[] = DEFAULT_LOCALE
+): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat(
+    typeof locale === "string" ? locale : DEFAULT_LOCALE,
+    { dateStyle: "medium", timeStyle: "short" }
+  ).format(date);
+}
