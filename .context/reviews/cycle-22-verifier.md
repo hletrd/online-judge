@@ -1,30 +1,29 @@
-# Cycle 22 Verifier Review
+# Verifier — Cycle 22 (Fresh)
 
 **Date:** 2026-04-20
-**Base commit:** 717a5553
+**Base commit:** e80d2746
 
----
+## Findings
 
-## F1: `ensure_env_secret` produces wrong value for AUTH_TRUST_HOST on fresh deploys [HIGH/HIGH]
+### V-1: Chat widget admin-config.tsx and chat-widget.tsx bypass centralized apiFetch [MEDIUM/HIGH]
 
-**Files:** `deploy-docker.sh:254-286`
-**Description:** Verified by reading the function body: when the remote `.env.production` does NOT have `AUTH_TRUST_HOST`, the function calls `openssl rand -hex 32` (because `true` is not `"base64"`). The result is a 64-char hex string, not `true`. The auth config checks `process.env.AUTH_TRUST_HOST === "true"`, so this would NOT set the trust host flag. Verified that the COMPILER_RUNNER_URL call has the same issue -- a URL string is passed as the "generator" parameter, producing a random hex value instead.
-**Fix:** The function needs a third mode for literal values, or a separate `ensure_env_literal` function.
+**Files:** `src/lib/plugins/chat-widget/admin-config.tsx:89-92`, `src/lib/plugins/chat-widget/chat-widget.tsx:154`
+**Description:** Verified that these two files use raw `fetch()` with manually set `X-Requested-With: XMLHttpRequest` instead of `apiFetch`. The cycle-21 H1 fix explicitly targeted "admin components" but the chat widget plugin is in `src/lib/plugins/`, not in `src/app/(dashboard)/dashboard/admin/`. This is a confirmed gap in the migration.
+**Evidence:** Grep for `X-Requested-With` in `src/` shows only `apiFetch` (correct), `csrf.ts` (docs), and these two chat widget files (incorrect).
+**Fix:** Replace with `apiFetch()`.
 **Confidence:** HIGH
 
-## F2: deploy-worker.sh does NOT overwrite remote .env -- user-injected TODO appears stale [MEDIUM/HIGH]
+### V-2: Cycle-21 M4 (ConfirmAction discriminated union) marked PENDING but appears DONE in code [INFO/HIGH]
 
-**Files:** `scripts/deploy-worker.sh:92-136`
-**Description:** Verified: the worker deploy script uses `ensure_env_var()` (a different function from `ensure_env_secret()`) that individually updates keys in the existing `.env` file via Python. It does NOT use rsync and does NOT overwrite the entire file. The comment on line 93 explicitly states "Preserves any existing remote-only keys." The main `deploy-docker.sh` uses `--exclude='.env*'` on line 299. There is no rsync command that would overwrite a remote `.env` file.
-**Fix:** Confirm with the user whether this TODO is stale or refers to a different workflow.
+**File:** `plans/open/2026-04-20-rpf-cycle-21-review-remediation.md:124`
+**Description:** The plan shows M4 status as PENDING, but commit `c89d7432` ("fix(admin): harden language config table with apiFetch, error handling, accessibility (H1/H2/M1/M4)") explicitly includes M4 in the commit message. The code change is present in `language-config-table.tsx`.
+**Fix:** Update M4 status to DONE in the plan.
 **Confidence:** HIGH
 
-## F3: Public rankings page is a strict superset of dashboard rankings [MEDIUM/HIGH]
+## Verified Safe
 
-**Files:** `src/app/(public)/rankings/page.tsx` vs `src/app/(dashboard)/dashboard/rankings/page.tsx`
-**Description:** Verified feature comparison:
-- Public: period filter (all/week/month), tier badges, mobile card layout, JSON-LD, SEO metadata, configurable page size
-- Dashboard: none of the above, just basic table with pagination
-- Dashboard adds: auth redirect, recruiting mode check
-The dashboard version is strictly inferior. The public page can add the recruiting mode check with auth-aware rendering.
-**Confidence:** HIGH
+- All `getDbNowUncached()` usages confirmed in API routes for temporal consistency.
+- `formatScore` confirmed to use `formatNumber` internally.
+- Korean letter-spacing conditional classes are present and correct in all inspected components.
+- AppSidebar no longer has dead code from submissions removal (verified clean).
+- Navigation items are centralized in `public-nav.ts` and consistently used by both layouts.

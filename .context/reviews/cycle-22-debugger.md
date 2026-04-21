@@ -1,30 +1,30 @@
-# Cycle 22 Debugger Review
+# Debugger — Cycle 22 (Fresh)
 
 **Date:** 2026-04-20
-**Base commit:** 717a5553
+**Base commit:** e80d2746
 
----
+## Findings
 
-## F1: `ensure_env_secret` writes random hex for AUTH_TRUST_HOST and COMPILER_RUNNER_URL [HIGH/HIGH]
+### DBG-1: `access-code-manager.tsx` `fetchCode` silently swallows errors and non-OK responses [LOW/MEDIUM]
 
-**Files:** `deploy-docker.sh:254-286`
-**Description:** On a fresh remote where `.env.production` doesn't exist yet, the flow is:
-1. `deploy-docker.sh` generates a local `.env.production` with `AUTH_TRUST_HOST=true` (line 222)
-2. rsync excludes `.env*` (line 299), so the local file is NOT transferred
-3. The remote has no `.env.production` yet, so line 335-339 transfers it
-4. Later, `ensure_env_secret AUTH_TRUST_HOST true` runs (line 277)
-5. Since the key IS in the file (from step 3), the function returns early at line 258
-
-So on a FRESH deploy, the function returns early because the local `.env.production` already has `AUTH_TRUST_HOST=true`. The bug only manifests if the remote `.env.production` exists but is MISSING the key -- which can happen after manual edits or upgrades.
-
-However, for COMPILER_RUNNER_URL: this key is NOT in the auto-generated `.env.production` template (lines 217-236). So on a fresh deploy where `INCLUDE_WORKER=false`, the remote file won't have this key, and `ensure_env_secret COMPILER_RUNNER_URL "http://host.docker.internal:3001"` will generate a random hex value. This IS a real bug that will break the compiler runner on fresh algo deployments.
-
-**Fix:** Add literal value support to the function. Create `ensure_env_literal` that writes a specific value instead of generating a random one.
-**Confidence:** HIGH
-
-## F2: Control discussions page has double auth check that can lock out moderators [MEDIUM/MEDIUM]
-
-**Files:** `src/app/(control)/layout.tsx:20-30`, `src/app/(control)/control/discussions/page.tsx:39-41`
-**Description:** The layout requires `users.view || system.settings || submissions.view_all || groups.view_all || assignments.view_status`. A user with ONLY `community.moderate` (but none of the above capabilities) will be redirected to `/dashboard` before reaching the discussions page. This means a community moderator who isn't an instructor cannot access the moderation tools at `/control/discussions`.
-**Fix:** Add `community.moderate` to the layout's access check, or restructure the route.
+**File:** `src/components/contest/access-code-manager.tsx:38-48`
+**Description:** The `fetchCode` callback has an empty `catch` block with only an `/* ignore */` comment, and the `if (res.ok)` check does nothing on failure. If the API returns a 403 (no permission) or 500 (server error), the user sees an empty card with no error indication.
+**Concrete failure scenario:** A user who has lost access to a contest (e.g., role change) opens the access code panel. The API returns 403, but the component silently shows nothing. The user thinks the feature is broken.
+**Fix:** Add error handling: show a toast error on catch and on non-OK responses, matching the pattern in `handleGenerate`.
 **Confidence:** MEDIUM
+
+### DBG-2: `use-unsaved-changes-guard.ts` `toHistoryStateValue` does not validate input type [LOW/LOW]
+
+**File:** `src/hooks/use-unsaved-changes-guard.ts:37-43`
+**Description:** The function uses `return value as HistoryStateValue;` which is an unsafe cast. If `value` is a primitive (string, number, boolean), the cast succeeds at runtime but subsequent spread operations on the "object" will silently produce unexpected results.
+**Concrete failure scenario:** If `window.history.state` is a string (e.g., set by a third-party script), `toHistoryStateValue("foo")` returns `"foo" as Record<string, unknown>`. When this is spread in `wrapState`, it produces `{}` because spreading a string is a no-op in object context. The guard index is then lost.
+**Fix:** Add `if (typeof value !== "object" || value === null) return {};` before the cast.
+**Confidence:** LOW
+
+## Verified Safe
+
+- `CountdownTimer` properly handles the server time offset via the `/api/v1/time` endpoint.
+- `CountdownTimer` cleans up its interval on unmount.
+- All clipboard operations have proper error handling (the cycle-19 AGG-2 fix is confirmed working).
+- `AppSidebar` dead code from submissions removal was cleaned up (cycle-21 M2).
+- Exam submission `submittedAt` uses `getDbNowUncached()` for clock-skew prevention (cycle-8 AGG-1 fix confirmed).

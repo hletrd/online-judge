@@ -1,19 +1,23 @@
-# Cycle 22 Designer Review
+# Designer — Cycle 22 (Fresh)
 
 **Date:** 2026-04-20
-**Base commit:** 717a5553
+**Base commit:** e80d2746
 
----
+## Findings
 
-## F1: Control layout lacks PublicHeader -- inconsistent with dashboard layout [MEDIUM/MEDIUM]
+### DES-1: Workers page polling continues in backgrounded tabs -- battery and bandwidth waste [LOW/LOW]
 
-**Files:** `src/app/(control)/layout.tsx:43-67`
-**Description:** The dashboard layout now includes PublicHeader for unified navigation. The control layout still uses its own `ControlNav` sidebar and a minimal header with just ThemeToggle and LocaleSwitcher. Users navigating between dashboard and control pages experience a jarring layout switch. The control layout should use the same PublicHeader as the dashboard.
-**Fix:** Integrate PublicHeader into the control layout (or merge control into dashboard, which would solve it architecturally).
-**Confidence:** MEDIUM
+**File:** `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:244`
+**Description:** The workers admin page polls every 10 seconds regardless of tab visibility. This wastes battery on mobile devices and bandwidth on slow connections. The `SubmissionListAutoRefresh` component already implements visibility checking as a best practice.
+**Fix:** Add `document.visibilityState` check before making polling requests, or pause the interval when the tab is hidden.
+**Confidence:** LOW
 
-## F2: Dashboard rankings page lacks mobile layout while public rankings has it [LOW/HIGH]
+## Verified Safe
 
-**Files:** `src/app/(dashboard)/dashboard/rankings/page.tsx:121-163`
-**Description:** The dashboard rankings page only has a desktop table view. The public rankings page has both a desktop table and mobile card layout. If a user navigates to `/dashboard/rankings` on mobile, the table overflows and is hard to read. This reinforces the case for redirecting to the public page.
-**Confidence:** HIGH
+- Korean letter-spacing is properly handled throughout all components using locale-conditional tracking classes.
+- Mobile menu has proper focus trap and keyboard navigation.
+- PublicHeader has `focus-visible:ring-2` styles on navigation links and buttons.
+- Mobile sign-out button meets WCAG 2.2 minimum touch target of 24px (though below the recommended 44px -- deferred from cycle 19).
+- Progress bars have proper ARIA attributes (`role="progressbar"`, `aria-valuenow`, etc.).
+- Skip-to-content link is present on all layouts.
+- `sr-only` announcements for mobile menu state changes.

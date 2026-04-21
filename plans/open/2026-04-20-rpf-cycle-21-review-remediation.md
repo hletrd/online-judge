@@ -121,7 +121,7 @@ No cycle-21 review finding is silently dropped. No new refactor-only work is add
      ```
   2. Update the AlertDialog `onClick` to use the discriminated union without `as` casts.
   3. Verify all gates pass.
-- **Status:** PENDING
+- **Status:** DONE
 
 ### M5: Remove unused `role` prop from `PublicHeader` (AGG-7)
 

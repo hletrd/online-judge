@@ -1,20 +1,20 @@
-# Cycle 22 Test Engineer Review
+# Test Engineer — Cycle 22 (Fresh)
 
 **Date:** 2026-04-20
-**Base commit:** 717a5553
+**Base commit:** e80d2746
 
----
+## Findings
 
-## F1: No test for `ensure_env_secret` literal value behavior [MEDIUM/HIGH]
+### TE-1: No tests for `apiFetch` centralized wrapper [LOW/MEDIUM]
 
-**Files:** `deploy-docker.sh:254-286`
-**Description:** The `ensure_env_secret` function has no test coverage. Its misuse for literal values (AUTH_TRUST_HOST=true, COMPILER_RUNNER_URL=url) is a correctness bug that has persisted across multiple cycles. A shellcheck or bash unit test could catch this.
-**Fix:** Add a test in `tests/unit/infra/` that validates the deploy script's env handling, or at minimum add a shellcheck directive to validate the function parameters.
+**File:** `src/lib/api/client.ts`
+**Description:** The `apiFetch` function is a critical security wrapper that adds the CSRF `X-Requested-With` header to all requests. It has no unit tests. Given that 11 call sites were recently migrated to use it (cycle-21 H1), verifying its behavior with tests would prevent regressions.
+**Concrete failure scenario:** A future change to `apiFetch` accidentally removes the `X-Requested-With` header. All admin mutations silently lose CSRF protection. No test catches this.
+**Fix:** Add unit tests for `apiFetch`: verifies header is added when not present, preserves existing headers, does not duplicate header if already set.
 **Confidence:** MEDIUM
 
-## F2: No E2E test for route consolidation redirects [MEDIUM/MEDIUM]
+## Verified Safe
 
-**Files:** Phase 4 migration plan
-**Description:** When `/dashboard/rankings`, `/dashboard/languages`, and `/dashboard/compiler` are redirected to their public counterparts, there should be E2E tests verifying the redirects work correctly and that authenticated users see the enhanced view. Currently there are no such tests.
-**Fix:** Add redirect tests to the E2E suite after implementing Phase 4.
-**Confidence:** MEDIUM
+- Unit tests exist for `formatNumber`, `formatBytes`, and `formatScore` (added in commit f8d879e9).
+- ESLint and TypeScript strict mode are enabled and passing.
+- No `@ts-ignore` or `@ts-expect-error` suppressions found.

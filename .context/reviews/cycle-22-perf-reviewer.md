@@ -1,20 +1,29 @@
-# Cycle 22 Performance Reviewer
+# Performance Reviewer — Cycle 22 (Fresh)
 
 **Date:** 2026-04-20
-**Base commit:** 717a5553
+**Base commit:** e80d2746
 
----
+## Findings
 
-## F1: Dashboard layout makes 4 sequential async calls that could be parallelized further [MEDIUM/MEDIUM]
+### PERF-1: Practice page Path B progress filter still fetches all matching IDs + submissions into memory [MEDIUM/MEDIUM]
 
-**Files:** `src/app/(dashboard)/layout.tsx:34-64`
-**Description:** The dashboard layout has two sequential `Promise.all` blocks (lines 34-49 and 56-64). The second block depends on `capabilities` from the first, but `getResolvedSystemSettings` and `getActiveTimedAssignmentsForSidebar` only need `session.user.id` and `session.user.role`, which are available before the first block. These could be combined into a single `Promise.all`.
-**Fix:** Restructure to resolve all promises in a single `Promise.all` by passing `session.user.id` and `session.user.role` directly.
+**File:** `src/app/(public)/practice/page.tsx:412-449`
+**Description:** This was identified in cycle 18 (AGG-3) and remains unfixed. When a progress filter is active, Path B fetches ALL matching problem IDs and ALL user submissions into memory, filters in JavaScript, then paginates. The code has a comment acknowledging this should be moved to SQL (lines 413-415). This is a deferred item (DEFER-1) in the cycle-21 plan.
+**Concrete failure scenario:** With 10,000+ public problems, this path could take several seconds and consume significant memory on the server.
+**Fix:** Move the progress filter logic into a SQL CTE or subquery.
 **Confidence:** MEDIUM
 
-## F2: Public rankings page runs COUNT query in generateMetadata AND in the page component [MEDIUM/MEDIUM]
+### PERF-2: Workers page polls every 10 seconds regardless of tab visibility [LOW/LOW]
 
-**Files:** `src/app/(public)/rankings/page.tsx:55-69, 117-120`
-**Description:** `generateMetadata` runs a `COUNT(DISTINCT fa.user_id)` query, and the page component runs another `SELECT COUNT(*)::int FROM users` estimate query. While these return slightly different values, the metadata query could be cached or the page could reuse the count from the window function. Running two separate count queries per page load is wasteful.
-**Fix:** Use `fetchCache` or React cache to deduplicate the metadata and page queries, or rely solely on the `COUNT(*) OVER()` window function in the page component.
+**File:** `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:244`
+**Description:** `setInterval(fetchData, 10_000)` runs regardless of tab visibility. When the admin switches to another tab, the polling continues, wasting network and server resources.
+**Concrete failure scenario:** An admin has the workers page open in a background tab all day. 360 requests per hour are made with no user benefit.
+**Fix:** Use `visibilitychange` event to pause/resume polling, matching the pattern in `SubmissionListAutoRefresh` which checks `document.visibilityState`.
 **Confidence:** LOW
+
+## Verified Safe
+
+- Public problem detail page parallelizes independent queries with `Promise.all` (line 128).
+- `SubmissionListAutoRefresh` properly checks `document.visibilityState` before refreshing.
+- `CountdownTimer` properly cleans up its interval on unmount.
+- Chat widget uses streaming SSE, not polling.

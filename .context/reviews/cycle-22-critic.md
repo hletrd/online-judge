@@ -1,24 +1,27 @@
-# Cycle 22 Critic Review
+# Critic — Cycle 22 (Fresh)
 
 **Date:** 2026-04-20
-**Base commit:** 717a5553
+**Base commit:** e80d2746
 
----
+## Findings
 
-## F1: `ensure_env_secret` is misused for non-secret literal values -- broken on fresh deploys [HIGH/HIGH]
+### CRI-1: Chat widget plugin was missed by the apiFetch migration -- incomplete audit [MEDIUM/MEDIUM]
 
-**Files:** `deploy-docker.sh:254-286`
-**Description:** The function is designed to generate random secrets for missing keys. But `AUTH_TRUST_HOST=true` and `COMPILER_RUNNER_URL=http://host.docker.internal:3001` are NOT secrets -- they are configuration values with specific literal values. On a fresh remote where `.env.production` lacks these keys, the function generates random hex strings instead. This is a correctness bug, not just a style issue. It will break auth on fresh deploys.
+**Files:** `src/lib/plugins/chat-widget/admin-config.tsx:89-92`, `src/lib/plugins/chat-widget/chat-widget.tsx:154`
+**Description:** The cycle-21 H1 fix migrated 11 raw `fetch()` calls in admin components to `apiFetch`, but the audit missed the chat widget plugin which has 2 more. This suggests the original audit was scoped to `src/app/(dashboard)/dashboard/admin/` and did not include `src/lib/plugins/`. Plugin code runs with the same CSRF requirements as admin code and should have been included.
+**Fix:** Replace with `apiFetch()`. Also verify no other `fetch()` calls with manual `X-Requested-With` headers exist outside the admin directory.
 **Confidence:** HIGH
 
-## F2: Route consolidation (Phase 4) scope is well-defined but execution risk is understated [MEDIUM/MEDIUM]
+### CRI-2: Deferred item pile-up -- 9 deferred items with no clear trigger for action [LOW/MEDIUM]
 
-**Files:** Migration plan `2026-04-19-workspace-to-public-migration.md`
-**Description:** The plan lists 4 routes to merge (discussions already done, rankings/languages/compiler still pending). But the dashboard versions have subtle differences from their public counterparts: dashboard compiler passes `preferredLanguage`, dashboard rankings checks recruiting mode and redirects, dashboard languages shows worker count. Each of these needs careful auth-aware porting, not just a redirect.
+**File:** `plans/open/2026-04-20-rpf-cycle-21-review-remediation.md` (DEFER-1 through DEFER-9)
+**Description:** The cycle-21 plan has 9 deferred items, most carried forward from cycles 18-20. The exit criteria for these items are vague (e.g., "problem count exceeds 5,000", "users report difficulty tapping"). Without concrete timelines or metrics tracking, these items may remain deferred indefinitely.
+**Fix:** Consider adding a maximum deferral age (e.g., 10 cycles). If a deferred item is older than the threshold, it should be either implemented or explicitly accepted as permanent.
 **Confidence:** MEDIUM
 
-## F3: Control route group is a maintenance orphan [MEDIUM/MEDIUM]
+## Verified Safe
 
-**Files:** `src/app/(control)/` directory
-**Description:** The control group has its own layout, ControlNav component, and `controlShell` i18n namespace for only 2 pages. The home page is just a card grid linking to dashboard admin pages. This is navigation dead weight -- users must know to go to `/control` specifically, and it's not linked from the main navigation. It should be merged into the dashboard.
-**Confidence:** MEDIUM
+- Korean letter-spacing is consistently handled with locale-conditional tracking classes.
+- All formatting utilities are centralized and use locale-aware formatting.
+- Navigation structure is well-organized with shared config modules.
+- Test coverage exists for key formatting utilities (`formatNumber`, `formatBytes`, `formatScore`).

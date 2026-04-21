@@ -1,27 +1,36 @@
-# Cycle 22 Security Reviewer
+# Security Reviewer — Cycle 22 (Fresh)
 
 **Date:** 2026-04-20
-**Base commit:** 717a5553
+**Base commit:** e80d2746
 
----
+## Findings
 
-## F1: `ensure_env_secret` writes random hex instead of `true` for AUTH_TRUST_HOST [HIGH/HIGH]
+### SEC-1: Chat widget plugin bypasses centralized CSRF protection via raw `fetch()` [MEDIUM/HIGH]
 
-**Files:** `deploy-docker.sh:254-286`
-**Description:** On a fresh remote deployment where `.env.production` does not contain `AUTH_TRUST_HOST`, the `ensure_env_secret AUTH_TRUST_HOST true` call writes a random 64-char hex string instead of the string `true`. This causes `validateTrustedAuthHost()` to receive a truthy but incorrect value. The actual impact depends on how the value is consumed -- if it's checked as a boolean (`!!process.env.AUTH_TRUST_HOST`), any non-empty string works. If it's checked as `=== "true"`, it breaks. Looking at the codebase, `AUTH_TRUST_HOST` is checked as `process.env.AUTH_TRUST_HOST === "true"` in the auth config, so a random hex string would make auth trust host NOT work, causing UntrustedHost errors on reverse proxy deployments.
-**Fix:** Add literal value support to `ensure_env_secret` or use a separate function for non-secret env vars that need specific values.
+**Files:**
+- `src/lib/plugins/chat-widget/admin-config.tsx:89-92`
+- `src/lib/plugins/chat-widget/chat-widget.tsx:154`
+
+**Description:** Two client-side `fetch()` calls in the chat widget plugin manually set `X-Requested-With: XMLHttpRequest` instead of using `apiFetch`. This means any future CSRF hardening applied to `apiFetch` (e.g., double-submit cookie tokens, custom CSRF headers) will not cover these endpoints. The cycle-21 H1 migration fixed 11 similar calls but missed these two because they are in a plugin module rather than an admin component directory.
+**Concrete failure scenario:** A CSRF protection enhancement is added to `apiFetch` (e.g., a `X-CSRF-Token` header). The two chat widget calls continue to use only `X-Requested-With`, which may not satisfy the updated server-side CSRF validation, resulting in 403 errors.
+**Fix:** Replace with `apiFetch()` and remove the manual header.
 **Confidence:** HIGH
 
-## F2: COMPILER_RUNNER_URL auto-injection value is treated as generator type [MEDIUM/HIGH]
+### SEC-2: `use-unsaved-changes-guard.ts` monkey-patches `window.history` — potential for conflicts [LOW/MEDIUM]
 
-**Files:** `deploy-docker.sh:283-286`
-**Description:** `ensure_env_secret COMPILER_RUNNER_URL "${COMPILER_RUNNER_DEFAULT}"` passes `http://host.docker.internal:3001` as the generator parameter. Since this doesn't match `"hex"` or `"base64"`, the function generates a random hex value on first deploy instead of the intended URL. The app would then fail to connect to the external judge worker.
-**Fix:** Same as F1 -- the function needs to support literal value injection.
-**Confidence:** HIGH
-
-## F3: Control layout checks `canAccessControl` but control discussions page re-checks `canModerate` separately [LOW/MEDIUM]
-
-**Files:** `src/app/(control)/layout.tsx:20-30`, `src/app/(control)/control/discussions/page.tsx:39-41`
-**Description:** The control layout redirects users who lack admin/instructor capabilities. Then the discussions page separately checks `canModerateDiscussions`. The two checks use different capability sets: the layout checks `users.view`, `system.settings`, etc., while the discussions page checks `community.moderate`. A user with `community.moderate` but NOT `users.view` would be redirected from `/control` before reaching the discussions page.
-**Fix:** Either add `community.moderate` to the layout's access check, or restructure so the discussions page is accessible independently.
+**File:** `src/hooks/use-unsaved-changes-guard.ts:234-269`
+**Description:** The hook patches `window.history.pushState` and `window.history.replaceState`. The hook's JSDoc already warns about this pattern, but the risk is worth reiterating: if another library or Next.js internals also patch these methods, the guard will either be overwritten or will override the other patch.
+**Concrete failure scenario:** A Next.js update changes how `pushState`/`replaceState` are used internally. The guard's patched version intercepts Next.js router navigations that should not be intercepted, causing spurious "unsaved changes" dialogs.
+**Fix:** Already documented as fragile. Consider migrating to the Navigation API when stable.
 **Confidence:** MEDIUM
+
+## Verified Safe
+
+- CSRF protection is consistent across all mutation routes (checked via `X-Requested-With` header requirement).
+- Auth flow is robust: Argon2id hashing, timing-safe dummy hash, rate limiting, proper token invalidation.
+- HTML sanitization uses DOMPurify with strict allowlists for both `dangerouslySetInnerHTML` uses.
+- No `innerHTML` assignments.
+- No `as any` type casts.
+- All `new Date()` in API routes migrated to `getDbNowUncached()` for temporal consistency.
+- Password rehashing from bcrypt to Argon2id is properly handled.
+- Rate limiting is applied per-IP and per-username on login attempts.
