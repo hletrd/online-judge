@@ -178,9 +178,9 @@ export function CompilerClient({ languages, title, description, preferredLanguag
     );
   }, [initialLanguage, language, languages]);
 
-  // Persist language preference
+  // Persist language preference (best-effort — may fail in private browsing)
   useEffect(() => {
-    localStorage.setItem("compiler:language", language);
+    try { localStorage.setItem("compiler:language", language); } catch { /* quota exceeded or private browsing */ }
   }, [language]);
 
   // Update code template when language changes
@@ -229,7 +229,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
   const handleRun = useCallback(async () => {
     // HIGH FIX: Check ref to prevent concurrent runs
     if (isRunningRef.current) {
-      toast.info(t("alreadyRunning", { defaultValue: "Already running." }));
+      toast.info(t("alreadyRunning"));
       return;
     }
 
@@ -268,7 +268,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
           error: errorMessage,
           result: null,
         }));
-        toast.error(t("runFailed", { defaultValue: "Failed to run code" }), {
+        toast.error(t("runFailed"), {
           description: errorMessage,
         });
         return;
@@ -289,7 +289,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
         error: errorMessage,
         result: null,
       }));
-      toast.error(t("networkError", { defaultValue: "Network error" }), {
+      toast.error(t("networkError"), {
         description: errorMessage,
       });
     } finally {
@@ -303,6 +303,8 @@ export function CompilerClient({ languages, title, description, preferredLanguag
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        const active = document.activeElement;
+        if (active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement) return;
         e.preventDefault();
         void handleRun();
       }
@@ -343,7 +345,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
       <div className="flex h-full items-center justify-center p-6">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="size-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">{t("loadingLanguages", { defaultValue: "Loading languages..." })}</p>
+          <p className="text-sm text-muted-foreground">{t("loadingLanguages")}</p>
         </div>
       </div>
     );
@@ -362,24 +364,24 @@ export function CompilerClient({ languages, title, description, preferredLanguag
             languages={languages}
             value={language}
             onValueChange={handleLanguageChange}
-            placeholder={t("language", { defaultValue: "Language" })}
+            placeholder={t("language")}
           />
         </div>
         <Button
           onClick={handleRun}
           disabled={isRunning}
           type="button"
-          aria-label={isRunning ? t("running", { defaultValue: "Running..." }) : t("run", { defaultValue: "Run code" })}
+          aria-label={isRunning ? t("running") : t("run")}
         >
           {isRunning ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              {t("running", { defaultValue: "Running..." })}
+              {t("running")}
             </>
           ) : (
             <>
               <Play className="size-4" />
-              {t("run", { defaultValue: "Run" })}
+              {t("run")}
             </>
           )}
         </Button>
@@ -393,13 +395,13 @@ export function CompilerClient({ languages, title, description, preferredLanguag
               value={sourceCode}
               onValueChange={setSourceCode}
               minHeight={LAYOUT_CONSTANTS.EDITOR_MIN_HEIGHT}
-              ariaLabel={t("codeEditorLabel", { defaultValue: "Code editor" })}
+              ariaLabel={t("codeEditorLabel")}
             />
           </div>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="stdin-input" className="text-xs font-medium text-muted-foreground">
-                {t("stdin", { defaultValue: "Standard Input" })}
+                {t("stdin")}
               </Label>
               <div className="flex items-center gap-2">
                 {testCases.length > 1 ? (
@@ -408,7 +410,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
                     variant="outline"
                     size="sm"
                     onClick={handleRemoveActiveTestCase}
-                    aria-label={t("removeTestCase", { defaultValue: "Remove test case" })}
+                    aria-label={t("removeTestCase")}
                   >
                     <X className="size-3.5" />
                   </Button>
@@ -418,10 +420,10 @@ export function CompilerClient({ languages, title, description, preferredLanguag
                   variant="outline"
                   size="sm"
                   onClick={handleAddTestCase}
-                  aria-label={t("addTestCase", { defaultValue: "Add test case" })}
+                  aria-label={t("addTestCase")}
                 >
                   <Plus className="size-3.5" />
-                  {t("addTestCase", { defaultValue: "Add test case" })}
+                  {t("addTestCase")}
                 </Button>
               </div>
             </div>
@@ -437,10 +439,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
 
               <div className="space-y-1.5">
                 <Label htmlFor="stdin-case-name" className="text-xs font-medium text-muted-foreground">
-                  {t("testCaseLabel", {
-                    number: activeTestCaseNumber,
-                    defaultValue: `Test case ${activeTestCaseNumber}`,
-                  })}
+                  {t("testCaseLabel", { number: activeTestCaseNumber })}
                 </Label>
                 <Input
                   id="stdin-case-name"
@@ -479,7 +478,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
                     spellCheck={false}
                     autoCapitalize="off"
                     autoCorrect="off"
-                    aria-label={t("stdin", { defaultValue: "Standard input" })}
+                    aria-label={t("stdin")}
                   />
                 </TabsContent>
               ))}
@@ -501,7 +500,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
           {!result && !error && (
             <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed p-8">
               <p className="text-sm text-muted-foreground">
-                {t("noOutput", { defaultValue: "Run your code to see output here" })}
+                {t("noOutput")}
               </p>
             </div>
           )}
@@ -511,29 +510,29 @@ export function CompilerClient({ languages, title, description, preferredLanguag
               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 {result.timedOut && (
                   <span className="font-medium text-yellow-600">
-                    {t("timedOut", { defaultValue: "Time Limit Exceeded" })}
+                    {t("timedOut")}
                   </span>
                 )}
                 {result.compileOutput && (
                   <span className="font-medium text-red-600">
-                    {t("compileError", { defaultValue: "Compilation Error" })}
+                    {t("compileError")}
                   </span>
                 )}
                 {result.exitCode !== null && (
-                  <span>{t("exitCode", { defaultValue: "Exit code: {code}", code: result.exitCode })}</span>
+                  <span>{t("exitCode", { code: result.exitCode })}</span>
                 )}
                 <span>
-                  {t("executionTime", { defaultValue: "{time}ms", time: result.executionTimeMs })}
+                  {t("executionTime", { time: result.executionTimeMs })}
                 </span>
               </div>
 
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
                 <TabsList>
-                  <TabsTrigger value="stdout">{t("stdout", { defaultValue: "Output" })}</TabsTrigger>
-                  <TabsTrigger value="stderr">{t("stderr", { defaultValue: "Error Output" })}</TabsTrigger>
+                  <TabsTrigger value="stdout">{t("stdout")}</TabsTrigger>
+                  <TabsTrigger value="stderr">{t("stderr")}</TabsTrigger>
                   {result.compileOutput && (
                     <TabsTrigger value="compileOutput">
-                      {t("compileOutput", { defaultValue: "Compiler Output" })}
+                      {t("compileOutput")}
                     </TabsTrigger>
                   )}
                 </TabsList>
