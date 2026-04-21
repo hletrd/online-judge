@@ -25,12 +25,19 @@ interface PendingEvent {
   retries: number;
 }
 
+function isValidPendingEvent(entry: unknown): entry is PendingEvent {
+  if (typeof entry !== "object" || entry === null) return false;
+  const e = entry as Record<string, unknown>;
+  return typeof e.eventType === "string" && typeof e.retries === "number" && typeof e.timestamp === "number";
+}
+
 function loadPendingEvents(assignmentId: string): PendingEvent[] {
   try {
     const raw = localStorage.getItem(`${STORAGE_KEY}_${assignmentId}`);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isValidPendingEvent);
   } catch {
     return [];
   }
