@@ -13,7 +13,7 @@
  * |-------------------------------------|-----------------------------------------------------------|
  * | Network / server errors (5xx)       | Toast notification — transient, non-blocking               |
  * | Validation errors (4xx with fields) | Inline form errors — persistent, adjacent to field          |
- * | Auth errors (401, 403)              | Redirect to login or show access-denied message             |
+ * | Auth errors (401, 403)              | Typically surfaced via toast notifications; session middleware handles login redirects |
  * | Not found (404)                     | Call notFound() in server components; inline in client       |
  *
  * General rules:
