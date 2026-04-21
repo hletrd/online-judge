@@ -33,7 +33,7 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
 - **Plan:**
   1. Gate the `console.error` calls behind `process.env.NODE_ENV === "development"` in all four error boundary components.
   2. Verify all gates pass.
-- **Status:** TODO
+- **Status:** DONE (commit 02985db9)
 
 ### M1: Gate `console.warn` in create-problem-form behind dev-only check (AGG-9)
 
@@ -44,7 +44,7 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
 - **Plan:**
   1. Gate the `console.warn` behind `process.env.NODE_ENV === "development"`.
   2. Verify all gates pass.
-- **Status:** TODO
+- **Status:** DONE (commit ed7eb3f0)
 
 ### M2: Add Korean-locale documentation comment on not-found.tsx "404" tracking (AGG-10)
 
@@ -55,7 +55,7 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
 - **Plan:**
   1. Add a comment `/* "404" is a numeric status code — tracking safe for Korean locale */` for consistency with the existing documentation convention.
   2. Verify all gates pass.
-- **Status:** TODO
+- **Status:** DONE (commit 080670c3)
 
 ### M3: Continue workspace-to-public migration — Phase 5 remaining items
 
@@ -71,7 +71,7 @@ No cycle-27 review finding is silently dropped. No new refactor-only work is add
   2. Verify the `navGroups` constant is clean — non-admin items should already be removed.
   3. Consider adding a collapse/expand toggle for the admin sidebar.
   4. Verify all gates pass.
-- **Status:** TODO
+- **Status:** DONE (commit edca1d5e)
 
 ---
 
@@ -148,3 +148,9 @@ Per the user-injected TODO, this cycle makes incremental progress on the workspa
 ## Progress log
 
 - 2026-04-20: Plan created from updated cycle-27 aggregate review. Prior AGG-1 through AGG-3 already fixed. New findings AGG-8 through AGG-12 added as implementation lanes.
+- 2026-04-20: H1 (error boundary console.error) DONE — gated behind dev-only check in all 4 error boundary components (commit 02985db9).
+- 2026-04-20: M1 (console.warn) DONE — gated behind dev-only check in create-problem-form (commit ed7eb3f0).
+- 2026-04-20: M2 (not-found.tsx tracking comment) DONE — added Korean-locale documentation comment (commit 080670c3).
+- 2026-04-20: M3 (migration Phase 5) DONE — evaluated admin sidebar mobile behavior (already uses Sheet), navGroups clean, Phase 5 marked COMPLETE (commit edca1d5e).
+- 2026-04-20: All gates green (eslint 0 errors, tsc --noEmit clean, vitest 294/294 passed, next build success).
+- 2026-04-20: Deploy attempted but failed — `docker-compose` not available on local dev machine (expected; deployment is for production server).
