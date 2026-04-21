@@ -262,10 +262,15 @@ export function CompilerClient({ languages, title, description, preferredLanguag
         signal: abortController.signal,
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        const errorMessage = data.error || data.message || "Request failed";
+        let errorMessage = "Request failed";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          // Server returned non-JSON error (e.g., 502 HTML from reverse proxy)
+          errorMessage = res.statusText || errorMessage;
+        }
         updateTestCase(runningTestCaseId, (testCase) => ({
           ...testCase,
           error: errorMessage,
@@ -276,6 +281,8 @@ export function CompilerClient({ languages, title, description, preferredLanguag
         });
         return;
       }
+
+      const data = await res.json();
 
       updateTestCase(runningTestCaseId, (testCase) => ({
         ...testCase,
