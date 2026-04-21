@@ -241,17 +241,29 @@ export function LeaderboardTable({
   );
 
   useEffect(() => {
-    fetchLeaderboard();
-    const interval = setInterval(() => {
-      if (document.visibilityState === "visible") fetchLeaderboard(true);
-    }, refreshInterval);
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") fetchLeaderboard(true);
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const syncVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void fetchLeaderboard(true);
+        if (!interval) {
+          interval = setInterval(() => {
+            void fetchLeaderboard(true);
+          }, refreshInterval);
+        }
+      } else if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
     };
-    document.addEventListener("visibilitychange", handleVisibility);
+
+    fetchLeaderboard();
+    syncVisibility();
+    document.addEventListener("visibilitychange", syncVisibility);
+
     return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibility);
+      document.removeEventListener("visibilitychange", syncVisibility);
+      if (interval) clearInterval(interval);
     };
   }, [fetchLeaderboard, refreshInterval]);
 
