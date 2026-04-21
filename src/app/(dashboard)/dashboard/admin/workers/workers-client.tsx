@@ -243,7 +243,7 @@ export function WorkersPageClient() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchData();
