@@ -230,7 +230,7 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 
 ### Phase 4 — Route consolidation and control group merge
 
-**Status:** IN PROGRESS (cycle 23)
+**Status:** COMPLETE
 
 **Goal:** Merge duplicate routes (dashboard rankings -> public rankings, dashboard languages -> public languages, etc.) and merge the `(control)` route group into `(dashboard)`.
 
@@ -239,7 +239,7 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 - ~~Redirect `/dashboard/languages` to `/languages`~~ DONE (commit 662b71ec)
 - ~~Redirect `/dashboard/compiler` to `/playground`~~ DONE (commit 662b71ec)
 
-**Cycle 23 progress (control group merge):**
+**Cycle 23 progress (control group merge + Phase 4 audit):**
 - ~~Move `/control/discussions` to `/dashboard/admin/discussions` with `community.moderate` capability check~~ DONE (commit 03dc313d)
 - ~~Migrate `controlShell` i18n keys to `publicShell` and `nav` namespaces~~ DONE (commit d3e890df)
 - ~~Add `/control` and `/control/discussions` redirects~~ DONE (commit 03dc313d)
@@ -248,9 +248,22 @@ Same as instructor, with additional "Admin" dropdown entry that navigates to `/d
 - ~~Remove stale `publicShell.nav.workspace` i18n key~~ DONE (commit d3e890df)
 - ~~Centralize dropdown items in shared nav module~~ DONE (commit 4bbc65aa)
 
-**Remaining Phase 4 work:**
+**Phase 4 audit (cycle 23):**
+All dashboard routes with public counterparts have been redirected. The remaining dashboard routes are auth-gated or role-gated and must stay:
+- `/dashboard` — personal dashboard with role-specific widgets
+- `/dashboard/problems` — problem management (write operations, instructor+)
+- `/dashboard/contests` — contest list (auth-gated)
+- `/dashboard/submissions` — user submission history (auth-gated)
+- `/dashboard/groups` — group management (student roster data)
+- `/dashboard/problem-sets` — problem set management (instructor+)
+- `/dashboard/profile` — personal settings (auth-gated)
+- `/dashboard/admin/*` — system administration (admin only)
+
+No redundant page components remain under `(dashboard)`.
+
+**Completed Phase 4 work:**
 1. ~~Make public pages auth-aware: render additional sections or edit buttons when the user is authenticated and has the right capabilities.~~ DONE — "Edit Problem" button added to `/practice/problems/[id]` for users with `problems.create` capability (commit 167fa41c); "Problem Sets" added to PublicHeader dropdown for users with `problem_sets.create` capability (cycle 16)
-2. Remove redundant page components under `(dashboard)` where public counterparts exist.
+2. ~~Remove redundant page components under `(dashboard)` where public counterparts exist.~~ DONE — all dashboard routes with public counterparts (rankings, languages, compiler) have been redirected; remaining dashboard routes are auth-gated and must stay.
 
 **Estimated files changed:** ~20-30
 
