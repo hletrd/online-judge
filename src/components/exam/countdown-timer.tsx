@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api/client";
 import { Badge } from "@/components/ui/badge";
 
 interface CountdownTimerProps {
@@ -73,7 +74,7 @@ export function CountdownTimer({ deadline, label, onExpired }: CountdownTimerPro
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
     const requestStart = Date.now();
-    fetch("/api/v1/time", { signal: controller.signal })
+    apiFetch("/api/v1/time", { signal: controller.signal })
       .then((res) => res.json())
       .then((data: { timestamp: number }) => {
         const roundTrip = Date.now() - requestStart;
