@@ -70,9 +70,12 @@ describe("custom-role page/runtime implementation guards", () => {
     expect(problemSetDetailPage).toContain("canManageProblemSetForUser");
     expect(problemSetDetailPage).not.toContain("isInstructorOrAbove");
 
-    expect(appSidebar).toContain('item.href === "/dashboard/problem-sets"');
-    expect(appSidebar).toContain('capsSet.has("problem_sets.edit")');
     expect(appSidebar).not.toContain('capability: "problem_sets.view"');
+    // Non-admin nav items (Problems, Groups, Problem Sets) have been moved
+    // to the PublicHeader dropdown. Verify the dropdown keeps them capability-aware.
+    const publicNav = read("src/lib/navigation/public-nav.ts");
+    expect(publicNav).toContain('capability: "problem_sets.create"');
+    expect(publicNav).toContain('label: "problems"');
 
     expect(problemsPage).toContain("resolveCapabilities");
     expect(problemsPage).toContain('caps.has("problems.edit")');

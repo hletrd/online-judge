@@ -18,10 +18,9 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { BookOpen, FileCode, Users, User, GraduationCap, Shield, LogOut, LogIn, History, FolderOpen, Blocks, MessageCircle, MessageCircleWarning, KeyRound, Code, Settings, Server, Upload, Tags, Loader2 } from "lucide-react";
+import { BookOpen, FileCode, User, GraduationCap, Shield, LogOut, LogIn, History, Blocks, MessageCircle, MessageCircleWarning, KeyRound, Code, Settings, Server, Upload, Tags, Loader2 } from "lucide-react";
 import type { PlatformMode } from "@/types";
 import type { ActiveTimedAssignmentSummary } from "@/lib/assignments/active-timed-assignments";
-import { getPlatformModePolicy } from "@/lib/platform-mode";
 import { ActiveTimedAssignmentSidebarPanel } from "@/components/layout/active-timed-assignment-sidebar-panel";
 
 interface AppSidebarProps {
@@ -53,41 +52,11 @@ type NavGroup = {
   items: NavItem[];
 };
 
-const navGroups: NavGroup[] = [
-  {
-    // No group label: "Learning" group had only one remaining item after
-    // Submissions/Contests/Rankings/Compiler moved to PublicHeader dropdown.
-    labelKey: "",
-    items: [
-      {
-        titleKey: "problems",
-        href: "/dashboard/problems",
-        icon: BookOpen,
-        // Hidden in recruiting mode — no need for titleKeyByMode since
-        // hiddenInModes takes precedence and the item is never rendered.
-        hiddenInModes: ["recruiting"],
-      },
-    ],
-  },
-  {
-    labelKey: "manage",
-    items: [
-      {
-        titleKey: "groups",
-        href: "/dashboard/groups",
-        icon: Users,
-        hiddenInModes: ["recruiting"],
-      },
-      {
-        titleKey: "problemSets",
-        href: "/dashboard/problem-sets",
-        icon: FolderOpen,
-        capability: "problem_sets.create",
-        hiddenInModes: ["recruiting"],
-      },
-    ],
-  },
-];
+// Non-admin nav items have been removed from the sidebar.
+// All non-admin navigation (Problems, Groups, Problem Sets, Submissions,
+// Contests, Profile) is now in the PublicHeader dropdown. The sidebar
+// only renders for users with admin capabilities and contains only
+// admin-specific items.
 
 const adminGroups: NavGroup[] = [
   {
@@ -174,7 +143,6 @@ export function AppSidebar({
   };
 
   const capsSet = new Set(capabilities);
-  const hideStandaloneCompiler = getPlatformModePolicy(platformMode).restrictStandaloneCompiler;
 
   const canBypassModeRestrictions =
     capsSet.has("groups.view_all")
@@ -198,17 +166,6 @@ export function AppSidebar({
     return items.filter((item) => {
       if (item.hiddenInModes?.includes(platformMode) && !canBypassModeRestrictions) {
         return false;
-      }
-      if (hideStandaloneCompiler && item.href === "/playground" && !canBypassModeRestrictions) {
-        return false;
-      }
-      if (item.href === "/dashboard/problem-sets") {
-        return (
-          capsSet.has("problem_sets.create")
-          || capsSet.has("problem_sets.edit")
-          || capsSet.has("problem_sets.delete")
-          || capsSet.has("problem_sets.assign_groups")
-        );
       }
       return !item.capability || capsSet.has(item.capability);
     });
@@ -242,20 +199,6 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <ActiveTimedAssignmentSidebarPanel assignments={activeTimedAssignments} />
-        {navGroups.map((group) => {
-          const filtered = filterItems(group.items);
-          if (filtered.length === 0) return null;
-          return (
-            <SidebarGroup key={group.labelKey || filtered[0]?.href}>
-              {group.labelKey && <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>}
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <NavItems items={filtered} pathname={pathname} t={t} platformMode={platformMode} />
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          );
-        })}
 
         {adminGroups.some(g => filterItems(g.items).length > 0) && (
           <>
