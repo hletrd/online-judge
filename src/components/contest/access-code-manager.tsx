@@ -41,11 +41,13 @@ export function AccessCodeManager({ assignmentId }: AccessCodeManagerProps) {
       if (res.ok) {
         const json = await res.json();
         setCode(json.data.accessCode);
+      } else {
+        toast.error(tCommon("error"));
       }
     } catch {
-      // ignore
+      toast.error(tCommon("error"));
     }
-  }, [assignmentId]);
+  }, [assignmentId, tCommon]);
 
   useEffect(() => {
     fetchCode();
