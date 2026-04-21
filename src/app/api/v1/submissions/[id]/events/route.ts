@@ -463,6 +463,9 @@ function sseHeaders(): HeadersInit {
 async function queryFullSubmission(id: string) {
   return db.query.submissions.findFirst({
     where: eq(submissions.id, id),
+    columns: {
+      sourceCode: false,
+    },
     with: {
       user: {
         columns: { name: true },
