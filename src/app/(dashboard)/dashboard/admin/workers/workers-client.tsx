@@ -241,8 +241,27 @@ export function WorkersPageClient() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 10_000);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval> | null = setInterval(fetchData, 10_000);
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        if (!interval) {
+          fetchData();
+          interval = setInterval(fetchData, 10_000);
+        }
+      } else {
+        if (interval) {
+          clearInterval(interval);
+          interval = null;
+        }
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      if (interval) clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [fetchData]);
 
   async function handleRemove(id: string) {
