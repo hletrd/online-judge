@@ -34,7 +34,8 @@
  * const response = await apiFetch("/api/v1/resource");
  * if (!response.ok) {
  *   const errorBody = await response.json().catch(() => ({}));
- *   toast.error((errorBody as { error?: string }).error ?? "Request failed");
+ *   console.error("Request failed:", (errorBody as { error?: string }).error);
+ *   toast.error(errorLabel);  // Use i18n key, not raw API error
  *   return;
  * }
  * const payload = await response.json();
