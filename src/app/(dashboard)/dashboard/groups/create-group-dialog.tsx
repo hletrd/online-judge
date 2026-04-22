@@ -40,7 +40,11 @@ export default function CreateGroupDialog() {
       case "createError":
         return t("createError");
       default:
-        return error.message || tCommon("error");
+        // Avoid showing raw SyntaxError or parse error strings to the user
+        if (error instanceof SyntaxError) {
+          return t("createError");
+        }
+        return tCommon("error");
     }
   }
 
@@ -61,11 +65,13 @@ export default function CreateGroupDialog() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, description }),
         });
-        const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || "createError");
+          const errorBody = await response.json().catch(() => ({}));
+          throw new Error((errorBody as { error?: string }).error || "createError");
         }
+
+        const data = await response.json();
 
         toast.success(t("createSuccess"));
         await handleOpenChange(false);
