@@ -149,6 +149,7 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
 
   async function handleCreate() {
     if (!createName.trim()) return;
+    setCreatedLink(null);
     setCreating(true);
     try {
       // Send expiryDays or expiryDate instead of a client-computed timestamp
@@ -207,6 +208,8 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
           toast.error(t("createError"));
         }
       }
+    } catch {
+      toast.error(t("createError"));
     } finally {
       setCreating(false);
     }
@@ -481,8 +484,8 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
                 <Button variant="outline" onClick={() => setCreateOpen(false)}>
                   {t("cancel")}
                 </Button>
-                <Button onClick={handleCreate} disabled={creating || !createName.trim() || !createEmail.trim()}>
-                  {t("create")}
+                <Button onClick={handleCreate} disabled={creating || !createName.trim()}>
+                  {creating ? tCommon("loading") : t("create")}
                 </Button>
               </DialogFooter>
             </DialogContent>
