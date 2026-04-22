@@ -1,34 +1,48 @@
-# Debugger Review — RPF Cycle 3
+# Debugger Review — RPF Cycle 7
 
 **Date:** 2026-04-22
 **Reviewer:** debugger
-**Base commit:** 7b07995f
+**Base commit:** b3147a98
 
 ## Findings
 
-### DBG-1: `problem-submission-form.tsx` handleSubmit: SyntaxError on non-JSON error response causes unhelpful error message [MEDIUM/HIGH]
+### DBG-1: `bulk-create-dialog.tsx` — SyntaxError on non-JSON error body masks partial creation results [MEDIUM/HIGH]
 
-**File:** `src/components/problem/problem-submission-form.tsx:245-247`
+**File:** `src/app/(dashboard)/dashboard/admin/users/bulk-create-dialog.tsx:212-215`
 
-**Description:** When the submit endpoint returns a non-JSON error (e.g., 502 from proxy, or 413 Payload Too Large with plain text), `await response.json()` on line 245 throws a SyntaxError. This is caught by the generic catch on line 268, which shows `tCommon("error")` — a completely generic message. The user has no idea their code was not submitted.
+**Description:** The bulk user creation endpoint is a partial-success operation — some users may be created even when the overall response is an error. When `response.json()` throws SyntaxError (e.g., on a 502 from proxy), the catch block on line 222 shows a generic `tCommon("error")` toast. The admin loses visibility into which users were created. This is more impactful than a single-record operation because the admin needs to know the partial state.
 
-This is the most user-impactful instance of the pattern because code submission is the core action of the application. A failed submission with a generic error is deeply confusing during a timed contest.
+**Concrete failure scenario:** Admin uploads CSV with 50 users. The API creates 30 users successfully but then returns 502 due to a proxy timeout. `response.json()` throws SyntaxError. The admin sees "Error" and has no idea that 30 users were already created. They may retry the entire batch, causing duplicate users.
 
-**Concrete failure scenario:** During a live contest, the judge worker is overloaded. The submission API returns 503 with a plain text "Service Unavailable" body. The student sees a generic "Error" toast. They may resubmit, thinking it was a network glitch, but the same error occurs. They have no feedback about whether they should wait or try something different.
-
-**Fix:** Check `response.ok` before parsing JSON. On error, try to extract a meaningful error message from the response.
+**Fix:** Check `response.ok` before `response.json()`. On error, try to parse the error body with `.catch()` to extract partial results.
 
 **Confidence:** HIGH
 
 ---
 
-### DBG-2: `discussion-vote-buttons.tsx` has no try/catch around API call — unhandled rejection possible [MEDIUM/MEDIUM]
+### DBG-2: `create-group-dialog.tsx` — SyntaxError on non-JSON error body leads to generic error toast [MEDIUM/MEDIUM]
 
-**File:** `src/components/discussions/discussion-vote-buttons.tsx:36-55`
+**File:** `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:64-68`
 
-**Description:** The `handleVote` function has no try/catch. If `apiFetch` throws a network error (not just returns a non-ok response), the resulting unhandled promise rejection will be caught by the `finally` block, but the error itself is silently swallowed. The user sees the button re-enable with no feedback.
+**Description:** Line 64 calls `response.json()` before checking `response.ok`. The catch block (line 74) shows a generic error via `getErrorMessage`. But when `response.json()` throws SyntaxError, the error is an `Error` instance with `message` equal to "SyntaxError" or a parse error string. The `getErrorMessage` function's default case returns `error.message`, which would show the raw "SyntaxError" string to the user.
 
-**Fix:** Wrap the API call in try/catch and show a toast on network errors.
+**Concrete failure scenario:** Admin creates a group. API returns 502 HTML. SyntaxError thrown. Admin sees "SyntaxError" in a toast instead of a meaningful error.
+
+**Fix:** Check `response.ok` before `response.json()`, and map SyntaxError to a generic i18n key.
+
+**Confidence:** HIGH
+
+---
+
+### DBG-3: `database-backup-restore.tsx` restore path — `.json()` before `response.ok` throws SyntaxError on non-JSON error [MEDIUM/MEDIUM]
+
+**File:** `src/app/(dashboard)/dashboard/admin/settings/database-backup-restore.tsx:144-146`
+
+**Description:** The restore handler calls `response.json()` on line 144 unconditionally, then checks `response.ok` on line 146. If the restore endpoint returns a non-JSON error, SyntaxError is thrown. The catch block shows a generic error, losing the server's actual error message.
+
+**Concrete failure scenario:** Admin restores a database backup. The API returns 502 from the reverse proxy. SyntaxError thrown. The admin sees a generic error instead of the specific restore failure reason.
+
+**Fix:** Use `.json().catch(() => ({}))` before checking `response.ok`, matching the backup handler pattern.
 
 **Confidence:** HIGH
 
@@ -36,4 +50,4 @@ This is the most user-impactful instance of the pattern because code submission 
 
 ## Final Sweep
 
-The `handleRun` function in `problem-submission-form.tsx` also has the same issue as DBG-1 but is slightly less critical since "Run" is not the primary submission path. The anti-cheat monitor's localStorage fallback is well-implemented with retry logic. The countdown timer properly validates time-sync responses with `Number.isFinite`.
+The prior cycle fixes were properly implemented. The `problem-submission-form.tsx` now correctly checks `response.ok` before `.json()` in both `handleRun` and `handleSubmit`. The discussion components all use the correct pattern. The anti-cheat timeline now uses `useVisibilityPolling`. The remaining issues are all in files that were not previously addressed.

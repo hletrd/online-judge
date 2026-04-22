@@ -1,46 +1,44 @@
-# Security Review — RPF Cycle 3
+# Security Review — RPF Cycle 7
 
 **Date:** 2026-04-22
 **Reviewer:** security-reviewer
-**Base commit:** 7b07995f
+**Base commit:** b3147a98
 
 ## Findings
 
-### SEC-1: `discussion-vote-buttons.tsx` silently swallows vote failures — no error feedback to user [MEDIUM/MEDIUM]
+### SEC-1: `bulk-create-dialog.tsx` calls `response.json()` before `response.ok` — SyntaxError on non-JSON error can mask server errors [MEDIUM/MEDIUM]
 
-**File:** `src/components/discussions/discussion-vote-buttons.tsx:41-55`
+**File:** `src/app/(dashboard)/dashboard/admin/users/bulk-create-dialog.tsx:212-215`
 
-**Description:** When the vote API returns `!response.ok`, the function silently returns on line 48 with no user feedback. The user clicks a vote button, sees the button become enabled again, but has no idea why their vote was not registered. This is a user-facing correctness issue — the user's intent is silently discarded.
+**Description:** The bulk user creation endpoint calls `response.json()` before checking `response.ok`. On a non-JSON error response, this throws SyntaxError that the catch block handles as a generic error. For an admin operation that creates multiple users, losing the error message means the admin cannot tell which users were created and which failed.
 
-**Concrete failure scenario:** A user with a restricted role clicks upvote. The server returns 403. No toast, no error message. The user believes their vote was counted.
-
-**Fix:** Add a `toast.error()` for the `!response.ok` case.
+**Fix:** Check `response.ok` before `response.json()`.
 
 **Confidence:** HIGH
 
 ---
 
-### SEC-2: `window.location.origin` used to construct URLs in `access-code-manager.tsx` and `workers-client.tsx` — same issue flagged as DEFER-24 in prior cycles [LOW/MEDIUM]
+### SEC-2: `window.location.origin` used in `access-code-manager.tsx` and `workers-client.tsx` — previously flagged as DEFER-24 [LOW/MEDIUM]
 
 **Files:**
-- `src/components/contest/access-code-manager.tsx:130`
+- `src/components/contest/access-code-manager.tsx:134`
 - `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:147`
 
-**Description:** Both components use `window.location.origin` to build shareable URLs. In `access-code-manager.tsx`, the contest join URL is built client-side. In `workers-client.tsx`, the JUDGE_BASE_URL for the docker command uses `window.location.origin`. Behind a misconfigured proxy, these URLs could be incorrect. This was previously flagged as DEFER-24 for the invitations panel.
+**Description:** Carried forward from prior cycles (DEFER-24). These components use `window.location.origin` to build shareable URLs. Behind a misconfigured reverse proxy, these URLs could be incorrect, leading users to a wrong host.
 
-**Fix:** Use a server-provided `appUrl` config value, or at minimum validate that `window.location.origin` matches the expected host.
+**Fix:** Use a server-provided `appUrl` config value.
 
 **Confidence:** MEDIUM
 
 ---
 
-### SEC-3: `discussion-post-form.tsx` exposes raw server error messages to users via toast [LOW/LOW]
+### SEC-3: `create-group-dialog.tsx` exposes raw error messages from server via toast [LOW/LOW]
 
-**File:** `src/components/discussions/discussion-post-form.tsx:51`
+**File:** `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:33-44,67`
 
-**Description:** Line 51: `const message = error instanceof Error ? error.message : "discussionReplyCreateFailed"`. If the server returns an unexpected error message (e.g., internal stack trace details in development mode), this is displayed verbatim in a toast. While production mode should not leak stack traces, this pattern does not sanitize the error message.
+**Description:** The `getErrorMessage` function maps known error codes to i18n keys, but the default case on line 43 returns `error.message` verbatim. If the server returns an unexpected error message (e.g., internal stack trace in development), this is displayed in a toast.
 
-**Fix:** Map known error codes to i18n keys and fall back to a generic message for unknown errors.
+**Fix:** Map unknown errors to a generic i18n key instead of showing raw `error.message`.
 
 **Confidence:** LOW
 
@@ -48,4 +46,4 @@
 
 ## Final Sweep
 
-No new critical security findings. The CSRF protection (validateCsrf), auth config, and session security are well-implemented. The password hashing uses Argon2id with timing-safe dummy hash comparison. The response.json() before response.ok pattern is primarily a reliability issue rather than a direct security vulnerability, but it can cause unhandled exceptions that bypass error handling.
+The CSRF protection, auth config, session security, and password hashing remain solid. The rate-limiter circuit breaker pattern in `rate-limiter-client.ts` is well-implemented with proper fail-open semantics. The Docker sandbox in `execute.ts` has proper security boundaries (--network=none, --cap-drop=ALL, seccomp, read-only rootfs). The shell command validation is thorough with both basic and strict validators. No new critical security findings.

@@ -1,30 +1,30 @@
-# Document Specialist Review — RPF Cycle 3
+# Document Specialist Review — RPF Cycle 7
 
 **Date:** 2026-04-22
 **Reviewer:** document-specialist
-**Base commit:** 7b07995f
+**Base commit:** b3147a98
 
 ## Findings
 
-### DOC-1: `src/lib/api/client.ts` error handling convention table is incomplete — does not mention the `response.ok` before `.json()` pattern [LOW/LOW]
+### DOC-1: `useVisibilityPolling` JSDoc still missing note about callback error handling responsibility [LOW/LOW]
 
-**File:** `src/lib/api/client.ts:9-24`
+**File:** `src/hooks/use-visibility-polling.ts:6-13`
 
-**Description:** The JSDoc comment in `apiFetch` documents error handling conventions but does not mention the critical pattern of checking `response.ok` before calling `response.json()`. Since this is the most common bug pattern in the codebase (8+ instances), it should be documented as a required pattern.
+**Description:** This was flagged as DOC-2 in cycle 3 but was not addressed. The JSDoc for `useVisibilityPolling` does not document the expectation that the callback function should handle its own errors (try/catch with toast). Without this documentation, developers may assume the hook handles errors, leading to unhandled rejections when the callback throws.
 
-**Fix:** Add a row to the convention table: "Non-JSON error response | Check `response.ok` before calling `.json()`; use `.json().catch(() => ({}))` on error responses".
+**Fix:** Add a note to the JSDoc: "The callback must handle its own errors. The hook does not catch errors thrown by the callback."
 
 **Confidence:** MEDIUM
 
 ---
 
-### DOC-2: `useVisibilityPolling` JSDoc does not mention that callback should handle errors internally [LOW/LOW]
+### DOC-2: `database-backup-restore.tsx` has no inline comment explaining the inconsistent error handling between backup and restore [LOW/LOW]
 
-**File:** `src/hooks/use-visibility-polling.ts:6-13`
+**File:** `src/app/(dashboard)/dashboard/admin/settings/database-backup-restore.tsx:44 vs 144`
 
-**Description:** The JSDoc for `useVisibilityPolling` does not document the expectation that the callback function should handle its own errors (try/catch with toast). Without this documentation, developers may assume the hook handles errors, leading to unhandled rejections.
+**Description:** The backup handler uses `.json().catch(() => ({}))` but the restore handler does not. There is no comment explaining why the patterns differ or whether this is intentional. A developer reading one path would naturally assume the other follows the same pattern.
 
-**Fix:** Add a note: "The callback must handle its own errors. The hook does not catch errors thrown by the callback."
+**Fix:** Either unify the patterns, or add a comment explaining the difference.
 
 **Confidence:** LOW
 
@@ -32,4 +32,4 @@
 
 ## Final Sweep
 
-The codebase documentation is generally good. API routes have proper JSDoc. The auth config is well-documented with inline comments explaining security decisions. The main gap is the missing pattern documentation in `apiFetch` that could prevent the recurring `response.json()` anti-pattern.
+The `apiFetch` JSDoc was updated in a prior cycle with the anti-pattern example, which is good. The shell command validation comments in `execute.ts` are thorough and well-maintained. The rate-limiter client has excellent documentation of its circuit breaker contract. The main doc gap is the `useVisibilityPolling` callback error handling note, which was identified but not addressed in cycle 3.

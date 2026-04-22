@@ -1,94 +1,88 @@
-# RPF Cycle 3 — Aggregate Review
+# RPF Cycle 7 — Aggregate Review
 
 **Date:** 2026-04-22
-**Base commit:** 7b07995f
+**Base commit:** b3147a98
 **Review artifacts:** code-reviewer.md, perf-reviewer.md, security-reviewer.md, architect.md, critic.md, verifier.md, debugger.md, test-engineer.md, tracer.md, designer.md, document-specialist.md
 
 ## Previously Fixed Items (Verified in Current Code)
 
-All cycle 1 aggregate findings (AGG-1 through AGG-14) and cycle 2 aggregate findings (AGG-1 through AGG-11) have been addressed. Verified by verifier (V-1).
+All cycle 1-5 aggregate findings have been addressed. Verified by verifier (V-1):
+- AGG-1 from cycle 3 (systematic response.json() before response.ok): Fixed in 12+ files
+- AGG-2 from cycle 3 (discussion-vote-buttons silent failure): Fixed — now shows toast.error
+- AGG-3 from cycle 3 (anti-cheat timeline polling): Fixed — uses useVisibilityPolling
+- AGG-4 from cycle 3 (contest-replay native select): Fixed — uses project Select component
+- AGG-5 from cycle 3 (apiFetch JSDoc): Fixed — anti-pattern example added
 
 ## Deduped Findings (sorted by severity then signal)
 
-### AGG-1: Systematic `response.json()` before `response.ok` anti-pattern across 8+ files — needs systematic fix [MEDIUM/HIGH]
+### AGG-1: `response.json()` before `response.ok` persists in 4 remaining files — still no centralized helper [MEDIUM/HIGH]
 
-**Flagged by:** code-reviewer (CR-1 through CR-5), security-reviewer (SEC-1 implicit), architect (ARCH-1), critic (CRI-1), debugger (DBG-1, DBG-2), tracer (TR-1, TR-2), verifier (V-2, V-3), test-engineer (TE-1, TE-2)
+**Flagged by:** code-reviewer (CR-1 through CR-4), security-reviewer (SEC-1), architect (ARCH-1), critic (CRI-1), debugger (DBG-1, DBG-2, DBG-3), tracer (TR-1, TR-2, TR-3), verifier (V-2, V-3, V-4), designer (DES-1)
 **Signal strength:** 9 of 11 review perspectives
 
 **Files:**
-- `src/components/problem/problem-submission-form.tsx:183,245`
-- `src/components/discussions/discussion-vote-buttons.tsx:41`
-- `src/components/discussions/discussion-post-form.tsx:43`
-- `src/components/discussions/discussion-thread-form.tsx:49`
-- `src/components/discussions/discussion-thread-moderation-controls.tsx:45,64`
-- `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:86`
-- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:271`
-- `src/app/(dashboard)/dashboard/groups/[id]/group-members-manager.tsx:122,177`
+- `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:64-68`
+- `src/app/(dashboard)/dashboard/admin/users/bulk-create-dialog.tsx:212-215`
+- `src/app/(dashboard)/dashboard/admin/settings/database-backup-restore.tsx:144-146` (restore handler only; backup handler is correct)
+- `src/lib/plugins/chat-widget/admin-config.tsx:99-100`
 
-**Description:** This is the third cycle where this pattern is flagged. Cycles 1 and 2 each fixed 1-2 instances (contest-clarifications.tsx, contest-announcements.tsx). The current review found 8+ remaining instances. The root cause is that there is no shared utility that enforces the correct pattern. When `response.json()` is called on a non-JSON body (e.g., 502 HTML from proxy), it throws SyntaxError which is either caught by a generic catch (showing a useless "Error" toast) or silently swallowed.
+**Description:** This is the fourth cycle where this pattern is flagged. Cycles 1-3 fixed 12+ instances. The JSDoc anti-pattern example was added but 4 additional files still use the anti-pattern. The most impactful instance is `bulk-create-dialog.tsx` where a partial-success bulk operation loses error details. The `database-backup-restore.tsx` case is notable because the backup handler in the same file was already fixed but the restore handler was not.
 
-This is most critical in `problem-submission-form.tsx` where a failed submission during a live contest shows a generic error, and in `discussion-vote-buttons.tsx` where vote failures are completely silent.
+**Concrete failure scenario:** Admin bulk-creates 50 users. API creates 30 then returns 502 HTML from proxy. `response.json()` throws SyntaxError. Admin sees generic "Error" toast with no indication of partial success. They may retry, creating duplicates.
 
-**Concrete failure scenario:** Student submits code during a live contest. The API returns 502 with HTML from a reverse proxy. `response.json()` throws SyntaxError. The generic catch shows "Error". The student does not know whether their code was actually submitted.
-
-**Fix:**
-1. Add an `apiJson<T>(response)` helper to `src/lib/api/client.ts` that checks `response.ok` first
-2. Migrate the 8+ affected files to use the helper
-3. For `discussion-vote-buttons.tsx`, also add try/catch and error feedback
+**Fix:** Check `response.ok` before `response.json()` in all 4 files. Use `.json().catch(() => ({}))` for error bodies. For `database-backup-restore.tsx`, unify both paths.
 
 ---
 
-### AGG-2: `discussion-vote-buttons.tsx` silently swallows vote failures — no error feedback [MEDIUM/MEDIUM]
+### AGG-2: `database-backup-restore.tsx` has inconsistent error handling between backup and restore paths [LOW/MEDIUM]
 
-**Flagged by:** code-reviewer (CR-2), security-reviewer (SEC-1), critic (CRI-2), debugger (DBG-2), tracer (TR-2), verifier (V-3), designer (DES-1)
-**Signal strength:** 7 of 11 review perspectives
+**Flagged by:** architect (ARCH-2), critic (CRI-2), debugger (DBG-3), tracer (TR-3), document-specialist (DOC-2)
+**Signal strength:** 5 of 11 review perspectives
 
-**Files:** `src/components/discussions/discussion-vote-buttons.tsx:47-49`
+**Files:** `src/app/(dashboard)/dashboard/admin/settings/database-backup-restore.tsx:44 vs 144`
 
-**Description:** When the vote API returns `!response.ok`, the function silently returns on line 48 with no user feedback. The user's click is effectively discarded. This violates the repo's own error handling convention documented in `src/lib/api/client.ts` ("Never silently swallow errors — always surface them to the user"). Also has no try/catch around the API call, so network errors cause unhandled promise rejections.
+**Description:** The backup handler uses `.json().catch(() => ({}))` before checking `response.ok`, but the restore handler calls `response.json()` unconditionally. This inconsistency within the same component is confusing and suggests the restore handler was not updated when the backup handler was fixed.
 
-**Concrete failure scenario:** User clicks upvote. Server returns 403. No toast, no error message. The user believes their vote was counted.
-
-**Fix:** Add try/catch, check `response.ok` before `.json()`, and show error toast on failure.
+**Fix:** Apply the same `.json().catch(() => ({}))` pattern to the restore handler.
 
 ---
 
-### AGG-3: `participant-anti-cheat-timeline.tsx` does not use `useVisibilityPolling` — stale data during live contests [MEDIUM/MEDIUM]
+### AGG-3: `admin-config.tsx` shows hardcoded "Network error" string instead of i18n key [LOW/LOW]
 
-**Flagged by:** code-reviewer (CR-6), perf-reviewer (PERF-1), designer (DES-3)
-**Signal strength:** 3 of 11 review perspectives
-
-**Files:** `src/components/contest/participant-anti-cheat-timeline.tsx:128-130`
-
-**Description:** This component fetches anti-cheat events once on mount and never polls. All other contest monitoring components (leaderboard, announcements, clarifications) use `useVisibilityPolling`. During a live contest, new anti-cheat events arrive continuously, but instructors see stale data.
-
-**Fix:** Add `useVisibilityPolling(() => { void fetchEvents(); }, 30_000)`.
-
----
-
-### AGG-4: `contest-replay.tsx` uses native `<select>` instead of project's `Select` component [LOW/LOW]
-
-**Flagged by:** perf-reviewer (PERF-2), architect (ARCH-2), designer (DES-2)
-**Signal strength:** 3 of 11 review perspectives
-
-**Files:** `src/components/contest/contest-replay.tsx:177-188`
-
-**Description:** The playback speed selector uses a native `<select>` instead of the project's `Select` component. Same class of issue fixed in `contest-clarifications.tsx` in cycle 2.
-
-**Fix:** Replace with the project's `Select` component family.
-
----
-
-### AGG-5: `apiFetch` JSDoc missing `response.ok` before `.json()` pattern documentation [LOW/LOW]
-
-**Flagged by:** document-specialist (DOC-1)
+**Flagged by:** designer (DES-3)
 **Signal strength:** 1 of 11 review perspectives
 
-**Files:** `src/lib/api/client.ts:9-24`
+**Files:** `src/lib/plugins/chat-widget/admin-config.tsx:102`
 
-**Description:** The error handling convention table in `apiFetch`'s JSDoc does not mention the critical pattern of checking `response.ok` before calling `response.json()`. Since this is the most common bug pattern, it should be documented.
+**Description:** The catch block shows the hardcoded English string "Network error" instead of using an i18n translation key. This breaks i18n for non-English users.
 
-**Fix:** Add a row to the convention table.
+**Fix:** Use `t("errorNetwork")` or similar i18n key.
+
+---
+
+### AGG-4: `useVisibilityPolling` JSDoc missing note about callback error handling responsibility [LOW/LOW]
+
+**Flagged by:** document-specialist (DOC-1)
+**Signal strength:** 1 of 11 review perspectives (also flagged as DOC-2 in cycle 3 but not addressed)
+
+**Files:** `src/hooks/use-visibility-polling.ts:6-13`
+
+**Description:** The JSDoc does not document that the callback must handle its own errors. Without this, developers may assume the hook catches errors from the callback.
+
+**Fix:** Add a note: "The callback must handle its own errors. The hook does not catch errors thrown by the callback."
+
+---
+
+### AGG-5: `submission-detail-client.tsx` handleRetryRefresh calls `res.json()` without checking `res.ok` [LOW/LOW]
+
+**Flagged by:** code-reviewer (CR-5)
+**Signal strength:** 1 of 11 review perspectives
+
+**Files:** `src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx:100`
+
+**Description:** The retry handler uses a `.then((res) => res.json())` chain without checking `res.ok` first. This is a lower-risk path since it's a manual retry action, but still violates the documented convention.
+
+**Fix:** Check `res.ok` before `.json()` or restructure with async/await.
 
 ---
 

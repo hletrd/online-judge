@@ -1,30 +1,30 @@
-# Performance Review — RPF Cycle 3
+# Performance Review — RPF Cycle 7
 
 **Date:** 2026-04-22
 **Reviewer:** perf-reviewer
-**Base commit:** 7b07995f
+**Base commit:** b3147a98
 
 ## Findings
 
-### PERF-1: `participant-anti-cheat-timeline.tsx` does not poll — stale data during live contests [MEDIUM/MEDIUM]
+### PERF-1: `submission-detail-client.tsx` queue-status poll uses `setTimeout` recursion without `useVisibilityPolling` [LOW/LOW]
 
-**File:** `src/components/contest/participant-anti-cheat-timeline.tsx:128-130`
+**File:** `src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx:112-171`
 
-**Description:** This component fetches anti-cheat events once on mount and never polls for updates. During a live contest, new anti-cheat events arrive continuously, but the instructor must manually reload the page to see them. All other contest components use `useVisibilityPolling`.
+**Description:** The queue-status polling effect uses a manual `setTimeout` recursion pattern with its own visibility change listener. The codebase has a `useVisibilityPolling` hook that encapsulates this pattern. While the implementation is functionally correct (it checks `document.visibilityState` before polling and has a visibility change listener), it duplicates the logic that `useVisibilityPolling` already provides. This is a maintainability concern more than a performance issue.
 
-**Fix:** Replace the manual `useEffect` with `useVisibilityPolling(() => { void fetchEvents(); }, 30_000)`.
+**Fix:** Refactor to use `useVisibilityPolling` for consistency with other components.
 
-**Confidence:** HIGH
+**Confidence:** LOW
 
 ---
 
-### PERF-2: `contest-replay.tsx` speed selector uses native `<select>` — inconsistent with project UI [LOW/LOW]
+### PERF-2: `accepted-solutions.tsx` fetches on every parameter change with no debounce [LOW/LOW]
 
-**File:** `src/components/contest/contest-replay.tsx:177-188`
+**File:** `src/components/problem/accepted-solutions.tsx:58-102`
 
-**Description:** The playback speed selector uses a native `<select>` element with manual Tailwind classes instead of the project's `Select` component. This creates visual inconsistency with the rest of the UI. Same class of issue flagged as AGG-5 in cycle 2 for `contest-clarifications.tsx`.
+**Description:** The `useEffect` for loading accepted solutions fires on every change to `sort`, `language`, `page`, or `pageSize`. When a user rapidly changes the sort or language dropdown, each change triggers a separate API call. The `cancelled` flag prevents stale state updates, but the requests themselves are not debounced.
 
-**Fix:** Replace the native `<select>` with the project's `Select` component.
+**Fix:** Add a small debounce (e.g., 150ms) to the effect when the trigger is a filter change (not page change).
 
 **Confidence:** LOW
 
@@ -32,4 +32,4 @@
 
 ## Final Sweep
 
-The `useVisibilityPolling` hook is well-implemented with jitter to prevent thundering herd. The `SubmissionListAutoRefresh` correctly implements exponential backoff. The `initFetchPolling` in `use-submission-polling.ts` properly uses `AbortController` and visibility-based scheduling. No new critical performance issues found.
+The `useVisibilityPolling` hook is used consistently across contest monitoring components (leaderboard, announcements, clarifications, anti-cheat timeline). The `useSubmissionPolling` hook properly implements SSE-to-fetch-polling fallback with exponential backoff. The code snapshot timer in `problem-submission-form.tsx` adapts its interval based on user activity. The execution limiter in `execute.ts` caps concurrent Docker containers. No critical performance issues found.
