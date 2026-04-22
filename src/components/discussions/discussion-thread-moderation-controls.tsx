@@ -37,8 +37,8 @@ type DiscussionThreadModerationControlsProps = {
 
 export function DiscussionThreadModerationControls({
   threadId,
-  isLocked,
-  isPinned,
+  isLocked: isLockedProp,
+  isPinned: isPinnedProp,
   lockLabel,
   unlockLabel,
   pinLabel,
@@ -54,8 +54,14 @@ export function DiscussionThreadModerationControls({
 }: DiscussionThreadModerationControlsProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLocked, setIsLocked] = useState(isLockedProp);
+  const [isPinned, setIsPinned] = useState(isPinnedProp);
 
   async function updateModeration(payload: { locked?: boolean; pinned?: boolean }) {
+    // Optimistic update
+    if (payload.pinned !== undefined) setIsPinned(payload.pinned);
+    if (payload.locked !== undefined) setIsLocked(payload.locked);
+
     setIsSubmitting(true);
     try {
       const response = await apiFetch(`/api/v1/community/threads/${threadId}`, {
@@ -64,6 +70,9 @@ export function DiscussionThreadModerationControls({
         body: JSON.stringify(payload),
       });
       if (!response.ok) {
+        // Revert on failure
+        if (payload.pinned !== undefined) setIsPinned(!payload.pinned);
+        if (payload.locked !== undefined) setIsLocked(!payload.locked);
         const errorBody = await response.json().catch(() => ({}));
         console.error("Discussion moderation failed:", (errorBody as { error?: string }).error);
         throw new Error(errorLabel);
