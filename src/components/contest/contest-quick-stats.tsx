@@ -54,7 +54,7 @@ export function ContestQuickStats({
         setStats((prev) => ({
           participantCount: Number.isFinite(Number(json.data.participantCount)) ? Number(json.data.participantCount) : prev.participantCount,
           submittedCount: Number.isFinite(Number(json.data.submittedCount)) ? Number(json.data.submittedCount) : prev.submittedCount,
-          avgScore: Number.isFinite(Number(json.data.avgScore)) ? Number(json.data.avgScore) : prev.avgScore,
+          avgScore: json.data.avgScore !== null && json.data.avgScore !== undefined && Number.isFinite(Number(json.data.avgScore)) ? Number(json.data.avgScore) : prev.avgScore,
           problemsSolvedCount: Number.isFinite(Number(json.data.problemsSolvedCount)) ? Number(json.data.problemsSolvedCount) : prev.problemsSolvedCount,
         }));
       }
