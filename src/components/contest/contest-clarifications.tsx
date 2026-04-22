@@ -104,9 +104,8 @@ export function ContestClarifications({
           question,
         }),
       });
-      const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.error ?? "contestClarificationCreateFailed");
+        throw new Error("contestClarificationCreateFailed");
       }
       toast.success(t("createSuccess"));
       setQuestion("");
