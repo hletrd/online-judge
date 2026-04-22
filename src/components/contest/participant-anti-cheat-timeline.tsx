@@ -94,9 +94,23 @@ export function ParticipantAntiCheatTimeline({
       );
       if (res.ok) {
         const json = await res.json();
-        setEvents(json.data.events);
+        const freshFirstPage: AntiCheatEvent[] = json.data.events;
         setTotal(json.data.total);
-        setOffset(json.data.events.length);
+        setEvents((prev) => {
+          // If user has loaded more pages via loadMore, preserve them.
+          // Only replace the first page of data with the fresh result.
+          if (prev.length > PAGE_SIZE) {
+            return [...freshFirstPage, ...prev.slice(PAGE_SIZE)];
+          }
+          return freshFirstPage;
+        });
+        setOffset((prev) => {
+          // Only reset offset to first page length if we haven't loaded more
+          if (prev <= PAGE_SIZE) {
+            return freshFirstPage.length;
+          }
+          return prev;
+        });
       } else {
         setError(true);
       }
