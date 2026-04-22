@@ -85,7 +85,7 @@ export function ScoreTimelineChart({
             const x = padding + (index === 0 ? 0 : ((point.timestamp - minTimestamp) / timeRange) * (width - padding * 2));
             const y = height - padding - (point.totalScore / maxScore) * (height - padding * 2);
             return (
-              <g key={`${point.timestamp}-${point.totalScore}`}>
+              <g key={`${point.timestamp}-${point.totalScore}`} tabIndex={0} role="img" aria-label={`${scoreLabel}: ${point.totalScore}`}>
                 <circle cx={x} cy={y} r="3" className="fill-primary" />
                 <title>{`${scoreLabel}: ${point.totalScore}`}</title>
               </g>
