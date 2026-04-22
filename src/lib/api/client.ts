@@ -24,9 +24,21 @@
  *
  * **CRITICAL: Always check `response.ok` before calling `response.json()`.**
  * Calling `.json()` on a non-JSON body (e.g., 502 HTML from a reverse proxy)
- * throws a SyntaxError that bypasses error-handling logic. Use the `apiJson`
- * helper below, or manually check `response.ok` first and use
- * `.json().catch(() => ({}))` when parsing error responses.
+ * throws a SyntaxError that bypasses error-handling logic. Use the established
+ * pattern: check `response.ok` first, then use `.json().catch(() => ({}))`
+ * when parsing error responses, or `.json()` for success responses inside
+ * an `if (response.ok)` block.
+ *
+ * Example:
+ * ```ts
+ * const response = await apiFetch("/api/v1/resource");
+ * if (!response.ok) {
+ *   const errorBody = await response.json().catch(() => ({}));
+ *   toast.error((errorBody as { error?: string }).error ?? "Request failed");
+ *   return;
+ * }
+ * const payload = await response.json();
+ * ```
  */
 export function apiFetch(
   input: RequestInfo | URL,
@@ -39,42 +51,4 @@ export function apiFetch(
   }
 
   return fetch(input, { ...init, headers });
-}
-
-/**
- * Type-safe helper that checks `response.ok` before parsing JSON.
- *
- * Use this instead of the raw `await response.json()` pattern to avoid
- * SyntaxError when the server returns a non-JSON error body (e.g., 502
- * from a reverse proxy).
- *
- * @example
- * ```ts
- * const result = await apiJson<{ data: User[] }>(response);
- * if (result.ok) {
- *   setUsers(result.data.data);
- * } else {
- *   toast.error(result.error);
- * }
- * ```
- */
-export async function apiJson<T>(
-  response: Response
-): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
-  if (response.ok) {
-    try {
-      const data = (await response.json()) as T;
-      return { ok: true, data };
-    } catch {
-      return { ok: false, error: "responseParseFailed" };
-    }
-  }
-
-  // Error response — try to extract an error message from the body.
-  try {
-    const body = (await response.json()) as { error?: string; code?: string };
-    return { ok: false, error: body.error ?? body.code ?? `http${response.status}` };
-  } catch {
-    return { ok: false, error: `http${response.status}` };
-  }
 }
