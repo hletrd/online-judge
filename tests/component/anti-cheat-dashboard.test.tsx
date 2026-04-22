@@ -16,6 +16,15 @@ vi.mock("next-intl", () => ({
     if (namespace === "common" && key === "error") return "Error";
     return key;
   },
+  useLocale: () => "en",
+}));
+
+vi.mock("@/contexts/timezone-context", () => ({
+  useSystemTimezone: () => "UTC",
+}));
+
+vi.mock("@/hooks/use-visibility-polling", () => ({
+  useVisibilityPolling: vi.fn(),
 }));
 
 vi.mock("sonner", () => ({

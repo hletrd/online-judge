@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useSystemTimezone } from "@/contexts/timezone-context";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
@@ -8,8 +8,16 @@ import { formatDateTimeInTimeZone } from "@/lib/datetime";
 // i18n keys used from "contests.antiCheat" and "common"
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api/client";
+import { useVisibilityPolling } from "@/hooks/use-visibility-polling";
 import { getAntiCheatReviewTier } from "@/lib/anti-cheat/review-model";
 import { Button } from "@/components/ui/button";
+import {
+  Select as UiSelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -146,9 +154,7 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
     }
   }, [assignmentId, offset, tCommon]);
 
-  useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
+  useVisibilityPolling(() => { void fetchEvents(); }, 30_000);
 
   // Derived stats
   const uniqueStudentCount = useMemo(
@@ -416,19 +422,22 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
 
             {/* Student filter */}
             {uniqueStudents.length > 1 && (
-              <select
-                className="ml-auto h-7 rounded-md border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              <UiSelect
                 value={studentFilter ?? ""}
-                onChange={(e) => setStudentFilter(e.target.value === "" ? null : e.target.value)}
-                aria-label={t("filterByStudent")}
+                onValueChange={(v) => setStudentFilter(v === "" ? null : v)}
               >
-                <option value="">{t("allStudents")}</option>
-                {uniqueStudents.map((s) => (
-                  <option key={s.userId} value={s.userId}>
-                    {s.userName} ({s.username})
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="ml-auto h-7 w-[180px] text-xs" aria-label={t("filterByStudent")}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="" label={t("allStudents")}>{t("allStudents")}</SelectItem>
+                  {uniqueStudents.map((s) => (
+                    <SelectItem key={s.userId} value={s.userId} label={`${s.userName} (${s.username})`}>
+                      {s.userName} ({s.username})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </UiSelect>
             )}
           </div>
         )}
