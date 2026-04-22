@@ -29,8 +29,8 @@ export function ProblemImportButton() {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        toast.error(err.error ?? t("importFailed"));
+        const err = await res.json().catch(() => ({}));
+        toast.error((err as { error?: string }).error ?? t("importFailed"));
         return;
       }
 

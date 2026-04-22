@@ -69,8 +69,8 @@ export function GroupInstructorsManager({
         body: JSON.stringify({ userId: selectedUserId, role: selectedRole }),
       });
       if (!res.ok) {
-        const data = await res.json();
-        toast.error(data.error ?? t("addInstructorFailed"));
+        const data = await res.json().catch(() => ({}));
+        toast.error((data as { error?: string }).error ?? t("addInstructorFailed"));
         return;
       }
       const user = availableUsers.find((u) => u.id === selectedUserId);
