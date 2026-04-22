@@ -96,10 +96,15 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
           model: currentModel,
         }),
       });
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        setTestResult({ success: false, error: (errorBody as { error?: string }).error ?? tCommon("error") });
+        return;
+      }
       const data = await response.json();
       setTestResult(data);
     } catch {
-      setTestResult({ success: false, error: "Network error" });
+      setTestResult({ success: false, error: tCommon("error") });
     } finally {
       setIsTesting(false);
     }
