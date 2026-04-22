@@ -119,11 +119,13 @@ export function GroupMembersManager({
         },
         body: JSON.stringify({ userId: selectedStudentId }),
       });
-      const payload = await response.json();
 
       if (!response.ok) {
-        throw new Error(payload.error || "memberAddFailed");
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error((errorBody as { error?: string }).error || "memberAddFailed");
       }
+
+      const payload = await response.json();
 
       const nextMember = payload.data?.user
         ? {
@@ -174,11 +176,13 @@ export function GroupMembersManager({
         },
         body: JSON.stringify({ userIds: Array.from(selectedBulkIds) }),
       });
-      const payload = await response.json();
 
       if (!response.ok) {
-        throw new Error(payload.error || "bulkAddFailed");
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error((errorBody as { error?: string }).error || "bulkAddFailed");
       }
+
+      const payload = await response.json();
 
       const { enrolled, skipped } = payload as { enrolled: number; skipped: number };
 
