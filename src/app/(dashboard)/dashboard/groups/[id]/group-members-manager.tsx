@@ -216,11 +216,13 @@ export function GroupMembersManager({
       const response = await apiFetch(`/api/v1/groups/${groupId}/members/${member.userId}`, {
         method: "DELETE",
       });
-      const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(payload.error || "memberRemoveFailed");
+        const payload = await response.json().catch(() => ({}));
+        throw new Error((payload as { error?: string }).error || "memberRemoveFailed");
       }
+
+      const payload = await response.json().catch(() => ({}));
 
       setCurrentMembers((current) => current.filter((entry) => entry.userId !== member.userId));
       setCurrentAvailableStudents((current) =>
