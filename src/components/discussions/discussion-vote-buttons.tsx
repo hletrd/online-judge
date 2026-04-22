@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { apiFetch } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 
@@ -38,18 +39,22 @@ export function DiscussionVoteButtons({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetType, targetId, voteType }),
       });
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        toast.error((errorBody as { error?: string }).error ?? "voteFailed");
+        return;
+      }
       const payload = await response.json() as {
         data?: {
           score?: number;
           currentUserVote?: "up" | "down" | null;
         };
       };
-      if (!response.ok) {
-        return;
-      }
       setScore(typeof payload.data?.score === "number" ? payload.data.score : score);
       setCurrentUserVote(payload.data?.currentUserVote ?? null);
       router.refresh();
+    } catch {
+      toast.error("voteFailed");
     } finally {
       setIsSubmitting(false);
     }
