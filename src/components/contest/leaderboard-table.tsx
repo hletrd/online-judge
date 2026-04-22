@@ -171,9 +171,11 @@ function SkeletonTable({ numRows = 8, numProblemCols = 5 }: SkeletonTableProps) 
 function IoiCell({
   score,
   maxPoints,
+  locale,
 }: {
   score: number;
   maxPoints: number;
+  locale: string | string[];
 }) {
   const ratio = maxPoints > 0 ? Math.min(score / maxPoints, 1) : 0;
   const hue = Math.round(ratio * 120);
@@ -473,6 +475,7 @@ export function LeaderboardTable({
                       key={p.problemId}
                       score={result.score}
                       maxPoints={p.points}
+                      locale={locale}
                     />
                   );
                 })}
