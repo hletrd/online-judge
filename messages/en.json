@@ -759,6 +759,7 @@
     "addInstructorFailed": "Failed to add instructor/TA.",
     "instructorRemoved": "Instructor/TA removed from group.",
     "removeInstructorFailed": "Failed to remove instructor/TA.",
+    "removeInstructor": "Remove instructor/TA",
     "noGroupInstructors": "No co-instructors or TAs assigned to this group yet.",
     "name": "Name",
     "role": "Role",

@@ -759,6 +759,7 @@
     "addInstructorFailed": "강사/조교를 추가하지 못했습니다.",
     "instructorRemoved": "강사/조교가 그룹에서 제거되었습니다.",
     "removeInstructorFailed": "강사/조교를 제거하지 못했습니다.",
+    "removeInstructor": "강사/조교 제거",
     "noGroupInstructors": "아직 이 그룹에 배정된 공동 강사나 조교가 없습니다.",
     "name": "이름",
     "role": "역할",

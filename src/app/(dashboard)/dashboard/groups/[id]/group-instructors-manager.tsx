@@ -192,6 +192,7 @@ export function GroupInstructorsManager({
                         variant="ghost"
                         size="sm"
                         onClick={() => void handleRemove(inst.userId)}
+                        aria-label={t("removeInstructor")}
                       >
                         <Trash2 className="size-4" />
                       </Button>
