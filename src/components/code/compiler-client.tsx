@@ -161,7 +161,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
     if (hydratedPreferenceRef.current) return;
     hydratedPreferenceRef.current = true;
 
-    const savedLanguage = window.localStorage.getItem("compiler:language");
+    const savedLanguage = (() => { try { return window.localStorage.getItem("compiler:language"); } catch { return null; } })();
     if (!savedLanguage || !languages.some((entry) => entry.language === savedLanguage)) {
       return;
     }
