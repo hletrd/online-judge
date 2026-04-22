@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { X, CheckCircle2, XCircle, AlertTriangle, Clock3, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -61,6 +61,7 @@ export function SubmissionOverview({
   });
   const [recent, setRecent] = useState<RecentSubmission[]>([]);
   const [loading, setLoading] = useState(false);
+  const initialLoadDoneRef = useRef(false);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -100,8 +101,13 @@ export function SubmissionOverview({
       setStats(newStats);
       setRecent(submissions.slice(0, 10));
     } catch {
-      toast.error(t("fetchError"));
+      // Only show toast on the initial load — polling refreshes should fail
+      // silently to avoid spamming the user with error toasts.
+      if (!initialLoadDoneRef.current) {
+        toast.error(t("fetchError"));
+      }
     } finally {
+      initialLoadDoneRef.current = true;
       setLoading(false);
     }
   }, [assignmentId, problemId, t]);
@@ -112,7 +118,12 @@ export function SubmissionOverview({
 
     const syncVisibility = () => {
       if (document.visibilityState === "visible") {
-        void fetchStats();
+        // Add a small random jitter (0-500ms) to prevent all polling
+        // components from firing simultaneously on tab switch.
+        const jitter = Math.floor(Math.random() * 500);
+        setTimeout(() => {
+          void fetchStats();
+        }, jitter);
         if (!interval) {
           interval = setInterval(() => {
             void fetchStats();
