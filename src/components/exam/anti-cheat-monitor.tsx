@@ -64,6 +64,11 @@ export function AntiCheatMonitor({
   const resolvedWarningMessage = warningMessage ?? t("warningTabSwitch");
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(true);
   const lastEventRef = useRef<Record<string, number>>({});
+  const reportEventRef = useRef(reportEvent);
+  const flushPendingEventsRef = useRef(flushPendingEvents);
+  // Keep refs in sync so event handlers always call the latest version
+  useEffect(() => { reportEventRef.current = reportEvent; }, [reportEvent]);
+  useEffect(() => { flushPendingEventsRef.current = flushPendingEvents; }, [flushPendingEvents]);
   const MIN_INTERVAL_MS = 1000;
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -133,20 +138,20 @@ export function AntiCheatMonitor({
 
   useEffect(() => {
     if (!enabled || showPrivacyNotice) return;
-    void flushPendingEvents();
-  }, [enabled, flushPendingEvents, showPrivacyNotice]);
+    void flushPendingEventsRef.current();
+  }, [enabled, showPrivacyNotice]);
 
   useEffect(() => {
     if (!enabled || showPrivacyNotice) return;
 
-    void reportEvent("heartbeat");
+    void reportEventRef.current("heartbeat");
 
     let heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
 
     function scheduleHeartbeat() {
       heartbeatTimer = setTimeout(async () => {
         if (document.visibilityState === "visible") {
-          await reportEvent("heartbeat");
+          await reportEventRef.current("heartbeat");
         }
         scheduleHeartbeat();
       }, HEARTBEAT_INTERVAL_MS);
@@ -157,23 +162,23 @@ export function AntiCheatMonitor({
     return () => {
       if (heartbeatTimer) clearTimeout(heartbeatTimer);
     };
-  }, [enabled, reportEvent, showPrivacyNotice]);
+  }, [enabled, showPrivacyNotice]);
 
   useEffect(() => {
     if (!enabled || showPrivacyNotice) return;
 
     function handleVisibilityChange() {
       if (document.hidden) {
-        void reportEvent("tab_switch");
+        void reportEventRef.current("tab_switch");
         toast.warning(resolvedWarningMessage);
       } else {
-        void flushPendingEvents();
-        void reportEvent("heartbeat");
+        void flushPendingEventsRef.current();
+        void reportEventRef.current("heartbeat");
       }
     }
 
     function handleBlur() {
-      void reportEvent("blur");
+      void reportEventRef.current("blur");
     }
 
     function describeElement(el: HTMLElement | null): string {
@@ -200,24 +205,24 @@ export function AntiCheatMonitor({
     }
 
     function handleCopy(e: ClipboardEvent) {
-      void reportEvent("copy", {
+      void reportEventRef.current("copy", {
         target: describeElement(e.target as HTMLElement),
       });
     }
 
     function handlePaste(e: ClipboardEvent) {
-      void reportEvent("paste", {
+      void reportEventRef.current("paste", {
         target: describeElement(e.target as HTMLElement),
       });
     }
 
     function handleContextMenu() {
-      void reportEvent("contextmenu");
+      void reportEventRef.current("contextmenu");
     }
 
     function handleOnline() {
-      void flushPendingEvents();
-      void reportEvent("heartbeat");
+      void flushPendingEventsRef.current();
+      void reportEventRef.current("heartbeat");
     }
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -239,7 +244,7 @@ export function AntiCheatMonitor({
         retryTimerRef.current = null;
       }
     };
-  }, [enabled, flushPendingEvents, reportEvent, resolvedWarningMessage, showPrivacyNotice]);
+  }, [enabled, resolvedWarningMessage, showPrivacyNotice]);
 
   if (!enabled) return null;
 
