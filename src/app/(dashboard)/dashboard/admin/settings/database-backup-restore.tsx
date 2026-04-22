@@ -147,7 +147,7 @@ export function DatabaseBackupRestore({ isSuperAdmin }: { isSuperAdmin: boolean 
         return;
       }
 
-      const data = await response.json();
+      await response.json();
 
       toast.success(t("restoreSuccess"));
       setConfirmRestore(false);
