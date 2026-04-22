@@ -5,6 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -172,20 +179,21 @@ export function ContestReplay({
           >
             {isPlaying ? pauseLabel : playLabel}
           </Button>
-          <label className="space-y-2 text-sm">
-            <span className="block">{speedLabel}</span>
-            <select
-              className="h-9 rounded-md border bg-background px-3"
-              value={speed}
-              onChange={(event) => setSpeed(Number(event.target.value) as (typeof PLAYBACK_SPEEDS)[number])}
-            >
-              {PLAYBACK_SPEEDS.map((value, index) => (
-                <option key={value} value={value}>
-                  {speedOptions[index]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="space-y-2 text-sm">
+            <Label>{speedLabel}</Label>
+            <Select value={String(speed)} onValueChange={(v) => setSpeed(Number(v) as (typeof PLAYBACK_SPEEDS)[number])}>
+              <SelectTrigger className="w-24">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PLAYBACK_SPEEDS.map((value, index) => (
+                  <SelectItem key={value} value={String(value)} label={speedOptions[index]}>
+                    {speedOptions[index]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <Table>
