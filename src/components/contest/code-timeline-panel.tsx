@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useSystemTimezone } from "@/contexts/timezone-context";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
+import { toast } from "sonner";
 import { apiFetch } from "@/lib/api/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,10 +38,12 @@ export function CodeTimelinePanel({
   userName: string;
 }) {
   const t = useTranslations("contests.codeTimeline");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const timeZone = useSystemTimezone();
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [filterProblem, setFilterProblem] = useState("all");
 
@@ -54,11 +57,18 @@ export function CodeTimelinePanel({
         const json = await res.json();
         setSnapshots(json.data ?? []);
         setSelectedIdx(0);
+        setError(false);
+      } else {
+        setError(true);
+        toast.error(t("fetchError"));
       }
+    } catch {
+      setError(true);
+      toast.error(t("fetchError"));
     } finally {
       setLoading(false);
     }
-  }, [assignmentId, userId, filterProblem]);
+  }, [assignmentId, userId, filterProblem, t]);
 
   useEffect(() => {
     fetchSnapshots();
@@ -80,6 +90,25 @@ export function CodeTimelinePanel({
   }
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
+  if (error && snapshots.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center space-y-3">
+          <p className="text-destructive">{t("fetchError")}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setError(false);
+              fetchSnapshots();
+            }}
+          >
+            {tCommon("retry")}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
   if (snapshots.length === 0) {
     return (
       <Card>
