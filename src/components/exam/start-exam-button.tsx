@@ -38,8 +38,8 @@ export function StartExamButton({ groupId, assignmentId, durationMinutes }: Star
       );
 
       if (!response.ok) {
-        const payload = await response.json();
-        throw new Error(payload.error || "examSessionStartFailed");
+        const payload = await response.json().catch(() => ({}));
+        throw new Error((payload as { error?: string }).error || "examSessionStartFailed");
       }
 
       toast.success(t("examSessionStarted"));
