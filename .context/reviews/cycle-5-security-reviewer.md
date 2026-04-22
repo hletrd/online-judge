@@ -1,103 +1,62 @@
-# Security Reviewer — Cycle 5 (Fresh)
+# Security Reviewer — RPF Cycle 5
 
-**Date:** 2026-04-20
-**Base commit:** 9d6d7edc
 **Reviewer:** security-reviewer
+**Base commit:** 00002346
+**Date:** 2026-04-22
 
 ## Findings
 
-### SEC-1: API key expiry check uses `new Date()` instead of DB-sourced time [MEDIUM/HIGH]
+### SEC-1: `discussion-post-delete-button.tsx` — `.json()` on potentially non-JSON error body [MEDIUM/MEDIUM]
 
-**File:** `src/lib/api/api-key-auth.ts:86`
-
-**Description:** `candidate.expiresAt < new Date()` compares the DB-stored `expiresAt` timestamp against the app server's clock. If the app server clock drifts relative to the DB server, an expired API key could still authenticate (if app clock is behind) or a valid key could be rejected (if app clock is ahead).
-
-This is the same class of vulnerability fixed in the recruit page (cycle 27, commit 6f6f4750), but it persists in the API key authentication path, which is more security-critical because it controls programmatic access.
-
-**Concrete failure scenario:** An API key that expired at 2026-04-20 12:00:00 UTC (per DB time) could still be used if the app server clock is at 2026-04-20 11:55:00 UTC. This grants unauthorized access to the API.
-
-**Fix:** Use `getDbNow()` for the expiry comparison. Note: `authenticateApiKey` is not a React server component, so `React.cache()` may not deduplicate correctly. Consider passing DB time as a parameter or calling `rawQueryOne("SELECT NOW()")` directly.
-
+**File:** `src/components/discussions/discussion-post-delete-button.tsx:25`
 **Confidence:** HIGH
 
+Same class of `.json()` before `response.ok` issue. On a 502 with HTML body, `response.json()` throws SyntaxError. The error message leaks raw SyntaxError text to the user via the toast. While not a direct security vulnerability, it can reveal internal infrastructure details (e.g., proxy error pages containing server names).
+
+**Fix:** Check `response.ok` first, use `.json().catch(() => ({}))`.
+
 ---
 
-### SEC-2: Exam session creation uses `new Date()` for deadline enforcement [MEDIUM/HIGH]
+### SEC-2: `start-exam-button.tsx` — `.json()` on error path leaks server details [MEDIUM/MEDIUM]
 
-**File:** `src/lib/assignments/exam-sessions.ts:49-56`
-
-**Description:** `const now = new Date()` is used to check if the assignment has started (`now < assignment.startsAt`) and if the deadline has passed (`now >= assignment.deadline`). This runs inside a transaction but uses app-server time, not DB-transaction-consistent time. If the app server clock drifts, a student could start an exam after the deadline has passed per the DB.
-
-Additionally, the `personalDeadline` is calculated from `now.getTime() + durationMs` (line 78), meaning the personal deadline is based on app-server time. This creates an inconsistency where the personal deadline stored in the DB is not relative to DB time.
-
-**Concrete failure scenario:** A contest deadline is 2026-04-20 18:00:00 UTC (per DB). App server clock is 2 minutes behind. A student starts an exam at 17:58 UTC (app time) = 18:00 UTC (DB time). The `now >= assignment.deadline` check passes (17:58 < 18:00), but the contest is actually closed per DB time. The student gets a personal deadline of 17:58 + duration, effectively getting extra time.
-
-**Fix:** Use `SELECT NOW()` within the same transaction for temporal comparisons and personal deadline calculation.
-
+**File:** `src/components/exam/start-exam-button.tsx:41`
 **Confidence:** HIGH
 
----
+Same pattern as SEC-1 but in exam session flow. A non-JSON error body could expose internal server details through the thrown error message that gets displayed in a toast.
 
-### SEC-3: Access code redemption uses `new Date()` for deadline check [MEDIUM/MEDIUM]
-
-**File:** `src/lib/assignments/access-codes.ts:128-130`
-
-**Description:** `const now = new Date()` is used inside a transaction to check if the contest deadline has passed. The comment says "using transaction-consistent time" but the time is actually from the app server, not from the transaction. Clock drift allows redemption after the contest has closed.
-
-**Concrete failure scenario:** App server clock is 5 minutes behind DB. Contest deadline is 12:00 UTC (DB). At 12:03 UTC (DB) = 11:58 UTC (app), a student redeems an access code and joins a closed contest.
-
-**Fix:** Use `SELECT NOW()` within the same transaction for the deadline comparison.
-
-**Confidence:** MEDIUM
+**Fix:** Check `response.ok` first, use `.json().catch(() => ({}))`.
 
 ---
 
-### SEC-4: Anti-cheat route uses `new Date()` for contest boundary checks [MEDIUM/MEDIUM]
+### SEC-3: `recruiting-invitations-panel.tsx` — `window.location.origin` for invitation URL construction [LOW/MEDIUM]
 
-**File:** `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts:62-68`
+**File:** `src/components/contest/recruiting-invitations-panel.tsx:97`
+**Confidence:** HIGH
 
-**Description:** `const now = new Date()` is used to check if the contest has started and if it has ended. Clock drift could allow anti-cheat events to be submitted outside the contest window, or block legitimate events during the contest.
+Using client-side `window.location.origin` to construct invitation URLs. If the app is behind a reverse proxy, the origin may not match the actual public URL. This could generate invalid invitation links. Same class as DEFER-24.
 
-**Concrete failure scenario:** App server clock is ahead of DB. Anti-cheat route returns "contestEnded" while the contest is still running per DB time, preventing legitimate anti-cheat event logging for the last few minutes.
-
-**Fix:** Use `getDbNow()` for temporal comparisons.
-
-**Confidence:** MEDIUM
+**Fix:** Use server-provided `appUrl` config value when available.
 
 ---
 
-### SEC-5: Submission creation uses `new Date()` for exam deadline check [LOW/MEDIUM]
+### SEC-4: `access-code-manager.tsx` — `window.location.origin` for invitation URL [LOW/MEDIUM]
 
-**File:** `src/app/api/v1/submissions/route.ts:295`
+**File:** `src/components/contest/access-code-manager.tsx:134`
+**Confidence:** HIGH
 
-**Description:** `lt(examSessions.personalDeadline, new Date())` is used inside a transaction to check if an exam session has expired. Since this is a SQL comparison (Drizzle generates `personal_deadline < '2026-04-20...'`), the `new Date()` value is sent as a parameter to PostgreSQL. This means the comparison is actually done in the DB engine, not in the app server. However, the timestamp value itself is from the app server clock, so clock drift still affects the comparison.
-
-**Concrete failure scenario:** If app server clock is ahead, `new Date()` produces a future timestamp, causing the comparison `personalDeadline < futureTime` to be true more often, rejecting valid submissions.
-
-**Fix:** Use a DB-sourced timestamp in the query parameter instead of `new Date()`.
-
-**Confidence:** MEDIUM
+Same as SEC-3 but in access-code-manager. Already tracked as DEFER-24. Noting the additional file.
 
 ---
 
-### SEC-6: Rejudge route uses `new Date()` for contest-finished audit flag [LOW/LOW]
+### SEC-5: `recruiting-invitations-panel.tsx` — `handleRevoke`/`handleDelete` lack CSRF error handling [LOW/LOW]
 
-**File:** `src/app/api/v1/submissions/[id]/rejudge/route.ts:79`
-
-**Description:** `new Date() > assignment.deadline` is used for audit logging only (adding a warning that the contest was already finished). This does not block or allow the rejudge operation itself — it only affects the audit log message. The clock skew impact is limited to an incorrect audit log flag.
-
-**Fix:** Low priority. Use `getDbNow()` for consistency, but the security impact is minimal.
-
+**File:** `src/components/contest/recruiting-invitations-panel.tsx:229-281`
 **Confidence:** LOW
 
----
+These mutation handlers call `apiFetch` without try/catch. If the CSRF token (`X-Requested-With` header added by `apiFetch`) is stripped by a misconfigured proxy, the request will fail with a 403 but there's no error feedback. The user sees no indication the action failed.
 
-## Verified Safe
+**Fix:** Wrap in try/catch with error toast.
 
-- All LIKE/ILIKE queries use `escapeLikePattern` with `ESCAPE '\\'` — no LIKE injection.
-- `dangerouslySetInnerHTML` only used with `sanitizeHtml()` (DOMPurify) and `safeJsonForScript()`.
-- API key encryption uses AES-256-GCM with HKDF-derived keys and proper IV/auth tag handling.
-- CSRF protection is comprehensive (X-Requested-With, Origin, Sec-Fetch-Site).
-- Rate limiting covers all endpoints with per-user and global limits.
-- Recruiting token validation uses atomic SQL transactions with `SELECT FOR UPDATE`.
-- Auth flow uses Argon2id, timing-safe dummy hash, and proper token invalidation.
+## Summary
+
+5 findings: 2 MEDIUM/MEDIUM, 2 LOW/MEDIUM (window.location.origin), 1 LOW/LOW.

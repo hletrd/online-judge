@@ -1,54 +1,64 @@
-# Debugger — Cycle 5 (Fresh)
+# Debugger — RPF Cycle 5
 
-**Date:** 2026-04-20
-**Base commit:** 9d6d7edc
 **Reviewer:** debugger
+**Base commit:** 00002346
+**Date:** 2026-04-22
 
 ## Findings
 
-### DBG-1: `getDbNow()` silent fallback masks DB connectivity failures [MEDIUM/MEDIUM]
+### DBG-1: `discussion-post-delete-button.tsx` — SyntaxError on non-JSON error response causes confusing user feedback [MEDIUM/HIGH]
 
-**File:** `src/lib/db-time.ts:16`
+**File:** `src/components/discussions/discussion-post-delete-button.tsx:25-26`
+**Confidence:** HIGH
 
-**Description:** When `rawQueryOne` returns null (DB query failure), `getDbNow()` silently falls back to `new Date()`. This masks a potentially serious issue — if the DB is unreachable for time queries, it may also be unreachable for the subsequent data queries that depend on the time value. The fallback provides a false sense of correctness.
+**Failure scenario:** User clicks delete on a discussion post. Server returns 502 with HTML from reverse proxy. `response.json()` throws SyntaxError: "Unexpected token < in JSON at position 0". The catch block catches it and shows the SyntaxError message in a toast. User sees "Unexpected token < in JSON at position 0" instead of a meaningful error.
 
-**Concrete failure scenario:** DB is under extreme load, `SELECT NOW()` times out, `rawQueryOne` returns null. `getDbNow()` returns `new Date()` (potentially skewed). The subsequent data query also fails, but the user sees an error from the data query, not from the time query. Debugging this requires correlating two separate failures.
+**Fix:** Check `response.ok` first, use `.json().catch(() => ({}))`.
 
-**Fix:** Throw an error when `rawQueryOne` returns null, or at minimum log an error before falling back.
+---
 
+### DBG-2: `start-exam-button.tsx` — SyntaxError on non-JSON error during exam start [MEDIUM/MEDIUM]
+
+**File:** `src/components/exam/start-exam-button.tsx:41`
+**Confidence:** HIGH
+
+**Failure scenario:** Student clicks "Start Exam". Server returns 500 with HTML. `response.json()` throws SyntaxError. The catch block catches it but falls through to the generic `toast.error(t("examSessionStartFailed"))`. The student sees a generic error but the actual cause is lost. Worse, the student may not know whether their exam session was actually created.
+
+**Fix:** Use `.json().catch(() => ({}))` on error path, then check for known error codes.
+
+---
+
+### DBG-3: `code-timeline-panel.tsx` — no error handling, silently fails [LOW/MEDIUM]
+
+**File:** `src/components/contest/code-timeline-panel.tsx:47-61`
 **Confidence:** MEDIUM
 
+**Failure scenario:** Instructor views code timeline. Network request fails. No error state is set, no toast is shown. The component shows "Loading..." forever or an empty timeline with no indication of failure.
+
+**Fix:** Add catch block and error state.
+
 ---
 
-### DBG-2: SSE `viewerId` non-null assertion persists [LOW/MEDIUM]
+### DBG-4: `recruiting-invitations-panel.tsx` — `handleRevoke` and `handleDelete` unhandled promise rejections [LOW/MEDIUM]
 
-**File:** `src/app/api/v1/submissions/[id]/events/route.ts:315`
-
-**Description:** The `user!.id` non-null assertion from cycle 27 (AGG-3) was "fixed" but the `!` operator is still present. If `user` were to become null (e.g., after a refactoring), this would throw a runtime error instead of being caught at compile time.
-
-**Fix:** Move `const viewerId = user.id` to after line 194 where TypeScript narrows `user` to non-null. Remove the `!`.
-
+**File:** `src/components/contest/recruiting-invitations-panel.tsx:229-281`
 **Confidence:** MEDIUM
 
----
+**Failure scenario:** Admin clicks "Revoke" on an invitation. Network goes offline. The `apiFetch` promise rejects with a TypeError. Since there's no try/catch, this is an unhandled promise rejection. In development, React may show an error overlay. In production, the user sees no feedback.
 
-### DBG-3: Potential race in SSE cleanup timer initialization [LOW/LOW]
-
-**File:** `src/app/api/v1/submissions/[id]/events/route.ts:81-95`
-
-**Description:** The cleanup timer is initialized at module scope with `if (globalThis.__sseCleanupTimer) clearInterval(globalThis.__sseCleanupTimer)`. In Next.js hot-reload during development, this timer is re-created on every module re-evaluation. While the `clearInterval` prevents duplicate timers, there is a brief window between the `clearInterval` and the new `setInterval` where no cleanup is running.
-
-**Concrete failure scenario:** In development only, during hot-reload, a connection that becomes stale in the brief window between timer re-creation would not be cleaned up until the next interval tick. This is not a production issue.
-
-**Fix:** No action required for production. This is an acceptable development-mode tradeoff.
-
-**Confidence:** LOW
+**Fix:** Wrap in try/catch with error toast.
 
 ---
 
-## Verified Safe
+### DBG-5: `anti-cheat-dashboard.tsx` — stale data for instructors during live contests [MEDIUM/MEDIUM]
 
-- SSE connection tracking uses `Set` and `Map` correctly with proper cleanup on stream close.
-- The `closed` flag in the SSE stream prevents double-close and use-after-close errors.
-- The shared poll timer correctly stops when there are no subscribers.
-- Error handling in the SSE stream is comprehensive with individual callback error isolation.
+**File:** `src/components/contest/anti-cheat-dashboard.tsx:149-151`
+**Confidence:** HIGH
+
+**Failure scenario:** During a live contest, an instructor monitors the anti-cheat dashboard. New tab switches and copy events are happening, but the dashboard only loaded data once on mount. The instructor sees zero events and believes no cheating is occurring. This is a data-freshness bug that directly affects the reliability of the anti-cheat system.
+
+**Fix:** Add `useVisibilityPolling` like `ParticipantAntiCheatTimeline`.
+
+## Summary
+
+5 findings: 1 MEDIUM/HIGH, 2 MEDIUM/MEDIUM, 2 LOW/MEDIUM.

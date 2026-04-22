@@ -1,46 +1,53 @@
-# Performance Reviewer — Cycle 5 (Fresh)
+# Performance Reviewer — RPF Cycle 5
 
-**Date:** 2026-04-20
-**Base commit:** 9d6d7edc
 **Reviewer:** perf-reviewer
+**Base commit:** 00002346
+**Date:** 2026-04-22
 
 ## Findings
 
-### PERF-1: `getDbNow()` adds an extra DB round-trip per server render [LOW/MEDIUM]
+### PERF-1: `anti-cheat-dashboard.tsx` missing `useVisibilityPolling` — instructor stale data [MEDIUM/MEDIUM]
 
-**Files:**
-- `src/lib/db-time.ts:14-17`
-- `src/app/(auth)/recruit/[token]/page.tsx:40,65`
+**File:** `src/components/contest/anti-cheat-dashboard.tsx:149-151`
+**Confidence:** HIGH
 
-**Description:** `getDbNow()` executes `SELECT NOW()` on every call. While wrapped in `React.cache()` to deduplicate within a single server render, this adds an extra DB round-trip to every request that uses it. For the recruit page, which already queries the DB multiple times, this could be optimized by including `NOW()` as a column in one of the existing queries.
+The instructor-facing anti-cheat dashboard does not poll for updates. During a live contest with many participants, anti-cheat events arrive continuously, but instructors see stale data until they manually refresh the page. The student-facing `ParticipantAntiCheatTimeline` was already fixed with `useVisibilityPolling` in cycle 3.
 
-**Concrete failure scenario:** Under high load, the additional round-trip adds ~1-5ms latency per recruit page request.
-
-**Fix:** Low priority. Consider including `NOW()` in an existing query (e.g., `SELECT ..., NOW() AS db_now FROM ...`) to avoid the extra round-trip. The current implementation is acceptable given `React.cache()` deduplication.
-
-**Confidence:** MEDIUM
+**Fix:** Replace `useEffect(() => { fetchEvents(); }, [fetchEvents])` with `useVisibilityPolling(() => { void fetchEvents(); }, 30_000)`.
 
 ---
 
-### PERF-2: `getContestsForUser` SQL uses `NOW()` in ORDER BY but JS uses `new Date()` for status [LOW/LOW]
+### PERF-2: `accepted-solutions.tsx` uses native `<select>` — two instances [LOW/LOW]
 
-**Files:**
-- `src/lib/assignments/contests.ts:113-116`
-- `src/lib/assignments/public-contests.ts:30,64-75`
+**File:** `src/components/problem/accepted-solutions.tsx:104-117,122-137`
+**Confidence:** HIGH
 
-**Description:** The `getContestsForUser` SQL query uses `NOW()` in its ORDER BY clause for sorting, but the returned data is then passed to `getContestStatus()` which uses `new Date()` for status determination. This is a minor inconsistency — the SQL uses DB time for ordering while the JS uses app-server time for status.
+Native `<select>` elements don't participate in the project's design system, causing layout shift and inconsistent rendering. While not a direct performance issue, they cause unnecessary style recalculation when the theme changes because they don't use CSS variables.
 
-**Fix:** Very low priority. Pass DB time to `getContestStatus()` for consistency.
-
-**Confidence:** LOW
+**Fix:** Replace with project's `Select` component.
 
 ---
 
-## Verified Safe
+### PERF-3: `anti-cheat-dashboard.tsx` uses native `<select>` [LOW/LOW]
 
-- SSE connection tracking bounded by `MAX_TRACKED_CONNECTIONS` (1000) and `MAX_GLOBAL_SSE_CONNECTIONS` (500).
-- Per-user connection counts use a `Map` for O(1) lookup.
-- Shared polling timer batches all active submission queries into a single DB query.
-- `React.cache()` used correctly for `getDbNow` and `getCachedInvitation`.
-- Compiler execution uses `pLimit` to cap concurrent Docker containers.
-- Submission rate limiting uses advisory locks to prevent concurrent bypass.
+**File:** `src/components/contest/anti-cheat-dashboard.tsx:419-432`
+**Confidence:** HIGH
+
+Same as PERF-2. Native `<select>` in the student filter.
+
+**Fix:** Replace with project's `Select` component.
+
+---
+
+### PERF-4: `score-timeline-chart.tsx` uses native `<select>` [LOW/LOW]
+
+**File:** `src/components/contest/score-timeline-chart.tsx:57`
+**Confidence:** HIGH
+
+Same class of issue.
+
+**Fix:** Replace with project's `Select` component.
+
+## Summary
+
+4 findings: 1 MEDIUM/MEDIUM (missing polling), 3 LOW/LOW (native selects).

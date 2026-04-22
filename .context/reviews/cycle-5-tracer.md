@@ -1,54 +1,77 @@
-# Tracer — Cycle 5 (Fresh)
+# Tracer — RPF Cycle 5
 
-**Date:** 2026-04-20
-**Base commit:** 9d6d7edc
 **Reviewer:** tracer
+**Base commit:** 00002346
+**Date:** 2026-04-22
 
-## Findings
+## Causal Traces
 
-### TR-1: Clock-skew causal chain — `new Date()` in API routes creates divergent enforcement [MEDIUM/HIGH]
+### TR-1: `discussion-post-delete-button.tsx` — `.json()` before `response.ok` [MEDIUM/HIGH]
 
-**Description:** Tracing the causal chain of a clock-skew scenario:
+**Trace:**
+1. User clicks delete button on a discussion post
+2. `handleDelete` calls `apiFetch(..., { method: "DELETE" })`
+3. Server returns 502 with HTML body (reverse proxy error)
+4. Line 25: `const body = await response.json()` throws `SyntaxError: Unexpected token < in JSON`
+5. Line 26 `if (!response.ok)` is never reached
+6. Line 32 catch block: `error instanceof Error` is true (SyntaxError extends Error)
+7. `error.message` is "Unexpected token < in JSON at position 0"
+8. `toast.error("Unexpected token < in JSON at position 0")` — useless to user
 
-1. App server clock drifts 5 minutes behind DB server.
-2. Student requests `POST /api/v1/submissions` at 12:03 UTC (DB time) / 11:58 UTC (app time).
-3. Submission route checks `lt(examSessions.personalDeadline, new Date())` — `new Date()` returns 11:58 UTC. If personal deadline is 12:00 UTC, the check passes (11:58 < 12:00), so the submission is accepted.
-4. But the exam actually ended at 12:00 UTC per DB time. The submission was accepted 3 minutes after the exam closed.
+**Hypothesis confirmed:** The `.json()` call before `response.ok` check causes SyntaxError on non-JSON error bodies. The SyntaxError message leaks into the user-facing toast.
 
-Competing hypotheses:
-- H1: The drift is unlikely in practice (app and DB are on the same server in Docker). TRUE for current deployment, but the architecture supports separate DB hosts (e.g., managed PostgreSQL), and the code should not assume co-location.
-- H2: The 5-minute drift is unrealistic. DEBUNKED: NTP sync failures, container clock issues, and VM time drift are well-documented in production systems.
-
-The recruit page was fixed for this exact class of issue. The same causal chain applies to all 6+ remaining API routes.
-
-**Fix:** Use DB-sourced time in all API routes that make security-relevant temporal decisions.
-
-**Confidence:** HIGH
-
----
-
-### TR-2: `getDbNow()` fallback causal chain — silent degradation [MEDIUM/MEDIUM]
-
-**File:** `src/lib/db-time.ts:16`
-
-**Description:** Tracing the causal chain of a DB query failure:
-
-1. `getDbNow()` calls `rawQueryOne("SELECT NOW()")`.
-2. DB connection pool is exhausted, query times out, `rawQueryOne` returns null.
-3. `getDbNow()` falls back to `new Date()`.
-4. The recruit page uses this time for expiry check. If app server clock is ahead, an invitation that is still valid per DB is shown as "expired."
-5. The candidate sees "expired" and cannot start the exam, but the invitation is actually valid.
-
-This is a degradation amplification: the DB failure causes a secondary failure (incorrect time) that produces a user-visible error with no indication that the root cause was a DB issue.
-
-**Fix:** Throw an error when the DB query returns null, so the DB connectivity issue is immediately visible.
-
-**Confidence:** MEDIUM
+**Fix:** Check `response.ok` first, use `.json().catch(() => ({}))`.
 
 ---
 
-## Verified Safe
+### TR-2: `start-exam-button.tsx` — exam start flow loses error info on non-JSON response [MEDIUM/MEDIUM]
 
-- No competing-state races in the recruiting token flow (uses atomic SQL with SELECT FOR UPDATE).
-- SSE connection tracking has proper cleanup on stream close.
-- Rate limiting uses advisory locks to prevent TOCTOU races.
+**Trace:**
+1. Student clicks "Start Exam" button
+2. `handleStart` calls `apiFetch` with POST
+3. Server returns 500 with HTML body
+4. Line 40: `if (!response.ok)` is true
+5. Line 41: `const payload = await response.json()` throws SyntaxError
+6. Catch block on line 48 catches it
+7. `error instanceof Error && error.message === "assignmentClosed"` — false (message is SyntaxError)
+8. Falls through to generic `toast.error(t("examSessionStartFailed"))`
+9. Student sees generic error, doesn't know if session was created
+
+**Hypothesis confirmed:** The error code discrimination logic is bypassed by the SyntaxError.
+
+**Fix:** Use `.json().catch(() => ({}))` so the error code can be checked.
+
+---
+
+### TR-3: `anti-cheat-dashboard.tsx` — stale data trace [MEDIUM/MEDIUM]
+
+**Trace:**
+1. Instructor opens contest anti-cheat dashboard
+2. Component mounts, `fetchEvents()` called once via `useEffect`
+3. New anti-cheat events occur (tab switches, copy events)
+4. `fetchEvents` is only called again if `assignmentId` changes (dependency of `useCallback`)
+5. Instructor sees stale data until manual page refresh
+
+**Hypothesis confirmed:** Missing `useVisibilityPolling` causes stale data for instructors.
+
+**Fix:** Add `useVisibilityPolling(() => { void fetchEvents(); }, 30_000)`.
+
+---
+
+### TR-4: `code-timeline-panel.tsx` — silent failure trace [LOW/MEDIUM]
+
+**Trace:**
+1. Instructor opens code timeline panel
+2. `fetchSnapshots` called, API returns 500
+3. `res.ok` is false, no else branch — function silently returns
+4. `setLoading(false)` in finally block
+5. Component renders with empty snapshots array
+6. User sees "No snapshots" message, doesn't know there was an error
+
+**Hypothesis confirmed:** Missing error state and error feedback.
+
+**Fix:** Add error state and show error toast.
+
+## Summary
+
+4 findings: 1 MEDIUM/HIGH, 2 MEDIUM/MEDIUM, 1 LOW/MEDIUM.

@@ -1,57 +1,53 @@
-# Critic — Cycle 5 (Fresh)
+# Critic — RPF Cycle 5
 
-**Date:** 2026-04-20
-**Base commit:** 9d6d7edc
 **Reviewer:** critic
+**Base commit:** 00002346
+**Date:** 2026-04-22
 
-## Findings
+## Multi-Perspective Critique
 
-### CRI-1: Clock-skew fix was applied narrowly to recruit page but not to more security-critical paths [MEDIUM/HIGH]
+### CRI-1: `.json()` before `response.ok` still present — systemic pattern failure [MEDIUM/HIGH]
 
-**Description:** The cycle 27 fix for clock-skew (AGG-1) was applied only to the recruit page. However, the same `new Date()` pattern is used in more security-critical locations:
-- API key authentication (programmatic access control)
-- Exam session creation (academic integrity)
-- Access code redemption (contest access control)
-- Submission creation (exam deadline enforcement)
-- Anti-cheat event submission (contest boundary enforcement)
-
-The recruit page is a display-only page — showing "expired" incorrectly is annoying but not a security breach. The API paths above are enforcement points where clock-skew can grant unauthorized access. The fix was applied in the wrong order of priority.
-
-**Fix:** Prioritize `getDbNow()` adoption in API routes and server actions that enforce deadlines, not just display pages.
+**Files:**
+- `src/components/discussions/discussion-post-delete-button.tsx:25`
+- `src/components/exam/start-exam-button.tsx:41`
 
 **Confidence:** HIGH
 
+After 4 cycles of fixing this pattern one instance at a time, it keeps reappearing. The current approach of fixing individual files is insufficient. The `apiFetch` JSDoc documents the correct pattern, but documentation alone does not prevent the bug. The `apiJson` helper was added in cycle 3 and removed in cycle 4 because no component used it — a clear signal that the approach was wrong. A successful fix requires making the safe path the *easiest* path.
+
+**Recommendation:** Create an ESLint rule that flags `response.json()` or `res.json()` calls that are not preceded by a `response.ok` or `res.ok` check within the same function scope. This would catch the bug at write time.
+
 ---
 
-### CRI-2: `getDbNow()` fallback to `new Date()` defeats the purpose [MEDIUM/MEDIUM]
+### CRI-2: `anti-cheat-dashboard.tsx` missing polling is a feature gap, not just a bug [MEDIUM/MEDIUM]
 
-**File:** `src/lib/db-time.ts:16
+**File:** `src/components/contest/anti-cheat-dashboard.tsx:149-151`
+**Confidence:** HIGH
 
-**Description:** `getDbNow()` falls back to `new Date()` when the DB query returns null: `return row?.now ?? new Date()`. If the DB query fails silently (returns null), the function falls back to the exact behavior it was designed to prevent. This could mask DB connectivity issues — the function would appear to work but provide incorrect time.
+The student-facing timeline was fixed in cycle 3 but the instructor dashboard was missed. During a live contest, instructors rely on the anti-cheat dashboard to detect cheating in real time. Without polling, they must manually refresh the page — a poor experience that undermines the purpose of the feature.
 
-**Concrete failure scenario:** A transient DB issue causes `rawQueryOne` to return null. `getDbNow()` falls back to `new Date()`, which may be skewed. All temporal comparisons using this value are now incorrect, and no error is logged or thrown.
+---
 
-**Fix:** Throw an error when the DB query returns null instead of silently falling back to `new Date()`. At minimum, log a warning so operators can detect the issue.
+### CRI-3: Native `<select>` elements keep appearing — need structural solution [LOW/LOW]
 
+**Files:** `accepted-solutions.tsx`, `anti-cheat-dashboard.tsx`, `score-timeline-chart.tsx`, `filter-form.tsx`
+
+**Confidence:** HIGH
+
+5 native `<select>` instances across 4 files. Same class of issue "fixed" in cycles 2 and 3. Without a lint rule or component lint, developers will keep using native `<select>` because it's simpler.
+
+---
+
+### CRI-4: `recruiting-invitations-panel.tsx` mutation handlers lack error handling — inconsistent with codebase conventions [LOW/MEDIUM]
+
+**File:** `src/components/contest/recruiting-invitations-panel.tsx:229-281`
 **Confidence:** MEDIUM
 
----
+`handleRevoke` and `handleDelete` call `apiFetch` without try/catch. Most mutation handlers in the codebase use try/catch with error toast. These two don't. Network errors become unhandled promise rejections.
 
-### CRI-3: SSE non-null assertion fix is incomplete [LOW/MEDIUM]
+**Fix:** Add try/catch with error toast, consistent with the rest of the codebase.
 
-**File:** `src/app/api/v1/submissions/[id]/events/route.ts:315`
+## Summary
 
-**Description:** The cycle 27 fix for the `user!.id` non-null assertion (AGG-3/M2) moved the capture but kept the `!` operator. The fix was marked as DONE but the underlying issue (non-null assertion) persists. The `!` should have been removed by moving the capture to a location where TypeScript can narrow the type.
-
-**Fix:** Move `const viewerId = user.id` to after the null check on line 194 where TypeScript narrows `user` to non-null.
-
-**Confidence:** MEDIUM
-
----
-
-## Verified Safe
-
-- Auth flow is robust with Argon2id, timing-safe dummy hash, rate limiting, and proper token invalidation.
-- CSRF protection is comprehensive.
-- No `dangerouslySetInnerHTML` without sanitization.
-- No silently swallowed catch blocks.
+4 findings: 1 MEDIUM/HIGH, 1 MEDIUM/MEDIUM, 1 LOW/MEDIUM, 1 LOW/LOW.

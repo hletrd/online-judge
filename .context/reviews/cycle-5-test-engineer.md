@@ -1,79 +1,60 @@
-# Test Engineer — Cycle 5 (Fresh)
+# Test Engineer — RPF Cycle 5
 
-**Date:** 2026-04-20
-**Base commit:** 9d6d7edc
 **Reviewer:** test-engineer
+**Base commit:** 00002346
+**Date:** 2026-04-22
 
 ## Findings
 
-### TE-1: No test coverage for `escapeLikePattern` utility [MEDIUM/HIGH]
+### TE-1: No tests for `discussion-post-delete-button.tsx` error handling [MEDIUM/MEDIUM]
 
-**File:** `src/lib/db/like.ts`
-
-**Description:** The `escapeLikePattern` utility is used across 20+ files in the codebase but has no dedicated unit test. This is the central LIKE escape function — if it breaks, it breaks every search feature. The function is small and pure, making it trivial to test.
-
-**Fix:** Add unit tests covering:
-- Normal strings (no special characters) — passthrough
-- Strings with `%` — should be escaped to `\%`
-- Strings with `_` — should be escaped to `\_`
-- Strings with `\` — should be escaped to `\\` FIRST
-- Strings with `\%` (backslash before percent) — backslash should NOT escape the percent
-- Strings with `\\` (double backslash) — should become `\\\\`
-
+**File:** `src/components/discussions/discussion-post-delete-button.tsx`
 **Confidence:** HIGH
 
+This component has the `.json()` before `response.ok` bug (CR-1/DBG-1) but also has no unit tests. A test should verify:
+1. Successful delete shows success toast and refreshes router
+2. 403 response with JSON error body shows the specific error message
+3. 502 response with HTML body shows a generic error, not a SyntaxError
+4. Network error (fetch throws TypeError) shows generic error
+
+**Fix:** Add unit tests for all 4 scenarios after fixing the `.json()` ordering bug.
+
 ---
 
-### TE-2: No test coverage for `getDbNow` utility [LOW/MEDIUM]
+### TE-2: No tests for `start-exam-button.tsx` error handling [MEDIUM/MEDIUM]
 
-**File:** `src/lib/db-time.ts`
+**File:** `src/components/exam/start-exam-button.tsx`
+**Confidence:** HIGH
 
-**Description:** The `getDbNow` utility was introduced in cycle 27 but has no dedicated test. The `recruit-page-metadata.test.ts` tests verify that the recruit page uses it, but there is no direct test for the utility itself (e.g., that it returns a Date, that `React.cache()` deduplicates calls).
+Same as TE-1. The exam start flow is critical — students need to know whether their exam session was created. Tests should cover:
+1. Successful start
+2. `assignmentClosed` error
+3. `assignmentNotStarted` error
+4. Non-JSON error body (502 HTML)
+5. Network error
 
-**Fix:** Add a unit test for `getDbNow` that verifies:
-- It returns a Date object
-- The returned Date is reasonable (within a few seconds of `new Date()`)
-- The fallback to `new Date()` works when the DB query returns null
+**Fix:** Add unit tests after fixing the `.json()` ordering bug.
 
+---
+
+### TE-3: No tests for `anti-cheat-dashboard.tsx` polling behavior [LOW/LOW]
+
+**File:** `src/components/contest/anti-cheat-dashboard.tsx`
 **Confidence:** MEDIUM
 
----
+Once `useVisibilityPolling` is added, a test should verify that the dashboard re-fetches events when the tab becomes visible.
 
-### TE-3: No test coverage for API key expiry check using app-server time [LOW/MEDIUM]
-
-**File:** `src/lib/api/api-key-auth.ts:86`
-
-**Description:** There is no test verifying the API key expiry behavior. If the expiry check is updated to use DB-sourced time (per SEC-1), a test should verify the new behavior.
-
-**Fix:** Add a test for `authenticateApiKey` covering:
-- Expired key is rejected
-- Non-expired key is accepted
-- Key with no expiry is always accepted (if that's the intended behavior)
-
-**Confidence:** MEDIUM
+**Fix:** Add after implementing the polling fix.
 
 ---
 
-### TE-4: No test coverage for exam session deadline enforcement [LOW/MEDIUM]
+### TE-4: Prior deferred test items (DEFER-4, DEFER-5, DEFER-6) remain unimplemented [MEDIUM/MEDIUM]
 
-**File:** `src/lib/assignments/exam-sessions.ts:49-56`
+**Files:** Various
+**Confidence:** HIGH
 
-**Description:** The exam session creation checks if the assignment has started and if the deadline has passed, but there are no tests for these temporal boundary conditions.
+Cycle 4 deferred tests for `invite-participants.tsx`, `access-code-manager.tsx`, `countdown-timer.tsx` (DEFER-4), `discussion-vote-buttons.tsx`, `problem-submission-form.tsx` (DEFER-5), and `participant-anti-cheat-timeline.tsx` (DEFER-6). All exit criteria are met. These should be picked up in a future cycle.
 
-**Fix:** Add tests for `startExamSession` covering:
-- Attempt to start before `startsAt` — should throw "assignmentNotStarted"
-- Attempt to start after `deadline` — should throw "assignmentClosed"
-- Successful start within the valid window
-- Idempotent behavior when called twice
+## Summary
 
-**Confidence:** MEDIUM
-
----
-
-## Verified Safe
-
-- 277+ test files, 1932+ tests, all passing.
-- IP allowlist tests cover CIDR edge cases well.
-- Security tests cover encryption, timing-safe comparison, rate limiting, and CSRF.
-- Component tests use proper mocking patterns.
-- The `recruit-page-metadata.test.ts` tests added in cycle 27 verify DB-sourced time usage.
+4 findings: 2 MEDIUM/MEDIUM (missing tests for buggy components), 1 MEDIUM/MEDIUM (deferred tests), 1 LOW/LOW (polling test).

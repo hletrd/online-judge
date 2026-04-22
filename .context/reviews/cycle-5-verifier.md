@@ -1,55 +1,66 @@
-# Verifier — Cycle 5 (Fresh)
+# Verifier — RPF Cycle 5
 
-**Date:** 2026-04-20
-**Base commit:** 9d6d7edc
 **Reviewer:** verifier
+**Base commit:** 00002346
+**Date:** 2026-04-22
+
+## Verified Fixes from Prior Cycles
+
+### V-1: Cycle 3 and 4 fixes verified
+
+All fixes from cycle 3 (AGG-1 through AGG-5) and cycle 4 (AGG-1 through AGG-9) are present in the current codebase at commit 00002346. Specifically:
+- `discussion-vote-buttons.tsx` — has try/catch and `.json().catch(() => ({}))` on error path
+- `problem-submission-form.tsx` — has `response.ok` check before `.json()`
+- `participant-anti-cheat-timeline.tsx` — has `useVisibilityPolling`
+- `contest-replay.tsx` — uses project's `Select` component
+- `apiFetch` JSDoc — documents `response.ok` before `.json()` pattern
+- `invite-participants.tsx` — has `.json().catch(() => ({}))` on error path
+- `access-code-manager.tsx` — has `.json().catch(() => ({}))` and static clipboard import
+- `countdown-timer.tsx` — has visibilitychange listener
+- `compiler-client.tsx` — uses ref for sourceCode, has maxLength on stdin
+- `anti-cheat-monitor.tsx` — uses ref-based callbacks
+- `active-timed-assignment-sidebar-panel.tsx` — stops timer when all expired
+- `apiJson` removed from `client.ts` — confirmed removed
 
 ## Findings
 
-### V-1: Clock-skew fix verification — recruit page fix confirmed, but 6+ API routes unverified [MEDIUM/HIGH]
+### V-2: `discussion-post-delete-button.tsx` — `.json()` before `response.ok` — regression from prior fix scope [MEDIUM/HIGH]
 
-**Description:** I verified the cycle 27 recruit page clock-skew fix (commit 6f6f4750):
-- `src/app/(auth)/recruit/[token]/page.tsx` correctly imports and uses `getDbNow()` on lines 40 and 65
-- `generateMetadata` and the page component both use `const now = await getDbNow()`
-- `React.cache()` deduplicates the call within a single server render
-- The `formatDateTimeInTimeZone` replacement for `toLocaleString()` is correct
-
-However, the same pattern remains unaddressed in 6 API routes/lib functions that make security-relevant temporal decisions (see SEC-1 through SEC-6). The fix was applied to the least security-critical location first.
-
-**Fix:** Apply `getDbNow()` (or equivalent) to the 6 remaining security-critical temporal comparison sites.
-
+**File:** `src/components/discussions/discussion-post-delete-button.tsx:25`
 **Confidence:** HIGH
 
----
-
-### V-2: `getDbNow()` fallback behavior is not documented or tested [LOW/MEDIUM]
-
-**File:** `src/lib/db-time.ts:16`
-
-**Description:** The fallback `row?.now ?? new Date()` on line 16 means that if the DB query fails, the function returns app-server time. This behavior is not documented in the JSDoc comment, which only mentions the purpose and caching behavior. Users of `getDbNow()` may not be aware that it can silently return skewed time.
-
-**Fix:** Document the fallback behavior in the JSDoc, or better, throw an error instead of falling back.
-
-**Confidence:** MEDIUM
+This file was NOT in the scope of cycle 3's fix (which covered `discussion-vote-buttons.tsx`, `discussion-post-form.tsx`, `discussion-thread-form.tsx`, `discussion-thread-moderation-controls.tsx`). The delete button component was missed. Confirmed: `response.json()` is called on line 25 before `response.ok` check on line 26.
 
 ---
 
-### V-3: SSE `viewerId` fix verification — incomplete [LOW/MEDIUM]
+### V-3: `start-exam-button.tsx` — `.json()` on error path without `.catch()` [MEDIUM/MEDIUM]
 
-**File:** `src/app/api/v1/submissions/[id]/events/route.ts:315`
+**File:** `src/components/exam/start-exam-button.tsx:41`
+**Confidence:** HIGH
 
-**Description:** The cycle 27 fix moved `viewerId` capture before the `sendTerminalResult` closure but the `!` non-null assertion is still present. The cycle 27 plan marked this as DONE, but the underlying issue (non-null assertion) was not fully resolved.
-
-**Fix:** Move `const viewerId = user.id` to after line 194 where TypeScript narrows `user` to non-null.
-
-**Confidence:** MEDIUM
+Not in scope of any prior fix. The `!response.ok` branch calls `.json()` without `.catch()`. Confirmed present in current codebase.
 
 ---
 
-## Verified Safe
+### V-4: `anti-cheat-dashboard.tsx` missing `useVisibilityPolling` [MEDIUM/MEDIUM]
 
-- Previous cycle-27 fixes confirmed working: recruit page DB time, locale-aware datetime, React.cache() deduplication.
-- All LIKE/ILIKE queries use `escapeLikePattern` from `@/lib/db/like`.
-- Auth flow is robust with Argon2id, timing-safe dummy hash, and proper token invalidation.
-- CSRF protection is in place for server actions.
-- Rate limiting has two-tier strategy preventing TOCTOU races.
+**File:** `src/components/contest/anti-cheat-dashboard.tsx:149-151`
+**Confidence:** HIGH
+
+Confirmed: the component uses a plain `useEffect` for initial fetch with no polling. The `ParticipantAntiCheatTimeline` at line 129 has `useVisibilityPolling` but this dashboard at line 149-151 does not.
+
+---
+
+### V-5: Native `<select>` elements in 4 files — verified [LOW/LOW]
+
+**Files:** Confirmed presence of native `<select>` in:
+- `accepted-solutions.tsx:104,122`
+- `anti-cheat-dashboard.tsx:419`
+- `score-timeline-chart.tsx:57`
+- `filter-form.tsx:68`
+
+All confirmed in current codebase.
+
+## Summary
+
+5 findings: 1 MEDIUM/HIGH (regression), 2 MEDIUM/MEDIUM, 2 LOW/LOW (verified native selects).
