@@ -20,7 +20,7 @@ import { NextRequest } from "next/server";
 import { createApiHandler } from "@/lib/api/handler";
 import { apiSuccess, apiError } from "@/lib/api/responses";
 import { canManageContest } from "@/lib/assignments/contests";
-import { rawQueryOne, rawQueryAll } from "@/lib/db/queries";
+import { rawQueryOne } from "@/lib/db/queries";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { TERMINAL_SUBMISSION_STATUSES_SQL_LIST } from "@/lib/submissions/status";
 
@@ -76,19 +76,12 @@ export const GET = createApiHandler({
       }
     }
 
-    // Participant count (all enrolled students)
-    const participantResult = await rawQueryOne<{ count: number }>(
-      `SELECT COUNT(*)::int AS count FROM enrollments WHERE group_id = @groupId`,
-      { groupId: assignment.groupId }
-    );
-    const participantCount = participantResult?.count ?? 0;
-
-    // Compute stats from submissions in a single query
-    const statsResult = await rawQueryOne<{
-      submittedCount: number;
-      avgScore: number;
-    }>(
-      `WITH user_best AS (
+    // Compute all stats in a single query using CTEs to reduce DB round trips
+    const statsResult = await rawQueryOne<ContestStatsRow>(
+      `WITH participants AS (
+        SELECT COUNT(*)::int AS count FROM enrollments WHERE group_id = @groupId
+      ),
+      user_best AS (
         SELECT
           s.user_id,
           s.problem_id,
@@ -103,31 +96,34 @@ export const GET = createApiHandler({
           SUM(ub.best_score) AS total_score
         FROM user_best ub
         GROUP BY ub.user_id
+      ),
+      submission_stats AS (
+        SELECT
+          COUNT(*)::int AS submitted_count,
+          COALESCE(ROUND(AVG(ut.total_score), 1), 0)::float AS avg_score
+        FROM user_totals ut
+      ),
+      solved_problems AS (
+        SELECT COUNT(DISTINCT s.problem_id)::int AS solved_count
+        FROM submissions s
+        INNER JOIN assignment_problems ap ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
+        WHERE s.assignment_id = @assignmentId
+          AND s.status IN (${TERMINAL_SUBMISSION_STATUSES_SQL_LIST})
+          AND ROUND(s.score, 2) >= ROUND(COALESCE(ap.points, 100), 2)
       )
       SELECT
-        COUNT(*)::int AS "submittedCount",
-        COALESCE(ROUND(AVG(ut.total_score), 1), 0)::float AS "avgScore"
-      FROM user_totals ut`,
-      { assignmentId }
+        (SELECT count FROM participants) AS "participantCount",
+        (SELECT submitted_count FROM submission_stats) AS "submittedCount",
+        (SELECT avg_score FROM submission_stats) AS "avgScore",
+        (SELECT solved_count FROM solved_problems) AS "problemsSolvedCount"`,
+      { groupId: assignment.groupId, assignmentId }
     );
-
-    // Count problems that have at least one full-score submission
-    const solvedResult = await rawQueryAll<{ problemId: string }>(
-      `SELECT DISTINCT s.problem_id AS "problemId"
-       FROM submissions s
-       INNER JOIN assignment_problems ap ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
-       WHERE s.assignment_id = @assignmentId
-         AND s.status IN (${TERMINAL_SUBMISSION_STATUSES_SQL_LIST})
-         AND ROUND(s.score, 2) >= COALESCE(ap.points, 100)`,
-      { assignmentId }
-    );
-    const problemsSolvedCount = solvedResult.length;
 
     return apiSuccess({
-      participantCount,
+      participantCount: statsResult?.participantCount ?? 0,
       submittedCount: statsResult?.submittedCount ?? 0,
       avgScore: statsResult?.avgScore ?? 0,
-      problemsSolvedCount,
+      problemsSolvedCount: statsResult?.problemsSolvedCount ?? 0,
     });
   },
 });
