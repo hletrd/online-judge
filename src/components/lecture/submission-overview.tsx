@@ -130,13 +130,26 @@ export function SubmissionOverview({
     }
   }, [open]);
 
+  // Handle Escape key to close the dialog
+  useEffect(() => {
+    if (!open) return;
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    }
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const acceptedPct = stats.total > 0 ? Math.round((stats.accepted / stats.total) * 100) : 0;
   const statusLabels = buildStatusLabels(tSubmissions);
 
   return (
-    <div className="fixed right-4 top-16 z-50 w-80 rounded-lg border bg-background/95 shadow-xl backdrop-blur-md">
+    <div role="dialog" aria-modal="true" aria-label={t("submissionStats")} className="fixed right-4 top-16 z-50 w-80 rounded-lg border bg-background/95 shadow-xl backdrop-blur-md">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2 font-semibold">
           <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />

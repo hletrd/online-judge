@@ -251,7 +251,7 @@ export function AntiCheatMonitor({
 
   if (showPrivacyNotice) {
     return (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <div role="dialog" aria-modal="true" aria-label={t("privacyNoticeTitle")} className="fixed inset-0 z-[60] flex items-center justify-center bg-background/80 backdrop-blur-sm">
         <div className="mx-4 max-w-md rounded-lg border bg-card p-6 shadow-lg">
           <div className="flex items-center gap-2 mb-3">
             <ShieldAlert className="size-5 text-muted-foreground" />
