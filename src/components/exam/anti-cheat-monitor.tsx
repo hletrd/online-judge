@@ -141,13 +141,22 @@ export function AntiCheatMonitor({
 
     void reportEvent("heartbeat");
 
-    const heartbeatTimer = setInterval(() => {
-      if (document.visibilityState === "visible") {
-        void reportEvent("heartbeat");
-      }
-    }, HEARTBEAT_INTERVAL_MS);
+    let heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
 
-    return () => clearInterval(heartbeatTimer);
+    function scheduleHeartbeat() {
+      heartbeatTimer = setTimeout(async () => {
+        if (document.visibilityState === "visible") {
+          await reportEvent("heartbeat");
+        }
+        scheduleHeartbeat();
+      }, HEARTBEAT_INTERVAL_MS);
+    }
+
+    scheduleHeartbeat();
+
+    return () => {
+      if (heartbeatTimer) clearTimeout(heartbeatTimer);
+    };
   }, [enabled, reportEvent, showPrivacyNotice]);
 
   useEffect(() => {
