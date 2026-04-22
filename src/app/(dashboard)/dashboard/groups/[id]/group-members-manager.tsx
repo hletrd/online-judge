@@ -222,8 +222,6 @@ export function GroupMembersManager({
         throw new Error((payload as { error?: string }).error || "memberRemoveFailed");
       }
 
-      await response.json().catch(() => ({}));
-
       setCurrentMembers((current) => current.filter((entry) => entry.userId !== member.userId));
       setCurrentAvailableStudents((current) =>
         sortStudents([
