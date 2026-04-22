@@ -2,14 +2,16 @@ export const DEFAULT_PAGE_SIZE = 50;
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 export const PAGE_SIZE_QUERY_PARAM = "pageSize";
 
+const MAX_PAGE = 10000;
+
 export function normalizePage(value?: string) {
-  const parsed = Number(value ?? "1");
+  const parsed = parseInt(value ?? "1", 10);
 
   if (!Number.isFinite(parsed) || parsed < 1) {
     return 1;
   }
 
-  return Math.floor(parsed);
+  return Math.min(Math.floor(parsed), MAX_PAGE);
 }
 
 export function normalizePageSize(value?: string) {
