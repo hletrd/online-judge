@@ -17,7 +17,7 @@ import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
 import { formatDateTimeInTimeZone, formatDateInTimeZone } from "@/lib/datetime";
-import { formatNumber, formatDifficulty } from "@/lib/formatting";
+import { formatNumber, formatDifficulty, formatScore } from "@/lib/formatting";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
