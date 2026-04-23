@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-22
 **Source:** `.context/reviews/_aggregate.md`, `.context/reviews/{code-reviewer,perf-reviewer,security-reviewer,architect,critic,verifier,debugger,test-engineer,tracer,designer,document-specialist}.md`
-**Status:** IN PROGRESS
+**Status:** IN PROGRESS — all implementation lanes complete, awaiting gate verification
 
 ## Scope
 
@@ -30,7 +30,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
   2. Add `import { normalizePage } from "@/lib/pagination"` 
   3. Verify that `normalizePageSize` is not also duplicated locally (if so, import it too)
   4. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit e0509e3d)
 
 ### H2: Fix `contest-join-client.tsx` double `.json()` on same Response (AGG-2)
 
@@ -42,7 +42,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
   1. Refactor to use `apiFetchJson` or parse the body once before branching
   2. Verify error and success paths both work correctly
   3. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit a2afbc7d)
 
 ### M1: Fix `create-problem-form.tsx` and `group-members-manager.tsx` double `.json()` pattern (AGG-3)
 
@@ -56,7 +56,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
   1. Refactor both files to parse the body once before the if/else, or use `apiFetchJson`
   2. Verify error and success paths both work correctly
   3. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit 7db26ab4)
 
 ### M2: Refactor `submission-overview.tsx` to use shared Dialog component (AGG-4)
 
@@ -71,7 +71,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
   4. Remove the custom `role="dialog" aria-modal="true"` attributes
   5. Verify keyboard accessibility (Tab trap, Escape close)
   6. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit d056e759)
 
 ### M3: Fix `contest-quick-stats.tsx` avgScore null displayed as 0.0 (AGG-5)
 
@@ -84,7 +84,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
   2. Change initial state `avgScore` from `0` to `null`
   3. Update the display (line 110) to show "---" when `stats.avgScore === null`
   4. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit 2cfbb9df)
 
 ### L1: Fix `normalizePageSize` to use `parseInt` for consistency (AGG-7)
 
@@ -96,7 +96,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
   1. Change `Number(value ?? DEFAULT_PAGE_SIZE)` to `parseInt(value ?? String(DEFAULT_PAGE_SIZE), 10)`
   2. Verify existing pagination tests pass
   3. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit 6e13f69e, combined with L2)
 
 ### L2: Add JSDoc to `normalizePage` explaining MAX_PAGE (AGG-8)
 
@@ -107,7 +107,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
 - **Plan:**
   1. Add a brief JSDoc comment explaining the function and its upper bound
   2. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit 6e13f69e, combined with L1)
 
 ---
 
@@ -156,3 +156,10 @@ All previously deferred items from prior cycle plans remain in effect:
 ## Progress Log
 
 - 2026-04-22: Plan created from fresh multi-agent review at commit 429d1b86. 8 aggregate findings. 7 scheduled for implementation (H1, H2, M1-M3, L1, L2). 3 deferred (DEFER-41 through DEFER-43). All prior cycle-22 and cycle-28 findings verified as fixed.
+- 2026-04-22: H1 DONE — replaced 5 local normalizePage + 3 inline usages with shared import (commit e0509e3d)
+- 2026-04-22: H2 DONE — migrated contest-join-client to apiFetchJson (commit a2afbc7d)
+- 2026-04-22: M1 DONE — fixed double .json() in create-problem-form and group-members-manager (commit 7db26ab4)
+- 2026-04-22: M2 DONE — refactored submission-overview to shared Dialog component (commit d056e759)
+- 2026-04-22: M3 DONE — fixed avgScore null display in contest-quick-stats (commit 2cfbb9df)
+- 2026-04-22: L1+L2 DONE — normalizedPageSize uses parseInt, added JSDoc (commit 6e13f69e)
+- 2026-04-22: All implementation lanes complete. Awaiting gate verification.
