@@ -146,6 +146,7 @@ export function CodeTimelinePanel({
           size="sm"
           disabled={selectedIdx === 0}
           onClick={() => setSelectedIdx(selectedIdx - 1)}
+          aria-label={t("previousSnapshot")}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -158,6 +159,7 @@ export function CodeTimelinePanel({
           size="sm"
           disabled={selectedIdx === snapshots.length - 1}
           onClick={() => setSelectedIdx(selectedIdx + 1)}
+          aria-label={t("nextSnapshot")}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>

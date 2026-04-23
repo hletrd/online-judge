@@ -2275,7 +2275,9 @@
       "title": "{name}의 코드 타임라인",
       "noSnapshots": "기록된 코드 스냅샷이 없습니다.",
       "allProblems": "전체 문제",
-      "fetchError": "코드 스냅샷을 불러오지 못했습니다."
+      "fetchError": "코드 스냅샷을 불러오지 못했습니다.",
+      "previousSnapshot": "이전 스냅샷",
+      "nextSnapshot": "다음 스냅샷"
     },
     "recruiter": {
       "title": "지원자 현황",

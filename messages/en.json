@@ -2275,7 +2275,9 @@
       "title": "Code timeline: {name}",
       "noSnapshots": "No code snapshots recorded yet.",
       "allProblems": "All problems",
-      "fetchError": "Failed to load code snapshots."
+      "fetchError": "Failed to load code snapshots.",
+      "previousSnapshot": "Previous snapshot",
+      "nextSnapshot": "Next snapshot"
     },
     "recruiter": {
       "title": "Candidate Overview",
