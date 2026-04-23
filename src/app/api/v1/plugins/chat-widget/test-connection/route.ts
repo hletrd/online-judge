@@ -34,7 +34,12 @@ export const POST = createApiHandler({
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "invalidJson" }, { status: 400 });
+    }
     const parsed = requestSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: "invalidRequest" }, { status: 400 });
