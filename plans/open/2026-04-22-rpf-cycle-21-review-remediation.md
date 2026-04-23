@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-22
 **Source:** `.context/reviews/_aggregate.md` (cycle 21)
-**Status:** In progress
+**Status:** Done (M1, L1-L5 all complete)
 
 ## Scope
 
@@ -33,7 +33,7 @@ No cycle-21 review finding is silently dropped. No new refactor-only work is add
   2. Add target field handling matching the timeline version: parse JSON, check `parsed.target`, look up i18n key, return localized string
   3. Update call site at line 550 to pass `t` function
   4. Verify all gates pass
-- **Status:** Pending
+- **Status:** DONE
 
 ---
 
@@ -46,7 +46,7 @@ No cycle-21 review finding is silently dropped. No new refactor-only work is add
 - **Plan:**
   1. Change line 187: `onChange={(e) => setLevel(parseInt(e.target.value, 10) || 0)}`
   2. Verify all gates pass
-- **Status:** Pending
+- **Status:** DONE
 
 ---
 
@@ -62,7 +62,7 @@ No cycle-21 review finding is silently dropped. No new refactor-only work is add
   1. Change line 133: `onChange={(e) => setDurationMinutes(parseInt(e.target.value, 10) || 60)}`
   2. Change line 172: `onChange={(e) => updateProblemPoints(i, parseInt(e.target.value, 10) || 100)}`
   3. Verify all gates pass
-- **Status:** Pending
+- **Status:** DONE
 
 ---
 
@@ -77,7 +77,7 @@ No cycle-21 review finding is silently dropped. No new refactor-only work is add
   2. Add `aria-controls={anti-cheat-detail-${event.id}}` to each button
   3. Add `id={anti-cheat-detail-${event.id}}` to the corresponding `<pre>` element
   4. Verify all gates pass
-- **Status:** Pending
+- **Status:** DONE
 
 ---
 
@@ -90,7 +90,7 @@ No cycle-21 review finding is silently dropped. No new refactor-only work is add
 - **Plan:**
   1. Add `aria-valuetext={selectedSnapshot.label}` to the range input
   2. Verify all gates pass
-- **Status:** Pending
+- **Status:** DONE
 
 ---
 
@@ -103,7 +103,7 @@ No cycle-21 review finding is silently dropped. No new refactor-only work is add
 - **Plan:**
   1. Change to `aria-valuenow={progressPercent}`
   2. Verify all gates pass
-- **Status:** Pending
+- **Status:** DONE
 
 ---
 
@@ -173,3 +173,4 @@ No cycle-21 review finding is silently dropped. No new refactor-only work is add
 ## Progress log
 
 - 2026-04-22: Plan created from RPF cycle 21 aggregate review. 8 tasks (M1, L1-L5, plus 2 carried LOW items). 7 deferred items.
+- 2026-04-22: All 6 tasks implemented (M1, L1-L5). 7 commits pushed. All gates pass (eslint, next build, vitest unit).
