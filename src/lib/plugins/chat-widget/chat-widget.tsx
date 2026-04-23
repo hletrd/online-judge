@@ -30,6 +30,12 @@ export default function ChatWidget() {
   const messagesRef = useRef(messages);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
+  // Ref for isStreaming so sendMessage can check it without being recreated on every state change.
+  // This prevents the stale-closure race where an abort + rapid resend causes a false rejection,
+  // and avoids unnecessary recreation of the entire callback chain (sendMessage -> handleSend -> handleKeyDown).
+  const isStreamingRef = useRef(isStreaming);
+  useEffect(() => { isStreamingRef.current = isStreaming; }, [isStreaming]);
+
   // Ref for stable access to sendMessage in effects without triggering re-runs
   const sendMessageRef = useRef<(text: string, displayText?: string) => Promise<void>>(null!);
 
@@ -155,7 +161,7 @@ export default function ChatWidget() {
   }, [pendingAutoAnalysis, isStreaming, problemContext, t]);
 
   const sendMessage = useCallback(async (text: string, displayText?: string) => {
-    if (!text || isStreaming) return;
+    if (!text || isStreamingRef.current) return;
 
     setError(null);
     const userMessage: Message = { role: "user", content: text, displayContent: displayText };
@@ -234,7 +240,7 @@ export default function ChatWidget() {
       setIsStreaming(false);
       abortControllerRef.current = null;
     }
-  }, [editorContent?.code, editorContent?.language, isStreaming, problemContext, sessionId, t]);
+  }, [editorContent?.code, editorContent?.language, problemContext, sessionId, t]);
 
   // Keep sendMessageRef synchronized so effects always call the latest sendMessage
   useEffect(() => { sendMessageRef.current = sendMessage; }, [sendMessage]);
