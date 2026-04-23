@@ -263,6 +263,7 @@ export function ParticipantAntiCheatTimeline({
                               className="flex items-center gap-1 text-xs text-primary hover:underline focus:outline-none"
                               onClick={() => toggleRow(event.id)}
                               aria-expanded={isExpanded}
+                              aria-controls={`anti-cheat-timeline-detail-${event.id}`}
                             >
                               {isExpanded ? (
                                 <>
@@ -277,7 +278,7 @@ export function ParticipantAntiCheatTimeline({
                               )}
                             </button>
                             {isExpanded && (
-                              <pre className="mt-1.5 max-h-48 overflow-auto rounded-md bg-muted px-2 py-1.5 text-xs">
+                              <pre id={`anti-cheat-timeline-detail-${event.id}`} className="mt-1.5 max-h-48 overflow-auto rounded-md bg-muted px-2 py-1.5 text-xs">
                                 <code>
                                   {formatDetailsJson(event.details!, t)}
                                 </code>
