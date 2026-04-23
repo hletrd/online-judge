@@ -451,7 +451,7 @@ export default function AssignmentFormDialog({
                   min={1}
                   max={1440}
                   value={examDurationMinutes ?? ""}
-                  onChange={(e) => setExamDurationMinutes(e.target.value ? Number(e.target.value) : null)}
+                  onChange={(e) => setExamDurationMinutes(e.target.value ? parseInt(e.target.value, 10) || null : null)}
                   disabled={isLoading}
                 />
                 <p className="text-sm text-muted-foreground">{t("examDurationDescription")}</p>
