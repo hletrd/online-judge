@@ -6,7 +6,7 @@ import { importDatabase } from "@/lib/db/import";
 import { validateExport, type JudgeKitExport } from "@/lib/db/export";
 import { MAX_IMPORT_BYTES, readJsonBodyWithLimit, readUploadedJsonFileWithLimit } from "@/lib/db/import-transfer";
 import { recordAuditEvent } from "@/lib/audit/events";
-import { verifyPassword, hashPassword } from "@/lib/security/password-hash";
+import { verifyAndRehashPassword } from "@/lib/security/password-hash";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -55,23 +55,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "authenticationFailed" }, { status: 403 });
       }
 
-      const { valid, needsRehash } = await verifyPassword(password, dbUser.passwordHash);
+      const { valid } = await verifyAndRehashPassword(password, user.id, dbUser.passwordHash);
       if (!valid) {
         return NextResponse.json({ error: "invalidPassword" }, { status: 403 });
-      }
-
-      // Transparent rehash: migrate legacy bcrypt hashes to argon2id when the
-      // admin re-confirms their password for a sensitive operation.
-      if (needsRehash) {
-        try {
-          const newHash = await hashPassword(password);
-          await db
-            .update(users)
-            .set({ passwordHash: newHash })
-            .where(eq(users.id, user.id));
-        } catch (err) {
-          logger.error({ err, userId: user.id }, "[migrate-import] Failed to rehash password");
-        }
       }
 
       if (!file) {
@@ -124,7 +110,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // JSON body path — password included in body as { password, data }
+    // JSON body path — DEPRECATED: password included in body as { password, data }
+    // Prefer multipart/form-data which keeps the password out of JSON request bodies
+    // that may be logged by middleware or reverse proxies.
+    logger.warn({ userId: user.id }, "[migrate-import] JSON body path is deprecated — use multipart/form-data instead");
     let jsonBody: { password?: string; data?: JudgeKitExport };
     try {
       jsonBody = await readJsonBodyWithLimit(request) as unknown as { password?: string; data?: JudgeKitExport };
@@ -154,23 +143,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "authenticationFailed" }, { status: 403 });
     }
 
-    const { valid, needsRehash } = await verifyPassword(jsonPassword, dbUser.passwordHash);
+    const { valid } = await verifyAndRehashPassword(jsonPassword, user.id, dbUser.passwordHash);
     if (!valid) {
       return NextResponse.json({ error: "invalidPassword" }, { status: 403 });
-    }
-
-    // Transparent rehash: migrate legacy bcrypt hashes to argon2id when the
-    // admin re-confirms their password for a sensitive operation.
-    if (needsRehash) {
-      try {
-        const newHash = await hashPassword(jsonPassword);
-        await db
-          .update(users)
-          .set({ passwordHash: newHash })
-          .where(eq(users.id, user.id));
-      } catch (err) {
-        logger.error({ err, userId: user.id }, "[migrate-import] Failed to rehash password");
-      }
     }
 
     // Extract the actual export data, stripping the password field
@@ -205,7 +180,7 @@ export async function POST(request: NextRequest) {
         error: "importFailed",
         details: result.errors,
         partial: result.tableResults,
-      }, { status: 500 });
+      }, { status: 500, headers: { "Deprecation": "true", "Sunset": "Sat, 01 Nov 2025 00:00:00 GMT" } });
     }
 
     return NextResponse.json({
@@ -213,7 +188,7 @@ export async function POST(request: NextRequest) {
       tablesImported: result.tablesImported,
       totalRowsImported: result.totalRowsImported,
       tableResults: result.tableResults,
-    });
+    }, { headers: { "Deprecation": "true", "Sunset": "Sat, 01 Nov 2025 00:00:00 GMT" } });
   } catch (error) {
     logger.error({ err: error }, "Database import error");
     return NextResponse.json({ error: "importFailed" }, { status: 500 });
