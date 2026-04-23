@@ -177,6 +177,7 @@ export function CodeTimelinePanel({
                 : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
             }`}
             title={formatTime(s.createdAt)}
+            aria-label={t("snapshotOf", { index: i + 1, total: snapshots.length })}
           />
         ))}
       </div>
