@@ -90,14 +90,23 @@ export function RecruiterCandidatesPanel({ assignmentId }: { assignmentId: strin
   });
 
   function handleCsvDownload() {
-    window.open(`/api/v1/contests/${assignmentId}/export?format=csv&download=1`, "_blank");
+    const a = document.createElement("a");
+    a.href = `/api/v1/contests/${assignmentId}/export?format=csv&download=1`;
+    a.download = "";
+    a.rel = "noopener,noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   function handleAnonymizedCsvDownload() {
-    window.open(
-      `/api/v1/contests/${assignmentId}/export?format=csv&anonymized=1&download=1`,
-      "_blank"
-    );
+    const a = document.createElement("a");
+    a.href = `/api/v1/contests/${assignmentId}/export?format=csv&anonymized=1&download=1`;
+    a.download = "";
+    a.rel = "noopener,noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   if (loading) {
