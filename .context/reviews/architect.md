@@ -1,17 +1,20 @@
-# Architectural Review — RPF Cycle 18
+# Architectural Review — RPF Cycle 21
 
 **Date:** 2026-04-22
 **Reviewer:** architect
-**Base commit:** d32f2517
+**Base commit:** 4b9d48f0
 
-## ARCH-1: `api-keys-client.tsx` not migrated to `apiFetchJson` — last remaining raw-pattern admin component [MEDIUM/MEDIUM]
+## ARCH-1: `anti-cheat-dashboard.tsx` `formatDetailsJson` is a divergent copy of the timeline version — DRY violation [MEDIUM/MEDIUM]
 
-**File:** `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx:137-191`
+**Files:**
+- `src/components/contest/anti-cheat-dashboard.tsx:91-97`
+- `src/components/contest/participant-anti-cheat-timeline.tsx:45-59`
+
 **Confidence:** HIGH
 
-The API keys admin component is the last remaining admin component using raw `apiFetch` + `res.json().catch()` for both GET and POST patterns. All other admin components (language-config-table, chat-logs-client, workers-client) have been migrated to `apiFetchJson`. This creates a maintenance hazard where new developers may copy the old pattern.
+Two `formatDetailsJson` functions exist with different behavior. The timeline version (fixed in cycle 18) uses i18n keys to render "Target: Code editor" from `{"target": "code-editor"}`. The dashboard version only pretty-prints JSON. Both components display the same anti-cheat event details data. This violates DRY and creates an inconsistency where the same data appears differently in two views.
 
-**Fix:** Migrate `fetchKeys` and `handleCreate` to `apiFetchJson`.
+**Fix:** Extract a shared `formatDetailsJson(raw, t)` utility that both components import, or have the dashboard component pass `t` to its local copy.
 
 ---
 
@@ -20,40 +23,32 @@ The API keys admin component is the last remaining admin component using raw `ap
 **File:** `src/app/(dashboard)/dashboard/contests/layout.tsx:40-43`
 **Confidence:** MEDIUM
 
-The layout uses `document.getElementById("main-content")` and `document.querySelector("[data-slot='sidebar']")` to attach click handlers. These DOM queries are fragile — if the IDs or data-slot attributes change, the handlers silently stop working. The `data-full-navigate` workaround itself is a known hack for a Next.js RSC streaming bug.
+Carried from cycle 18. The layout uses `document.getElementById("main-content")` and `document.querySelector("[data-slot='sidebar']")` to attach click handlers. These DOM queries are fragile — if the IDs or data-slot attributes change, the handlers silently stop working.
 
-**Fix:** This is an acceptable workaround with a clear TODO. No immediate action needed, but consider adding a defensive check and console warning if the elements are not found.
-
----
-
-## ARCH-3: `formatDetailsJson` in `participant-anti-cheat-timeline.tsx` violates i18n boundary [MEDIUM/MEDIUM]
-
-**File:** `src/components/contest/participant-anti-cheat-timeline.tsx:45-63`
-**Confidence:** HIGH
-
-This helper function returns hardcoded English strings ("Target: Code editor", etc.) but the component uses `useTranslations`. Helper functions outside the component scope cannot access the `t` function. This violates the project's i18n-first architecture.
-
-**Fix:** Convert to a component method or pass the `t` function as a parameter.
+**Fix:** Add a defensive check and console warning if the elements are not found. No immediate action needed.
 
 ---
 
-## ARCH-4: Two separate `formatDuration` functions exist — potential for divergence [LOW/LOW]
+## ARCH-3: Inconsistent numeric input handling — `Number()` vs `parseInt()` across forms [LOW/MEDIUM]
 
 **Files:**
-- `src/components/exam/countdown-timer.tsx:17-24`
-- `src/components/layout/active-timed-assignment-sidebar-panel.tsx:16-23`
+- `src/components/contest/quick-create-contest-form.tsx:133,172` — `Number()`
+- `src/app/(dashboard)/dashboard/admin/roles/role-editor-dialog.tsx:187` — `Number()`
+- `src/components/contest/contest-replay.tsx:166` — `Number()`
+- `src/lib/plugins/chat-widget/admin-config.tsx:294,305` — `parseInt()` (correct)
+- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:454` — `parseInt()` (correct)
 
 **Confidence:** HIGH
 
-Both components define an identical `formatDuration` function. If one is updated (e.g., to add days support), the other will be missed. The `formatting.ts` module already centralizes `formatNumber`, `formatScore`, `formatBytes`, etc. — `formatDuration` should live there too.
+Some form inputs use `Number()` while others use `parseInt()`. The established pattern in recent fixes is `parseInt()` with fallback defaults. `Number()` can produce `NaN` from non-numeric strings and parses the entire string (e.g., `Number("12abc")` is `NaN`), while `parseInt("12abc", 10)` returns `12`.
 
-**Fix:** Move `formatDuration` to `src/lib/formatting.ts` and import it in both components.
+**Fix:** Standardize all numeric form inputs to `parseInt(e.target.value, 10) || defaultValue`.
 
 ---
 
 ## Verified Safe
 
-- `apiFetchJson` adoption is comprehensive across contest components
+- `apiFetchJson` adoption is comprehensive across contest components and admin panels
 - `useVisibilityPolling` is the standard polling pattern
 - `copyToClipboard` utility properly centralizes clipboard logic
 - Formatting utilities are well-consolidated in `src/lib/formatting.ts`

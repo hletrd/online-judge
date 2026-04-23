@@ -1,61 +1,59 @@
-# Tracer Review — RPF Cycle 18
+# Tracer Review — RPF Cycle 21
 
 **Date:** 2026-04-22
 **Reviewer:** tracer
-**Base commit:** d32f2517
+**Base commit:** 4b9d48f0
 
-## TR-1: `participant-anti-cheat-timeline.tsx` polling offset drift — causal trace [MEDIUM/MEDIUM]
+## TR-1: `anti-cheat-dashboard.tsx` `formatDetailsJson` diverges — causal trace [MEDIUM/HIGH]
 
-**File:** `src/components/contest/participant-anti-cheat-timeline.tsx:90-114`
-**Confidence:** MEDIUM
+**File:** `src/components/contest/anti-cheat-dashboard.tsx:91-97`
+**Confidence:** HIGH
 
 **Trace:**
-1. User opens anti-cheat timeline for a student (50 events)
-2. `fetchEvents()` loads first 50, `offset` = 50
-3. User clicks "Load More", `loadMore()` fetches offset=50, gets events 51-80, `offset` = 80
-4. `events` state now has 80 events
-5. 30 seconds later, `useVisibilityPolling` triggers `fetchEvents()`
-6. Server now has 90 events (10 new ones added since step 2)
-7. `freshFirstPage` = events 1-50 from server (which now includes the 10 new events, shifting old events 41-50 to positions 51-60)
-8. Code: `setEvents([freshFirstPage, ...prev.slice(PAGE_SIZE)])` = `[events1-50_new, ...events51-80_old]`
-9. But `events51-80_old` now correspond to server positions 61-90 (shifted by 10)
-10. Events at server positions 51-60 are missing from display (lost in the gap between freshFirstPage and the stale second page)
+1. Anti-cheat event is created with details: `{"target": "code-editor", "timestamp": "2026-04-22T10:00:00Z"}`
+2. Instructor opens anti-cheat dashboard for a contest
+3. `AntiCheatDashboard` component loads, uses `formatDetailsJson` at line 91
+4. The function calls `JSON.stringify(JSON.parse(raw), null, 2)` — returns pretty-printed JSON
+5. Instructor sees: `{"target": "code-editor", "timestamp": "2026-04-22T10:00:00Z"}`
+6. Instructor clicks through to participant timeline for the same student
+7. `ParticipantAntiCheatTimeline` component loads, uses `formatDetailsJson(raw, t)` at line 45
+8. The function parses JSON, finds `parsed.target`, looks up i18n key `detailTargets.code-editor`
+9. Returns `${t("detailTargetLabel")}: ${label}` — "Target: Code editor" (English) or "대상: 코드 편집기" (Korean)
+10. Instructor sees: "Target: Code editor"
 
-**Hypothesis confirmed:** Events are lost at the page boundary during polling when new events are added server-side.
+**Hypothesis confirmed:** The same event data is displayed inconsistently across two views because one `formatDetailsJson` was migrated and the other was not.
 
-**Fix:** On poll refresh, reset to just the first page and invalidate the `loadMore` offset.
+**Fix:** Migrate the dashboard's `formatDetailsJson` to match the timeline's i18n-aware version.
 
 ---
 
-## TR-2: `forceNavigate` call sites should be audited for unnecessary hard navigation [LOW/LOW]
+## TR-2: `role-editor-dialog.tsx` level input `Number()` NaN propagation — causal trace [LOW/MEDIUM]
+
+**File:** `src/app/(dashboard)/dashboard/admin/roles/role-editor-dialog.tsx:187`
+
+**Trace:**
+1. Admin opens role editor dialog to create a new role
+2. Types "2" in level field — `Number("2")` = 2 — correct
+3. Clears the level field — `Number("")` = 0 — sets level to 0 (valid but perhaps unintended)
+4. Pastes "abc" — `Number("abc")` = NaN
+5. Clicks "Create" — form submits with `level: NaN`
+6. `JSON.stringify({level: NaN})` produces `{"level":null}` (JSON spec: NaN becomes null)
+7. Server receives `level: null` — but the Zod schema `z.number().int().min(0).max(2)` expects a number, not null
+8. Server returns 400 validation error
+
+**Alternative trace (if using parseInt):**
+1. Same steps 1-4
+2. `parseInt("abc", 10)` = NaN, `NaN || 0` = 0
+3. Form submits with `level: 0` — valid, passes server validation
+
+**Fix:** Use `parseInt(e.target.value, 10) || 0` matching established pattern.
+
+---
+
+## TR-3: `forceNavigate` call sites — confirmed safe [NO ISSUE]
 
 **File:** `src/lib/navigation/client.ts:3-5`
-**Confidence:** LOW
 
-**Trace of call sites:**
-- `src/app/(dashboard)/dashboard/contests/layout.tsx:37` — `window.location.href = href` (used for data-full-navigate attribute, which is explicitly opt-in)
-- `src/app/(dashboard)/dashboard/contests/join/contest-join-client.tsx:23` — uses `window.location.href` for post-join redirect (justified: needs to bypass RSC streaming bug)
-
-Both call sites are justified. No issue found.
-
----
-
-## TR-3: `quick-create-contest-form.tsx` success path silent failure — causal trace [LOW/MEDIUM]
-
-**File:** `src/components/contest/quick-create-contest-form.tsx:79-84`
-**Confidence:** MEDIUM
-
-**Trace:**
-1. User fills out quick-create form and clicks "Create Assessment"
-2. API returns `200 OK` with body: `{ data: { assignmentId: "abc123" } }`
-3. `res.json()` succeeds, `json.data.assignmentId` = "abc123"
-4. User is redirected to `/dashboard/contests/abc123` — correct
-
-**Alternative trace (malformed success response):**
-1. API returns `200 OK` with body: `{ data: {} }` (missing assignmentId)
-2. `res.json()` succeeds, `json.data.assignmentId` = undefined
-3. `if (json.data?.assignmentId)` is falsy — no redirect
-4. User sees "createSuccess" toast but stays on the create form page
-5. No error indication — user is confused about whether creation succeeded
-
-**Fix:** If `assignmentId` is missing on success, show a toast and redirect to the contests list.
+Re-traced from cycle 18. Both call sites remain justified:
+- `src/app/(dashboard)/dashboard/contests/layout.tsx:37` — opt-in data attribute
+- `src/app/(dashboard)/dashboard/contests/join/contest-join-client.tsx:23` — RSC streaming bug workaround

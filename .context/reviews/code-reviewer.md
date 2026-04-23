@@ -1,79 +1,65 @@
-# Code Quality Review — RPF Cycle 18
+# Code Quality Review — RPF Cycle 21
 
 **Date:** 2026-04-22
 **Reviewer:** code-reviewer
-**Base commit:** d32f2517
+**Base commit:** 4b9d48f0
 
-## CR-1: `recruiter-candidates-panel.tsx` fetches full export endpoint just for display — mismatched API usage [MEDIUM/HIGH]
+## CR-1: `anti-cheat-dashboard.tsx` `formatDetailsJson` not migrated to i18n — duplicate of fixed issue [MEDIUM/HIGH]
 
-**File:** `src/components/contest/recruiter-candidates-panel.tsx:50-53`
+**File:** `src/components/contest/anti-cheat-dashboard.tsx:91-97`
 **Confidence:** HIGH
 
-The component fetches `/api/v1/contests/${assignmentId}/export?format=json` to display a candidate table. The export endpoint is designed for data export (CSV/JSON download), not for in-memory display. This means:
-1. The full dataset is loaded into the browser even when paginated display would suffice.
-2. If the export endpoint returns additional fields or changes shape for export purposes, the display component breaks.
-3. No server-side pagination or filtering — all candidates loaded client-side.
+The `participant-anti-cheat-timeline.tsx` `formatDetailsJson` was migrated in cycle 18 to use `t()` with i18n keys (`detailTargetLabel`, `detailTargets.*`). However, the `anti-cheat-dashboard.tsx` still has the old version that only pretty-prints JSON. When an anti-cheat event has a `target` field (e.g., `{"target": "code-editor"}`), the dashboard shows raw JSON `{"target": "code-editor"}` while the timeline shows "Target: Code editor" (localized). This is an i18n consistency violation.
 
-**Concrete failure:** A contest with 5000 candidates loads all 5000 records into browser memory, then does client-side search and sort.
+**Concrete failure:** An instructor viewing the anti-cheat dashboard sees `{"target": "code-editor"}` in expanded details, while the participant timeline shows the localized "Target: Code editor" / Korean equivalent. The same data is displayed differently in two views.
 
-**Fix:** Create a dedicated `/api/v1/contests/${assignmentId}/candidates` endpoint with server-side pagination, search, and sorting. Previously identified as DEFER-29 but re-flagged because the current implementation directly impacts performance at scale.
+**Fix:** Migrate `formatDetailsJson` in `anti-cheat-dashboard.tsx` to accept `t` as a parameter, matching the `participant-anti-cheat-timeline.tsx` implementation. The i18n keys already exist in both `en.json` and `ko.json`.
 
 ---
 
-## CR-2: `api-keys-client.tsx` uses raw `apiFetch` for GET/POST instead of `apiFetchJson` — inconsistent pattern [LOW/MEDIUM]
+## CR-2: `role-editor-dialog.tsx` uses `Number(e.target.value)` for level input — NaN risk [LOW/MEDIUM]
 
-**File:** `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx:137-155, 176-191`
+**File:** `src/app/(dashboard)/dashboard/admin/roles/role-editor-dialog.tsx:187`
+**Confidence:** HIGH
+
+The role level input uses `Number(e.target.value)` which can produce `NaN` from non-numeric input or `0` from empty string. The `level` field is constrained to 0-2 in the HTML but `Number()` does not guarantee a valid integer in range.
+
+**Concrete failure:** If a user clears the input field, `Number("")` returns `0`, which is a valid level. But if they type non-numeric text, `Number("abc")` returns `NaN`, which could be sent to the server.
+
+**Fix:** Use `parseInt(e.target.value, 10) || 0` and clamp to 0-2 range, matching the pattern used in admin-config and assignment-form-dialog.
+
+---
+
+## CR-3: `quick-create-contest-form.tsx` uses `Number(e.target.value)` for duration and points — NaN risk [LOW/LOW]
+
+**File:** `src/components/contest/quick-create-contest-form.tsx:133,172`
 **Confidence:** MEDIUM
 
-The `fetchKeys` function uses raw `apiFetch` + manual `res.json().catch()`, while most other GET patterns have been migrated to `apiFetchJson`. The `handleCreate` function also uses raw `apiFetch` + `res.json().catch()` for the POST response. These should use `apiFetchJson` for consistency with the rest of the codebase.
+Both `setDurationMinutes(Number(e.target.value) || 60)` and `updateProblemPoints(i, Number(e.target.value) || 100)` use `Number()`. The `|| 60` and `|| 100` fallbacks handle `NaN` (since `NaN || 60` is `60`), but `Number("12abc")` returns `NaN` rather than `12`. This differs from `parseInt` which would parse the leading digits.
 
-**Fix:** Migrate `fetchKeys` and `handleCreate` to use `apiFetchJson`.
-
----
-
-## CR-3: `code-timeline-panel.tsx` mini-timeline buttons lack accessible labels [LOW/MEDIUM]
-
-**File:** `src/components/contest/code-timeline-panel.tsx:170-179`
-**Confidence:** HIGH
-
-The snapshot mini-timeline uses `<button>` elements with only `title` attributes for accessibility. Screen readers do not reliably announce `title` attributes. Each dot should have an `aria-label` describing which snapshot it represents (e.g., "Snapshot 3 of 10").
-
-**Fix:** Add `aria-label` to each timeline dot button.
+**Fix:** Use `parseInt(e.target.value, 10) || 60` and `parseInt(e.target.value, 10) || 100` for consistency with other numeric inputs in the codebase.
 
 ---
 
-## CR-4: `participant-anti-cheat-timeline.tsx` `formatDetailsJson` has hardcoded English strings [MEDIUM/MEDIUM]
+## CR-4: `contest-replay.tsx` uses `Number(event.target.value)` for slider — no NaN guard [LOW/LOW]
 
-**File:** `src/components/contest/participant-anti-cheat-timeline.tsx:51-57`
-**Confidence:** HIGH
+**File:** `src/components/contest/contest-replay.tsx:166`
+**Confidence:** LOW
 
-The `formatDetailsJson` function returns English strings like `"Target: Code editor"`. Since this is a display function, it should use i18n keys. The component already uses `useTranslations` but the helper function doesn't have access to the `t` function.
+The range slider `onChange` uses `Number(event.target.value)` without guard. While HTML range inputs always return valid numbers, this is inconsistent with the established pattern.
 
-**Concrete failure:** A Korean user sees "Target: Code editor" instead of the localized string.
-
-**Fix:** Pass `t` function to `formatDetailsJson` or convert to a component method.
-
----
-
-## CR-5: `contest-announcements.tsx` and `contest-clarifications.tsx` throw Error with raw string instead of using structured approach [LOW/LOW]
-
-**Files:**
-- `src/components/contest/contest-announcements.tsx:97-98`
-- `src/components/contest/contest-clarifications.tsx:120-121`
-
-**Confidence:** HIGH
-
-Both components throw `new Error("contestAnnouncementSaveFailed")` and similar. While these errors are caught and the i18n toast is shown, the error message string is never used — only the catch block's toast.error matters. The thrown error is unnecessary ceremony; an early return would be cleaner.
+**Fix:** Use `parseInt(event.target.value, 10)` for consistency. Low priority because HTML range inputs are inherently safe.
 
 ---
 
 ## Verified Safe
 
-- All `res.json()` calls have `.catch()` guards
-- `apiFetchJson` is consistently used for GET polling patterns
-- All `dangerouslySetInnerHTML` uses are properly sanitized
+- All `res.json()` calls in client components have `.catch()` guards
+- `apiFetchJson` is consistently used for polling and data-fetching patterns
+- `formatDuration` properly consolidated into `src/lib/formatting.ts`
+- `participant-anti-cheat-timeline.tsx` `formatDetailsJson` properly uses i18n `t()` function
+- `api-keys-client.tsx` migrated to `apiFetchJson`
 - No `innerHTML` assignments in the codebase
-- `copyToClipboard` utility properly handles execCommand fallback with return value check
-- All icon-only buttons have proper `aria-label` attributes
 - No `as any` or `@ts-ignore` found
 - Korean letter-spacing is properly conditional throughout
+- Sidebar timer has visibility awareness (`visibilitychange` listener)

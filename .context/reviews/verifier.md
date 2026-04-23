@@ -1,46 +1,36 @@
-# Verifier Review — RPF Cycle 18
+# Verifier Review — RPF Cycle 21
 
 **Date:** 2026-04-22
 **Reviewer:** verifier
-**Base commit:** d32f2517
+**Base commit:** 4b9d48f0
 
-## V-1: `participant-anti-cheat-timeline.tsx` polling may display duplicate events at page boundary — confirmed [MEDIUM/MEDIUM]
+## V-1: `anti-cheat-dashboard.tsx` `formatDetailsJson` not using i18n — confirmed inconsistent [MEDIUM/HIGH]
 
-**File:** `src/components/contest/participant-anti-cheat-timeline.tsx:96-114`
-**Confidence:** MEDIUM
+**File:** `src/components/contest/anti-cheat-dashboard.tsx:91-97`
+**Confidence:** HIGH
 
-Verified the debugger's finding (DBG-1). The polling logic preserves events beyond `PAGE_SIZE` but assumes a stable offset boundary. If new events are created between polls, the first-page refresh and the preserved second-page data may overlap at the boundary.
+Verified that the dashboard's `formatDetailsJson` only pretty-prints JSON while the timeline version uses `t()` with i18n keys. The i18n keys (`detailTargetLabel`, `detailTargets.code-editor`, etc.) exist in both `en.json` and `ko.json`. The dashboard component already uses `useTranslations("contests.antiCheat")` at line 100 — the `t` function is available but not passed to `formatDetailsJson`.
 
-**Evidence:** The code at line 103 checks `if (prev.length > PAGE_SIZE)` and replaces `freshFirstPage` + `prev.slice(PAGE_SIZE)`. This is correct only if no new events were added between the initial load and the poll refresh. If 5 events were added, `freshFirstPage` includes events that were previously at indices 5-54, but `prev.slice(PAGE_SIZE)` still includes the old indices 50-99 which now correspond to server indices 55-104. The boundary events (old indices 50-54) are duplicated.
-
-**Fix:** On poll refresh, reset to just the first page, or deduplicate by event ID.
+**Evidence:** Line 91-97 shows `function formatDetailsJson(raw: string): string { try { return JSON.stringify(JSON.parse(raw), null, 2); } catch { return raw; } }` — no `t` parameter, no i18n keys. Line 550 calls `formatDetailsJson(event.details!)` without passing `t`.
 
 ---
 
-## V-2: `api-keys-client.tsx` not using `apiFetchJson` — confirmed inconsistent [LOW/MEDIUM]
+## V-2: `role-editor-dialog.tsx` `Number(e.target.value)` for level — NaN risk confirmed [LOW/MEDIUM]
 
-**File:** `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx:137-191`
+**File:** `src/app/(dashboard)/dashboard/admin/roles/role-editor-dialog.tsx:187`
 **Confidence:** HIGH
 
-Verified the architect's finding (ARCH-1). The component uses raw `apiFetch` + `res.json().catch()` in both `fetchKeys` and `handleCreate`. All other admin components have been migrated. The behavior is functionally correct but inconsistent with the established pattern.
-
----
-
-## V-3: `formatDetailsJson` hardcoded English — confirmed i18n violation [MEDIUM/HIGH]
-
-**File:** `src/components/contest/participant-anti-cheat-timeline.tsx:45-63`
-**Confidence:** HIGH
-
-Verified the code-reviewer (CR-4) and critic (CRI-1) findings. The function returns "Target: Code editor", "Target: Problem description" etc. as hardcoded English strings. The component uses `useTranslations` but the helper function cannot access `t()`.
-
-**Evidence:** Line 50-57 shows `const labels: Record<string, string> = { "code-editor": "Code editor", ...}` and line 58 returns `` `Target: ${label}` ``. The word "Target:" and the label values are not localized.
+The level input uses `Number(e.target.value)`. While the HTML `<input type="number" min={0} max={2}>` constrains most input, the `Number()` call on an empty field returns `0` (valid but unintended), and on non-numeric paste returns `NaN`. The `parseInt` pattern with fallback is the established convention in this codebase.
 
 ---
 
 ## Previously Fixed — Verified
 
-- All cycle-17 fixes confirmed: `res.json()` guards, `apiFetchJson` migrations, AbortController, aria-labels
-- `countdown-timer.tsx` uses `aria-live="polite"` for non-1-minute thresholds
-- Anti-cheat privacy notice uses Dialog component
-- `test-connection/route.ts` returns 400 for malformed JSON
-- CSV downloads use programmatic `<a>` click with `noopener,noreferrer`
+- `participant-anti-cheat-timeline.tsx` polling resets to first page on refresh (AGG-3 fix confirmed)
+- `api-keys-client.tsx` migrated to `apiFetchJson` (AGG-4 fix confirmed)
+- `formatDuration` consolidated into `src/lib/formatting.ts` (AGG-7 fix confirmed)
+- `code-timeline-panel.tsx` snapshot dots have `aria-label` (AGG-8 fix confirmed)
+- `quick-create-contest-form.tsx` navigates to contests list when `assignmentId` missing (AGG-9 fix confirmed)
+- `active-timed-assignment-sidebar-panel.tsx` has `visibilitychange` listener (AGG-6 fix confirmed)
+- All cycle-20 `.catch()` guards confirmed in place (create-group-dialog, admin-config, providers, comment-section)
+- All cycle-20 `parseInt` fixes confirmed (admin-config, assignment-form-dialog)
