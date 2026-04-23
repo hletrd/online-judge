@@ -8,7 +8,7 @@ import { bulkCreateRecruitingInvitations } from "@/lib/assignments/recruiting-in
 import { bulkCreateRecruitingInvitationsSchema } from "@/lib/validators/recruiting-invitations";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { getDbNowUncached } from "@/lib/db-time";
-import { MAX_EXPIRY_MS } from "@/lib/assignments/recruiting-constants";
+import { MAX_EXPIRY_MS, computeExpiryFromDays } from "@/lib/assignments/recruiting-constants";
 
 export const POST = createApiHandler({
   auth: { capabilities: ["recruiting.manage_invitations"] },
@@ -62,7 +62,7 @@ export const POST = createApiHandler({
             // Compute expiresAt server-side using DB time
             let expiresAt: Date | null = null;
             if (inv.expiryDays) {
-              expiresAt = new Date(dbNow.getTime() + inv.expiryDays * 86400000);
+              expiresAt = computeExpiryFromDays(dbNow, inv.expiryDays);
             } else if (inv.expiryDate) {
               expiresAt = new Date(`${inv.expiryDate}T23:59:59Z`);
               // Defense-in-depth: reject Invalid Date construction even though the

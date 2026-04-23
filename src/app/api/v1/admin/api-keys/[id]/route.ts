@@ -8,6 +8,7 @@ import { apiSuccess, apiError } from "@/lib/api/responses";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { canManageRoleAsync, isUserRole } from "@/lib/security/constants";
 import { getDbNowUncached } from "@/lib/db-time";
+import { computeExpiryFromDays } from "@/lib/assignments/recruiting-constants";
 
 const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -58,7 +59,7 @@ export const PATCH = createApiHandler({
       // the NOW()-based isExpired check in the GET endpoint.
       const dbNow = await getDbNowUncached();
       updates.expiresAt = body.expiryDays
-        ? new Date(dbNow.getTime() + body.expiryDays * 86400000)
+        ? computeExpiryFromDays(dbNow, body.expiryDays)
         : null;
     }
 

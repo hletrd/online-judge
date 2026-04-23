@@ -11,7 +11,7 @@ import { canManageContest, getContestAssignment } from "@/lib/assignments/contes
 import { updateRecruitingInvitationSchema } from "@/lib/validators/recruiting-invitations";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { getDbNowUncached } from "@/lib/db-time";
-import { MAX_EXPIRY_MS } from "@/lib/assignments/recruiting-constants";
+import { MAX_EXPIRY_MS, computeExpiryFromDays } from "@/lib/assignments/recruiting-constants";
 
 type AuthorizedInvitationResult =
   | {
@@ -109,7 +109,7 @@ export const PATCH = createApiHandler({
     if (body.expiryDays !== undefined || body.expiryDate !== undefined) {
       const dbNow = await getDbNowUncached();
       if (body.expiryDays) {
-        expiresAtUpdate = new Date(dbNow.getTime() + body.expiryDays * 86400000);
+        expiresAtUpdate = computeExpiryFromDays(dbNow, body.expiryDays);
       } else if (body.expiryDate) {
         expiresAtUpdate = new Date(`${body.expiryDate}T23:59:59Z`);
         // Defense-in-depth: reject Invalid Date construction even though the

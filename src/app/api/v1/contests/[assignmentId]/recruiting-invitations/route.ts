@@ -12,7 +12,7 @@ import { canManageContest, getContestAssignment } from "@/lib/assignments/contes
 import { createRecruitingInvitationSchema } from "@/lib/validators/recruiting-invitations";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { getDbNowUncached } from "@/lib/db-time";
-import { MAX_EXPIRY_MS } from "@/lib/assignments/recruiting-constants";
+import { MAX_EXPIRY_MS, computeExpiryFromDays } from "@/lib/assignments/recruiting-constants";
 
 export const GET = createApiHandler({
   auth: { capabilities: ["recruiting.manage_invitations"] },
@@ -69,7 +69,7 @@ export const POST = createApiHandler({
         const dbNow = await getDbNowUncached();
         let expiresAt: Date | null = null;
         if (body.expiryDays) {
-          expiresAt = new Date(dbNow.getTime() + body.expiryDays * 86400000);
+          expiresAt = computeExpiryFromDays(dbNow, body.expiryDays);
         } else if (body.expiryDate) {
           // Custom date: compute end-of-day UTC to avoid timezone-dependent results.
           // The client sends a bare date (YYYY-MM-DD); we set 23:59:59 UTC.
