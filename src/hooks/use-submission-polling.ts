@@ -235,7 +235,7 @@ function initFetchPolling(
         throw new Error("submissionRefreshFailed");
       }
 
-      const payload = (await response.json()) as { data?: Record<string, unknown> };
+      const payload = (await response.json().catch(() => ({ data: null }))) as { data?: Record<string, unknown> | null };
 
       if (!payload.data) {
         throw new Error("submissionPayloadMissing");

@@ -211,11 +211,12 @@ export default function BulkCreateDialog() {
 
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        toast.error((errorBody as { error?: string }).error ?? tCommon("error"));
+        console.error("Bulk create failed:", (errorBody as { error?: string }).error);
+        toast.error(tCommon("error"));
         return;
       }
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({ created: [] as CreatedUser[], failed: [] as FailedUser[], createdCount: 0 })) as { created: CreatedUser[]; failed: FailedUser[]; createdCount?: number };
 
       setResults({ created: data.created ?? [], failed: data.failed ?? [] });
       router.refresh();

@@ -125,9 +125,9 @@ export function GroupMembersManager({
         throw new Error((errorBody as { error?: string }).error || "memberAddFailed");
       }
 
-      const payload = await response.json();
+      const payload = await response.json().catch(() => ({ data: {} })) as { data?: { id?: string; user?: { id: string; name: string; username: string; className: string | null }; enrolledAt?: string } };
 
-      const nextMember = payload.data?.user
+      const nextMember = payload.data?.user && payload.data.id
         ? {
             id: payload.data.id,
             userId: payload.data.user.id,
@@ -182,9 +182,7 @@ export function GroupMembersManager({
         throw new Error((errorBody as { error?: string }).error || "bulkAddFailed");
       }
 
-      const payload = await response.json();
-
-      const { enrolled, skipped } = payload as { enrolled: number; skipped: number };
+      const { enrolled, skipped } = await response.json().catch(() => ({ enrolled: 0, skipped: 0 })) as { enrolled: number; skipped: number };
 
       // Remove enrolled students from available list (we don't know which were skipped as duplicates
       // vs invalid, so optimistically remove all selected)

@@ -185,8 +185,8 @@ export function ProblemSubmissionForm({
         toast.error(translateSubmissionError((errorBody as { error?: string }).error));
         return;
       }
-      const payload = await response.json();
-      setRunResult(payload.data);
+      const payload = await response.json().catch(() => ({ data: null })) as { data?: { stdout: string; stderr: string; executionTimeMs: number; timedOut: boolean; oomKilled: boolean; compileOutput: string | null } | null };
+      setRunResult(payload.data ?? null);
     } catch {
       toast.error(tCommon("error"));
     } finally {
@@ -249,7 +249,7 @@ export function ProblemSubmissionForm({
         return;
       }
 
-      const payload = await response.json();
+      const payload = await response.json().catch(() => ({ data: {} })) as { data?: { id?: string } };
 
       const submissionId = payload.data?.id;
 

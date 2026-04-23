@@ -181,7 +181,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
         method: "POST",
       });
       if (response.ok) {
-        const payload = (await response.json()) as { data?: Record<string, unknown> };
+        const payload = (await response.json().catch(() => ({ data: null }))) as { data?: Record<string, unknown> | null };
         if (payload.data) {
           const updated = normalizeSubmission(payload.data);
           // Preserve sourceCode since rejudge response excludes it
