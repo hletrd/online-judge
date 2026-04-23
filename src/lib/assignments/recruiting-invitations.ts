@@ -231,6 +231,11 @@ export async function resetRecruitingInvitationAccountPassword(id: string) {
     throw new Error("accountPasswordResetRequiresRedeemed");
   }
 
+  // Capture after guard so TypeScript narrows userId to string (not string | null).
+  // This avoids the non-null assertion inside the transaction callback below,
+  // where TypeScript cannot narrow across closure boundaries.
+  const userId = invitation.userId;
+
   const invalidatedPasswordHash = await hashPassword(randomBytes(32).toString("hex"));
   const nextMetadata = {
     ...(invitation.metadata ?? {}),
@@ -250,7 +255,7 @@ export async function resetRecruitingInvitationAccountPassword(id: string) {
         tokenInvalidatedAt: now,
         updatedAt: now,
       })
-      .where(eq(users.id, invitation.userId!));
+      .where(eq(users.id, userId));
 
     await tx
       .update(recruitingInvitations)
