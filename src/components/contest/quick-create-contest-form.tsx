@@ -81,6 +81,9 @@ export function QuickCreateContestForm({ problems }: { problems: Problem[] }) {
         toast.success(t("createSuccess"));
         if (json.data?.assignmentId) {
           router.push(`/dashboard/contests/${json.data.assignmentId}`);
+        } else {
+          // Success but no assignmentId returned — navigate to contests list
+          router.push("/dashboard/contests");
         }
       } else {
         toast.error(t("createError"));
