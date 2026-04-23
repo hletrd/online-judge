@@ -88,9 +88,17 @@ const REVIEW_TIER_COLORS: Record<string, string> = {
   escalate: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
 };
 
-function formatDetailsJson(raw: string): string {
+function formatDetailsJson(raw: string, t: (key: string) => string): string {
   try {
-    return JSON.stringify(JSON.parse(raw), null, 2);
+    const parsed = JSON.parse(raw);
+    // If has target field, show human-readable summary (matching participant-anti-cheat-timeline.tsx)
+    if (parsed.target) {
+      const target = parsed.target as string;
+      const targetKey = `detailTargets.${target}`;
+      const label = t(targetKey) !== targetKey ? t(targetKey) : target;
+      return `${t("detailTargetLabel")}: ${label}`;
+    }
+    return JSON.stringify(parsed, null, 2);
   } catch {
     return raw;
   }
@@ -532,6 +540,7 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
                               className="flex items-center gap-1 text-xs text-primary hover:underline focus:outline-none"
                               onClick={() => toggleRow(event.id)}
                               aria-expanded={isExpanded}
+                              aria-controls={`anti-cheat-dashboard-detail-${event.id}`}
                             >
                               {isExpanded ? (
                                 <>
@@ -546,8 +555,8 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
                               )}
                             </button>
                             {isExpanded && (
-                              <pre className="mt-1.5 max-h-48 overflow-auto rounded-md bg-muted px-2 py-1.5 text-xs">
-                                <code>{formatDetailsJson(event.details!)}</code>
+                              <pre id={`anti-cheat-dashboard-detail-${event.id}`} className="mt-1.5 max-h-48 overflow-auto rounded-md bg-muted px-2 py-1.5 text-xs">
+                                <code>{formatDetailsJson(event.details!, t)}</code>
                               </pre>
                             )}
                           </div>
