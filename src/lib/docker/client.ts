@@ -246,7 +246,8 @@ export async function pullDockerImage(imageTag: string): Promise<{ success: bool
     });
     return { success: true };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
+    logger.error({ error, imageTag }, "[docker] Remote pull failed");
+    return { success: false, error: "Failed to pull Docker image" };
   }
 }
 
@@ -301,7 +302,8 @@ export async function buildDockerImage(
     });
     return { success: true, logs: response.logs };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
+    logger.error({ error, imageName }, "[docker] Remote build failed");
+    return { success: false, error: "Failed to build Docker image" };
   }
 }
 
@@ -345,7 +347,8 @@ export async function removeDockerImage(imageTag: string): Promise<{ success: bo
     });
     return { success: true };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
+    logger.error({ error, imageTag }, "[docker] Remote remove failed");
+    return { success: false, error: "Failed to remove Docker image" };
   }
 }
 
