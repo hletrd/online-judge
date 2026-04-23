@@ -20,6 +20,11 @@ vi.mock("next-intl", () => ({
 
 vi.mock("@/lib/api/client", () => ({
   apiFetch: (...args: unknown[]) => apiFetchMock(...args),
+  apiFetchJson: async (input: unknown, init: unknown, fallback: unknown) => {
+    const res = await apiFetchMock(input, init);
+    const data = await res.json();
+    return { ok: res.ok, data };
+  },
 }));
 
 vi.mock("@/components/code/code-viewer", () => ({

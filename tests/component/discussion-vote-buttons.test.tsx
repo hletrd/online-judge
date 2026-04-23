@@ -13,6 +13,11 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/api/client", () => ({
   apiFetch: (...args: unknown[]) => apiFetchMock(...args),
+  apiFetchJson: async (input: unknown, init: unknown, fallback: unknown) => {
+    const res = await apiFetchMock(input, init);
+    const data = await res.json();
+    return { ok: res.ok, data };
+  },
 }));
 
 describe("DiscussionVoteButtons", () => {
