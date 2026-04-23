@@ -91,6 +91,11 @@ export function apiFetch(
  * 2. Forgetting `.catch()` on `.json()` calls
  * 3. Calling `.json()` twice on the same response (body already consumed)
  *
+ * Both success and error response JSON parsing is wrapped in `.catch()`,
+ * ensuring non-JSON bodies never throw SyntaxError regardless of the HTTP
+ * status code. The `fallback` value is returned whenever `.json()` fails,
+ * whether the response was 2xx or 4xx/5xx.
+ *
  * @param input - URL or RequestInfo to fetch
  * @param init - Optional fetch options. Supports `signal` for AbortController-based cancellation.
  * @param fallback - Value returned when `.json()` throws (e.g., non-JSON body).
