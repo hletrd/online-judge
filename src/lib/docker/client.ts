@@ -1,6 +1,7 @@
 import { execFile, spawn } from "child_process";
 import { promisify } from "util";
 import pLimit from "p-limit";
+import { logger } from "@/lib/logger";
 
 const exec = promisify(execFile);
 const JUDGE_WORKER_URL = process.env.COMPILER_RUNNER_URL || "";
@@ -109,8 +110,8 @@ async function pullDockerImageLocal(imageTag: string): Promise<{ success: boolea
     await exec("docker", ["pull", imageTag], { timeout: 300_000 });
     return { success: true };
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return { success: false, error: msg };
+    logger.error({ error, imageTag }, "[docker] Pull failed");
+    return { success: false, error: "Failed to pull Docker image" };
   }
 }
 
@@ -171,7 +172,8 @@ async function buildDockerImageLocal(
 
     proc.on("error", (err) => {
       clearTimeout(timer);
-      resolve({ success: false, error: err.message });
+      logger.error({ err, imageName, dockerfilePath }, "[docker] Build process spawn error");
+      resolve({ success: false, error: "Build process failed to start" });
     });
   });
 }
@@ -202,8 +204,8 @@ async function removeDockerImageLocal(imageTag: string): Promise<{ success: bool
     await exec("docker", ["rmi", imageTag], { timeout: 30_000 });
     return { success: true };
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return { success: false, error: msg };
+    logger.error({ error, imageTag }, "[docker] Remove failed");
+    return { success: false, error: "Failed to remove Docker image" };
   }
 }
 
