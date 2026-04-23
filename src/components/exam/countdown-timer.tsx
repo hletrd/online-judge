@@ -114,7 +114,16 @@ export function CountdownTimer({ deadline, label, onExpired }: CountdownTimerPro
       }
     }
 
-    const interval = setInterval(recalculate, 1000);
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    function scheduleNext() {
+      timerId = setTimeout(() => {
+        if (cancelled) return;
+        recalculate();
+        scheduleNext();
+      }, 1000);
+    }
 
     // Immediately recalculate when the tab becomes visible to prevent
     // timer drift caused by browser throttling of setInterval in
@@ -124,10 +133,13 @@ export function CountdownTimer({ deadline, label, onExpired }: CountdownTimerPro
         recalculate();
       }
     }
+
+    scheduleNext();
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      clearInterval(interval);
+      cancelled = true;
+      if (timerId !== null) clearTimeout(timerId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [deadline, handleExpired, t]);
