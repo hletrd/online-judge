@@ -2135,6 +2135,13 @@
       "filterByStudent": "Filter by user",
       "allTypes": "All Types",
       "allStudents": "All Users",
+      "detailTargetLabel": "Target",
+      "detailTargets": {
+        "code-editor": "Code editor",
+        "problem-description": "Problem description",
+        "input-field": "Input field",
+        "code-block": "Code block"
+      },
       "expandDetails": "Show details",
       "collapseDetails": "Hide details",
       "noEventsForFilter": "No anti-cheat signals match the current filters.",
@@ -2277,7 +2284,8 @@
       "allProblems": "All problems",
       "fetchError": "Failed to load code snapshots.",
       "previousSnapshot": "Previous snapshot",
-      "nextSnapshot": "Next snapshot"
+      "nextSnapshot": "Next snapshot",
+      "snapshotOf": "Snapshot {index} of {total}"
     },
     "recruiter": {
       "title": "Candidate Overview",

@@ -2135,6 +2135,13 @@
       "filterByStudent": "사용자별 필터",
       "allTypes": "전체 유형",
       "allStudents": "전체 사용자",
+      "detailTargetLabel": "대상",
+      "detailTargets": {
+        "code-editor": "코드 편집기",
+        "problem-description": "문제 설명",
+        "input-field": "입력 필드",
+        "code-block": "코드 블록"
+      },
       "expandDetails": "상세 보기",
       "collapseDetails": "상세 숨기기",
       "noEventsForFilter": "현재 필터에 해당하는 부정행위 신호가 없습니다.",
@@ -2277,7 +2284,8 @@
       "allProblems": "전체 문제",
       "fetchError": "코드 스냅샷을 불러오지 못했습니다.",
       "previousSnapshot": "이전 스냅샷",
-      "nextSnapshot": "다음 스냅샷"
+      "nextSnapshot": "다음 스냅샷",
+      "snapshotOf": "전체 {total}개 중 {index}번째 스냅샷"
     },
     "recruiter": {
       "title": "지원자 현황",

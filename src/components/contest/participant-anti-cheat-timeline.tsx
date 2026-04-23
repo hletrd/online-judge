@@ -42,20 +42,15 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   code_similarity: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
 };
 
-function formatDetailsJson(raw: string): string {
+function formatDetailsJson(raw: string, t: (key: string) => string): string {
   try {
     const parsed = JSON.parse(raw);
     // If has target field, show human-readable summary
     if (parsed.target) {
       const target = parsed.target as string;
-      const labels: Record<string, string> = {
-        "code-editor": "Code editor",
-        "problem-description": "Problem description",
-        "input-field": "Input field",
-        "code-block": "Code block",
-      };
-      const label = labels[target] ?? target;
-      return `Target: ${label}`;
+      const targetKey = `detailTargets.${target}`;
+      const label = t(targetKey) !== targetKey ? t(targetKey) : target;
+      return `${t("detailTargetLabel")}: ${label}`;
     }
     return JSON.stringify(parsed, null, 2);
   } catch {
@@ -97,21 +92,12 @@ export function ParticipantAntiCheatTimeline({
       if (ok) {
         const freshFirstPage: AntiCheatEvent[] = json.data.events;
         setTotal(json.data.total);
-        setEvents((prev) => {
-          // If user has loaded more pages via loadMore, preserve them.
-          // Only replace the first page of data with the fresh result.
-          if (prev.length > PAGE_SIZE) {
-            return [...freshFirstPage, ...prev.slice(PAGE_SIZE)];
-          }
-          return freshFirstPage;
-        });
-        setOffset((prev) => {
-          // Only reset offset to first page length if we haven't loaded more
-          if (prev <= PAGE_SIZE) {
-            return freshFirstPage.length;
-          }
-          return prev;
-        });
+        // On poll refresh, reset to just the first page to avoid
+        // duplicate or missing events at the page boundary when new
+        // events have been created server-side since the last fetch.
+        // The user can load more pages again via the "Load more" button.
+        setEvents(freshFirstPage);
+        setOffset(freshFirstPage.length);
       } else {
         setError(true);
       }
@@ -293,7 +279,7 @@ export function ParticipantAntiCheatTimeline({
                             {isExpanded && (
                               <pre className="mt-1.5 max-h-48 overflow-auto rounded-md bg-muted px-2 py-1.5 text-xs">
                                 <code>
-                                  {formatDetailsJson(event.details!)}
+                                  {formatDetailsJson(event.details!, t)}
                                 </code>
                               </pre>
                             )}
