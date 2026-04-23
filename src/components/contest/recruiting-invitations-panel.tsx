@@ -199,8 +199,8 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
       });
 
       if (res.ok) {
-        const json = await res.json();
-        const token = json.data?.token as string | undefined;
+        const json = await res.json().catch(() => ({ data: {} }));
+        const token = (json as { data?: { token?: string } }).data?.token as string | undefined;
         setCreateOpen(false);
         setCreateName("");
         setCreateEmail("");
@@ -214,15 +214,11 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
         toast.success(t("createSuccess"));
         await Promise.all([fetchInvitations(), fetchStats()]);
       } else {
-        try {
-          const json = await res.json();
-          const code = json.error ?? json.code ?? "";
-          if (code === "emailAlreadyInvited") {
-            toast.error(t("emailAlreadyInvited"));
-          } else {
-            toast.error(t("createError"));
-          }
-        } catch {
+        const json = await res.json().catch(() => ({})) as { error?: string; code?: string };
+        const code = json.error ?? json.code ?? "";
+        if (code === "emailAlreadyInvited") {
+          toast.error(t("emailAlreadyInvited"));
+        } else {
           toast.error(t("createError"));
         }
       }

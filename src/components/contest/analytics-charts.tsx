@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetchJson } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -537,9 +537,12 @@ export function AnalyticsCharts({ assignmentId }: AnalyticsChartsProps) {
 
   const fetchAnalytics = useCallback(async () => {
     try {
-      const res = await apiFetch(`/api/v1/contests/${assignmentId}/analytics`);
-      if (res.ok) {
-        const json = await res.json();
+      const { ok, data: json } = await apiFetchJson<{ data: AnalyticsData }>(
+        `/api/v1/contests/${assignmentId}/analytics`,
+        undefined,
+        { data: null as unknown as AnalyticsData }
+      );
+      if (ok) {
         setData(json.data);
       } else {
         setError(true);

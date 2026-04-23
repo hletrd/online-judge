@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetchJson } from "@/lib/api/client";
 import { formatScore } from "@/lib/formatting";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -224,11 +224,12 @@ export function LeaderboardTable({
       else setLoading(true);
 
       try {
-        const res = await apiFetch(
-          `/api/v1/contests/${assignmentId}/leaderboard`
+        const { ok, data: json } = await apiFetchJson<{ data: LeaderboardData }>(
+          `/api/v1/contests/${assignmentId}/leaderboard`,
+          undefined,
+          { data: { entries: [] } as unknown as LeaderboardData }
         );
-        if (res.ok) {
-          const json = await res.json();
+        if (ok) {
           // Validate the response shape before setting state
           if (json.data && typeof json.data === "object" && Array.isArray(json.data.entries)) {
             setData(json.data);

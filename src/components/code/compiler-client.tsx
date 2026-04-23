@@ -284,7 +284,7 @@ export function CompilerClient({ languages, title, description, preferredLanguag
         return;
       }
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ data: null }));
 
       updateTestCase(runningTestCaseId, (testCase) => ({
         ...testCase,

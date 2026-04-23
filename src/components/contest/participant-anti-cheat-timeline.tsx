@@ -5,7 +5,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { toast } from "sonner";
 import { useSystemTimezone } from "@/contexts/timezone-context";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetchJson } from "@/lib/api/client";
 import { useVisibilityPolling } from "@/hooks/use-visibility-polling";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -89,11 +89,12 @@ export function ParticipantAntiCheatTimeline({
 
   const fetchEvents = useCallback(async () => {
     try {
-      const res = await apiFetch(
-        `/api/v1/contests/${assignmentId}/anti-cheat?userId=${userId}&limit=${PAGE_SIZE}&offset=0`
+      const { ok, data: json } = await apiFetchJson<{ data: { events: AntiCheatEvent[]; total: number } }>(
+        `/api/v1/contests/${assignmentId}/anti-cheat?userId=${userId}&limit=${PAGE_SIZE}&offset=0`,
+        undefined,
+        { data: { events: [], total: 0 } }
       );
-      if (res.ok) {
-        const json = await res.json();
+      if (ok) {
         const freshFirstPage: AntiCheatEvent[] = json.data.events;
         setTotal(json.data.total);
         setEvents((prev) => {
@@ -124,11 +125,12 @@ export function ParticipantAntiCheatTimeline({
   const loadMore = useCallback(async () => {
     setLoadingMore(true);
     try {
-      const res = await apiFetch(
-        `/api/v1/contests/${assignmentId}/anti-cheat?userId=${userId}&limit=${PAGE_SIZE}&offset=${offset}`
+      const { ok, data: json } = await apiFetchJson<{ data: { events: AntiCheatEvent[]; total: number } }>(
+        `/api/v1/contests/${assignmentId}/anti-cheat?userId=${userId}&limit=${PAGE_SIZE}&offset=${offset}`,
+        undefined,
+        { data: { events: [], total: 0 } }
       );
-      if (res.ok) {
-        const json = await res.json();
+      if (ok) {
         setEvents((prev) => [...prev, ...json.data.events]);
         setTotal(json.data.total);
         setOffset((prev) => prev + json.data.events.length);

@@ -102,7 +102,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
         toast.error(tCommon("error"));
         return;
       }
-      const payload = (await res.json()) as { data?: Record<string, unknown> };
+      const payload = (await res.json().catch(() => ({ data: null }))) as { data?: Record<string, unknown> | null };
       if (payload.data) {
         const updated = normalizeSubmission(payload.data);
         setSubmission((prev) => ({ ...updated, sourceCode: updated.sourceCode || prev.sourceCode }));

@@ -7,7 +7,7 @@ import { formatDateTimeInTimeZone } from "@/lib/datetime";
 
 // i18n keys used from "contests.antiCheat" and "common"
 import { toast } from "sonner";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetchJson } from "@/lib/api/client";
 import { useVisibilityPolling } from "@/hooks/use-visibility-polling";
 import { getAntiCheatReviewTier } from "@/lib/anti-cheat/review-model";
 import { Button } from "@/components/ui/button";
@@ -117,11 +117,12 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
 
   const fetchEvents = useCallback(async () => {
     try {
-      const res = await apiFetch(
-        `/api/v1/contests/${assignmentId}/anti-cheat?limit=${PAGE_SIZE}&offset=0`
+      const { ok, data: json } = await apiFetchJson<{ data: { events: AntiCheatEvent[]; total: number } }>(
+        `/api/v1/contests/${assignmentId}/anti-cheat?limit=${PAGE_SIZE}&offset=0`,
+        undefined,
+        { data: { events: [], total: 0 } }
       );
-      if (res.ok) {
-        const json = await res.json();
+      if (ok) {
         const firstPage = json.data.events as AntiCheatEvent[];
         setTotal(json.data.total);
         setEvents((prev) => {
@@ -154,11 +155,12 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
   const loadMore = useCallback(async () => {
     setLoadingMore(true);
     try {
-      const res = await apiFetch(
-        `/api/v1/contests/${assignmentId}/anti-cheat?limit=${PAGE_SIZE}&offset=${offset}`
+      const { ok, data: json } = await apiFetchJson<{ data: { events: AntiCheatEvent[]; total: number } }>(
+        `/api/v1/contests/${assignmentId}/anti-cheat?limit=${PAGE_SIZE}&offset=${offset}`,
+        undefined,
+        { data: { events: [], total: 0 } }
       );
-      if (res.ok) {
-        const json = await res.json();
+      if (ok) {
         setEvents((prev) => [...prev, ...json.data.events]);
         setTotal(json.data.total);
         setOffset((prev) => prev + json.data.events.length);
@@ -226,16 +228,16 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
   async function handleSimilarityCheck() {
     setRunningCheck(true);
     try {
-      const res = await apiFetch(
+      const { ok, data: json } = await apiFetchJson<{ data: SimilarityCheckResponse }>(
         `/api/v1/contests/${assignmentId}/similarity-check`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
-        }
+        },
+        { data: {} as SimilarityCheckResponse }
       );
-      if (res.ok) {
-        const json = await res.json();
+      if (ok) {
         const data = json.data as SimilarityCheckResponse;
 
         if (data.status === "completed") {
