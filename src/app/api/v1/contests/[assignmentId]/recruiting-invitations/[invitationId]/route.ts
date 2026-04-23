@@ -112,6 +112,13 @@ export const PATCH = createApiHandler({
         expiresAtUpdate = new Date(dbNow.getTime() + body.expiryDays * 86400000);
       } else if (body.expiryDate) {
         expiresAtUpdate = new Date(`${body.expiryDate}T23:59:59Z`);
+        // Defense-in-depth: reject Invalid Date construction even though the
+        // Zod schema enforces YYYY-MM-DD format. If the schema is ever
+        // loosened or reused without the regex guard, NaN comparisons would
+        // silently bypass the "in past" and "too far" checks below.
+        if (!Number.isFinite(expiresAtUpdate.getTime())) {
+          return apiError("invalidExpiryDate", 400);
+        }
         if (expiresAtUpdate <= dbNow) {
           return apiError("expiryDateInPast", 400);
         }
