@@ -169,7 +169,7 @@ export function ActiveTimedAssignmentSidebarPanel({
             <span>{tNav("progress")}</span>
             <span data-testid="active-timed-assignment-progress-label">{formatNumber(progressPercent, { maximumFractionDigits: 1 })}%</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-sidebar-border/80" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent}>
+          <div className="h-2 overflow-hidden rounded-full bg-sidebar-border/80" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent} aria-label={tNav("progress")}>
             <div
               className={cn(
                 "h-full rounded-full transition-[width] duration-1000 ease-linear",
