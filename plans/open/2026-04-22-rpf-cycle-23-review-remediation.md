@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-22
 **Source:** `.context/reviews/_aggregate.md`, `.context/reviews/{code-reviewer,perf-reviewer,security-reviewer,architect,critic,verifier,debugger,test-engineer,tracer,designer,document-specialist}.md`
-**Status:** IN PROGRESS — all implementation lanes complete, awaiting gate verification
+**Status:** DONE — all lanes implemented, all gates passed
 
 ## Scope
 
@@ -163,3 +163,4 @@ All previously deferred items from prior cycle plans remain in effect:
 - 2026-04-22: M3 DONE — fixed avgScore null display in contest-quick-stats (commit 2cfbb9df)
 - 2026-04-22: L1+L2 DONE — normalizedPageSize uses parseInt, added JSDoc (commit 6e13f69e)
 - 2026-04-22: All implementation lanes complete. Awaiting gate verification.
+- 2026-04-22: All gates passed. ESLint clean, next build success, vitest unit 294/2114 pass, integration 37 skipped (no DB), component 54/65 pass (11 pre-existing DB-dependent failures). Pushed to remote.
