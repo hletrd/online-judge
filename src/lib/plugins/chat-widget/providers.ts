@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 // ── Zod Schemas for provider response parsing ────────────────────────────────
 
@@ -98,7 +99,8 @@ const openaiProvider: ChatProvider = {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`OpenAI API error ${response.status}: ${text}`);
+      logger.warn({ provider: "openai", status: response.status, body: text.slice(0, 500) }, "Provider API error");
+      throw new Error(`OpenAI API error ${response.status}`);
     }
 
     if (!response.body) throw new Error("No response body from OpenAI");
@@ -132,7 +134,8 @@ const openaiProvider: ChatProvider = {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`OpenAI API error ${response.status}: ${text}`);
+      logger.warn({ provider: "openai", status: response.status, body: text.slice(0, 500) }, "Provider API error");
+      throw new Error(`OpenAI API error ${response.status}`);
     }
 
     const data: Record<string, unknown> = await response.json().catch(() => ({}));
@@ -200,7 +203,8 @@ const claudeProvider: ChatProvider = {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`Claude API error ${response.status}: ${text}`);
+      logger.warn({ provider: "claude", status: response.status, body: text.slice(0, 500) }, "Provider API error");
+      throw new Error(`Claude API error ${response.status}`);
     }
 
     if (!response.body) throw new Error("No response body from Claude");
@@ -252,7 +256,8 @@ const claudeProvider: ChatProvider = {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`Claude API error ${response.status}: ${text}`);
+      logger.warn({ provider: "claude", status: response.status, body: text.slice(0, 500) }, "Provider API error");
+      throw new Error(`Claude API error ${response.status}`);
     }
 
     const data: Record<string, unknown> = await response.json().catch(() => ({}));
@@ -332,7 +337,8 @@ const geminiProvider: ChatProvider = {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`Gemini API error ${response.status}: ${text}`);
+      logger.warn({ provider: "gemini", status: response.status, body: text.slice(0, 500) }, "Provider API error");
+      throw new Error(`Gemini API error ${response.status}`);
     }
 
     if (!response.body) throw new Error("No response body from Gemini");
@@ -393,7 +399,8 @@ const geminiProvider: ChatProvider = {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`Gemini API error ${response.status}: ${text}`);
+      logger.warn({ provider: "gemini", status: response.status, body: text.slice(0, 500) }, "Provider API error");
+      throw new Error(`Gemini API error ${response.status}`);
     }
 
     const data: Record<string, unknown> = await response.json().catch(() => ({}));
