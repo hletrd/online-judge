@@ -100,7 +100,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
         setTestResult({ success: false, error: (errorBody as { error?: string }).error ?? tCommon("error") });
         return;
       }
-      const data = await response.json();
+      const data = await response.json().catch(() => ({ success: false, error: "parseError" }));
       setTestResult(data);
     } catch {
       setTestResult({ success: false, error: tCommon("error") });
@@ -238,7 +238,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
               {isTesting ? tCommon("loading") : t("testConnection")}
             </Button>
             {testResult && (
-              <span className={`text-sm ${testResult.success ? "text-green-600" : "text-destructive"}`}>
+              <span role="status" aria-live="polite" className={`text-sm ${testResult.success ? "text-green-600" : "text-destructive"}`}>
                 {testResult.success ? t("testSuccess") : t("testFailed", { error: testResult.error ?? "" })}
               </span>
             )}
@@ -291,7 +291,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
             <Input
               type="number"
               value={maxTokens}
-              onChange={(e) => setMaxTokens(Number(e.target.value))}
+              onChange={(e) => setMaxTokens(parseInt(e.target.value, 10) || 100)}
               min={100}
               max={8192}
             />
@@ -302,7 +302,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
             <Input
               type="number"
               value={rateLimitPerMinute}
-              onChange={(e) => setRateLimitPerMinute(Number(e.target.value))}
+              onChange={(e) => setRateLimitPerMinute(parseInt(e.target.value, 10) || 10)}
               min={1}
               max={100}
             />
