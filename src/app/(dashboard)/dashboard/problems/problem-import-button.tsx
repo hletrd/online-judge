@@ -19,6 +19,11 @@ export function ProblemImportButton() {
     event.target.value = "";
 
     try {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(t("fileTooLarge"));
+        return;
+      }
+
       const text = await file.text();
       const data = JSON.parse(text);
 
@@ -34,7 +39,7 @@ export function ProblemImportButton() {
         return;
       }
 
-      const result = await res.json();
+      const result = await res.json().catch(() => ({ data: {} }));
       toast.success(t("importSuccess"));
       router.push(`/dashboard/problems/${result.data.id}`);
     } catch {

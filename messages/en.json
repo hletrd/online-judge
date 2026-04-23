@@ -323,6 +323,7 @@
     "importProblem": "Import",
     "importSuccess": "Problem imported.",
     "importFailed": "Failed to import problem.",
+    "fileTooLarge": "File is too large. Maximum size is 10 MB.",
     "uploadSourceFile": "Upload Source File",
     "sourceFileLoaded": "\"{name}\" loaded into the editor.",
     "sourceFileLoadFailed": "Failed to read the selected source file.",

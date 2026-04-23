@@ -323,6 +323,7 @@
     "importProblem": "가져오기",
     "importSuccess": "문제를 가져왔습니다.",
     "importFailed": "문제 가져오기에 실패했습니다.",
+    "fileTooLarge": "파일이 너무 큽니다. 최대 10MB까지 가능합니다.",
     "uploadSourceFile": "소스 파일 업로드",
     "sourceFileLoaded": "\"{name}\" 파일을 에디터로 불러왔습니다.",
     "sourceFileLoadFailed": "선택한 소스 파일을 읽지 못했습니다.",
