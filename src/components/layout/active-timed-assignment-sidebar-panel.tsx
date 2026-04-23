@@ -7,19 +7,10 @@ import { useTranslations, useLocale } from "next-intl";
 import { Timer } from "lucide-react";
 import type { ActiveTimedAssignmentSummary } from "@/lib/assignments/active-timed-assignments";
 import { cn } from "@/lib/utils";
-import { formatNumber } from "@/lib/formatting";
+import { formatNumber, formatDuration } from "@/lib/formatting";
 
 interface ActiveTimedAssignmentSidebarPanelProps {
   assignments: ActiveTimedAssignmentSummary[];
-}
-
-function formatDuration(ms: number): string {
-  if (!Number.isFinite(ms) || ms <= 0) return "00:00:00";
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function resolveCurrentAssignmentId(pathname: string, searchAssignmentId: string | null): string | null {
@@ -83,8 +74,19 @@ export function ActiveTimedAssignmentSidebarPanel({
       }
     }, 1000);
 
+    // Immediately recalculate when the tab becomes visible to prevent
+    // stale timer values caused by browser throttling of setInterval in
+    // background tabs. This matches the pattern in countdown-timer.tsx.
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        setNowMs(Date.now());
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [assignments]);
 
