@@ -29,9 +29,19 @@ export const POST = createApiHandler({
     // Use DB server time for scheduling defaults to avoid clock skew
     const now = await getDbNowUncached();
     const startsAt = body.startsAt ? new Date(body.startsAt) : now;
+    // Defense-in-depth: reject Invalid Date construction even though the
+    // Zod schema enforces .datetime() format. If the schema is ever
+    // loosened or reused without the regex guard, NaN comparisons would
+    // silently bypass the schedule check below.
+    if (!Number.isFinite(startsAt.getTime())) {
+      return apiError("invalidStartsAt", 400);
+    }
     const deadline = body.deadline
       ? new Date(body.deadline)
       : new Date(now.getTime() + 30 * 24 * 3600000); // default 30 days
+    if (!Number.isFinite(deadline.getTime())) {
+      return apiError("invalidDeadline", 400);
+    }
 
     if (startsAt.getTime() >= deadline.getTime()) {
       return apiError("assignmentScheduleInvalid", 400);
