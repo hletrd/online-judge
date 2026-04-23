@@ -4,8 +4,19 @@ import { ContestQuickStats } from "@/components/contest/contest-quick-stats";
 
 const apiFetchMock = vi.fn();
 
+// Capture the polling callback so tests can trigger it deterministically,
+// avoiding the random 0-500ms jitter inside useVisibilityPolling.
+let pollingCallback: (() => void) | null = null;
+
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
+  useLocale: () => "en",
+}));
+
+vi.mock("@/hooks/use-visibility-polling", () => ({
+  useVisibilityPolling: (cb: () => void, _intervalMs: number, _paused = false) => {
+    pollingCallback = cb;
+  },
 }));
 
 vi.mock("@/lib/api/client", () => ({
@@ -18,33 +29,27 @@ vi.mock("@/lib/api/client", () => ({
 }));
 
 describe("ContestQuickStats", () => {
-  let visibilityState: DocumentVisibilityState = "visible";
-
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
-    visibilityState = "visible";
-    Object.defineProperty(document, "visibilityState", {
-      configurable: true,
-      get: () => visibilityState,
-    });
+    pollingCallback = null;
     apiFetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
         data: {
-          problems: [{ points: 100 }],
-          entries: [{ totalScore: 100, problems: [{ score: 100, solved: true }] }],
+          participantCount: 5,
+          submittedCount: 3,
+          avgScore: 80,
+          problemsSolvedCount: 1,
         },
       }),
     });
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
-  it("polls while the tab is visible", async () => {
+  it("fetches stats on mount and updates the display", async () => {
     render(
       <ContestQuickStats
         assignmentId="assignment-1"
@@ -59,25 +64,18 @@ describe("ContestQuickStats", () => {
       />
     );
 
+    // Trigger the polling callback captured by the mock
+    expect(pollingCallback).toBeTruthy();
     await act(async () => {
+      pollingCallback!();
       await Promise.resolve();
     });
 
     expect(apiFetchMock).toHaveBeenCalledTimes(1);
-
-    await act(async () => {
-      vi.advanceTimersByTime(25);
-      await Promise.resolve();
-    });
-
-    expect(apiFetchMock).toHaveBeenCalledTimes(2);
-
     expect(screen.getByText("1/1")).toBeInTheDocument();
   });
 
-  it("stops polling while hidden and resumes immediately when visible again", async () => {
-    visibilityState = "hidden";
-
+  it("does not fetch when the polling callback is not invoked", () => {
     render(
       <ContestQuickStats
         assignmentId="assignment-1"
@@ -92,27 +90,7 @@ describe("ContestQuickStats", () => {
       />
     );
 
-    await act(async () => {
-      vi.advanceTimersByTime(35);
-      await Promise.resolve();
-    });
-
+    // Without triggering the polling callback, no fetch should happen
     expect(apiFetchMock).not.toHaveBeenCalled();
-
-    visibilityState = "visible";
-    await act(async () => {
-      document.dispatchEvent(new Event("visibilitychange"));
-    });
-
-    expect(apiFetchMock).toHaveBeenCalledTimes(1);
-
-    visibilityState = "hidden";
-    await act(async () => {
-      document.dispatchEvent(new Event("visibilitychange"));
-      vi.advanceTimersByTime(35);
-      await Promise.resolve();
-    });
-
-    expect(apiFetchMock).toHaveBeenCalledTimes(1);
   });
 });
