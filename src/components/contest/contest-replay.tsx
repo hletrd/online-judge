@@ -74,17 +74,33 @@ export function ContestReplay({
   useEffect(() => {
     if (!isPlaying || snapshots.length <= 1) return;
 
-    const timer = window.setInterval(() => {
-      setCurrentIndex((previousIndex) => {
-        if (previousIndex >= snapshots.length - 1) {
-          setIsPlaying(false);
-          return previousIndex;
-        }
-        return previousIndex + 1;
-      });
-    }, 1400 / speed);
+    let cancelled = false;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
 
-    return () => window.clearInterval(timer);
+    function scheduleNext() {
+      timerId = setTimeout(() => {
+        if (cancelled) return;
+        setCurrentIndex((previousIndex) => {
+          if (previousIndex >= snapshots.length - 1) {
+            setIsPlaying(false);
+            return previousIndex;
+          }
+          return previousIndex + 1;
+        });
+        // Check if we should continue (isPlaying may have been set to false)
+        // The state update above is async, so we read from the closure
+        // which still has isPlaying=true. We rely on the effect re-running
+        // when isPlaying changes to stop the loop.
+        if (!cancelled) scheduleNext();
+      }, 1400 / speed);
+    }
+
+    scheduleNext();
+
+    return () => {
+      cancelled = true;
+      if (timerId !== null) clearTimeout(timerId);
+    };
   }, [isPlaying, snapshots.length, speed]);
 
   const speedOptions = useMemo(
