@@ -428,7 +428,7 @@ export const POST = createApiHandler({
           toolResult = await executeTool(call.name, call.arguments, agentContext);
         } catch (err) {
           logger.warn({ err, toolName: call.name }, "[chat] Tool execution failed, returning error to agent");
-          toolResult = `Error executing tool "${call.name}": ${err instanceof Error ? err.message : "unknown error"}`;
+          toolResult = `Error executing tool "${call.name}" — please try again`;
         }
         const resultMessage = provider.formatToolResult(call.id, call.name, toolResult);
         fullMessages.push(resultMessage);
