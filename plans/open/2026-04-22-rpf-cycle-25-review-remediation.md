@@ -28,7 +28,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
   1. Change all default cases to `return tCommon("error")` with `console.error("Unmapped error:", error)`
   2. Remove dead SyntaxError check in edit-group-dialog.tsx
   3. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit 7640be3f, also covers role-editor-dialog, role-delete-dialog, problem-set-form)
 
 ---
 
@@ -43,7 +43,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
   2. Ensure `errorMessage` is always a string with `String()` wrapping for inline error display
   3. Log raw errors to console for debugging
   4. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit 13d1d53d)
 
 ---
 
@@ -57,7 +57,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
   1. Replace `Number.isFinite(Number(x))` with `typeof x === "number" && Number.isFinite(x)`
   2. Remove unnecessary non-null assertions where type guards already ensure safety
   3. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit bc5a4687)
 
 ---
 
@@ -70,7 +70,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
 - **Plan:**
   1. Replace `Number(v)` with `parseInt(v, 10)` in the speed selector `onValueChange`
   2. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit 6c5ebb67)
 
 ---
 
@@ -85,7 +85,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
   2. Keep `fetchInvitations` as the only function triggered by filter changes
   3. Call both after create/revoke/delete mutations
   4. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit b8c3b494)
 
 ---
 
@@ -209,3 +209,9 @@ All previously deferred items from prior cycle plans remain in effect:
 ## Progress Log
 
 - 2026-04-22: Plan created from multi-agent review at commit ac51baaa. 5 aggregate findings. 5 scheduled for implementation (H1, M1-M4). 11 deferred (DEFER-45 through DEFER-55). All prior cycle-24 findings verified as fixed.
+- 2026-04-22: H1 DONE — fix default error handlers leaking raw error.message (commit 7640be3f, also covers role-editor-dialog, role-delete-dialog, problem-set-form)
+- 2026-04-22: M1 DONE — fix compiler-client raw API error messages in toasts (commit 13d1d53d)
+- 2026-04-22: M2 DONE — fix contest-quick-stats double-wrapping Number() (commit bc5a4687)
+- 2026-04-22: M3 DONE — fix contest-replay Number() to parseInt() (commit 6c5ebb67)
+- 2026-04-22: M4 DONE — separate stats fetch from invitations fetch (commit b8c3b494)
+- 2026-04-22: All implementation lanes complete. Awaiting gate verification.
