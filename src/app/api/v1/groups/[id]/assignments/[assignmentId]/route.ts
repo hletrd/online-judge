@@ -13,6 +13,7 @@ import {
 import { assignmentMutationSchema, assignmentPatchSchema } from "@/lib/validators/assignments";
 import { canAccessGroup } from "@/lib/auth/permissions";
 import { createApiHandler, isAdminAsync, forbidden, notFound } from "@/lib/api/handler";
+import { getDbNowUncached } from "@/lib/db-time";
 
 export const GET = createApiHandler({
   handler: async (_req: NextRequest, { user, params }) => {
@@ -94,11 +95,14 @@ export const PATCH = createApiHandler({
         })
       );
 
-      // Block problem changes during active exam-mode contests
+      // Block problem changes during active exam-mode contests.
+      // Use DB server time (not Date.now()) to avoid clock skew between
+      // the app server and DB server — consistent with recruiting invitation
+      // routes and submission deadline enforcement.
       if (body.problems !== undefined && assignment.examMode !== "none") {
-        const now = Date.now();
+        const now = await getDbNowUncached();
         const startsAt = assignment.startsAt ? new Date(assignment.startsAt).getTime() : null;
-        if (startsAt && now >= startsAt) {
+        if (startsAt && now.getTime() >= startsAt) {
           return { error: apiError("contestProblemsLockedDuringActive", 409) };
         }
       }
