@@ -23,6 +23,7 @@ import { auth } from "@/lib/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { canManageRoleAsync } from "@/lib/security/constants";
 import { redirect } from "next/navigation";
+import { normalizePage } from "@/lib/pagination";
 import Link from "next/link";
 import UserActions from "./user-actions";
 import AddUserDialog from "./add-user-dialog";
@@ -38,10 +39,6 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const PAGE_SIZE = 25;
 
-function normalizePage(value?: string) {
-  const parsed = Number(value ?? "1");
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1;
-}
 
 function normalizeSearch(value?: string) {
   return typeof value === "string" ? value.trim().slice(0, 100) : "";

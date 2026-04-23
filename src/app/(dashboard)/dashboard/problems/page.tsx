@@ -25,6 +25,7 @@ import { FilterSelect } from "@/components/filter-select";
 import { ProblemImportButton } from "./problem-import-button";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
+import { normalizePage } from "@/lib/pagination";
 
 type ProblemProgress = "solved" | "attempted" | "untried";
 type ProblemFilter = "all" | "solved" | "unsolved" | "attempted";
@@ -48,11 +49,6 @@ function getProblemProgress(statuses: Array<string | null>): ProblemProgress {
   return "untried";
 }
 
-function normalizePage(value?: string) {
-  const parsed = Number(value ?? "1");
-  if (!Number.isFinite(parsed) || parsed < 1) return 1;
-  return Math.floor(parsed);
-}
 
 function normalizeVisibilityFilter(value?: string): VisibilityFilter {
   if (VISIBILITY_FILTER_VALUES.includes(value as VisibilityFilter)) {

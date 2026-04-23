@@ -14,6 +14,7 @@ import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { KeyRound, Plus } from "lucide-react";
 import { PaginationControls } from "@/components/pagination-controls";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
+import { normalizePage } from "@/lib/pagination";
 
 type FilterValue = "all" | "upcoming" | "active" | "past";
 
@@ -98,7 +99,7 @@ export default async function ContestsPage({
   const now = await getDbNow();
   const filter = normalizeFilter(resolvedSearchParams?.filter);
   const PAGE_SIZE = 25;
-  const currentPage = Math.max(1, Math.floor(Number(resolvedSearchParams?.page ?? "1")) || 1);
+  const currentPage = normalizePage(resolvedSearchParams?.page);
 
   const statusMap = new Map(
     contests.map((c) => [c.id, getContestStatus(c, now)])

@@ -24,6 +24,7 @@ import { loginEvents, users } from "@/lib/db/schema";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { escapeLikePattern } from "@/lib/db/like";
+import { normalizePage } from "@/lib/pagination";
 
 const PAGE_SIZE = 50;
 const PAGE_PATH = "/dashboard/admin/login-logs";
@@ -44,15 +45,6 @@ export async function generateMetadata(): Promise<Metadata> {
 
 type OutcomeFilter = (typeof OUTCOME_FILTER_VALUES)[number];
 
-function normalizePage(value?: string) {
-  const parsed = Number(value ?? "1");
-
-  if (!Number.isFinite(parsed) || parsed < 1) {
-    return 1;
-  }
-
-  return Math.floor(parsed);
-}
 
 function normalizeOutcomeFilter(value?: string): OutcomeFilter {
   if (OUTCOME_FILTER_VALUES.includes(value as OutcomeFilter)) {

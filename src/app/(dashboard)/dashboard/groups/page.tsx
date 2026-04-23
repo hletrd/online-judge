@@ -24,6 +24,7 @@ import { resolveCapabilities, getAllRoleLevels } from "@/lib/capabilities/cache"
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { Input } from "@/components/ui/input";
 import { FilterSelect } from "@/components/filter-select";
+import { normalizePage } from "@/lib/pagination";
 
 const GROUP_STATE_FILTER_VALUES = ["all", "active", "archived"] as const;
 
@@ -58,7 +59,7 @@ export default async function GroupsPage({
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const PAGE_SIZE = 25;
-  const currentPage = Math.max(1, Math.floor(Number(resolvedSearchParams?.page ?? "1")) || 1);
+  const currentPage = normalizePage(resolvedSearchParams?.page);
   const searchQuery = normalizeSearchQuery(resolvedSearchParams?.search);
   const stateFilter = normalizeGroupStateFilter(resolvedSearchParams?.state);
   const normalizedSearch = searchQuery.toLowerCase();

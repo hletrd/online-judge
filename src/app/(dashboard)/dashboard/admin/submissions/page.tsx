@@ -33,6 +33,7 @@ import { getSubmissionReviewGroupIds } from "@/lib/assignments/submissions";
 import { InboxIcon } from "lucide-react";
 import { FilterSelect } from "@/components/filter-select";
 import { AdminSubmissionsBulkRejudge } from "./admin-submissions-bulk-rejudge";
+import { normalizePage } from "@/lib/pagination";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("admin.submissions");
@@ -83,7 +84,7 @@ export default async function AdminSubmissionsPage({
   const canBulkRejudge = caps.has("submissions.rejudge");
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const currentPage = Math.max(1, Number(resolvedSearchParams?.page ?? "1") || 1);
+  const currentPage = normalizePage(resolvedSearchParams?.page);
   const searchQuery = (resolvedSearchParams?.search ?? "").trim().slice(0, 200);
   const statusFilter = STATUS_FILTER_VALUES.includes((resolvedSearchParams?.status ?? "all") as StatusFilter)
     ? ((resolvedSearchParams?.status ?? "all") as StatusFilter)

@@ -18,6 +18,7 @@ import { auditEvents, users } from "@/lib/db/schema";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { escapeLikePattern } from "@/lib/db/like";
+import { normalizePage } from "@/lib/pagination";
 
 const PAGE_SIZE = 50;
 const PAGE_PATH = "/dashboard/admin/audit-logs";
@@ -47,15 +48,6 @@ const ACTION_FILTER_VALUES = [
 type ResourceFilter = (typeof RESOURCE_FILTER_VALUES)[number];
 type ActionFilter = (typeof ACTION_FILTER_VALUES)[number];
 
-function normalizePage(value?: string) {
-  const parsed = Number(value ?? "1");
-
-  if (!Number.isFinite(parsed) || parsed < 1) {
-    return 1;
-  }
-
-  return Math.floor(parsed);
-}
 
 function normalizeResourceFilter(value?: string): ResourceFilter {
   if (RESOURCE_FILTER_VALUES.includes(value as ResourceFilter)) {

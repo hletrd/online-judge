@@ -16,6 +16,7 @@ import { formatBytes } from "@/lib/formatting";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
 import { getConfiguredSettings } from "@/lib/system-settings-config";
 import { escapeLikePattern } from "@/lib/db/like";
+import { normalizePage } from "@/lib/pagination";
 import { FileManagementClient } from "./file-management-client";
 
 const PAGE_SIZE = 24;
@@ -23,11 +24,6 @@ const PAGE_PATH = "/dashboard/admin/files";
 const CATEGORY_VALUES = ["all", "image", "attachment"] as const;
 type CategoryFilter = (typeof CATEGORY_VALUES)[number];
 
-function normalizePage(value?: string) {
-  const parsed = Number(value ?? "1");
-  if (!Number.isFinite(parsed) || parsed < 1) return 1;
-  return Math.floor(parsed);
-}
 
 function normalizeCategoryFilter(value?: string): CategoryFilter {
   if (CATEGORY_VALUES.includes(value as CategoryFilter)) return value as CategoryFilter;
