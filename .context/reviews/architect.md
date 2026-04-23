@@ -1,29 +1,54 @@
-# Architecture Review — RPF Cycle 31
+# Architecture Review — RPF Cycle 34
 
 **Date:** 2026-04-23
 **Reviewer:** architect
-**Base commit:** 198e6a63
+**Base commit:** 16cf7ecf
+
+## Inventory of Files Reviewed
+
+- `src/lib/db/import.ts` — Import engine
+- `src/lib/db/export.ts` — Export engine
+- `src/lib/realtime/realtime-coordination.ts` — Realtime coordination
+- `src/lib/security/` — Security modules
+- `src/lib/plugins/chat-widget/` — Chat widget (component + tools + route)
+- `src/app/api/v1/` — API route structure
+- `src/lib/docker/client.ts` — Docker client dual-path
 
 ## Findings
 
-### ARCH-1: ActiveTimedAssignmentSidebarPanel `setInterval` — last client-side timer violating established pattern [MEDIUM/MEDIUM]
+### ARCH-1: Import engine `TABLE_MAP` and export `TABLE_ORDER` are independently maintained lists — schema drift risk [MEDIUM/MEDIUM]
 
-**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:63`
+**File:** `src/lib/db/import.ts:15-55`, `src/lib/db/export.ts:156-202`
 
-**Description:** The codebase has converged on recursive `setTimeout` as the canonical pattern for all client-side timers. Three components have been migrated in the last three cycles. This component is the last holdout. It even references the countdown-timer pattern in a comment (line 78-79) but doesn't implement it.
+**Description:** The import engine uses `TABLE_MAP` (a `Record<string, any>`) and the export engine uses `TABLE_ORDER` (an ordered array with `name`, `table`, `orderColumns`). These are independently maintained lists that must stay in sync with each other and with the schema. If a table is added to the schema but only to one of these lists, either exports will include it but imports will skip it, or vice versa. This was identified as AGG-6 in cycle 33 but remains unfixed.
 
-This is an architectural consistency issue — developers reading this code may think `setInterval` is acceptable for new code because they see it in this component.
+**Concrete failure scenario:** A developer adds a `contestAnnouncements` table to the schema and adds it to `TABLE_ORDER` for export but forgets `TABLE_MAP` for import. An export includes the table, but an import silently skips it. The imported database is missing all announcement data.
 
-**Fix:** Migrate to recursive `setTimeout`.
+**Fix:** Derive `TABLE_MAP` from `TABLE_ORDER` to ensure they are always in sync:
+```typescript
+// In import.ts
+import { TABLE_ORDER } from "./export";
+
+const TABLE_MAP: Record<string, any> = {};
+for (const { name, table } of TABLE_ORDER) {
+  TABLE_MAP[name] = table;
+}
+```
+
+**Confidence:** High
 
 ---
 
-### ARCH-2: Inconsistent `.json()` error handling across server-side sidecar clients [LOW/MEDIUM]
+### ARCH-2: Duplicate password rehash logic across three locations — DRY violation [LOW/MEDIUM]
 
-**Files:** `src/lib/assignments/code-similarity-client.ts:49`, `src/lib/compiler/execute.ts:533`, `src/lib/security/hcaptcha.ts:76`
+**File:** `src/app/api/v1/admin/migrate/import/route.ts:64-74, 164-174`, `src/app/api/v1/admin/restore/route.ts:63-73`
 
-**Description:** Three server-side sidecar/external API clients call `response.json()` without `.catch()` on success paths. The rate-limiter-client.ts was fixed in cycle 30 with a `.catch(() => null)` pattern, establishing it as the canonical approach. The code-similarity-client, compiler runner, and hcaptcha clients don't follow this pattern.
+**Description:** The exact same password verification + rehash logic is duplicated three times. This creates maintenance risk and inconsistent audit coverage. See CR-3 in code-reviewer review for the same finding with proposed fix.
 
-While these are all server-side (less risky than client-side), the inconsistency creates maintenance burden and confusion about the expected pattern.
+**Confidence:** High
 
-**Fix:** Apply the `.catch()` pattern consistently to all server-side `response.json()` calls on success paths.
+---
+
+### Previously Fixed Items
+
+- AGG-4 (files route POST bypasses createApiHandler): Fixed in commit 9e277929

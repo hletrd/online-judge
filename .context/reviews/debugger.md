@@ -1,27 +1,59 @@
-# Debugger Review — RPF Cycle 31
+# Debugger Review — RPF Cycle 34
 
 **Date:** 2026-04-23
 **Reviewer:** debugger
-**Base commit:** 198e6a63
+**Base commit:** 16cf7ecf
+
+## Inventory of Files Reviewed
+
+- `src/lib/plugins/chat-widget/chat-widget.tsx` — Chat widget state management
+- `src/app/api/v1/submissions/[id]/events/route.ts` — SSE connections
+- `src/lib/security/in-memory-rate-limit.ts` — Rate limiter
+- `src/lib/db/import.ts` — Import engine
+- `src/lib/compiler/execute.ts` — Compiler execution
+- `src/lib/realtime/realtime-coordination.ts` — Realtime coordination
 
 ## Findings
 
-### DBG-1: ActiveTimedAssignmentSidebarPanel `setInterval` — catch-up behavior on tab switch [MEDIUM/MEDIUM]
+### DBG-1: Chat widget `sendMessage` uses `isStreaming` from closure — potential stale guard after abort [MEDIUM/MEDIUM]
 
-**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:63`
+**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:157-237`
 
-**Description:** Using `setInterval` instead of recursive `setTimeout` means that when a tab is backgrounded, the browser may throttle the interval. When the tab becomes visible again, multiple pending interval callbacks can fire in rapid succession before the `visibilitychange` handler runs. This causes a burst of `setNowMs(Date.now())` calls and re-renders.
+**Description:** The `sendMessage` callback checks `if (!text || isStreaming) return` at line 158, reading `isStreaming` from its closure. When the user aborts a streaming request (line 302: `abortControllerRef.current?.abort()`), the abort handler in the catch block (line 225) does NOT set `isStreaming` to false — only the `finally` block does (line 234). However, the `finally` block runs after the catch, so `isStreaming` IS correctly set to false. The real issue is that `isStreaming` is in the dependency array, making the guard stale-sensitive. If a user rapidly clicks "send" after aborting, the `sendMessage` instance they call may still have `isStreaming=true` from a prior render cycle. Using a ref would make the guard always-current.
 
-The `visibilitychange` handler on line 80-84 provides the correct immediate update, making the catch-up interval callbacks redundant and wasteful.
+**Concrete failure scenario:** User is streaming, aborts, the `finally` block sets `isStreaming=false`, but a re-render hasn't happened yet. The old `sendMessage` closure still has `isStreaming=true`. If the user clicks send before the re-render, the guard incorrectly rejects the message. This is a timing-dependent race that's more likely on slow devices.
 
-**Fix:** Migrate to recursive `setTimeout` to prevent catch-up behavior.
+**Fix:** Use ref for `isStreaming` check:
+```tsx
+const isStreamingRef = useRef(isStreaming);
+useEffect(() => { isStreamingRef.current = isStreaming; }, [isStreaming]);
+
+const sendMessage = useCallback(async (text: string, displayText?: string) => {
+  if (!text || isStreamingRef.current) return;
+  // ...rest unchanged
+}, [editorContent?.code, editorContent?.language, problemContext, sessionId, t]);
+```
+
+**Confidence:** Medium
 
 ---
 
-### DBG-2: Chat widget tool error messages leak raw `err.message` into LLM conversation [MEDIUM/HIGH]
+### DBG-2: Import engine silently skips unknown tables — data loss is invisible [MEDIUM/MEDIUM]
 
-**File:** `src/app/api/v1/plugins/chat-widget/chat/route.ts:431`
+**File:** `src/lib/db/import.ts:183-184`
 
-**Description:** When tool execution fails, the raw `err.message` is included in the tool result string sent back to the LLM. Internal errors from database queries, file system operations, or network calls can contain sensitive infrastructure details. The LLM may relay these to the user.
+**Description:** When importing, if a table name in the export data doesn't have a corresponding entry in `TABLE_MAP`, the import silently continues (line 183: `if (!table) continue`). This means data for missing tables is silently dropped with only a `result.errors.push()` entry. The error is not prominent enough — a full database import that silently drops a table is a significant data integrity issue.
 
-**Fix:** Sanitize error messages.
+**Concrete failure scenario:** After adding a new table to the schema and updating the export but not the import, a production restore silently drops all data from the new table. The `errors` array mentions it, but the import still reports `success: true` if the transaction completes.
+
+**Fix:** If any table is skipped due to missing `TABLE_MAP` entry, set `result.success = false` or at least add a warning-level log. Better yet, derive `TABLE_MAP` from `TABLE_ORDER` (see ARCH-1).
+
+**Confidence:** High
+
+---
+
+### Previously Fixed Items (Verified)
+
+- AGG-1 (Docker client remote path error leak): Fixed — verified
+- AGG-2 (Compiler spawn error leak): Fixed — verified
+- AGG-3 (SSE NaN guard): Fixed — verified

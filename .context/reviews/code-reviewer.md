@@ -1,61 +1,124 @@
-# Code Review — RPF Cycle 31
+# Code Review — RPF Cycle 34
 
 **Date:** 2026-04-23
 **Reviewer:** code-reviewer
-**Base commit:** 198e6a63
+**Base commit:** 16cf7ecf
 
-## Previously Fixed Items (Verified)
+## Inventory of Files Reviewed
 
-All prior findings addressed. Countdown timer migrated to setTimeout (19de5cf6), rate-limiter .catch() guard added (7ae57906), chat widget sendMessage stabilized (ce9aa4fa).
+- `src/app/api/v1/` — All API route handlers (85+ routes)
+- `src/lib/` — Business logic (auth, db, docker, judge, security, plugins, etc.)
+- `src/lib/plugins/chat-widget/` — Chat widget component, tools, route
+- `src/lib/db/` — Schema, queries, import/export, import-transfer
+- `src/lib/security/` — Rate limiting, CSRF, password hash, sanitize-html
+- `src/lib/compiler/` — Execute, catalog
+- `src/lib/docker/` — Client, image validation
 
 ## Findings
 
-### CR-1: ActiveTimedAssignmentSidebarPanel still uses `setInterval` — last remaining client-side timer with old pattern [MEDIUM/MEDIUM]
+### CR-1: Chat widget `sendMessage` still includes `isStreaming` in dependency array — unstable callback chain [MEDIUM/MEDIUM]
 
-**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:63`
+**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:237`
 
-**Description:** The sidebar panel uses `window.setInterval(() => {...}, 1000)` on line 63. The countdown timer was migrated in cycle 30, the visibility polling hook in cycle 29, and the contest replay in cycle 28. This component is now the last remaining client-side timer using `setInterval`. The code even has a comment on line 78 referencing the pattern in countdown-timer.tsx, suggesting the author was aware but didn't apply the fix here.
+**Description:** The `sendMessage` callback has `isStreaming` in its dependency array. This causes `sendMessage` to be recreated on every streaming state change (every SSE chunk), which cascades to `sendMessageRef` update via the useEffect on line 240, `handleSend` recreation (line 242-244), and `handleKeyDown` recreation (line 246-254). This was identified as AGG-4 in cycle 33 but remains unfixed. Using a ref for the streaming guard would stabilize the entire callback chain and avoid unnecessary re-renders.
 
-**Concrete failure scenario:** A student switches tabs during an active assignment. Throttled `setInterval` callbacks may fire in rapid succession when the tab becomes visible, causing a brief flash of stale data. The `visibilitychange` handler on line 80 mitigates this by immediately updating, but there's a window between interval catch-up and the visibility handler running.
+**Concrete failure scenario:** During streaming of an AI response, every chunk triggers `setIsStreaming(true)`, which recreates `sendMessage`, `handleSend`, and `handleKeyDown`. On a fast connection with 50+ chunks per second, this causes 50+ callback recreations per second.
 
-**Fix:** Migrate to recursive `setTimeout` with `cancelled` flag, matching the pattern in countdown-timer.tsx.
+**Fix:** Replace `isStreaming` dependency with a ref:
+```tsx
+const isStreamingRef = useRef(isStreaming);
+useEffect(() => { isStreamingRef.current = isStreaming; }, [isStreaming]);
 
----
+const sendMessage = useCallback(async (text: string, displayText?: string) => {
+  if (!text || isStreamingRef.current) return;
+  // ...rest unchanged, remove isStreaming from dependency array
+}, [editorContent?.code, editorContent?.language, problemContext, sessionId, t]);
+```
 
-### CR-2: `edit-group-dialog.tsx` triple-lookup in SelectValue render [LOW/LOW]
-
-**File:** `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:141-143`
-
-**Description:** The `SelectValue` render calls `group.availableInstructors.find((instructor) => instructor.id === instructorId)` three times in the same expression (line 141, 142, 143). Each lookup iterates the array. While the array is typically small, this is unnecessary work on every render.
-
-**Fix:** Extract the found instructor into a variable before the JSX expression.
-
----
-
-### CR-3: `code-similarity-client.ts` has unguarded `.json()` on success path [LOW/MEDIUM]
-
-**File:** `src/lib/assignments/code-similarity-client.ts:49`
-
-**Description:** After checking `!response.ok`, the code calls `response.json()` without a `.catch()` guard. If the sidecar returns a 200 with a non-JSON body, the unhandled `SyntaxError` propagates to the outer try/catch which returns `null` (fail-open). While the fail-open behavior is correct, the error path is indirect and could be logged more clearly. Same class of issue fixed in rate-limiter-client.ts in cycle 30.
-
-**Fix:** Add `.catch(() => null)` and a null check, matching the rate-limiter pattern.
+**Confidence:** High
 
 ---
 
-### CR-4: `compiler/execute.ts` tryRustRunner has unguarded `.json()` on success path [LOW/MEDIUM]
+### CR-2: Import engine `TABLE_MAP` uses `any` type — schema drift risk with no compile-time check [MEDIUM/MEDIUM]
 
-**File:** `src/lib/compiler/execute.ts:533`
+**File:** `src/lib/db/import.ts:15-55`
 
-**Description:** After checking `!response.ok`, the Rust runner path calls `await response.json()` without a `.catch()` guard. If the runner returns 200 with a non-JSON body, the `SyntaxError` propagates to the outer catch block and falls back to local execution. This is the correct behavior but the error is logged as "Rust runner unavailable", which is misleading — the runner was reachable, it returned invalid data.
+**Description:** The `TABLE_MAP` is a manually maintained mapping of table names to Drizzle table objects typed as `Record<string, any>`. If a new table is added to `schema.pg.ts` but not to `TABLE_MAP`, imports will silently skip that table's data. No compile-time or runtime check exists to detect this drift. The `TABLE_ORDER` in `export.ts` (line 156) has the same problem but is a separate list. This was identified as AGG-6 in cycle 33 but remains unfixed.
 
-**Fix:** Add `.catch(() => null)` and a null check with a more accurate log message.
+**Concrete failure scenario:** A developer adds a `contestAnnouncements` table to the schema but forgets to add it to `TABLE_MAP`. An export includes the table, but an import silently skips it. The imported database is missing all announcement data with no error.
+
+**Fix:** Add a startup validation that compares `TABLE_MAP` keys against the schema's exported tables:
+```typescript
+import * as schema from "./schema";
+
+const schemaTableNames = new Set(
+  Object.keys(schema).filter(k => {
+    const val = (schema as Record<string, unknown>)[k];
+    return typeof val === "object" && val !== null && "dbType" in (val as object);
+  })
+);
+
+for (const name of schemaTableNames) {
+  if (!TABLE_MAP[name]) {
+    logger.error({ tableName: name }, "[import] Schema table missing from TABLE_MAP — imports will skip this table");
+  }
+}
+```
+
+**Confidence:** High
 
 ---
 
-### CR-5: `hcaptcha.ts` has unguarded `.json()` on success path [LOW/MEDIUM]
+### CR-3: Duplicate password rehash logic across three files — violates DRY [LOW/MEDIUM]
 
-**File:** `src/lib/security/hcaptcha.ts:76`
+**File:** `src/app/api/v1/admin/migrate/import/route.ts:64-74, 164-174`, `src/app/api/v1/admin/restore/route.ts:63-73`
 
-**Description:** After checking `!response.ok`, the hcaptcha verification calls `await response.json()` without `.catch()`. If the hcaptcha API returns a 200 with a non-JSON body, the `SyntaxError` is unhandled and propagates to the caller, potentially causing an unhandled promise rejection.
+**Description:** The exact same password rehash logic (verify password, check needsRehash, hashPassword, update DB) is duplicated three times — twice in the migrate/import route (for formData and JSON paths) and once in the restore route. This was identified as AGG-5 in cycle 33 but remains unfixed.
 
-**Fix:** Add `.catch(() => ({ success: false, "error-codes": ["parse-error"] }))`.
+**Concrete failure scenario:** A developer changes the rehash logic in one location (e.g., adds audit logging) but forgets the other two. One path now logs rehashes, the other two don't.
+
+**Fix:** Extract to a shared utility:
+```typescript
+// src/lib/security/password-hash.ts
+export async function verifyAndRehashPassword(
+  password: string,
+  userId: string,
+  storedHash: string
+): Promise<{ valid: boolean }> {
+  const { valid, needsRehash } = await verifyPassword(password, storedHash);
+  if (valid && needsRehash) {
+    try {
+      const newHash = await hashPassword(password);
+      await db.update(users).set({ passwordHash: newHash }).where(eq(users.id, userId));
+    } catch (err) {
+      logger.error({ err, userId }, "[password-rehash] Failed to rehash password");
+    }
+  }
+  return { valid };
+}
+```
+
+**Confidence:** High
+
+---
+
+### CR-4: Chat widget `animate-in slide-in-from-bottom-4` entry animation not respecting `prefers-reduced-motion` [LOW/MEDIUM]
+
+**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:288`
+
+**Description:** The chat widget container uses `animate-in fade-in slide-in-from-bottom-4 duration-200` for its entry animation. While Tailwind's `motion-safe:` prefix is used for the typing indicator (line 339), the entry animation does not respect `prefers-reduced-motion`. This was identified as prior AGG-3 in cycle 33 but remains unfixed.
+
+**Concrete failure scenario:** A user with vestibular disorders has `prefers-reduced-motion: reduce` enabled. The chat widget slides in from the bottom with a 200ms animation, causing discomfort.
+
+**Fix:** Either use `motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4` or add a CSS override in `globals.css` (which already has a `prefers-reduced-motion: reduce` section at line 138).
+
+**Confidence:** High
+
+---
+
+### Previously Known Items (Verified Fixed)
+
+- AGG-1 (Docker client remote path error leak): Fixed in commit 5527e96b
+- AGG-2 (Compiler spawn error leak): Fixed in commit 46ba5e0c
+- AGG-3 (SSE NaN guard): Fixed in commit 8ca143d4
+- AGG-7 (Chat widget ARIA role): Fixed in commit 16cf7ecf

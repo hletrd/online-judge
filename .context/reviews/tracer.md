@@ -1,41 +1,56 @@
-# Tracer Review — RPF Cycle 31
+# Tracer Review — RPF Cycle 34
 
 **Date:** 2026-04-23
 **Reviewer:** tracer
-**Base commit:** 198e6a63
+**Base commit:** 16cf7ecf
 
-## Findings
+## Causal Tracing of Suspicious Flows
 
-### TR-1: ActiveTimedAssignmentSidebarPanel `setInterval` — last client-side timer using old pattern [MEDIUM/MEDIUM]
+### TR-1: Chat widget sendMessage -> isStreaming guard — closure vs ref race [MEDIUM/MEDIUM]
 
-**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:63`
+**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:157-237`
 
-**Trace:**
-1. Component mounts -> `useEffect` fires (line 53)
-2. `hasActiveAssignment` check passes (line 56)
-3. `window.setInterval(() => {...}, 1000)` starts (line 63)
-4. Tab switches away -> browser throttles interval
-5. Tab switches back -> browser fires multiple pending intervals in burst
-6. Each fires `setNowMs(Date.now())` causing re-render
-7. Meanwhile, `visibilitychange` handler also fires `setNowMs(Date.now())`
-8. Result: multiple unnecessary re-renders in rapid succession
+**Description:** Tracing the `sendMessage` flow:
+1. User types and presses Enter -> `handleKeyDown` calls `handleSend`
+2. `handleSend` calls `sendMessage(input.trim())`
+3. `sendMessage` checks `if (!text || isStreaming) return` — `isStreaming` is from the closure
+4. If `isStreaming=true` from a prior render, the message is incorrectly rejected
 
-**Fix:** Migrate to recursive `setTimeout` with `cancelled` flag. This prevents the catch-up burst because `setTimeout` only schedules one callback at a time.
+The key question: **Can the closure value of `isStreaming` be stale?**
+
+Tracing: After abort, the `finally` block (line 233-236) calls `setIsStreaming(false)`. React batches state updates, so the re-render with `isStreaming=false` may not have happened yet when the user's next click fires the old `sendMessage`. The `sendMessageRef` pattern (line 240) mitigates this for the auto-analysis effect, but `handleSend` (line 242) captures `sendMessage` from the closure of its own `useCallback`, which is also stale if `isStreaming` hasn't updated.
+
+**Hypothesis 1 (confirmed):** Stale closure can cause a false rejection on rapid abort+resend.
+**Hypothesis 2 (unlikely):** Stale closure can cause a double-send. Unlikely because `isStreaming` can only be stale-true, not stale-false (abort always sets it to false before the user can resend).
+
+**Fix:** Use a ref for the `isStreaming` guard to make it always-current.
+
+**Confidence:** Medium
 
 ---
 
-### TR-2: Chat widget tool error leak — trace of data flow [MEDIUM/HIGH]
+### TR-2: Import TABLE_MAP drift — silent data loss path [MEDIUM/MEDIUM]
 
-**File:** `src/app/api/v1/plugins/chat-widget/chat/route.ts:431`
+**File:** `src/lib/db/import.ts:174-184`
 
-**Trace:**
-1. User sends chat message -> `POST /api/v1/plugins/chat-widget/chat`
-2. LLM responds with tool call (e.g., `get_submission_detail`)
-3. `executeTool()` throws error (e.g., database connection error with message "connect ECONNREFUSED 127.0.0.1:5432")
-4. Catch block on line 429-431 constructs: `Error executing tool "get_submission_detail": connect ECONNREFUSED 127.0.0.1:5432`
-5. This string is passed to `provider.formatToolResult()` as `toolResult`
-6. The result message is pushed to `fullMessages`
-7. LLM receives this as a tool result in its conversation
-8. LLM may relay the error details to the user in its next response
+**Description:** Tracing the import flow for a table not in `TABLE_MAP`:
+1. Export data contains table `contestAnnouncements` with 500 rows
+2. Import loops through `tableOrder`, reaches `contestAnnouncements`
+3. Line 182: `const table = TABLE_MAP[tableName]` — returns `undefined`
+4. Line 183: `if (!table)` — true, so `continue`
+5. Line 184: `result.errors.push(...)` — error is recorded
+6. Import completes with `success: true` because the transaction committed
 
-**Fix:** Sanitize error message at step 4 — return generic message, log full error server-side.
+The 500 rows are silently dropped. The error in `result.errors` is a string message, not a structured failure. The import reports success because the transaction completed without throwing.
+
+**Fix:** Either (a) set `result.success = false` when tables are skipped, or (b) derive `TABLE_MAP` from `TABLE_ORDER` so they cannot drift.
+
+**Confidence:** High
+
+---
+
+### Previously Fixed Items (Verified)
+
+- AGG-1 (Docker remote error leak): Fixed — the three remote catch blocks now return sanitized messages
+- AGG-2 (Compiler spawn error leak): Fixed — returns generic "Execution failed to start"
+- AGG-3 (SSE NaN guard): Fixed — Number.isFinite check with fallback

@@ -1,27 +1,51 @@
-# UI/UX Review — RPF Cycle 31
+# UI/UX Review — RPF Cycle 34
 
 **Date:** 2026-04-23
 **Reviewer:** designer
-**Base commit:** 198e6a63
+**Base commit:** 16cf7ecf
+
+## Inventory of UI Files Reviewed
+
+- `src/lib/plugins/chat-widget/chat-widget.tsx` — Chat widget component
+- `src/app/globals.css` — Global styles (prefers-reduced-motion section)
+- `src/components/layout/skip-to-content.tsx` — Skip navigation
+- `src/components/ui/` — UI components (select, dialog, etc.)
 
 ## Findings
 
-### DES-1: ActiveTimedAssignmentSidebarPanel `setInterval` causes visual glitch on tab switch [MEDIUM/MEDIUM]
+### DES-1: Chat widget entry animation ignores `prefers-reduced-motion` [LOW/MEDIUM]
 
-**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:63`
+**File:** `src/lib/plugins/chat-widget/chat-widget.tsx:288`
 
-**Description:** When a user switches back to a tab showing the active assignment panel, the throttled `setInterval` can fire multiple callbacks in rapid succession. Each callback triggers `setNowMs(Date.now())` causing a re-render. The `visibilitychange` handler also fires. This creates a brief visual flicker as the "remaining time" and "progress" values update multiple times in rapid succession.
+**Description:** The chat widget container uses `animate-in fade-in slide-in-from-bottom-4 duration-200` for its entry animation. While the typing indicator dots correctly use `motion-safe:animate-bounce` (line 339), the entry animation does not use `motion-safe:` prefix. The `globals.css` file has a `prefers-reduced-motion: reduce` media query at line 138, but Tailwind's `animate-in` utilities may not be covered by it depending on the Tailwind config. This was identified as prior AGG-3 in cycle 33.
 
-This is particularly noticeable on the progress bar (line 172-179) which has a CSS transition (`transition-[width] duration-1000 ease-linear`). Multiple rapid state updates can cause the progress bar to "stutter" as it tries to animate to intermediate positions.
+**Concrete failure scenario:** A user with vestibular disorders has `prefers-reduced-motion: reduce` enabled. The chat widget slides in from the bottom with a 200ms animation, causing discomfort.
 
-**Fix:** Migrate to recursive `setTimeout` to prevent catch-up behavior. The `visibilitychange` handler already provides the correct immediate update.
+**Fix:** Either prefix with `motion-safe:` or add a CSS override in globals.css:
+```css
+@media (prefers-reduced-motion: reduce) {
+  .animate-in {
+    animation: none !important;
+  }
+}
+```
+
+**Confidence:** High
 
 ---
 
-### DES-2: Edit-group-dialog SelectValue triple-find causes unnecessary render work [LOW/LOW]
+### DES-2: Chat widget textarea lacks explicit `aria-label` [LOW/LOW]
 
-**File:** `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:141-143`
+**File:** `src/lib/plugins/chat-widget/chat-widget.tsx` (textarea in input section)
 
-**Description:** The `SelectValue` render does three `Array.find()` calls on the same array with the same predicate. Minor unnecessary render computation.
+**Description:** The chat input textarea relies on its `placeholder` attribute for accessibility. While screen readers may announce the placeholder, an explicit `aria-label` would be more reliable. This was identified in prior cycles as a deferred cosmetic item.
 
-**Fix:** Extract found instructor to a variable.
+**Fix:** Add `aria-label={t("placeholder")}` to the textarea element.
+
+**Confidence:** Low
+
+---
+
+### Previously Fixed Items
+
+- AGG-7 (Chat widget ARIA role): Fixed in commit 16cf7ecf — `role="log"` and `aria-label` added to messages container
