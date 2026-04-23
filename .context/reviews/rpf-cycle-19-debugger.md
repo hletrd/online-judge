@@ -1,20 +1,41 @@
-# Debugger Review — RPF Cycle 19
+# Debugger Review — RPF Cycle 19 (Updated)
 
-**Date:** 2026-04-20
+**Date:** 2026-04-22
 **Reviewer:** debugger
-**Base commit:** 77da885d
+**Base commit:** 6df94cb1
 
-## Findings
+## Previous Findings Status
 
-### DBG-1: `handleCopyKeyPrefix` in api-keys-client silently succeeds when `execCommand("copy")` returns false [LOW/MEDIUM]
+| ID | Finding | Status |
+|----|---------|--------|
+| DBG-1 | handleCopyKeyPrefix clipboard failure | FIXED (uses copyToClipboard utility) |
+| DBG-2 | SubmissionListAutoRefresh interval leak | FIXED (backoff added, guard with isRunningRef) |
 
-**Files:** `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx:216-228`
-**Description:** The `handleCopyKeyPrefix` function catches `navigator.clipboard.writeText()` failures and falls back to `document.execCommand("copy")`. However, unlike `copy-code-button.tsx` (which was fixed in commit 337e306e), this fallback does NOT check the return value of `execCommand("copy")` and does NOT show error feedback. If `execCommand` returns `false`, the code proceeds to show a success toast, misleading the user.
-**Concrete failure scenario:** On a browser where clipboard access is restricted, both `navigator.clipboard` and `execCommand("copy")` fail silently. The user sees "Masked key preview copied" toast but nothing was actually copied.
-**Fix:** Check the return value of `execCommand("copy")` and show `toast.error(t("copyFailed"))` if it returns `false`.
+## New Findings
 
-### DBG-2: `SubmissionListAutoRefresh` does not clear interval when `hasActiveSubmissions` changes — potential interval leak [LOW/LOW]
+### DBG-3: `contest-join-client` navigates to `/dashboard/contests/undefined` when JSON parse fails on success path [MEDIUM/HIGH]
 
-**Files:** `src/components/submission-list-auto-refresh.tsx:22-36`
-**Description:** The `useEffect` properly clears the interval on cleanup. However, if `hasActiveSubmissions` toggles rapidly (e.g., multiple submissions transitioning simultaneously), there is a brief window where two intervals could overlap before cleanup runs. This is a minor concern because React batches state updates.
-**Fix:** No immediate fix needed. The current implementation is safe under normal React batching behavior.
+**File:** `src/app/(dashboard)/dashboard/contests/join/contest-join-client.tsx:49-58`
+
+**Description:** After `res.ok` is true, line 49 calls `res.json().catch(() => ({ data: {} }))`. If the `.catch()` fires, `payload.data` becomes `{}` and `payload.data.assignmentId` is `undefined`. Line 58 then calls `router.push('/dashboard/contests/undefined')`, navigating the user to a non-existent page that will show a 404 or error state.
+
+**Concrete failure scenario:** A CDN returns `200 OK` with an HTML body. The `.json()` call throws `SyntaxError`, caught by `.catch()`. The user sees a "Join success" toast and then lands on a broken page.
+
+**Fix:** Add guard: `if (!payload.data?.assignmentId) { toast.error(t("joinFailed")); return; }` before the navigation.
+
+---
+
+### DBG-4: Unguarded `.json()` throws SyntaxError on success paths — 5+ locations [MEDIUM/MEDIUM]
+
+**Files:**
+- `src/app/(dashboard)/dashboard/groups/[id]/group-members-manager.tsx:128,185`
+- `src/components/problem/problem-submission-form.tsx:188,252`
+- `src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx:184`
+- `src/hooks/use-submission-polling.ts:238`
+- `src/app/(dashboard)/dashboard/admin/users/bulk-create-dialog.tsx:218`
+
+**Description:** After checking `response.ok`, these locations call `await response.json()` without `.catch()`. A non-JSON body on a 200 response (reverse proxy HTML) causes an unhandled `SyntaxError` that crashes the async handler silently. The outer `catch` block may show a generic error toast, but the specific failure mode is lost.
+
+**Concrete failure scenario:** nginx returns `200 OK` with HTML body. `.json()` throws `SyntaxError`. The outer catch shows "An error occurred" but the user has no idea what happened.
+
+**Fix:** Add `.catch(() => ({ data: {} }))` to each success-path `.json()` call.

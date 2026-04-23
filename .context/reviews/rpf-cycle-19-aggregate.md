@@ -1,109 +1,94 @@
-# RPF Cycle 19 Aggregate Review
+# RPF Cycle 19 Aggregate Review (Updated)
 
-**Date:** 2026-04-20
-**Base commit:** 77da885d
-**Review artifacts:** `rpf-cycle-19-code-reviewer.md`, `rpf-cycle-19-security-reviewer.md`, `rpf-cycle-19-perf-reviewer.md`, `rpf-cycle-19-architect.md`, `rpf-cycle-19-critic.md`, `rpf-cycle-19-debugger.md`, `rpf-cycle-19-test-engineer.md`, `rpf-cycle-19-verifier.md`, `rpf-cycle-19-designer.md`, `rpf-cycle-19-tracer.md`, `rpf-cycle-19-document-specialist.md`
+**Date:** 2026-04-22
+**Base commit:** 6df94cb1
+**Review artifacts:** `rpf-cycle-19-code-reviewer.md`, `rpf-cycle-19-security-reviewer.md`, `rpf-cycle-19-perf-reviewer.md`, `rpf-cycle-19-debugger.md`
 
-## Deduped Findings (sorted by severity then signal)
+## Previous Findings Resolution
 
-### AGG-1: Duplicate `formatNumber` in dashboard-judge-system-section.tsx — not using shared utility [MEDIUM/MEDIUM]
+| Previous ID | Finding | Resolution |
+|-------------|---------|------------|
+| AGG-1 | Duplicate formatNumber in dashboard-judge-system-section | FIXED — imports from @/lib/formatting |
+| AGG-2 | Clipboard copy handleCopyKeyPrefix silent failure | FIXED — uses copyToClipboard utility |
+| AGG-3 | Scattered formatting functions | FIXED — formatBytes/formatNumber consolidated in formatting.ts |
+| AGG-4 | .toFixed() i18n gaps | Partially fixed — internal .toFixed() in formatBytes is OK (not user-facing) |
+| AGG-5 | Practice page Path B memory concern | DEFERRED (requires SQL CTE, carried from cycles 18-19) |
+| AGG-7 | formatNumber in wrong module | FIXED — now in formatting.ts with re-export |
+| AGG-8 | No unit tests for formatNumber/formatBytes | FIXED — tests in formatting.test.ts |
+| AGG-9 | SubmissionListAutoRefresh no backoff | FIXED — exponential backoff with errorCountRef |
+| AGG-10 | forceNavigate lacks JSDoc | Open — low priority |
+| AGG-11 | Mobile sign-out touch target | Open — low priority |
 
-**Flagged by:** code-reviewer (CR-1), architect (ARCH-1), verifier (V-2), critic (CRI-1 partial)
-**Files:** `src/app/(dashboard)/dashboard/_components/dashboard-judge-system-section.tsx:5-7`
-**Description:** A local `formatNumber` function exists that is functionally identical to the shared `formatNumber` in `src/lib/datetime.ts` (added in commit 131dc046). The local copy does not import the shared utility, creating a maintenance hazard.
-**Concrete failure scenario:** A bug fix or locale-handling improvement applied to the shared `formatNumber` will not propagate to this local copy.
-**Fix:** Remove the local `formatNumber` and import from `@/lib/datetime`.
+## New Deduped Findings (sorted by severity then signal)
 
-### AGG-2: Clipboard copy `handleCopyKeyPrefix` in api-keys-client silently succeeds on `execCommand` failure [MEDIUM/MEDIUM]
+### AGG-NEW-1: Unguarded `.json()` on success paths — 5+ locations risk SyntaxError crash [MEDIUM/HIGH]
 
-**Flagged by:** code-reviewer (CR-4), debugger (DBG-1), tracer (TR-1)
-**Files:** `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx:216-228`
-**Description:** The `handleCopyKeyPrefix` function has a `document.execCommand("copy")` fallback but does NOT check its return value or show error feedback. If the fallback fails, the user sees a "copied" toast but nothing was actually copied. The `copy-code-button.tsx` was recently fixed (commit 337e306e) to handle this exact case.
-**Concrete failure scenario:** On a browser where clipboard access is restricted, both `navigator.clipboard` and `execCommand("copy")` fail silently. The user sees a success toast but nothing was copied.
-**Fix:** Check the return value of `execCommand("copy")` and show `toast.error(t("copyFailed"))` if it returns `false`, matching the pattern in `copy-code-button.tsx`.
+**Flagged by:** code-reviewer (CR-5), debugger (DBG-4)
+**Files:**
+- `src/app/(dashboard)/dashboard/groups/[id]/group-members-manager.tsx:128,185`
+- `src/components/problem/problem-submission-form.tsx:188,252`
+- `src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx:184`
+- `src/hooks/use-submission-polling.ts:238`
+- `src/app/(dashboard)/dashboard/admin/users/bulk-create-dialog.tsx:218`
 
-### AGG-3: Scattered number/byte formatting — no single source of truth, duplicate `formatBytes`/`formatFileSize` [MEDIUM/MEDIUM]
+**Description:** After checking `response.ok`, these locations call `await response.json()` without `.catch()`. If the server returns a 200 with a non-JSON body (e.g., reverse proxy HTML), this throws an unhandled `SyntaxError`. The codebase's own `apiFetchJson` helper and JSDoc in `src/lib/api/client.ts:25-48` explicitly document this anti-pattern.
 
-**Flagged by:** code-reviewer (CR-2), architect (ARCH-1), critic (CRI-1)
-**Files:** `src/lib/datetime.ts:62-67`, `src/lib/formatting.ts:1-8`, `src/app/(dashboard)/dashboard/_components/dashboard-judge-system-section.tsx:5-7`, `src/app/(dashboard)/dashboard/admin/files/page.tsx:50-54`, `src/app/(dashboard)/dashboard/admin/settings/database-info.tsx:13-18`
-**Description:** Number and byte formatting is spread across 5+ files with no single source of truth. `formatNumber` is in `datetime.ts` (wrong module — datetime should not own number formatting), `formatScore` is in `formatting.ts`, and two near-identical byte-formatting functions exist in separate admin pages. The byte-formatting functions use locale-unaware `.toFixed()`.
-**Concrete failure scenario:** Adding a non-Latin-numeric locale (Hindi, Arabic) would require updating 5+ separate formatting functions instead of one shared utility.
-**Fix:** Consolidate into `src/lib/formatting.ts`:
-1. Move `formatNumber` from `datetime.ts` to `formatting.ts` (re-export from `datetime.ts` for backward compat)
-2. Add `formatBytes(value, locale?)` using `formatNumber` for locale-aware digit grouping
-3. Remove all local copies
+**Concrete failure scenario:** nginx returns `200 OK` with an HTML body. `.json()` throws `SyntaxError`. The outer catch may show a generic error toast, but the specific failure is lost and the user has no actionable feedback.
 
-### AGG-4: `.toFixed()` used for user-facing numbers in 15+ locations — incomplete i18n adoption [LOW/MEDIUM]
+**Fix:** Add `.catch(() => ({ data: {} }))` to each success-path `.json()` call, or migrate to `apiFetchJson`.
 
-**Flagged by:** code-reviewer (CR-3), critic (CRI-2), document-specialist (DOC-1)
-**Files:** `src/app/(public)/users/[id]/page.tsx:82`, `src/app/(public)/_components/public-problem-list.tsx:164`, `src/app/(public)/practice/problems/[id]/page.tsx:174`, `src/app/(public)/languages/page.tsx:90`, and ~11 more
-**Description:** The `formatNumber` utility was created to replace locale-unaware number formatting, but 15+ `.toFixed()` calls remain in user-facing components. The JSDoc for `formatNumber` says to prefer it over `.toFixed()` for user-facing display, but this policy is not enforced.
-**Concrete failure scenario:** A Hindi locale user sees `1,234.5` (Western formatting) mixed with correctly formatted numbers in other parts of the UI.
-**Fix:** Systematically replace `.toFixed()` in public-facing components with locale-aware alternatives. Priority: success rates, accuracy percentages, difficulty scores on public pages.
+---
 
-### AGG-5: Practice page Path B progress filter still fetches all matching IDs + submissions into memory [MEDIUM/MEDIUM]
+### AGG-NEW-2: Raw server error messages leaked to users via toast — potential information disclosure [MEDIUM/MEDIUM]
 
-**Flagged by:** perf-reviewer (PERF-1)
-**Files:** `src/app/(public)/practice/page.tsx:410-519`
-**Description:** This was identified in cycle 18 (AGG-3) and remains unfixed. When a progress filter is active, Path B fetches ALL matching problem IDs and ALL user submissions into memory, filters in JavaScript, and paginates. The code has a comment acknowledging this should be moved to SQL.
-**Fix:** Move the progress filter logic into a SQL CTE or subquery. This is a scale concern, not an immediate bug.
+**Flagged by:** code-reviewer (CR-6), security-reviewer (SEC-3)
+**Files:**
+- `src/app/(dashboard)/dashboard/submissions/[id]/_components/comment-section.tsx:78`
+- `src/app/(dashboard)/dashboard/admin/users/bulk-create-dialog.tsx:214`
 
-### AGG-6: Plan status tracking is stale — several open plans have items already DONE in code [LOW/HIGH]
+**Description:** These locations display raw server error strings directly to users via `toast.error((errorBody as { error?: string }).error ?? fallbackLabel)`. The server error could contain internal implementation details, SQL errors, stack traces, or other sensitive information. The discussion vote buttons were already fixed in a previous cycle to use only the localized label.
 
-**Flagged by:** critic (CRI-3)
-**Files:** Multiple plan files under `plans/open/`
-**Description:** Previous cycles have flagged stale plan statuses. The rpf-cycle-18 plan was correctly updated, but older plans may still have inaccurate TODO items. This wastes review effort.
-**Fix:** Audit all open plan files and archive those where all items are DONE.
+**Concrete failure scenario:** A database constraint violation returns `{ "error": "duplicate key value violates unique constraint \"users_email_key\"" }`. The raw SQL constraint name (table + column) is displayed to the end user, aiding reconnaissance.
 
-### AGG-7: `formatNumber` placed in `datetime.ts` — wrong module for number formatting concern [LOW/MEDIUM]
+**Fix:** Replace with `console.error(rawError); toast.error(localizedLabel)` pattern.
 
-**Flagged by:** architect (ARCH-1), critic (CRI-1)
-**Files:** `src/lib/datetime.ts:62-67`
-**Description:** `formatNumber` is a number formatting utility placed in a datetime module. A `formatting.ts` module already exists with `formatScore`. Number formatting should live with other formatting utilities.
-**Fix:** Move `formatNumber` to `src/lib/formatting.ts` and re-export from `datetime.ts` for backward compatibility.
+---
 
-### AGG-8: No unit tests for `formatNumber` and `formatBytes` utilities [LOW/MEDIUM]
+### AGG-NEW-3: contest-join-client navigates to `/dashboard/contests/undefined` when JSON parse fallback fires [MEDIUM/MEDIUM]
 
-**Flagged by:** test-engineer (TE-1, TE-2)
-**Files:** `src/lib/datetime.ts:62-67`, and the future `formatBytes` in `formatting.ts`
-**Description:** Shared formatting utilities should have test coverage for edge cases (NaN, Infinity, 0, negative, large numbers, different locales).
-**Fix:** Add unit tests when consolidating into shared utility.
+**Flagged by:** code-reviewer (CR-7), debugger (DBG-3)
+**File:** `src/app/(dashboard)/dashboard/contests/join/contest-join-client.tsx:49,58`
 
-### AGG-9: `SubmissionListAutoRefresh` polls at fixed intervals without backoff or error handling [LOW/LOW]
+**Description:** After `res.ok`, line 49 calls `res.json().catch(() => ({ data: {} }))`. If `.catch()` fires, `payload.data.assignmentId` is `undefined`. Line 58 then navigates to `/dashboard/contests/undefined`, showing a 404 or error page.
 
-**Flagged by:** perf-reviewer (PERF-2), debugger (DBG-2 partial)
-**Files:** `src/components/submission-list-auto-refresh.tsx:22-28`
-**Description:** The auto-refresh component polls at fixed intervals without error handling or backoff. During server overload, this could worsen the load.
-**Fix:** Add error-state tracking and switch to longer intervals on consecutive failures.
+**Concrete failure scenario:** A CDN returns `200 OK` with an HTML body. `.json()` throws, caught by `.catch()`. The user sees a success toast but lands on a broken page.
 
-### AGG-10: `forceNavigate` bypasses Next.js router — call sites should be audited [LOW/LOW]
+**Fix:** Add guard: `if (!payload.data?.assignmentId) { toast.error(t("joinFailed")); return; }`
 
-**Flagged by:** architect (ARCH-3), tracer (TR-2)
-**Files:** `src/lib/navigation/client.ts:3-5`
-**Description:** `forceNavigate` uses `window.location.assign()` which causes full page reloads. Call sites should be audited to ensure they need hard navigation.
-**Fix:** Audit call sites and add JSDoc documenting appropriate usage.
+---
 
-### AGG-11: Mobile menu sign-out button touch target below recommended 44px [LOW/LOW]
+### AGG-NEW-4: `forceNavigate` has no JSDoc documenting appropriate usage [LOW/LOW]
 
-**Flagged by:** designer (DES-2)
-**Files:** `src/components/layout/public-header.tsx:318-326`
-**Description:** The mobile sign-out button uses `py-2 text-sm` (~36px height), meeting the WCAG 2.2 minimum of 24px but below the recommended 44px for mobile touch targets.
-**Fix:** Consider increasing padding to `py-3` for better mobile touch accessibility.
+**Flagged by:** code-reviewer (CR-8)
+**File:** `src/lib/navigation/client.ts:3-5`
+
+**Description:** `forceNavigate` uses `window.location.assign()` which causes a full page reload. Only one call site exists (`locale-switcher.tsx:49`), which is appropriate. Adding JSDoc prevents future misuse.
+
+**Fix:** Add JSDoc warning.
 
 ## Verified Safe / No Regression Found
 
-- All cycle-18 fixes confirmed working (formatNumber, access code locale, userId assertion, clipboard feedback)
-- Korean letter-spacing compliance is comprehensive — all instances properly conditional
-- No `as any`, `@ts-ignore`, `@ts-expect-error` in the codebase
-- Only 2 eslint-disable directives, both with justification
-- HTML sanitization uses DOMPurify with strict allowlists for both `dangerouslySetInnerHTML` uses
-- No `innerHTML` assignments
-- Auth flow remains robust with Argon2id, timing-safe dummy hash, rate limiting
-- CSRF protection consistent across all mutation routes
-- All `new Date()` in API routes migrated to `getDbNowUncached()` where temporal consistency matters
-- Navigation is centralized via shared `public-nav.ts`
-- Bidirectional JSDoc reference between `DROPDOWN_ICONS` and `DROPDOWN_ITEM_DEFINITIONS` is maintained
+- All previous cycle 19 fixes confirmed working (formatNumber consolidation, clipboard, formatBytes, backoff)
+- Korean letter-spacing compliance maintained
+- No `as any`, `@ts-ignore`, `@ts-expect-error`
+- HTML sanitization uses DOMPurify with strict allowlists
+- Auth flow robust (Argon2id, timing-safe dummy hash, rate limiting)
+- CSRF protection consistent across mutation routes
+- Proxy middleware correctly uses `"mustChangePassword"` key (not English string)
+- `SubmissionListAutoRefresh` has proper exponential backoff
+- Contest quick stats use AbortController for request cancellation
+- `formatting.ts` properly consolidates formatNumber, formatBytes, formatScore, formatDifficulty, formatDuration
 
 ## Agent Failures
 
-None. All 11 review perspectives completed successfully.
+None.

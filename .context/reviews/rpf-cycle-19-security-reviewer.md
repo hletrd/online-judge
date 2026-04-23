@@ -1,25 +1,37 @@
-# Security Review — RPF Cycle 19
+# Security Review — RPF Cycle 19 (Updated)
 
-**Date:** 2026-04-20
+**Date:** 2026-04-22
 **Reviewer:** security-reviewer
-**Base commit:** 77da885d
+**Base commit:** 6df94cb1
 
-## Findings
+## Previous Findings Status
 
-### SEC-1: `document.execCommand("copy")` is deprecated and has inconsistent security behavior across browsers [LOW/MEDIUM]
+| ID | Finding | Status |
+|----|---------|--------|
+| SEC-1 | execCommand deprecated clipboard fallback | FIXED (api-keys-client uses copyToClipboard which handles this) |
 
-**Files:** `src/components/code/copy-code-button.tsx:29`, `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx:224`
-**Description:** Both files use `document.execCommand("copy")` as a fallback when `navigator.clipboard.writeText()` fails. `execCommand("copy")` is deprecated in the HTML specification and browsers are progressively removing support. In some browser versions, `execCommand("copy")` can be silently blocked by the browser's security model (e.g., Firefox in certain configurations) without throwing an error, meaning the code proceeds as if the copy succeeded.
-**Concrete failure scenario:** On Firefox 130+, `execCommand("copy")` silently returns `true` without actually copying to the clipboard when triggered from a non-user-initiated context. The `copy-code-button.tsx` now shows an error toast when `execCommand` returns `false`, but the silent-failure case is not handled.
-**Fix:** Add a note documenting the known limitation. Consider adding a `document.queryCommandSupported("copy")` check before attempting the fallback, and warn the user that clipboard access may be restricted in their browser.
+## New Findings
 
-### SEC-2: No new security regressions found [INFO/N/A]
+### SEC-3: Raw server error messages displayed to users — potential information disclosure [MEDIUM/MEDIUM]
+
+**Files:**
+- `src/app/(dashboard)/dashboard/submissions/[id]/_components/comment-section.tsx:78`
+- `src/app/(dashboard)/dashboard/admin/users/bulk-create-dialog.tsx:214`
+
+**Description:** These locations pass raw server error strings to `toast.error()`. The server error string could contain internal implementation details (SQL constraints, stack traces, file paths) that should not be exposed to end users. This is an OWASP A01:2021 (Broken Access Control) / A05:2021 (Security Misconfiguration) concern — exposing internal error details aids attackers in understanding the system.
+
+**Concrete failure scenario:** A database constraint violation returns `{ "error": "duplicate key value violates unique constraint \"users_email_key\"" }`. This reveals the table name (`users`) and column name (`email`) to the end user, aiding reconnaissance.
+
+**Fix:** Replace `toast.error(rawError ?? label)` with `console.error(rawError); toast.error(label)` pattern. Use localized user-facing messages only.
+
+---
+
+### SEC-4: No new critical security regressions found [INFO/N/A]
 
 **Description:** The codebase continues to maintain strong security practices:
-- HTML sanitization uses DOMPurify with strict allowlists (2 `dangerouslySetInnerHTML` uses, both properly sanitized)
-- No `as any`, `@ts-ignore`, or `@ts-expect-error` in the codebase
-- Only 2 eslint-disable directives, both with justification comments
-- No `innerHTML` assignments
-- Auth flow remains robust with Argon2id, timing-safe dummy hash, rate limiting, and proper token invalidation
-- CSRF protection is consistent across all mutation routes
-- All `new Date()` in API routes have been migrated to `getDbNowUncached()` where temporal consistency matters
+- HTML sanitization uses DOMPurify with strict allowlists
+- No `as any`, `@ts-ignore`, or `@ts-expect-error`
+- Auth flow robust with Argon2id, timing-safe dummy hash, rate limiting
+- CSRF protection consistent across all mutation routes
+- Proxy middleware correctly uses `"mustChangePassword"` key (not English string)
+- Clipboard utility (`copyToClipboard`) properly handles fallback failures
