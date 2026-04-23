@@ -170,7 +170,7 @@ export function QuickCreateContestForm({ problems }: { problems: Problem[] }) {
                 className="w-20"
               />
               <span className="text-xs text-muted-foreground">{t("pts")}</span>
-              <Button variant="ghost" size="sm" onClick={() => removeProblem(i)}>
+              <Button variant="ghost" size="sm" onClick={() => removeProblem(i)} aria-label={t("removeProblem")}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>

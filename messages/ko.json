@@ -2002,6 +2002,7 @@
       "antiCheatOff": "미사용",
       "problems": "문제",
       "addProblem": "문제 추가",
+      "removeProblem": "문제 제거",
       "pts": "점",
       "createAssessment": "평가 만들기",
       "creating": "생성 중",

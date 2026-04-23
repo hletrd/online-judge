@@ -2002,6 +2002,7 @@
       "antiCheatOff": "Disabled",
       "problems": "Problems",
       "addProblem": "Add Problem",
+      "removeProblem": "Remove problem",
       "pts": "pts",
       "createAssessment": "Create Assessment",
       "creating": "Creating...",
