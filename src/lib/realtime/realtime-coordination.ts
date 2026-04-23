@@ -91,7 +91,7 @@ export async function acquireSharedSseConnectionSlot({
   return withPgAdvisoryLock("realtime:sse:acquire", async (tx) => {
     await tx.delete(rateLimits).where(
       and(
-        sql`${rateLimits.key} LIKE ${getSsePrefixPattern()}`,
+        sql`${rateLimits.key} LIKE ${getSsePrefixPattern()} ESCAPE '\\'`,
         lt(rateLimits.blockedUntil, nowMs),
       )
     );
@@ -99,12 +99,12 @@ export async function acquireSharedSseConnectionSlot({
     const [counts] = await tx
       .select({
         total: sql<number>`count(*)`,
-        userTotal: sql<number>`count(*) filter (where ${rateLimits.key} like ${getSseUserPattern(userId)})`,
+        userTotal: sql<number>`count(*) filter (where ${rateLimits.key} like ${getSseUserPattern(userId)} escape '\\')`,
       })
       .from(rateLimits)
       .where(
         and(
-          sql`${rateLimits.key} LIKE ${getSsePrefixPattern()}`,
+          sql`${rateLimits.key} LIKE ${getSsePrefixPattern()} ESCAPE '\\'`,
           gte(rateLimits.blockedUntil, nowMs),
         )
       );
