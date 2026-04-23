@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { dbMock, resolveCapabilitiesMock, hasGroupInstructorRoleMock } = vi.hoisted(() => ({
+const { dbMock, resolveCapabilitiesMock, hasGroupInstructorRoleMock, getDbNowUncachedMock } = vi.hoisted(() => ({
   dbMock: {
     query: {
       assignments: {
@@ -22,10 +22,16 @@ const { dbMock, resolveCapabilitiesMock, hasGroupInstructorRoleMock } = vi.hoist
   },
   resolveCapabilitiesMock: vi.fn(),
   hasGroupInstructorRoleMock: vi.fn(),
+  getDbNowUncachedMock: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
   db: dbMock,
+}));
+
+vi.mock("@/lib/db-time", () => ({
+  getDbNow: vi.fn(),
+  getDbNowUncached: getDbNowUncachedMock,
 }));
 
 vi.mock("@/lib/capabilities/cache", () => ({
@@ -84,7 +90,7 @@ describe("validateAssignmentSubmission", () => {
   });
 
   it("rejects students before the assignment start time", async () => {
-    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-10T00:00:00.000Z").valueOf());
+    getDbNowUncachedMock.mockResolvedValue(new Date("2026-03-10T00:00:00.000Z"));
     dbMock.query.assignments.findFirst.mockResolvedValue(
       createAssignmentRecord({
         startsAt: new Date("2026-03-10T01:00:00.000Z"),
@@ -113,7 +119,7 @@ describe("validateAssignmentSubmission", () => {
   });
 
   it("rejects students after the late deadline closes", async () => {
-    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-10T03:00:00.000Z").valueOf());
+    getDbNowUncachedMock.mockResolvedValue(new Date("2026-03-10T03:00:00.000Z"));
     dbMock.query.assignments.findFirst.mockResolvedValue(
       createAssignmentRecord({
         deadline: new Date("2026-03-10T01:00:00.000Z"),
@@ -180,7 +186,7 @@ describe("validateAssignmentSubmission", () => {
   });
 
   it("accepts enrolled students on linked problems during the active window", async () => {
-    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-10T01:30:00.000Z").valueOf());
+    getDbNowUncachedMock.mockResolvedValue(new Date("2026-03-10T01:30:00.000Z"));
     dbMock.query.assignments.findFirst.mockResolvedValue(
       createAssignmentRecord({
         startsAt: new Date("2026-03-10T01:00:00.000Z"),
