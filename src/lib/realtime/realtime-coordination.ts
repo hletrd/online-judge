@@ -1,6 +1,7 @@
 import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { rateLimits } from "@/lib/db/schema";
+import { getDbNowUncached } from "@/lib/db-time";
 import { logger } from "@/lib/logger";
 
 let hasWarnedSingleInstanceOnly = false;
@@ -85,10 +86,14 @@ export async function acquireSharedSseConnectionSlot({
   timeoutMs: number;
 }) {
   const key = getRealtimeConnectionKey(userId, connectionId);
-  const nowMs = Date.now();
-  const expiresAt = nowMs + timeoutMs + 30_000;
 
   return withPgAdvisoryLock("realtime:sse:acquire", async (tx) => {
+    // Use DB server time for all comparisons against DB-stored timestamps
+    // to avoid clock skew between app and DB servers, consistent with
+    // other schedule checks (submissions, rate-limiting, assignments).
+    const nowMs = (await getDbNowUncached()).getTime();
+    const expiresAt = nowMs + timeoutMs + 30_000;
+
     await tx.delete(rateLimits).where(
       and(
         sql`${rateLimits.key} LIKE ${getSsePrefixPattern()} ESCAPE '\\'`,
@@ -145,9 +150,11 @@ export async function shouldRecordSharedHeartbeat({
   minIntervalMs?: number;
 }) {
   const key = getHeartbeatKey(assignmentId, userId);
-  const nowMs = Date.now();
 
   return withPgAdvisoryLock(key, async (tx) => {
+    // Use DB server time for heartbeat dedup to avoid clock skew
+    // between app and DB servers, consistent with other schedule checks.
+    const nowMs = (await getDbNowUncached()).getTime();
     const [existing] = await tx
       .select({ lastAttempt: rateLimits.lastAttempt })
       .from(rateLimits)
