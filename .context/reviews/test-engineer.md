@@ -1,39 +1,42 @@
-# Test Engineer Review — RPF Cycle 44
+# Test Engineer Review — RPF Cycle 46
 
 **Date:** 2026-04-23
 **Reviewer:** test-engineer
-**Base commit:** e2043115
+**Base commit:** 54cb92ed
 
 ## Inventory of Files Reviewed
 
 - `src/lib/assignments/submissions.ts` — Submission validation (testability)
-- `src/lib/assignments/participant-status.ts` — Participant status (good testability pattern)
-- `src/lib/assignments/contest-scoring.ts` — Contest ranking
+- `src/lib/assignments/contest-scoring.ts` — Contest ranking (cache testability)
 - `src/lib/assignments/contest-analytics.ts` — Contest analytics
+- `src/lib/realtime/realtime-coordination.ts` — SSE coordination (testability)
+- `src/app/api/v1/submissions/route.ts` — Submission creation
+- `src/app/(dashboard)/dashboard/contests/page.tsx` — Contests page
+
+## Previously Fixed Items (Verified)
+
+- `getDbNowUncached` mocked in submissions unit tests (commit fd39f76d): PASS
 
 ## New Findings
 
-### TE-1: `validateAssignmentSubmission` uses `Date.now()` making deadline enforcement untestable under simulated clock skew [MEDIUM/MEDIUM]
+### TE-1: Contests page `statusMap.get()!` pattern is not covered by null-guard tests [MEDIUM/LOW]
 
-**File:** `src/lib/assignments/submissions.ts:208,220,268`
+**File:** `src/app/(dashboard)/dashboard/contests/page.tsx:109,178`
 
-**Description:** The function uses `Date.now()` directly, making it impossible to write deterministic tests that verify deadline enforcement behavior under simulated clock skew. If the code used `getDbNowUncached()`, tests could mock the DB time function. The `participant-status.ts` module is a good example of the testable pattern — it accepts an injectable `now` parameter defaulting to `Date.now()`.
+**Description:** The `statusMap.get(c.id)!` pattern in the contests page has no null guard, meaning there is no test for what happens if the map lookup returns undefined. While the map is constructed from the same data source, this means any future refactoring that changes the map construction or filtering order could silently introduce a runtime error with no test coverage.
 
-**Fix:** Use `getDbNowUncached()` so the time source is mockable in tests.
+**Fix:** Replace with null-safe alternatives and add a test case for empty/missing status.
 
 **Confidence:** Medium
 
 ---
 
-### TE-2: Non-null assertions on Map.get() after has() guards — three locations [LOW/LOW]
+### TE-2: `realtime-coordination.ts` functions use `Date.now()` making them untestable under simulated clock skew [MEDIUM/MEDIUM]
 
-**Files:**
-- `src/lib/assignments/contest-scoring.ts:243`
-- `src/lib/assignments/submissions.ts:365`
-- `src/lib/assignments/contest-analytics.ts:259`
+**File:** `src/lib/realtime/realtime-coordination.ts:88,148`
 
-**Description:** These locations use the `!.get()` pattern after a `has()` guard. While safe due to the guard, the pattern was recently removed from the anti-cheat route (cycle 41). Inconsistent patterns make it harder to write comprehensive lint rules for non-null assertions.
+**Description:** Both `acquireSharedSseConnectionSlot` and `shouldRecordSharedHeartbeat` use `Date.now()` directly inside transactions, making it impossible to write deterministic tests for clock-skew scenarios. If these functions used `getDbNowUncached()`, tests could mock the DB time function to verify behavior under various clock-skew conditions.
 
-**Fix:** Use explicit null-guard pattern for consistency.
+**Fix:** Use `getDbNowUncached()` at the start of each transaction, consistent with the pattern already applied to `validateAssignmentSubmission`, the submission rate-limit, and the assignment PATCH route.
 
-**Confidence:** Low
+**Confidence:** Medium

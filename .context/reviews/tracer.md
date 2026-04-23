@@ -1,29 +1,30 @@
-# Tracer Review — RPF Cycle 44
+# Tracer Review — RPF Cycle 46
 
 **Date:** 2026-04-23
 **Reviewer:** tracer
-**Base commit:** e2043115
+**Base commit:** 54cb92ed
 
 ## Causal Tracing of Suspicious Flows
 
-### TR-1: `validateAssignmentSubmission` uses `Date.now()` while DB stores deadlines — two different time sources for access-control comparison [MEDIUM/MEDIUM]
+### TR-1: `acquireSharedSseConnectionSlot` uses `Date.now()` for DB-timestamp comparisons — clock-skew in SSE slot management [MEDIUM/MEDIUM]
 
-**File:** `src/lib/assignments/submissions.ts:208,220,268`
+**File:** `src/lib/realtime/realtime-coordination.ts:88-131`
 
 **Causal trace:**
-1. User sends POST /api/v1/submissions with `assignmentId` and `problemId`
-2. Line 194: `assignment = await getAssignmentAccessRecord(...)` — fetches assignment from DB (timestamps stored in DB time)
-3. Line 208: `now = Date.now()` — threshold computed from app-server wall clock
-4. Line 212: `startsAt && startsAt > now` — DB-stored `startsAt` compared against app-server time
-5. Line 220: `effectiveCloseAt && effectiveCloseAt < now` — DB-stored deadline compared against app-server time
-6. Line 268: `examSession.personalDeadline.valueOf() < Date.now()` — DB-stored personal deadline compared against app-server time
+1. Client opens SSE connection to `/api/v1/submissions/[id]/events`
+2. `acquireSharedSseConnectionSlot` is called
+3. Line 88: `const nowMs = Date.now();` — app-server wall clock
+4. Line 89: `const expiresAt = nowMs + timeoutMs + 30_000;` — computed from app-server time
+5. Line 95: `lt(rateLimits.blockedUntil, nowMs)` — DB-stored `blockedUntil` compared against app-server time
+6. Line 108: `gte(rateLimits.blockedUntil, nowMs)` — same comparison for active slot count
+7. Line 120-128: New slot inserted with `expiresAt` computed from app-server time
 
-The comparisons at steps 4, 5, and 6 cross a trust boundary: app-server time (untrusted relative to DB) is compared against DB-stored timestamps (authoritative). Under clock skew where `T_app < T_db`, the effective deadline window widens, allowing post-deadline submissions.
+Steps 5-6 cross a trust boundary: app-server time (untrusted relative to DB) is compared against DB-stored timestamps. Step 7 writes a `blockedUntil` and `windowStartedAt` computed from app-server time into the DB, mixing clock sources.
 
 **Competing hypotheses:**
-- H1: Clock skew is negligible in production (container NTP syncs). **Rejected:** The codebase has fixed clock-skew bugs in at least 5 previous cycles, indicating it is a real production concern.
-- H2: The assignment PATCH route was fixed but this validation path was missed. **Accepted:** This function is called from the submission creation route, but the clock-skew fix in cycle 43 only addressed the rate-limit check, not the validation check.
+- H1: Clock skew is negligible in production (container NTP syncs). **Rejected:** The codebase has fixed clock-skew bugs in at least 6 previous cycles, indicating it is a real production concern.
+- H2: SSE slot expiry is approximate and a few seconds of skew is acceptable. **Partially accepted:** The 30-second buffer on line 89 (`timeoutMs + 30_000`) mitigates some skew, but stale slot eviction (step 5) could incorrectly evict valid slots or retain expired ones.
 
-**Fix:** Use `getDbNowUncached()` for all deadline comparisons.
+**Fix:** Use `getDbNowUncached()` for `nowMs` inside the transaction, consistent with the pattern in `validateAssignmentSubmission` and `atomicConsumeRateLimit`.
 
 **Confidence:** Medium

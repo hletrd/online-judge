@@ -1,38 +1,33 @@
-# Architecture Review — RPF Cycle 44
+# Architecture Review — RPF Cycle 46
 
 **Date:** 2026-04-23
 **Reviewer:** architect
-**Base commit:** e2043115
+**Base commit:** 54cb92ed
 
 ## Inventory of Files Reviewed
 
-- `src/lib/assignments/submissions.ts` — Submission validation (clock source analysis)
-- `src/lib/assignments/leaderboard.ts` — Leaderboard freeze (clock source analysis)
-- `src/lib/assignments/participant-status.ts` — Participant status (accepts `now` param)
-- `src/lib/realtime/realtime-coordination.ts` — SSE connection management
-- `src/lib/datetime.ts` — Date formatting utilities
-- `src/lib/assignments/active-timed-assignments.ts` — Correctly uses `getDbNow()`
+- `src/lib/realtime/realtime-coordination.ts` — Shared SSE coordination (clock source analysis)
+- `src/lib/security/api-rate-limit.ts` — API rate limiting (clock source analysis)
+- `src/lib/assignments/submissions.ts` — Submission validation (verified cycle 45 fix)
+- `src/lib/assignments/leaderboard.ts` — Leaderboard freeze
+- `src/proxy.ts` — Auth proxy cache (FIFO analysis)
 
 ## Previously Fixed Items (Verified)
 
-- Submission route rate-limit uses `getDbNowUncached()`: PASS
+- `validateAssignmentSubmission` uses `getDbNowUncached()`: PASS
 - Date.now() replaced in assignment PATCH: PASS
 
 ## New Findings
 
-### ARCH-1: `validateAssignmentSubmission` uses `Date.now()` — last remaining server-side clock-skew site for access-control decisions [MEDIUM/MEDIUM]
+### ARCH-1: `realtime-coordination.ts` uses `Date.now()` for DB-timestamp comparisons — architectural inconsistency in shared coordination mode [MEDIUM/MEDIUM]
 
-**File:** `src/lib/assignments/submissions.ts:208,220,268`
+**File:** `src/lib/realtime/realtime-coordination.ts:88,148`
 
-**Description:** The codebase has systematically migrated from `Date.now()` to `getDbNowUncached()` for all schedule comparisons that gate access-control decisions. The assignment PATCH route was fixed in cycle 40, the submission rate-limit in cycle 43, and the recruiting invitation routes earlier. The `validateAssignmentSubmission` function is the last remaining server-side code path that uses `Date.now()` to compare against DB-stored timestamps for an access-control decision (whether a user can submit). This is an architectural inconsistency.
+**Description:** The codebase has systematically migrated from `Date.now()` to `getDbNowUncached()` for all comparisons against DB-stored timestamps inside transactions. This convention was applied to the assignment PATCH route, the submission rate-limit, the recruiting invitation routes, and most recently `validateAssignmentSubmission`. The shared SSE coordination functions are the only remaining code paths that use `Date.now()` to compare against DB-stored `rateLimits` columns inside a `pg_advisory_xact_lock` transaction.
 
-The `participant-status.ts` module correctly accepts a `now` parameter with `Date.now()` as default, allowing callers to inject DB time. The `active-timed-assignments.ts` module correctly uses `getDbNow()`. The `submissions.ts` validation should follow the same pattern.
+The architectural risk: the `realtime-coordination.ts` module is only active when `REALTIME_COORDINATION_BACKEND=postgresql` is set, which is typically only in multi-instance production deployments where clock skew is most likely to occur (different containers may have slightly different NTP sync states).
 
-**Fix:** Replace `Date.now()` with `getDbNowUncached()` in `validateAssignmentSubmission`:
-```typescript
-const now = (await getDbNowUncached()).getTime();
-```
-The function is already async, so this is a drop-in change.
+**Fix:** Use `getDbNowUncached()` at the start of each `withPgAdvisoryLock` transaction in `acquireSharedSseConnectionSlot` and `shouldRecordSharedHeartbeat`.
 
 **Confidence:** Medium
 

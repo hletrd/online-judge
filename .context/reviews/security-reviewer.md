@@ -1,52 +1,56 @@
-# Security Review — RPF Cycle 44
+# Security Review — RPF Cycle 46
 
 **Date:** 2026-04-23
 **Reviewer:** security-reviewer
-**Base commit:** e2043115
+**Base commit:** 54cb92ed
 
 ## Inventory of Files Reviewed
 
-- `src/lib/assignments/submissions.ts` — Assignment submission validation (clock-skew analysis)
-- `src/lib/assignments/leaderboard.ts` — Leaderboard freeze logic
-- `src/lib/realtime/realtime-coordination.ts` — SSE connection management
-- `src/app/api/v1/judge/claim/route.ts` — Judge claim (Date.now usage)
-- `src/lib/security/rate-limit.ts` — In-memory rate limiting
-- `src/lib/security/api-rate-limit.ts` — API rate limiting
-- `src/lib/security/in-memory-rate-limit.ts` — In-memory rate limiting
-- `src/lib/auth/config.ts` — Auth configuration
-- `src/proxy.ts` — Auth proxy cache
-- `src/lib/docker/client.ts` — Docker client (env var handling)
+- `src/lib/assignments/submissions.ts` — Submission validation (verified cycle 45 fix)
+- `src/lib/security/api-rate-limit.ts` — API rate limiting (Date.now analysis)
+- `src/lib/realtime/realtime-coordination.ts` — Shared SSE coordination (Date.now analysis)
+- `src/app/api/v1/submissions/route.ts` — Submission creation
+- `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts` — Anti-cheat events
+- `src/lib/assignments/recruiting-invitations.ts` — Recruiting token flow
+- `src/proxy.ts` — Auth proxy
+- `src/lib/security/password-hash.ts` — Password hashing
+- `src/lib/security/encryption.ts` — Encryption utilities
+- `src/lib/security/csrf.ts` — CSRF protection
+- `src/lib/security/env.ts` — Environment validation
 
 ## Previously Fixed Items (Verified)
 
-- Submission route rate-limit uses `getDbNowUncached()`: PASS
-- Contest join route explicit `auth: true`: PASS
+- Submission validation uses `getDbNowUncached()` for deadline enforcement: PASS
+- Submission rate-limit uses `getDbNowUncached()`: PASS
+- Contest join route has explicit `auth: true`: PASS
 - Access-code capability auth: PASS
 - LIKE pattern escaping: PASS
 
 ## New Findings
 
-### SEC-1: `validateAssignmentSubmission` uses `Date.now()` for deadline enforcement — clock-skew allows post-deadline submissions [MEDIUM/MEDIUM]
+### SEC-1: `realtime-coordination.ts` uses `Date.now()` for DB-stored `blockedUntil` comparisons — clock-skew in shared SSE coordination [MEDIUM/MEDIUM]
 
-**File:** `src/lib/assignments/submissions.ts:208-226,268`
+**File:** `src/lib/realtime/realtime-coordination.ts:88,148`
 
-**Description:** The submission validation function compares app-server `Date.now()` against DB-stored assignment deadlines (`startsAt`, `deadline`, `lateDeadline`, `examSession.personalDeadline`). This is the same clock-skew class previously fixed in the assignment PATCH route and submission rate-limit. The difference is this is a more impactful boundary: it controls whether users can submit at all, not just rate-limiting.
+**Description:** The `acquireSharedSseConnectionSlot` and `shouldRecordSharedHeartbeat` functions use `Date.now()` to compare against DB-stored `rateLimits.blockedUntil`, `windowStartedAt`, and `lastAttempt` columns. This is the same clock-skew class of issue that was fixed in `api-rate-limit.ts` (noted as AGG-2 in the cycle 45 aggregate).
 
-**Concrete failure scenario:** App server clock is 60 seconds behind DB. A contest with a deadline of 10:00:00 (DB time) will still accept submissions until 10:01:00 DB time, because the app server doesn't see the deadline as passed until its clock reaches 10:00:00. Users gain 60 extra seconds to submit solutions.
+When `REALTIME_COORDINATION_BACKEND=postgresql` is configured, these functions operate within a `pg_advisory_xact_lock` transaction. If the app server clock is behind the DB server clock, an SSE connection slot that should be expired (per DB time) will still be counted as active, potentially preventing new connections from being established. Conversely, if the app clock is ahead, expired slots may be evicted prematurely.
 
-**Fix:** Use `getDbNowUncached()` for all deadline comparisons in `validateAssignmentSubmission`.
+**Concrete failure scenario:** App server clock is 30 seconds ahead of DB. A student's SSE connection slot has `blockedUntil` at DB time 10:00:00. At 9:59:30 DB time (which the app server sees as 10:00:00), the slot is evicted, and the student's SSE stream drops unexpectedly. The student reconnects, consuming a new slot.
 
-**Confidence:** Medium
+**Fix:** Cache `getDbNowUncached()` at the start of each transaction and use it for all comparisons. The functions are already async and within a transaction, so this is a drop-in change.
+
+**Confidence:** Medium — only affects deployments with `REALTIME_COORDINATION_BACKEND=postgresql` configured.
 
 ---
 
-### SEC-2: `leaderboard.ts` freeze check uses `Date.now()` — freeze boundary is approximate [LOW/LOW]
+### SEC-2: `rateLimitedResponse` uses `Date.now()` for `X-RateLimit-Reset` header — header inaccuracy under clock skew [LOW/LOW]
 
-**File:** `src/lib/assignments/leaderboard.ts:52-53`
+**File:** `src/lib/security/api-rate-limit.ts:124`
 
-**Description:** The leaderboard freeze decision compares `Date.now()` against the DB-stored `freezeLeaderboardAt` timestamp. Under clock skew, the freeze boundary is slightly inaccurate. This is a display-only concern — the frozen leaderboard data itself is correct. Students might see the leaderboard frozen slightly early or late (seconds).
+**Description:** The `rateLimitedResponse` function computes `X-RateLimit-Reset` using `Date.now() + windowMs`. Under clock skew, the reset timestamp in the header will be inaccurate relative to the DB's actual rate-limit window. This is a header-only concern — the actual rate-limit enforcement uses `Date.now()` consistently within `atomicConsumeRateLimit`, so the enforcement logic is internally consistent. The header inaccuracy only misleads API clients about when they can retry.
 
-**Fix:** Low priority — use `getDbNowUncached()` for consistency if the function is refactored.
+**Fix:** Low priority — compute the reset time from the DB-stored `blockedUntil` value if available, or accept the minor header inaccuracy.
 
 **Confidence:** Low
 

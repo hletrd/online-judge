@@ -1,78 +1,103 @@
-# Code Review — RPF Cycle 44
+# Code Review — RPF Cycle 46
 
 **Date:** 2026-04-23
 **Reviewer:** code-reviewer
-**Base commit:** e2043115
+**Base commit:** 54cb92ed
 
 ## Inventory of Files Reviewed
 
-- `src/lib/assignments/submissions.ts` — Assignment submission validation (lines 190-280)
-- `src/lib/assignments/contest-scoring.ts` — Contest ranking + leaderboard (lines 85-130, 228-245)
-- `src/lib/assignments/contest-analytics.ts` — Contest analytics (lines 240-275)
-- `src/lib/assignments/leaderboard.ts` — Leaderboard freeze logic (lines 40-77)
-- `src/lib/realtime/realtime-coordination.ts` — SSE connection management (lines 80-180)
-- `src/app/api/v1/submissions/route.ts` — Submission creation (verified cycle 43 fix)
-- `src/app/api/v1/judge/claim/route.ts` — Judge claim (lines 110-160)
-- `src/lib/assignments/participant-status.ts` — Participant status (lines 30-80)
-- `src/lib/datetime.ts` — Date formatting utilities
-- `src/lib/assignments/active-timed-assignments.ts` — Active timed assignments sidebar
+- `src/lib/assignments/submissions.ts` — Submission validation (verified cycle 45 fix)
+- `src/lib/assignments/contest-scoring.ts` — Contest ranking
+- `src/lib/assignments/contest-analytics.ts` — Contest analytics
+- `src/lib/assignments/recruiting-invitations.ts` — Recruiting token flow
+- `src/lib/assignments/leaderboard.ts` — Leaderboard freeze
+- `src/lib/security/api-rate-limit.ts` — API rate limiting
+- `src/lib/realtime/realtime-coordination.ts` — SSE connection management
+- `src/app/api/v1/submissions/route.ts` — Submission creation
+- `src/app/api/v1/submissions/[id]/events/route.ts` — SSE events
+- `src/app/api/v1/contests/[assignmentId]/anti-cheat/route.ts` — Anti-cheat events
+- `src/app/(dashboard)/dashboard/contests/page.tsx` — Contests page
+- `src/app/(dashboard)/dashboard/_components/candidate-dashboard.tsx` — Candidate dashboard
+- `src/app/(public)/practice/page.tsx` — Practice page
+- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx` — Problem import
+- `src/proxy.ts` — Auth proxy
+- `src/lib/security/password-hash.ts` — Password hashing
+- `src/lib/security/encryption.ts` — Encryption utilities
 
 ## Previously Fixed Items (Verified)
 
-- Submission route rate-limit uses `getDbNowUncached()` for `oneMinuteAgo`: PASS (line 251)
-- Submission route `submittedAt` reuses `dbNow`: PASS (line 321)
+- `validateAssignmentSubmission` uses `getDbNowUncached()` for deadline enforcement: PASS (line 210)
+- Non-null assertions replaced with null guards in client components: PASS (cycle 45)
+- Map.get() non-null assertions replaced in contest-scoring, submissions, contest-analytics: PASS
+- Submission rate-limit uses `getDbNowUncached()` for clock-skew consistency: PASS
 - Contest join route has explicit `auth: true`: PASS
 
 ## New Findings
 
-### CR-1: `validateAssignmentSubmission` uses `Date.now()` for deadline comparisons — clock-skew bypass [MEDIUM/MEDIUM]
+### CR-1: Non-null assertions on `Map.get()` in contests page — two instances [MEDIUM/MEDIUM]
 
-**File:** `src/lib/assignments/submissions.ts:208,220,268`
+**Files:**
+1. `src/app/(dashboard)/dashboard/contests/page.tsx:109` — `statusMatchesFilter(statusMap.get(c.id)!, filter)`
+2. `src/app/(dashboard)/dashboard/contests/page.tsx:178` — `const status = statusMap.get(contest.id)!;`
 
-**Description:** The `validateAssignmentSubmission` function compares `Date.now()` against DB-stored assignment timestamps (`startsAt`, `deadline`, `lateDeadline`) at lines 208-226, and against `examSession.personalDeadline` at line 268. These are the same class of clock-skew issues that were previously fixed in the assignment PATCH route (cycle 40) and the submission route rate-limit (cycle 43). If the app server clock is behind the DB server clock, users can submit after the actual deadline. If the app server clock is ahead, users are blocked before the deadline.
+**Description:** The contests page builds a `statusMap` from the contests array and then uses non-null assertions to look up each contest's status. While the map is built from the same array being iterated, this pattern is inconsistent with the codebase's recent migration away from `!.get()` patterns (cycles 43-45 replaced these in contest-scoring.ts, submissions.ts, contest-analytics.ts, and multiple client components).
 
-**Concrete failure scenario:** App server clock is 30 seconds behind DB. A contest deadline is 10:00:00 (DB time). At 10:00:30 DB time, the app server thinks it's 10:00:00 and allows a submission that is past the deadline. Conversely, if the app server is 30 seconds ahead, a submission at 9:59:30 DB time would be rejected even though it's 30 seconds before the deadline.
+These are technically safe because the map is populated immediately before use from the same data source, but they are fragile — if a contest were removed between the map construction and the iteration (e.g., due to a React re-render), the assertion would throw.
 
-**Fix:** Use `getDbNowUncached()` for the time comparison:
+**Fix:** Use optional chaining with a fallback:
 ```typescript
-const now = (await getDbNowUncached()).getTime();
+statusMatchesFilter(statusMap.get(c.id) ?? "closed", filter)
 ```
-Note: This function is synchronous (`validateAssignmentSubmission`) but already performs async DB operations, so making it async is consistent.
 
 **Confidence:** Medium
 
 ---
 
-### CR-2: Non-null assertions on `Map.get()` after `has()` guard — inconsistent with recent fixes [LOW/LOW]
+### CR-2: Non-null assertion on `Map.get()` in candidate dashboard [LOW/LOW]
 
-**Files:**
-- `src/lib/assignments/contest-scoring.ts:243` — `userMap.get(row.userId)!.problems.set(...)`
-- `src/lib/assignments/submissions.ts:365` — `submissionsByProblem.get(sub.problemId)!.add(...)`
-- `src/lib/assignments/contest-analytics.ts:259` — `userProgressMap.get(sub.userId)!`
+**File:** `src/app/(dashboard)/dashboard/_components/candidate-dashboard.tsx:595`
 
-**Description:** These three locations use the `!.get()` pattern after a `has()` guard on the preceding line. While the `has()` check makes the non-null assertion technically safe (the Map entry was just created), this pattern was removed from other files in recent cycles (e.g., the anti-cheat route at lines 211-213 in cycle 41). The codebase is converging on explicit null-guard patterns rather than non-null assertions.
+**Description:** `assignmentProblemProgressMap.get(assignment.assignmentId)!` is guarded by the conditional on line 588 that checks `.length`, which implies the map entry exists. This is technically safe but inconsistent with the codebase trend.
 
-**Fix:** Replace with a pattern that captures the result of `get()` and checks for null:
+**Fix:** Use optional chaining with fallback:
 ```typescript
-const entry = userMap.get(row.userId);
-if (!entry) continue;
-entry.problems.set(row.problemId, row);
+const problems = assignmentProblemProgressMap.get(assignment.assignmentId) ?? [];
 ```
 
-**Confidence:** Low — the current code is technically safe due to the `has()` guard, but it's inconsistent with the codebase trend.
+**Confidence:** Low
 
 ---
 
-### CR-3: `computeLeaderboard` uses `Date.now()` for freeze-leaderboard check — display inconsistency under clock skew [LOW/LOW]
+### CR-3: Non-null assertion on `resolvedSearchParams!.sort` in practice page [LOW/LOW]
 
-**File:** `src/lib/assignments/leaderboard.ts:52`
+**File:** `src/app/(public)/practice/page.tsx:129`
 
-**Description:** The `computeLeaderboard` function computes `nowMs = Date.now()` and compares it against `freezeAt` (a DB-stored `freezeLeaderboardAt` timestamp) to decide whether the leaderboard is frozen. Under clock skew, the leaderboard could appear frozen slightly before or after the intended freeze time. However, this is a display-only concern — the frozen leaderboard shows submissions up to the freeze time, and the actual submission data is correct. The freeze decision timing is at most slightly inaccurate.
+**Description:** `resolvedSearchParams!.sort as SortOption` — the non-null assertion is used because the preceding `SORT_VALUES.includes()` check already validated the value is a valid sort option. However, the `!` assertion bypasses null/undefined checks even though `resolvedSearchParams` could be undefined (it's typed as `Promise<...> | undefined`).
 
-**Fix:** Use `getDbNowUncached()` for consistency:
+The logic is technically safe because if `resolvedSearchParams` is undefined, the `includes` check returns false and the ternary falls through to `"number_asc"`. But the `!` is unnecessary and misleading.
+
+**Fix:** Remove the `!` and use optional chaining:
 ```typescript
-const nowMs = (await getDbNowUncached()).getTime();
+const currentSort: SortOption = SORT_VALUES.includes(resolvedSearchParams?.sort as SortOption)
+  ? (resolvedSearchParams?.sort as SortOption)
+  : "number_asc";
 ```
-Note: This requires making the function async, which it already is.
 
-**Confidence:** Low — the freeze timing inaccuracy is cosmetic, not a data integrity issue.
+**Confidence:** Low
+
+---
+
+### CR-4: IOI leaderboard sort uses subtraction for floating-point scores — potential sort instability [LOW/LOW]
+
+**File:** `src/lib/assignments/contest-scoring.ts:359`
+
+**Description:** `entries.sort((a, b) => b.totalScore - a.totalScore)` uses subtraction for sorting IOI scores. While the scores are rounded to 2 decimal places (line 322), floating-point subtraction can still produce tiny non-zero differences for mathematically equal values (e.g., `80.03 - 80.03` could be `1.42e-14` instead of `0`). The `isScoreTied()` function at line 340 handles this for rank assignment, but the sort itself may place tied entries in a non-deterministic order.
+
+This is cosmetic — tied entries get the same rank regardless of sort order. But it could cause the leaderboard order to change between requests for tied users, which may confuse students.
+
+**Fix:** Add a secondary sort key (e.g., user ID) for deterministic tie-breaking:
+```typescript
+entries.sort((a, b) => b.totalScore - a.totalScore || a.userId.localeCompare(b.userId));
+```
+
+**Confidence:** Low

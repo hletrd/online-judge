@@ -1,16 +1,17 @@
-# UI/UX Review — RPF Cycle 44
+# UI/UX Review — RPF Cycle 46
 
 **Date:** 2026-04-23
 **Reviewer:** designer
-**Base commit:** e2043115
+**Base commit:** 54cb92ed
 
 ## Inventory of UI Files Reviewed
 
-- `src/components/exam/anti-cheat-monitor.tsx` — Anti-cheat monitoring (verified countdown)
+- `src/app/(dashboard)/dashboard/contests/page.tsx` — Contests listing page
+- `src/app/(dashboard)/dashboard/_components/candidate-dashboard.tsx` — Candidate dashboard
+- `src/components/exam/anti-cheat-monitor.tsx` — Anti-cheat monitoring
 - `src/components/exam/countdown-timer.tsx` — Exam countdown timer
 - `src/components/problem/problem-submission-form.tsx` — Submission form
 - `src/components/layout/active-timed-assignment-sidebar-panel.tsx` — Active assignment sidebar
-- `src/components/layout/app-sidebar.tsx` — Main sidebar
 
 ## Previously Fixed Items (Verified)
 
@@ -21,7 +22,17 @@
 
 ## New Findings
 
-No new UI/UX findings. The codebase's UI layer continues to use proper ARIA labels, destructive action confirmations, and loading states.
+### DES-1: Contests page badge colors use inline Tailwind classes with hardcoded hex colors — inconsistent with design system [LOW/LOW]
+
+**File:** `src/app/(dashboard)/dashboard/contests/page.tsx:224-228`
+
+**Description:** The contest cards use hardcoded color classes like `bg-blue-500 text-white`, `bg-purple-500 text-white`, `bg-teal-500 text-white`, `bg-orange-500 text-white` for exam mode and scoring model badges. These are hardcoded and not theme-aware — they may have contrast issues in dark mode and don't use the design system's semantic color tokens.
+
+**Fix:** Low priority — use semantic color variants from the design system or ensure these badges have adequate contrast in both light and dark modes.
+
+**Confidence:** Low
+
+---
 
 ### Carry-Over Items
 

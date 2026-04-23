@@ -1,60 +1,107 @@
-# RPF Cycle 45 — Aggregate Review
+# RPF Cycle 46 — Aggregate Review
 
 **Date:** 2026-04-23
-**Base commit:** d96a984f
+**Base commit:** 54cb92ed
 **Review artifacts:** code-reviewer.md, perf-reviewer.md, security-reviewer.md, architect.md, critic.md, verifier.md, debugger.md, test-engineer.md, tracer.md, designer.md, document-specialist.md
 
 ## Deduped Findings (sorted by severity then signal)
 
-### AGG-1: Non-null assertions on `Map.get()` and optional relations in client components — 5 remaining instances [MEDIUM/MEDIUM]
+### AGG-1: `realtime-coordination.ts` uses `Date.now()` for DB-timestamp comparisons in shared SSE coordination — clock-skew in slot management [MEDIUM/MEDIUM]
 
-**Flagged by:** code-reviewer (CR-1, CR-2), critic (CRI-1), debugger (DBG-1), tracer (TR-1), designer (DES-2), test-engineer (TE-3)
-**Signal strength:** 7 of 11 review perspectives
+**Flagged by:** security-reviewer (SEC-1), architect (ARCH-1), critic (CRI-2), debugger (DBG-1), test-engineer (TE-2), tracer (TR-1)
+**Signal strength:** 6 of 11 review perspectives
 
 **Files:**
-1. `src/app/(dashboard)/dashboard/groups/[id]/assignments/[assignmentId]/student/[userId]/page.tsx:131` — `submissionsByProblem.get(sub.problemId)!.push(sub)`
-2. `src/app/(dashboard)/dashboard/submissions/[id]/submission-detail-client.tsx:85` — `submission.problem!.id`
-3. `src/app/(dashboard)/dashboard/contests/page.tsx:214` — `(contest.personalDeadline ?? contest.deadline)!.getTime()`
-4. `src/app/(dashboard)/dashboard/problem-sets/_components/problem-set-form.tsx:200` — `problemSet!.id`
-5. `src/app/(dashboard)/dashboard/admin/roles/role-editor-dialog.tsx:76` — `role!.id`
+- `src/lib/realtime/realtime-coordination.ts:88` — `acquireSharedSseConnectionSlot` uses `Date.now()` for `nowMs`
+- `src/lib/realtime/realtime-coordination.ts:148` — `shouldRecordSharedHeartbeat` uses `Date.now()` for `nowMs`
 
-**Description:** Cycles 43-44 removed non-null assertions from server-side assignment code. Five instances remain in client components. Items 1-2 are the most risky: (1) a `Map.get()` assertion that could throw if the map is concurrently modified, (2) `submission.problem!.id` that throws if the problem has been deleted. Items 3-5 are guarded by surrounding conditionals but are fragile.
+**Description:** The codebase has systematically migrated from `Date.now()` to `getDbNowUncached()` for all comparisons against DB-stored timestamps inside transactions. The `validateAssignmentSubmission` fix (cycle 45), the assignment PATCH route (cycle 40), the submission rate-limit (cycle 43), and the recruiting invitation routes all use `getDbNowUncached()`. The shared SSE coordination functions are the only remaining code paths that use `Date.now()` to compare against DB-stored `rateLimits` columns inside a `pg_advisory_xact_lock` transaction.
 
-**Concrete failure scenario (item 2):** An instructor deletes a problem. A student opens their submission detail for that problem and clicks "resubmit." `submission.problem!.id` throws `TypeError: Cannot read properties of null`, and the resubmit button silently fails with no user feedback.
+This only affects deployments with `REALTIME_COORDINATION_BACKEND=postgresql` configured (multi-instance production deployments), which is precisely where clock skew between containers is most likely.
 
-**Fix:** Replace with explicit null guards or optional chaining with fallbacks.
+**Concrete failure scenario (slot leak):** App server clock is 30 seconds behind DB. A student's SSE connection slot has `blockedUntil` at DB time 10:30:00. At DB time 10:31:00, the stale eviction query checks `blockedUntil (10:30:00) < nowMs (10:30:30*1000)`. Since `nowMs` is 30 seconds behind, the slot appears unexpired and is NOT evicted. Over time, leaked slots inflate the connection count, eventually causing `serverBusy` (503) for legitimate connections.
+
+**Fix:** Use `getDbNowUncached()` at the start of each `withPgAdvisoryLock` transaction:
+```typescript
+const dbNow = await getDbNowUncached();
+const nowMs = dbNow.getTime();
+```
 
 ---
 
-### AGG-2: API rate-limiting module uses `Date.now()` for DB-timestamp comparisons — architectural inconsistency [MEDIUM/MEDIUM]
+### AGG-2: Non-null assertions on `Map.get()` in contests page — two instances [MEDIUM/MEDIUM]
 
-**Flagged by:** security-reviewer (SEC-1), architect (ARCH-1), critic (CRI-2)
-**Signal strength:** 3 of 11 review perspectives
+**Flagged by:** code-reviewer (CR-1), critic (CRI-1), verifier (V-1), test-engineer (TE-1)
+**Signal strength:** 4 of 11 review perspectives
 
 **Files:**
-- `src/lib/security/api-rate-limit.ts:54,86,90`
-- `src/lib/security/rate-limit.ts:39,77`
+1. `src/app/(dashboard)/dashboard/contests/page.tsx:109` — `statusMatchesFilter(statusMap.get(c.id)!, filter)`
+2. `src/app/(dashboard)/dashboard/contests/page.tsx:178` — `const status = statusMap.get(contest.id)!;`
 
-**Description:** The `atomicConsumeRateLimit` function uses `Date.now()` to compare against DB-stored `rateLimits` columns (`windowStartedAt`, `blockedUntil`, `lastAttempt`). This is the same clock-skew class of issue fixed in submissions, assignments, and anti-cheat routes. The codebase has converged on `getDbNowUncached()` for DB-timestamp comparisons.
+**Description:** Cycles 43-45 systematically removed non-null assertions from `Map.get()` patterns across contest-scoring.ts, submissions.ts, contest-analytics.ts, and multiple client components. Two instances remain in the contests page server component. While the map is built from the same data source being iterated (making the `!` technically safe by construction), this pattern is inconsistent with the codebase's convergence on explicit null-guard patterns. Any future refactoring that changes the map construction or filtering order could silently introduce a runtime error.
 
-However, rate-limit windows are measured in minutes (not seconds), and adding a DB query to every rate-limited request would increase latency on the hot path. The in-memory rate limiter (`in-memory-rate-limit.ts`) is purely process-local and `Date.now()` is appropriate there.
+**Concrete failure scenario:** A developer refactors the contests page to filter contests before building the statusMap. The `!` assertions now throw for contests that are in the filtered array but not in the map, causing the page to crash with an unhandled TypeError.
 
-**Concrete failure scenario:** App server clock is 60 seconds behind DB clock. A user whose rate-limit window has expired (per DB time) is still blocked for 60 extra seconds. Or conversely, if the app clock is ahead, a user could make requests slightly before the window resets.
-
-**Fix:** For `api-rate-limit.ts` (DB-backed path), cache `getDbNowUncached()` at the start of the transaction. For `in-memory-rate-limit.ts` and `rate-limit.ts`, `Date.now()` is appropriate. This may be deferred given the performance trade-off.
+**Fix:** Replace with null-safe alternatives:
+```typescript
+statusMatchesFilter(statusMap.get(c.id) ?? "closed", filter)
+// and
+const status = statusMap.get(contest.id) ?? "closed";
+```
 
 ---
 
-### AGG-3: Contest analytics student progression fetches all submissions without LIMIT — memory pressure on large contests [MEDIUM/LOW]
+### AGG-3: `rateLimitedResponse` uses `Date.now()` for `X-RateLimit-Reset` header — header inaccuracy under clock skew [LOW/LOW]
 
-**Flagged by:** perf-reviewer (PERF-1), critic (CRI-3)
-**Signal strength:** 2 of 11 review perspectives
+**Flagged by:** security-reviewer (SEC-2)
+**Signal strength:** 1 of 11 review perspectives
 
-**File:** `src/lib/assignments/contest-analytics.ts:242-250`
+**File:** `src/lib/security/api-rate-limit.ts:124`
 
-**Description:** The `includeTimeline` path fetches ALL submissions for a contest into memory. For large contests (200+ students, 10+ problems, 50+ attempts each), this could be 100K+ rows. The analytics cache (5-minute TTL) limits the frequency, but the query itself is unbounded.
+**Description:** The `rateLimitedResponse` function computes `X-RateLimit-Reset` using `Date.now() + windowMs`. Under clock skew, the reset timestamp in the header will be inaccurate relative to the DB's actual rate-limit window. The enforcement logic in `atomicConsumeRateLimit` uses `Date.now()` consistently, so the enforcement is internally consistent — the header only misleads API clients about when they can retry.
 
-**Fix:** Add a LIMIT clause or compute the progression using SQL window functions instead of fetching all rows.
+**Fix:** Low priority — compute the reset time from the DB-stored `blockedUntil` value if available.
+
+---
+
+### AGG-4: Candidate dashboard `Map.get()!` and practice page `resolvedSearchParams!.sort` — remaining non-null assertions [LOW/LOW]
+
+**Flagged by:** code-reviewer (CR-2, CR-3)
+**Signal strength:** 1 of 11 review perspectives
+
+**Files:**
+1. `src/app/(dashboard)/dashboard/_components/candidate-dashboard.tsx:595` — `assignmentProblemProgressMap.get(assignment.assignmentId)!`
+2. `src/app/(public)/practice/page.tsx:129` — `resolvedSearchParams!.sort as SortOption`
+
+**Description:** Two additional non-null assertions in client components. Item 1 is guarded by a conditional `.length` check; item 2 is guarded by a `SORT_VALUES.includes()` check. Both are technically safe but inconsistent with the codebase trend.
+
+**Fix:** Replace with null-safe alternatives.
+
+---
+
+### AGG-5: IOI leaderboard sort uses subtraction for floating-point scores — potential sort instability for tied entries [LOW/LOW]
+
+**Flagged by:** code-reviewer (CR-4)
+**Signal strength:** 1 of 11 review perspectives
+
+**File:** `src/lib/assignments/contest-scoring.ts:359`
+
+**Description:** `entries.sort((a, b) => b.totalScore - a.totalScore)` uses subtraction for IOI scores. While scores are rounded to 2 decimal places, floating-point subtraction can still produce tiny non-zero differences for mathematically equal values. Tied entries may appear in non-deterministic order between requests.
+
+**Fix:** Add a secondary sort key for deterministic tie-breaking: `entries.sort((a, b) => b.totalScore - a.totalScore || a.userId.localeCompare(b.userId));`
+
+---
+
+### AGG-6: Contests page badge colors use hardcoded Tailwind classes — not theme-aware [LOW/LOW]
+
+**Flagged by:** designer (DES-1)
+**Signal strength:** 1 of 11 review perspectives
+
+**File:** `src/app/(dashboard)/dashboard/contests/page.tsx:224-228`
+
+**Description:** Hardcoded color classes like `bg-blue-500 text-white` for badges may have contrast issues in dark mode.
+
+**Fix:** Low priority — use semantic color variants from the design system.
 
 ---
 
@@ -76,7 +123,7 @@ However, rate-limit windows are measured in minutes (not seconds), and adding a 
 
 ## Verified Fixes This Cycle (From Prior Cycles)
 
-All fixes from cycles 37-44 remain intact:
+All fixes from cycles 37-45 remain intact:
 1. `"redeemed"` removed from PATCH route state machine
 2. `Date.now()` replaced with `getDbNowUnc()` in assignment PATCH
 3. Non-null assertions removed from anti-cheat heartbeat gap detection
@@ -95,13 +142,18 @@ All fixes from cycles 37-44 remain intact:
 16. Contest join route has explicit `auth: true`
 17. `validateAssignmentSubmission` uses `getDbNowUncached()` for deadline enforcement
 18. Map.get() non-null assertions replaced in contest-scoring, submissions, contest-analytics
+19. Non-null assertions replaced with null guards in client components (submission-detail, problem-set-form, role-editor)
 
 ## Deferred Items
 
 | Finding | File+Line | Severity/Confidence | Reason for Deferral | Exit Criterion |
 |---------|-----------|-------------------|--------------------|---------------|
-| AGG-2: Rate-limiting Date.now() for DB timestamps | api-rate-limit.ts:54 | MEDIUM/MEDIUM | Adding DB query to hot path increases latency; rate-limit windows are minutes-level | Clock skew observed in production affecting rate limiting |
-| AGG-3: Analytics progression unbounded query | contest-analytics.ts:242 | MEDIUM/LOW | Bounded by 5-min cache; typical contest sizes are manageable | Contest with >500 students causes slow analytics response |
+| AGG-3: Rate-limit header Date.now() for reset | api-rate-limit.ts:124 | LOW/LOW | Header-only inaccuracy; enforcement is internally consistent | API clients report retry-after issues |
+| AGG-4: Candidate dashboard and practice page non-null assertions | candidate-dashboard.tsx:595, practice/page.tsx:129 | LOW/LOW | Technically safe by guard; cosmetic inconsistency | Module refactoring cycle |
+| AGG-5: IOI leaderboard sort instability | contest-scoring.ts:359 | LOW/LOW | Cosmetic — tied entries get same rank; sort order may vary | User reports inconsistent leaderboard ordering |
+| AGG-6: Contests page badge hardcoded colors | contests/page.tsx:224 | LOW/LOW | Visual-only; current colors have adequate contrast | Dark mode audit |
+| Prior AGG-2: Rate-limiting Date.now() for DB timestamps | api-rate-limit.ts:54 | MEDIUM/MEDIUM | Adding DB query to hot path increases latency; rate-limit windows are minutes-level | Clock skew observed in production affecting rate limiting |
+| Prior AGG-3: Analytics progression unbounded query | contest-analytics.ts:242 | MEDIUM/LOW | Bounded by 5-min cache; typical contest sizes are manageable | Contest with >500 students causes slow analytics response |
 | Prior AGG-2: Leaderboard freeze uses Date.now() | leaderboard.ts:52 | LOW/LOW | Display-only inaccuracy; seconds-level | Leaderboard freeze timing becomes a user-facing issue |
 | Prior AGG-5: Console.error in client components | discussions/*.tsx, groups/*.tsx | LOW/MEDIUM | Requires architectural decision; no data loss | Client error reporting feature request |
 | Prior AGG-6: SSE O(n) eviction scan | events/route.ts:44-55 | LOW/LOW | Bounded by 1000-entry cap | Performance profiling shows bottleneck |
