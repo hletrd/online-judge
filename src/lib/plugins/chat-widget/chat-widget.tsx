@@ -311,7 +311,7 @@ export default function ChatWidget() {
       </div>
 
       {/* Messages */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div ref={messagesContainerRef} role="log" aria-label={t("name")} className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
           <p className="text-center text-sm text-muted-foreground mt-8">
             {t("placeholder")}
