@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-22
 **Source:** `.context/reviews/_aggregate.md`, `.context/reviews/{code-reviewer,perf-reviewer,security-reviewer,architect,critic,verifier,debugger,test-engineer,tracer,designer,document-specialist}.md`
-**Status:** IN PROGRESS
+**Status:** ALL LANES COMPLETE
 
 ## Scope
 
@@ -28,7 +28,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
   2. `create-group-dialog.tsx`: Same pattern fix
   3. `create-problem-form.tsx`: Same pattern fix (in `handleImageUpload`)
   4. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit c51ce8bf)
 
 ---
 
@@ -42,7 +42,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
   1. Replace `err instanceof Error ? err.message : "Network error"` with `t("networkError")` for the inline error display
   2. Log the raw error to console for debugging
   3. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit 9296016e)
 
 ---
 
@@ -55,7 +55,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
 - **Plan:**
   1. Add `await fetchAll()` after the success toast in `handleResetAccountPassword`
   2. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit bfbae295)
 
 ---
 
@@ -68,7 +68,7 @@ No review finding is silently dropped. All findings are either scheduled for imp
 - **Plan:**
   1. Replace `data.data!.participantCount` with `data.data.participantCount` (and same for other fields) where the `typeof` guard already ensures the value exists
   2. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE (commit a6e8d885)
 
 ---
 
@@ -170,3 +170,8 @@ All previously deferred items from prior cycle plans remain in effect:
 ## Progress Log
 
 - 2026-04-22: Plan created from multi-agent review at commit f55836d0. 6 aggregate findings. 4 scheduled for implementation (H1, M1-M3). 9 deferred (DEFER-56 through DEFER-64). All prior cycle-25 findings verified as fixed.
+- 2026-04-22: H1 DONE — fix double .json() anti-pattern in 3 files (commit c51ce8bf)
+- 2026-04-22: M1 DONE — fix compiler-client catch block raw error.message (commit 9296016e)
+- 2026-04-22: M2 DONE — add fetchAll() after password reset (commit bfbae295)
+- 2026-04-22: M3 DONE — remove redundant non-null assertions in quick-stats (commit a6e8d885)
+- 2026-04-22: All implementation lanes complete. All gates passed.
