@@ -99,7 +99,7 @@ export function GroupMembersManager({
       case "bulkAddFailed":
         return t(error.message);
       default:
-        return error.message || tCommon("error");
+        return tCommon("error");
     }
   }
 
@@ -177,12 +177,14 @@ export function GroupMembersManager({
         body: JSON.stringify({ userIds: Array.from(selectedBulkIds) }),
       });
 
+      // Parse response body once — the Response body can only be consumed once
+      const payload = await response.json().catch(() => ({ enrolled: 0, skipped: 0 })) as { error?: string; enrolled?: number; skipped?: number };
+
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        throw new Error((errorBody as { error?: string }).error || "bulkAddFailed");
+        throw new Error(payload.error || "bulkAddFailed");
       }
 
-      const { enrolled, skipped } = await response.json().catch(() => ({ enrolled: 0, skipped: 0 })) as { enrolled: number; skipped: number };
+      const { enrolled = 0, skipped = 0 } = payload;
 
       // Remove enrolled students from available list (we don't know which were skipped as duplicates
       // vs invalid, so optimistically remove all selected)
