@@ -129,10 +129,17 @@ export function AntiCheatDashboard({ assignmentId }: AntiCheatDashboardProps) {
           // If the user has already loaded beyond the first page (via loadMore),
           // only refresh the first page slice and keep the rest intact.
           // This prevents polling from discarding loaded-beyond-first-page data.
+
+          // Skip re-render if first-page data is identical (same IDs in same order)
+          const firstPageIds = firstPage.map((e) => e.id);
+          const prevFirstPageIds = prev.slice(0, PAGE_SIZE).map((e) => e.id);
+          const firstPageUnchanged = firstPageIds.length === prevFirstPageIds.length
+            && firstPageIds.every((id, i) => id === prevFirstPageIds[i]);
+
           if (prev.length > PAGE_SIZE) {
-            return [...firstPage, ...prev.slice(PAGE_SIZE)];
+            return firstPageUnchanged ? prev : [...firstPage, ...prev.slice(PAGE_SIZE)];
           }
-          return firstPage;
+          return firstPageUnchanged ? prev : firstPage;
         });
         setOffset((prev) => {
           // Only reset offset to first-page length if the user hasn't loaded more.
