@@ -46,7 +46,8 @@ export async function computeSimilarityRust(
       signal: AbortSignal.timeout(25_000), // 25s timeout — API route has 30s
     });
     if (!response.ok) return null;
-    const data = (await response.json()) as RustComputeResponse;
+    const data = (await response.json().catch(() => null)) as RustComputeResponse | null;
+    if (!data) return null;
     return data.pairs;
   } catch {
     return null; // Fail open — fall back to TS implementation

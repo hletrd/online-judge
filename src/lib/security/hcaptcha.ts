@@ -73,7 +73,10 @@ export async function verifyHcaptchaToken(token: string, remoteIp?: string | nul
     };
   }
 
-  const payload = await response.json() as {
+  const payload = await response.json().catch(() => ({
+    success: false,
+    "error-codes": ["parse-error"],
+  })) as {
     success?: boolean;
     "error-codes"?: string[];
   };

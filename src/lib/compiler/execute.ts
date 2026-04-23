@@ -530,7 +530,14 @@ async function tryRustRunner(
       return null;
     }
 
-    const data = await response.json() as CompilerRunResult;
+    const data = (await response.json().catch(() => null)) as CompilerRunResult | null;
+    if (!data) {
+      logger.warn(
+        { url: COMPILER_RUNNER_URL },
+        "[compiler] Rust runner returned invalid JSON, falling back to local execution",
+      );
+      return null;
+    }
     return data;
   } catch (error) {
     logger.warn(
