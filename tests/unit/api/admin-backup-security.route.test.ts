@@ -7,6 +7,7 @@ const {
   consumeApiRateLimitMock,
   resolveCapabilitiesMock,
   verifyPasswordMock,
+  verifyAndRehashPasswordMock,
   dbSelectMock,
   readJsonBodyWithLimitMock,
   readUploadedJsonFileWithLimitMock,
@@ -19,6 +20,7 @@ const {
   consumeApiRateLimitMock: vi.fn(),
   resolveCapabilitiesMock: vi.fn(),
   verifyPasswordMock: vi.fn(),
+  verifyAndRehashPasswordMock: vi.fn(),
   dbSelectMock: vi.fn(),
   readJsonBodyWithLimitMock: vi.fn(),
   readUploadedJsonFileWithLimitMock: vi.fn(),
@@ -44,6 +46,7 @@ vi.mock("@/lib/capabilities/cache", () => ({
 
 vi.mock("@/lib/security/password-hash", () => ({
   verifyPassword: verifyPasswordMock,
+  verifyAndRehashPassword: verifyAndRehashPasswordMock,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -85,7 +88,7 @@ vi.mock("@/lib/db/export-with-files", () => ({
 }));
 
 vi.mock("@/lib/logger", () => ({
-  logger: { error: vi.fn() },
+  logger: { error: vi.fn(), warn: vi.fn() },
 }));
 
 function makeLimitChain(rows: unknown[]) {
@@ -135,6 +138,7 @@ describe("destructive backup/import route password confirmation", () => {
     consumeApiRateLimitMock.mockResolvedValue(null);
     resolveCapabilitiesMock.mockResolvedValue(new Set(["system.backup"]));
     verifyPasswordMock.mockResolvedValue({ valid: false });
+    verifyAndRehashPasswordMock.mockResolvedValue({ valid: false });
     dbSelectMock.mockReturnValue(makeLimitChain([{ passwordHash: "stored-hash" }]));
     validateExportMock.mockReturnValue([]);
     restoreFilesFromZipMock.mockResolvedValue({
@@ -287,6 +291,7 @@ describe("backup restore semantic safety", () => {
     consumeApiRateLimitMock.mockResolvedValue(null);
     resolveCapabilitiesMock.mockResolvedValue(new Set(["system.backup"]));
     verifyPasswordMock.mockResolvedValue({ valid: true });
+    verifyAndRehashPasswordMock.mockResolvedValue({ valid: true });
     dbSelectMock.mockReturnValue(makeLimitChain([{ passwordHash: "stored-hash" }]));
     validateExportMock.mockReturnValue([]);
     importDatabaseMock.mockResolvedValue({

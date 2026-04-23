@@ -19,4 +19,39 @@ describe("importDatabase implementation guards", () => {
     expect(source).not.toContain('const TIMESTAMP_COLUMNS = new Set([');
     expect(source).not.toContain('const JSON_COLUMNS = new Set([');
   });
+
+  it("TABLE_MAP is derived from TABLE_ORDER, not manually maintained", () => {
+    const importSource = readFileSync(join(process.cwd(), "src/lib/db/import.ts"), "utf8");
+    const exportSource = readFileSync(join(process.cwd(), "src/lib/db/export.ts"), "utf8");
+
+    // Verify TABLE_MAP is built by iterating TABLE_ORDER, not hardcoded
+    expect(importSource).toContain("for (const { name, table } of TABLE_ORDER)");
+    // Verify the old hardcoded object literal is gone
+    expect(importSource).not.toContain("users: schema.users,");
+    // Verify TABLE_ORDER is exported from export.ts so import.ts can use it
+    expect(exportSource).toContain("export const TABLE_ORDER");
+  });
+
+  it("TABLE_MAP and TABLE_ORDER table names are consistent (source-level check)", () => {
+    const importSource = readFileSync(join(process.cwd(), "src/lib/db/import.ts"), "utf8");
+    const exportSource = readFileSync(join(process.cwd(), "src/lib/db/export.ts"), "utf8");
+
+    // Extract table names from TABLE_ORDER in export.ts
+    const orderNameRegex = /\{\s*name:\s*"(\w+)"/g;
+    const orderNames = new Set<string>();
+    let match: RegExpExecArray | null;
+    while ((match = orderNameRegex.exec(exportSource)) !== null) {
+      orderNames.add(match[1]);
+    }
+
+    // Since TABLE_MAP is derived from TABLE_ORDER at runtime, they must match.
+    // Verify the derivation loop is present and uses TABLE_ORDER.
+    expect(importSource).toContain("TABLE_MAP[name] = table");
+
+    // Verify TABLE_ORDER has the expected tables
+    expect(orderNames.has("users")).toBe(true);
+    expect(orderNames.has("submissions")).toBe(true);
+    expect(orderNames.has("submissionResults")).toBe(true);
+    expect(orderNames.size).toBeGreaterThanOrEqual(30);
+  });
 });
