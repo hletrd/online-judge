@@ -163,13 +163,20 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
     }
   }, [assignmentId]);
 
-  const fetchData = useCallback(async () => {
+  // Fetch both invitations and stats — used on mount and after mutations
+  const fetchAll = useCallback(async () => {
     await Promise.all([fetchInvitations(), fetchStats()]);
   }, [fetchInvitations, fetchStats]);
 
+  // Fetch invitations only — used when search/filter changes
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchInvitations();
+  }, [fetchInvitations]);
+
+  // Fetch stats only on mount — independent of search/filter
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   async function handleCreate() {
     if (!createName.trim()) return;
@@ -218,7 +225,7 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
           if (!(await copyToClipboard(link))) toast.error(t("copyError"));
         }
         toast.success(t("createSuccess"));
-        await Promise.all([fetchInvitations(), fetchStats()]);
+        await fetchAll();
       } else {
         const json = await res.json().catch(() => ({})) as { error?: string; code?: string };
         const code = json.error ?? json.code ?? "";
@@ -261,7 +268,7 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
       );
       if (res.ok) {
         toast.success(t("revokeSuccess"));
-        await Promise.all([fetchInvitations(), fetchStats()]);
+        await fetchAll();
       } else {
         toast.error(t("revokeError"));
       }
@@ -302,7 +309,7 @@ export function RecruitingInvitationsPanel({ assignmentId }: { assignmentId: str
       );
       if (res.ok) {
         toast.success(t("deleteSuccess"));
-        await Promise.all([fetchInvitations(), fetchStats()]);
+        await fetchAll();
       } else {
         toast.error(t("deleteError"));
       }
