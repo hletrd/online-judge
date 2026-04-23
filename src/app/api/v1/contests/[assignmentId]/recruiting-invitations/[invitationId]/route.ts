@@ -94,7 +94,12 @@ export const PATCH = createApiHandler({
       }
 
       const allowed: Record<string, string[]> = {
-        pending: ["revoked", "redeemed"],
+        // Only "revoked" is allowed from "pending" — redeeming must go through
+        // the token-based flow (redeemRecruitingToken) which atomically creates
+        // the user account, enrollment, and access token. Allowing "redeemed"
+        // here would bypass that transaction and leave the invitation in a
+        // broken state (status = 'redeemed' with userId = null).
+        pending: ["revoked"],
         // Revoked invitations cannot be un-revoked; the user must create a new
         // invitation instead. The library function (updateRecruitingInvitation)
         // only supports revoking pending invitations (WHERE status = 'pending'),
