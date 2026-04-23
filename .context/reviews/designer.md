@@ -1,33 +1,52 @@
-# UI/UX Review — RPF Cycle 26
+# UI/UX Review — RPF Cycle 28 (Fresh)
 
-**Date:** 2026-04-22
+**Date:** 2026-04-23
 **Reviewer:** designer
-**Base commit:** f55836d0
+**Base commit:** 63557cc2
 
-## DES-1: `contest-quick-stats.tsx` stat cards lack loading skeleton [LOW/MEDIUM]
+## Previously Fixed Items (Verified)
 
-**File:** `src/components/contest/contest-quick-stats.tsx:86-124`
+- AGG-1 (localStorage crashes): Fixed
+- AGG-2 (clarifications userId): Deferred (requires backend change)
+- AGG-3 (compiler defaultValue): Fixed (removed)
+- Error boundary gating: Fixed
+- comment-section error feedback: Fixed
 
-When the stats are loading (initial state before `fetchStats` completes), the cards show "0" for participant count, submissions, and problems solved, and "---" for avg score. This can be misleading — "0" implies there are genuinely no participants, when in reality the data has not loaded yet. A skeleton/shimmer loading state would provide better UX feedback.
+## DES-1: `code-editor.tsx` hardcoded English strings — accessibility and i18n violation [MEDIUM/MEDIUM]
 
-**Fix:** Show a skeleton loader or "---" for all stats until the first fetch completes.
+**File:** `src/components/code/code-editor.tsx:96-97,107,113-114,117`
+
+The code editor has 5 hardcoded English strings in user-facing positions:
+1. `title="Fullscreen (F) · Exit (Esc)"` — tooltip
+2. `aria-label="Fullscreen (F)"` — screen reader label
+3. `{props.language ?? "Code Editor"}` — visible text in fullscreen mode
+4. `title="Exit fullscreen (Esc)"` — tooltip
+5. `aria-label="Exit fullscreen (Esc)"` — screen reader label
+6. `<span>Exit</span>` — visible button text at line 117
+
+**Impact:** Korean screen reader users hear English labels. The "Exit" button text at line 117 is particularly visible — it's not hidden or icon-only.
+
+**Concrete scenario:** A Korean user with a visual impairment uses a screen reader to navigate the code editor. The fullscreen button is announced as "Fullscreen (F)" instead of the Korean equivalent.
+
+**Fix:** Add i18n keys and use `t()` or accept i18n props for these strings.
 
 ---
 
-## DES-2: `recruiting-invitations-panel.tsx` create dialog has no loading state for form fields [LOW/LOW]
+## DES-2: Contest clarifications still show "askedByOther" instead of username [LOW/MEDIUM]
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:410-521`
+**File:** `src/components/contest/contest-clarifications.tsx:249`
 
-The create invitation dialog disables the submit button while creating (`disabled={creating || !createName.trim()}`), but the form fields themselves remain enabled. If the creation takes time, a user could modify fields while the request is in flight, leading to confusion about what data was actually submitted.
+The component now uses `t("askedByOther")` (a generic label) instead of showing the raw `userId`. This is an improvement over the previous behavior (showing UUIDs). However, the UX is still suboptimal — users cannot identify who asked a question. The fix requires a backend API change to include `userName`.
 
-**Fix:** Disable all form fields during creation, or add a visual overlay to the dialog.
+**Fix:** Deferred (DEFER-20) — requires backend change.
 
 ---
 
-## DES-3: `contest-replay.tsx` slider lacks step markers for key moments [LOW/LOW]
+## Verified Safe / No Issue
 
-**File:** `src/components/contest/contest-replay.tsx:159-168`
-
-The timeline slider shows a plain range input with no markers for key moments (e.g., when submissions happened, when standings changed). For large contests with many snapshots, the slider is hard to use because there is no visual indication of where interesting events occurred.
-
-**Fix:** Add tick marks or dots on the slider track to indicate snapshots where standings changed significantly.
+- Korean letter-spacing compliance thorough
+- PublicHeader mobile menu has proper focus trap and Escape to close
+- Screen reader announcements for menu state
+- All interactive elements in recruiting panel have proper aria-label
+- Lecture toolbar has proper aria-label for all buttons
+- Sidebar admin section has locale-conditional tracking

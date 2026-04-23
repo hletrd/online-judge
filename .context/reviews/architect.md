@@ -1,38 +1,49 @@
-# Architecture Review — RPF Cycle 26
+# Architecture Review — RPF Cycle 28 (Fresh)
 
-**Date:** 2026-04-22
+**Date:** 2026-04-23
 **Reviewer:** architect
-**Base commit:** f55836d0
+**Base commit:** 63557cc2
 
-## ARCH-1: Double `.json()` anti-pattern indicates incomplete migration to `apiFetchJson` [MEDIUM/MEDIUM]
+## Previously Fixed Items (Verified)
+
+- Double `.json()` anti-pattern migration: Complete — all known instances migrated
+- handleResetAccountPassword fetchAll: Fixed
+- normalizePage upper bound: Fixed
+- comment-section GET error feedback: Fixed
+- discussion-thread-moderation-controls optimistic state: Fixed
+
+## ARCH-1: `code-editor.tsx` fullscreen buttons bypass the i18n system [MEDIUM/MEDIUM]
+
+**File:** `src/components/code/code-editor.tsx:96-97,107,113-114`
+
+The code editor component uses hardcoded English strings for accessibility attributes (`title`, `aria-label`) and the language fallback label. This is an architectural inconsistency — all other components in the codebase use i18n keys for user-facing strings. The code editor is the only component that hardcodes strings.
+
+The `CodeEditor` component does not currently accept translation props or use `useTranslations`, so adding i18n support requires either:
+1. Adding i18n props to the component (consistent with how `ContestReplay` receives label props)
+2. Using `useTranslations` inside the component (consistent with how `CompilerClient` does it)
+
+**Fix:** Add `useTranslations` calls or pass label props for the fullscreen/exit buttons and the "Code Editor" fallback.
+
+---
+
+## ARCH-2: Duplicated visibility-aware polling pattern across components [LOW/LOW]
 
 **Files:**
-- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:273,277`
-- `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:67,71`
-- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:335,339`
+- `src/components/contest/contest-announcements.tsx`
+- `src/components/contest/contest-clarifications.tsx`
+- `src/hooks/use-visibility-polling.ts`
 
-Three components still use the error-first `.json()` pattern instead of `apiFetchJson`. This was the same class of issue fixed in cycles 23-24 for other files, but these were missed because the previous review cycles focused on the `error.message` leaking issue, not the structural pattern.
+Carried from prior cycles. The `useVisibilityPolling` hook has been extracted and is now used by `contest-quick-stats`, `contest-clarifications`, and `submission-overview`. However, `contest-announcements` and `participant-anti-cheat-timeline` may still have inline implementations.
 
-The `apiFetchJson` helper was specifically created to eliminate this class of bug. The remaining instances suggest the migration was incomplete.
-
-**Fix:** Migrate these three components to `apiFetchJson` or the "parse once, then branch" pattern. This relates to DEFER-1/DEFER-38/DEFER-46 (apiFetchJson adoption for remaining components).
+**Fix:** Verify remaining components use `useVisibilityPolling` and migrate any that don't.
 
 ---
 
-## ARCH-2: `handleResetAccountPassword` missing `fetchAll()` — inconsistent mutation pattern [LOW/LOW]
+## Verified Safe / No Issue
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:282-301`
-
-All other mutation handlers (`handleRevoke`, `handleDelete`) call `fetchAll()` after success. `handleResetAccountPassword` does not. While the reset does not change visible invitation fields today, the inconsistency creates a pattern where future mutations might also forget to refresh data.
-
-**Fix:** Add `fetchAll()` after the success toast for consistency, or document the intentional omission.
-
----
-
-## ARCH-3: `contest-replay.tsx` auto-play uses `setInterval` unlike other timed components [LOW/LOW]
-
-**File:** `src/components/contest/contest-replay.tsx:77-87`
-
-The auto-play feature uses `setInterval`, while `countdown-timer.tsx` and `anti-cheat-monitor.tsx` use recursive `setTimeout`. The `setInterval` approach can accumulate drift and does not allow adjusting the interval dynamically. The recursive `setTimeout` pattern is more consistent and precise.
-
-**Fix:** Replace `setInterval` with recursive `setTimeout`.
+- Route group structure is clean
+- Navigation centralized via shared helpers
+- Capability-based filtering consistent between PublicHeader and AppSidebar
+- Proxy middleware properly handles auth, CSP, locale, cache headers
+- i18n well-structured with proper locale resolution
+- Workspace-to-public migration complete

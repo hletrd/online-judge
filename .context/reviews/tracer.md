@@ -1,41 +1,41 @@
-# Tracer Review — RPF Cycle 26
+# Tracer Review — RPF Cycle 28 (Fresh)
 
-**Date:** 2026-04-22
+**Date:** 2026-04-23
 **Reviewer:** tracer
-**Base commit:** f55836d0
+**Base commit:** 63557cc2
 
-## TR-1: Causal trace of double `.json()` anti-pattern in `assignment-form-dialog.tsx` [MEDIUM/HIGH]
+## TR-1: Causal trace of `code-editor.tsx` hardcoded English strings [MEDIUM/MEDIUM]
 
-**File:** `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:270-278`
+**File:** `src/components/code/code-editor.tsx:96-97,107,113-114,117`
 
 **Trace:**
-1. User clicks "Create Assignment" button
-2. `handleSubmit` fires, calls `apiFetch(...)` which returns a `Response`
-3. `if (!response.ok)` — suppose the server returns 400 with JSON body `{ error: "assignmentTitleRequired" }`
-4. Line 273: `const errorBody = await response.json().catch(() => ({}))` — parses body successfully
-5. Line 274: `throw new Error(errorBody.error || "assignmentCreateFailed")` — throws with "assignmentTitleRequired"
-6. The catch block catches this, calls `getErrorMessage`, shows localized toast
-7. **Key observation:** Line 277 (`const payload = await response.json()...`) is never reached because of the throw. But if the throw were removed, `.json()` would throw "body already consumed" since the body was already read on line 273.
+1. User opens the playground/compiler page
+2. The `CodeEditor` component renders with `showFullscreen={true}`
+3. The fullscreen button renders with `aria-label="Fullscreen (F)"` — hardcoded English
+4. A Korean screen reader user navigates to this button
+5. The screen reader announces "Fullscreen (F)" in English
+6. The user presses Enter to activate fullscreen
+7. The fullscreen overlay renders with `{props.language ?? "Code Editor"}` at line 107 — hardcoded "Code Editor"
+8. The exit button renders with `aria-label="Exit fullscreen (Esc)"` — hardcoded English
+9. The visible text "Exit" at line 117 is also hardcoded English
 
-**Hypothesis:** This code works correctly today but is fragile. The pattern should be "parse once, then branch" to eliminate the possibility of the body-already-consumed error.
+**Hypothesis:** The code editor was likely written before the i18n system was fully established, or the developer assumed keyboard shortcut labels (F, Esc) don't need translation. However, the surrounding text ("Fullscreen", "Exit", "Code Editor") does need translation.
+
+**Assessment:** This is a genuine i18n gap. The keyboard shortcut names (F, Esc) are universal, but the descriptive text needs localization.
 
 ---
 
-## TR-2: Causal trace of `compiler-client.tsx` catch block error display [LOW/MEDIUM]
+## TR-2: `contest-replay.tsx` setInterval drift trace [LOW/LOW]
 
-**File:** `src/components/code/compiler-client.tsx:288-298`
+**File:** `src/components/contest/contest-replay.tsx:77-87`
 
 **Trace:**
-1. User clicks "Run" button
-2. `handleRun` fires, calls `apiFetch(...)` which fails with a network error
-3. The catch block catches `err` (a `TypeError: Failed to fetch`)
-4. Line 289: `err.name === "AbortError"` — false for network errors
-5. Line 292: `errorMessage = "Failed to fetch"` — raw error message
-6. Line 293-296: `updateTestCase` sets `error: "Failed to fetch"` — shown in inline error panel
-7. Line 298: `toast.error(t("networkError"))` — correctly shows localized message
+1. User opens contest replay with 100 snapshots
+2. User clicks "Play" at 4x speed (interval = 350ms)
+3. The `setInterval` fires every 350ms
+4. User switches to another tab (background)
+5. Browser throttles the interval (fires at most once per second in most browsers)
+6. User returns to the tab after 10 seconds
+7. The accumulated intervals fire rapidly, causing the replay to jump forward multiple snapshots at once
 
-**Competing hypotheses:**
-- H1: The raw `error.message` in the inline display is intentional (compiler context where users need to see the specific error)
-- H2: This is an oversight from the AGG-2 fix that only addressed toasts
-
-**Assessment:** H2 is more likely. The cycle-25 fix explicitly targeted "never leak raw error messages", but only the toast was fixed. The inline display should also use the i18n key.
+**Fix:** Replace `setInterval` with recursive `setTimeout`.

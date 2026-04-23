@@ -1,34 +1,32 @@
-# Test Engineer Review — RPF Cycle 26
+# Test Engineer Review — RPF Cycle 28 (Fresh)
 
-**Date:** 2026-04-22
+**Date:** 2026-04-23
 **Reviewer:** test-engineer
-**Base commit:** f55836d0
+**Base commit:** 63557cc2
 
-## TE-1: No tests for double `.json()` anti-pattern regression [MEDIUM/MEDIUM]
+## TE-1: No tests for `code-editor.tsx` fullscreen accessibility labels [LOW/MEDIUM]
 
-**Files:**
-- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx`
-- `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx`
-- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx`
+**File:** `src/components/code/code-editor.tsx`
 
-There are no tests that verify the "parse once, then branch" pattern is used. If a developer accidentally introduces the double `.json()` anti-pattern (calling `.json()` twice on the same Response), there is no test to catch it. This is important because the anti-pattern was fixed in other files but these three were missed.
+There are no tests verifying that the fullscreen buttons have proper accessibility attributes (title, aria-label). This is the only component with hardcoded English strings. When these strings are migrated to i18n, tests should verify the correct i18n keys are used.
 
-**Fix:** Add unit tests that mock `fetch` to return error responses and verify the component handles them correctly without throwing "body already consumed" errors. Alternatively, add a lint rule that detects double `.json()` calls on the same variable.
+**Fix:** Add tests that verify the fullscreen buttons have `aria-label` attributes with the correct i18n keys after migration.
 
 ---
 
-## TE-2: No tests for `handleResetAccountPassword` behavior [LOW/MEDIUM]
-
-**File:** `src/components/contest/recruiting-invitations-panel.tsx`
-
-There are no tests verifying that `handleResetAccountPassword` correctly calls the API and shows the appropriate toast. This is the only mutation handler in the component without test coverage.
-
-**Fix:** Add integration tests for the password reset flow.
-
----
-
-## TE-3: Carried test coverage gaps from previous cycles
+## TE-2: Carried test coverage gaps from previous cycles
 
 - TE-1 (cycle 25): No unit tests for `getErrorMessage` default case behavior — still open
 - TE-2 (cycle 25): No tests for compiler-client error display behavior — still open
 - TE-3 (cycle 25): No tests for contest-quick-stats data validation logic — still open
+- TE-1 (cycle 26): No tests for double `.json()` anti-pattern regression — now less relevant (pattern eliminated)
+- TE-2 (cycle 26): No tests for `handleResetAccountPassword` behavior — still open
+- TE-1 (cycle 27): Security module test coverage gaps (6 of 17 modules have no tests) — still open
+- TE-2 (cycle 27): Hook test coverage gaps (5 of 7 hooks have no tests) — still open
+
+---
+
+## Verified Safe / No Issue
+
+- Discussion component tests now include required props (fixed in e8cfd718)
+- The apiFetchJson pattern makes double-.json() regression unlikely

@@ -1,135 +1,64 @@
 # RPF Cycle 28 Review Remediation Plan
 
 **Date:** 2026-04-23
-**Base commit:** ca62a45d
-**Review artifacts:** All rpf-cycle-28-*.md reviews in `.context/reviews/`
+**Base commit:** 63557cc2
+**Review artifacts:** All per-agent reviews in `.context/reviews/` + `.context/reviews/_aggregate.md`
+
+## Previously Completed Tasks (Verified in Current Code)
+
+The following tasks from the original April-22 plan are already implemented:
+
+- [x] Task 1: `normalizePage` — uses `parseInt` and `MAX_PAGE = 10000`
+- [x] Task 2: Thread deletion confirmation — uses `AlertDialog`
+- [x] Task 3: Stale props in moderation controls — `useState` with optimistic updates
+- [x] Task 4: Comment-section GET error feedback — has `else { toast.error(...) }`
+- [x] Task 5: aria-label on icon-only buttons — recruiting panel and lecture toolbar have `aria-label`
+- [x] Task 6: Hardcoded English in compiler client — `defaultValue` removed, i18n keys used
+- [x] Task 7: edit-group-dialog error message — default returns `tCommon("error")`
+- [x] Task 8: Vote buttons raw API error — uses `apiFetchJson` and `voteFailedLabel`
+- [x] Task 9: `.json()` before `!res.ok` — contest-join uses `apiFetchJson`, create-problem-form uses "parse once"
+- [x] Task 10: group-members-manager success-first — checks `!response.ok` first
+- [x] Task 12: Hardcoded English in proxy — API error code, not user-facing
+- [x] Task 13: quick-stats null avgScore — uses proper null check
+- [x] Task 14: SubmissionOverview polling when closed — uses `useVisibilityPolling(..., !open)`
+- [x] Task 15: Recruiting invitations search race condition — uses `AbortController`
 
 ## Tasks (priority order)
 
-### Task 1: Fix `normalizePage` — use `parseInt` and add upper bound [HIGH]
+### Task A: Internationalize hardcoded English strings in `code-editor.tsx` [MEDIUM]
 
-**From:** AGG-1 (7 reviewers), CR-28-03, BUG-14, PERF-4, CRI-5, V-1, TR-2, SYS-2
-**File:** `src/lib/pagination.ts:6`
-**Fix:** Replace `Number()` with `parseInt(value, 10)`, add upper bound of 10000
+**From:** AGG-1 (7 reviewers), CR-1, ARCH-1, CRI-1, DES-1, V-1, TR-1, DOC-2
+**Severity / confidence:** MEDIUM / MEDIUM
+**Files:** `src/components/code/code-editor.tsx:96-97,107,113-114,117`
 
----
+**Problem:** The code editor has 5 hardcoded English strings in user-facing positions (title, aria-label, visible text, fallback text). This is the only component in the codebase with hardcoded English strings. Korean screen reader users hear English labels.
 
-### Task 2: Add confirmation dialog to thread deletion [HIGH]
+**Plan:**
+1. Add i18n keys for: "Fullscreen (F)", "Exit fullscreen (Esc)", "Code Editor", "Exit", and the combined title string
+2. Either use `useTranslations` inside the component or pass label props
+3. Since `CodeEditor` is a reusable component used by `CompilerClient` (which already has `useTranslations("compiler")`), pass label props from the parent
+4. Add the keys to `en.json` and `ko.json` under the `compiler` namespace
+5. Verify all gates pass
 
-**From:** AGG-2 (5 reviewers), D-11, D-25, CRI-1, V-4, TR-4, SYS-3
-**File:** `src/components/discussions/discussion-thread-moderation-controls.tsx:92`
-**Fix:** Wrap delete button in `DestructiveActionDialog` or `AlertDialog`, consistent with post deletion
-
----
-
-### Task 3: Fix stale props in moderation controls — add optimistic state [MEDIUM]
-
-**From:** AGG-3 (5 reviewers), BUG-01, CR-5, CRI-2, V-2, TR-1
-**File:** `src/components/discussions/discussion-thread-moderation-controls.tsx:86-92`
-**Fix:** Track `isLocked`/`isPinned` as local state initialized from props with optimistic updates
+**Status:** TODO
 
 ---
 
-### Task 4: Add error feedback for non-OK responses in comment-section GET [MEDIUM]
+### Task B: Replace `setInterval` with recursive `setTimeout` in `contest-replay.tsx` [LOW]
 
-**From:** AGG-4 (6 reviewers), BUG-12, CR-6, CRI-3, V-3, SYS-6, TR-3
-**File:** `src/app/(dashboard)/dashboard/submissions/[id]/_components/comment-section.tsx:42-52`
-**Fix:** Add `else { toast.error(tComments("loadError")); }`
+**From:** PERF-CARRIED-1, PERF-1, DBG-1, CRI-2, V-3
+**Severity / confidence:** LOW / LOW
+**File:** `src/components/contest/contest-replay.tsx:77-87`
 
----
+**Problem:** The auto-play feature uses `setInterval` which can accumulate drift and cause "catch-up" behavior when a background tab regains focus. The codebase convention (countdown-timer, anti-cheat-monitor) uses recursive `setTimeout`.
 
-### Task 5: Add `aria-label` to icon-only buttons [MEDIUM]
+**Plan:**
+1. Replace `setInterval` with recursive `setTimeout` in the auto-play effect
+2. Verify all gates pass
 
-**From:** AGG-5 (3 reviewers), D-01, D-02, D-03, D-12, CRI-6, SYS-4
-**Files:**
-- `src/components/contest/recruiting-invitations-panel.tsx:525-586`
-- `src/components/lecture/lecture-toolbar.tsx:135-180`
-- `src/components/code/code-editor.tsx:92-117`
-**Fix:** Add `aria-label` to all icon-only buttons alongside existing `title` attributes
+**Status:** TODO
 
 ---
-
-### Task 6: Internationalize hardcoded English strings in compiler client [MEDIUM]
-
-**From:** AGG-6 (4 reviewers), D-23, D-24, DOC-1, DOC-2, CRI-7, SYS-5
-**File:** `src/components/code/compiler-client.tsx:100,106,112,90`
-**Fix:** Replace "Show full output", "(empty)", "... (output truncated)", and `TC ${index}` with i18n keys
-
----
-
-### Task 7: Fix `edit-group-dialog.tsx` error message leak [MEDIUM]
-
-**From:** AGG-8 (3 reviewers), CR-3, CRI-4, V-6
-**File:** `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:66`
-**Fix:** Add `SyntaxError` check or always return generic error message in default case
-
----
-
-### Task 8: Fix `discussion-vote-buttons.tsx` raw API error display [MEDIUM]
-
-**From:** AGG-10 (1 reviewer but high confidence), V-5
-**File:** `src/components/discussions/discussion-vote-buttons.tsx:46`
-**Fix:** Replace `toast.error((errorBody as ...).error ?? voteFailedLabel)` with `toast.error(voteFailedLabel)` and log raw error to console only
-
----
-
-### Task 9: Fix `.json()` before `!res.ok` pattern in contest-join and problem-create [HIGH]
-
-**From:** CR-28-01, CR-28-02
-**Files:**
-- `src/app/(dashboard)/dashboard/contests/join/contest-join-client.tsx:44-46`
-- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:422-424`
-**Fix:** Check `res.ok` first before calling `.json()`
-
----
-
-### Task 10: Fix `group-members-manager.tsx` success-first pattern in remove handler [LOW]
-
-**From:** AGG-11 (4 reviewers), BUG-13, CR-2, V-7, CRI-10
-**File:** `src/app/(dashboard)/dashboard/groups/[id]/group-members-manager.tsx:219-222`
-**Fix:** Check `response.ok` first, then parse JSON
-
----
-
-### Task 11: Add dialog semantics to submission overview and anti-cheat privacy notice [MEDIUM]
-
-**From:** AGG-7, AGG-12, D-04, D-05, CRI-8, CRI-9
-**Files:**
-- `src/components/lecture/submission-overview.tsx:138-207`
-- `src/components/exam/anti-cheat-monitor.tsx:252-277`
-**Fix:** Add `role="dialog"`, `aria-modal`, focus trap, and Escape key handling, or use Dialog component
-
----
-
-### Task 12: Fix hardcoded English string in proxy middleware [MEDIUM]
-
-**From:** CRIT-02
-**File:** `src/proxy.ts:311`
-**Fix:** Replace `"Password change required"` with `"mustChangePassword"` key
-
----
-
-### Task 13: Fix `ContestQuickStats` null avgScore becoming 0 [MEDIUM]
-
-**From:** CR-28-07
-**File:** `src/components/contest/contest-quick-stats.tsx:55-58`
-**Fix:** Use type-aware check instead of `Number(null)` double-wrapping
-
----
-
-### Task 14: Fix `SubmissionOverview` polling when dialog is closed [MEDIUM]
-
-**From:** CR-28-06
-**File:** `src/components/lecture/submission-overview.tsx:123`
-**Fix:** Conditionally mount or pass paused flag to `useVisibilityPolling`
-
----
-
-### Task 15: Fix recruiting invitations search race condition [MEDIUM]
-
-**From:** V-4
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:112-148`
-**Fix:** Debounce search or use `AbortController` to cancel stale fetches
 
 ## Deferred Items
 
@@ -146,23 +75,23 @@
 
 ### DEFER-31: Performance P0 fixes (deregister race, unbounded analytics, unbounded similarity check, scoring full-table scan)
 
-**Reason:** These are production performance issues requiring careful benchmarking and testing. The deregister race (P0-1) is the most critical and should be prioritized, but all require DB-level changes with migration considerations.
+**Reason:** These are production performance issues requiring careful benchmarking and testing.
 **Severity:** CRITICAL but requires production testing.
 **Exit criterion:** Each P0 fix benchmarked and tested in staging.
 
 ### DEFER-32: SubmissionStatus type split (DOC-1)
 
-**Reason:** Type unification affects the Rust worker, database schema, and all status consumers. Requires coordinated changes across the stack.
+**Reason:** Type unification affects the Rust worker, database schema, and all status consumers.
 **Exit criterion:** Unified SubmissionStatus type with matching DB values, Rust worker, and TypeScript types.
 
 ### DEFER-33: Plaintext token columns in schema (CRIT-03, CRIT-04)
 
-**Reason:** Requires database migration to drop columns. Must verify no legacy code paths still write to these columns.
+**Reason:** Requires database migration to drop columns.
 **Exit criterion:** Migration to drop `secretToken` on judgeWorkers and `token` on recruitingInvitations.
 
 ### DEFER-34: `users.isActive` nullable boolean three-state trap (CRIT-06)
 
-**Reason:** Schema change requires migration. All existing rows with null must be updated.
+**Reason:** Schema change requires migration.
 **Exit criterion:** `.notNull()` added to schema and migration to set null values to true.
 
 ### DEFER-35: CSRF documentation mismatch (DOC-5)
@@ -172,7 +101,7 @@
 
 ### DEFER-36: Security module test coverage gaps (TE-1)
 
-**Reason:** 6 of 17 security modules have no tests. Writing tests is high priority but time-consuming.
+**Reason:** 6 of 17 security modules have no tests.
 **Exit criterion:** Unit tests for password-hash, derive-key, encryption, in-memory-rate-limit, hcaptcha, server-actions.
 
 ### DEFER-37: Hook test coverage gaps (TE-2)
@@ -182,15 +111,29 @@
 
 ### DEFER-38: Unguarded `response.json()` on success paths — systemic fix (AGG-9)
 
-**Reason:** 6+ files need `.catch()` guards. This is a recurring anti-pattern that should be fixed systematically, possibly with a lint rule.
+**Reason:** 6+ files need `.catch()` guards.
 **Exit criterion:** All success-path `.json()` calls have `.catch()` guards. Consider ESLint rule to enforce.
 
 ### DEFER-39: Encryption plaintext fallback (SEC-2, CR-28-04)
 
-**Reason:** Requires API design decision on integrity checking approach. Backward compatibility concerns.
+**Reason:** Requires API design decision on integrity checking approach.
 **Exit criterion:** HMAC integrity check added or plaintext fallback removed after migration period.
 
 ### DEFER-40: Proxy auth cache TTL upper bound (SEC-3)
 
-**Reason:** Configuration change with operational implications. Needs coordination with deployment.
+**Reason:** Configuration change with operational implications.
 **Exit criterion:** Hard upper bound (10s) added to AUTH_CACHE_TTL_MS parsing.
+
+### DEFER-41: Task 11 from April-22 plan — dialog semantics for submission overview and anti-cheat (AGG-7, AGG-12)
+
+**Citations:**
+- `src/components/lecture/submission-overview.tsx:138-207`
+- `src/components/exam/anti-cheat-monitor.tsx:252-277`
+**Reason:** Both components already use the Dialog component from the UI library. Adding `role="dialog"`, `aria-modal`, and explicit focus trap would require customizing the Dialog primitives. The Dialog component already handles most accessibility concerns. The improvement is incremental.
+**Severity / confidence:** MEDIUM / LOW
+**Exit criterion:** When Dialog accessibility audit is performed across the entire app.
+
+## Progress log
+
+- 2026-04-22: Plan created with 15 tasks and 12 deferred items.
+- 2026-04-23: Fresh review completed. 14 of 15 tasks verified as already implemented. 1 new task (code-editor i18n) identified. Plan updated to reflect current state. 2 active tasks (A and B), DEFER-41 added.

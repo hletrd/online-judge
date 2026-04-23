@@ -1,23 +1,21 @@
-# Document Specialist Review — RPF Cycle 26
+# Document Specialist Review — RPF Cycle 28 (Fresh)
 
-**Date:** 2026-04-22
+**Date:** 2026-04-23
 **Reviewer:** document-specialist
-**Base commit:** f55836d0
+**Base commit:** 63557cc2
 
-## DOC-1: `apiFetchJson` JSDoc should mention the "parse once" pattern as the recommended approach [LOW/LOW]
+## DOC-1: `apiFetchJson` JSDoc already mentions the "parse once" pattern — no update needed [INFO]
 
-**File:** `src/lib/api/client.ts:87-128`
+**File:** `src/lib/api/client.ts`
 
-The `apiFetchJson` JSDoc explains the function's behavior but does not explicitly state that it is the recommended replacement for the "parse once, then branch" pattern. Given that three files still use the error-first double `.json()` anti-pattern, adding a note about migration would help developers understand the preferred approach.
-
-**Fix:** Add a note to the JSDoc: "Prefer `apiFetchJson` over manual `apiFetch` + `.json()` calls to avoid the error-first double `.json()` anti-pattern."
+The `apiFetchJson` JSDoc was updated in a prior cycle to mention the "parse once, then branch" pattern. No further documentation updates are needed.
 
 ---
 
-## DOC-2: `handleResetAccountPassword` lacks comment explaining why `fetchAll()` is not called [LOW/LOW]
+## DOC-2: `code-editor.tsx` lacks i18n documentation for hardcoded strings [LOW/LOW]
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:282-301`
+**File:** `src/components/code/code-editor.tsx`
 
-Unlike `handleRevoke` and `handleDelete` which call `fetchAll()` after success, `handleResetAccountPassword` does not. There is no comment explaining whether this is intentional or an oversight. Adding a comment would help future developers understand the design decision.
+The code editor has 5 hardcoded English strings without any comment explaining why they are not i18n-ized. If there was a deliberate decision to keep them in English (e.g., because keyboard shortcut names are universal), a comment should document this. Otherwise, they should be migrated to i18n.
 
-**Fix:** Add a comment: `// No fetchAll() needed — password reset does not change visible invitation data` or `// TODO: Add fetchAll() for consistency with other mutation handlers`.
+**Fix:** Either add i18n keys for these strings, or add a comment documenting why they are intentionally kept in English.

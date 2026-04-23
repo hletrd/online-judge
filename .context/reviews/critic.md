@@ -1,38 +1,42 @@
-# Critic Review — RPF Cycle 26
+# Critic Review — RPF Cycle 28 (Fresh)
 
-**Date:** 2026-04-22
+**Date:** 2026-04-23
 **Reviewer:** critic
-**Base commit:** f55836d0
+**Base commit:** 63557cc2
 
-## CRI-1: Three files still have double `.json()` anti-pattern — migration incomplete [MEDIUM/HIGH]
+## CRI-1: `code-editor.tsx` hardcoded English strings are the last i18n holdout [MEDIUM/MEDIUM]
 
-**Files:**
-- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:273,277`
-- `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:67,71`
-- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:335,339`
+**File:** `src/components/code/code-editor.tsx:96-97,107,113-114`
 
-Previous cycles (23-25) fixed the double `.json()` anti-pattern in multiple files (`compiler-client.tsx`, `discussion-post-form.tsx`, `group-members-manager.tsx`, `problem-submission-form.tsx`). However, three files were missed because the review focused on the `error.message` leaking issue rather than the structural pattern. The `apiFetchJson` JSDoc explicitly documents this as an anti-pattern, yet it persists in these files.
+The code editor is the only component in the codebase with hardcoded English strings in user-facing positions (title, aria-label, fallback text). The cycle-28 plan (Task 6) identified hardcoded English in `compiler-client.tsx`, but that has been fixed (defaultValue parameters removed). The code-editor.tsx issue is the remaining holdout.
 
-**Why this matters:** The "parse once, branch on ok" convention exists because it eliminates an entire class of bugs. Every file that uses the error-first pattern is a regression risk.
+Specific strings:
+- `"Fullscreen (F) · Exit (Esc)"` (title attribute)
+- `"Fullscreen (F)"` (aria-label)
+- `"Code Editor"` (language fallback)
+- `"Exit fullscreen (Esc)"` (title and aria-label)
+- `"Exit"` (button text at line 117)
 
-**Fix:** Migrate all three files to `apiFetchJson` or the "parse once, then branch" pattern.
+**Concrete scenario:** A Korean screen reader user navigates to the code editor fullscreen button and hears English instead of Korean.
 
----
-
-## CRI-2: `compiler-client.tsx` catch block inconsistent with AGG-1 fix from cycle 25 [LOW/MEDIUM]
-
-**File:** `src/components/code/compiler-client.tsx:292-296`
-
-The cycle-25 fix (AGG-1) changed all `getErrorMessage` default cases to return `tCommon("error")` instead of `error.message`. However, the `handleRun` catch block still uses `err instanceof Error ? err.message : "Network error"` for the inline error display. While the toast correctly uses `t("networkError")`, the inline display still shows raw error messages. This is a partial fix — the spirit of AGG-1 was to never show raw error messages to users.
-
-**Fix:** Use `t("networkError")` for the inline error display and log the raw error to console.
+**Fix:** Add i18n keys for these 5 strings. The `F` and `Esc` key names are universal keyboard shortcuts and can remain in the localized string as-is (e.g., Korean translation would be "전체 화면 (F)").
 
 ---
 
-## CRI-3: `contest-quick-stats.tsx` still has redundant `!` non-null assertions [LOW/LOW]
+## CRI-2: `contest-replay.tsx` still uses `setInterval` — carried from cycle 26 [LOW/LOW]
 
-**File:** `src/components/contest/contest-quick-stats.tsx:65-68`
+**File:** `src/components/contest/contest-replay.tsx:77-87`
 
-The cycle-25 fix (AGG-3) replaced `Number.isFinite(Number(x))` with `typeof x === "number" && Number.isFinite(x)`, but left `data.data!.participantCount` with the `!` non-null assertion. The `typeof` guard already ensures the value exists, so the `!` is redundant.
+This has been deferred for 3 cycles. While the impact is LOW, the inconsistency with the codebase convention (recursive `setTimeout`) is a growing maintenance risk.
 
-**Fix:** Remove the `!` assertions where the `typeof` guard already ensures safety.
+**Fix:** Replace `setInterval` with recursive `setTimeout`.
+
+---
+
+## Verified Safe / No Issue
+
+- All console.error calls properly gated behind dev check
+- All .json() patterns follow "parse once, then branch" convention
+- Error handling consistently uses i18n keys for user-facing messages
+- localStorage operations all have try/catch
+- Korean letter-spacing compliance thorough

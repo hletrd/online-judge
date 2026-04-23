@@ -1,67 +1,71 @@
-# Code Review — RPF Cycle 26
+# Code Review — RPF Cycle 28 (Fresh)
 
-**Date:** 2026-04-22
+**Date:** 2026-04-23
 **Reviewer:** code-reviewer
-**Base commit:** f55836d0
+**Base commit:** 63557cc2
 
-## CR-1: Double `.json()` anti-pattern in `assignment-form-dialog.tsx:273+277` [MEDIUM/HIGH]
+## Previously Fixed Items (Verified)
 
-**File:** `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:273,277`
+All cycle-26/27 aggregate findings have been addressed:
+- AGG-1 (double `.json()` in 3 files): Fixed
+- AGG-2 (compiler-client raw error): Fixed — uses i18n key
+- AGG-3 (handleResetAccountPassword fetchAll): Fixed
+- AGG-4 (quick-stats redundant `!`): Fixed
+- localStorage try/catch in compiler-client and submission-detail-client: Fixed
+- console.error gating (14 components): Fixed
+- admin-config double `.json()`: Fixed
+- bulk-create raw err.message: Fixed (truncated)
+- comment-section GET error feedback: Fixed
+- normalizePage parseInt + upper bound: Fixed
+- discussion-thread-moderation-controls optimistic state: Fixed
 
-The `handleSubmit` function calls `response.json()` twice on the same Response object — once in the error branch (line 273) and once in the success branch (line 277). While the `throw` on line 274 prevents the second `.json()` from running on error, this is the error-first anti-pattern explicitly documented as "DO NOT USE" in `src/lib/api/client.ts`. It violates the codebase convention of "parse once, then branch" that was established in cycles 23-24 and applied to other files.
+## CR-1: `code-editor.tsx` hardcoded English strings in aria-label and title [MEDIUM/MEDIUM]
 
-**Concrete risk:** If a future developer removes the `throw` or restructures the error handling, the second `.json()` call will throw "body already consumed" at runtime.
+**File:** `src/components/code/code-editor.tsx:96-97,107,113-114`
 
-**Fix:** Parse the body once before the `if (!response.ok)` check, then branch on `response.ok`.
+The fullscreen button and exit button use hardcoded English strings:
+- Line 96: `title="Fullscreen (F) · Exit (Esc)"`
+- Line 97: `aria-label="Fullscreen (F)"`
+- Line 107: `{props.language ?? "Code Editor"}` — hardcoded fallback
+- Line 113: `title="Exit fullscreen (Esc)"`
+- Line 114: `aria-label="Exit fullscreen (Esc)"`
 
----
+This is inconsistent with the rest of the codebase, which uses i18n keys for all user-visible strings including accessibility attributes. Korean users accessing these buttons via screen readers will hear English labels.
 
-## CR-2: Double `.json()` anti-pattern in `create-group-dialog.tsx:67+71` [MEDIUM/HIGH]
+**Concrete scenario:** A Korean user using a screen reader navigates to the fullscreen button and hears "Fullscreen (F)" instead of the Korean translation.
 
-**File:** `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:67,71`
-
-Same pattern as CR-1. The `handleSubmit` function calls `response.json()` twice — once in the error branch (line 67) and once in the success branch (line 71). The `throw` on line 68 prevents double consumption, but this is the error-first anti-pattern documented as incorrect.
-
-**Fix:** Parse the body once before the `if (!response.ok)` check.
-
----
-
-## CR-3: Double `.json()` anti-pattern in `create-problem-form.tsx:335+339` [MEDIUM/HIGH]
-
-**File:** `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:335,339`
-
-The `handleImageUpload` function calls `res.json()` twice — once in the error branch (line 335) and once in the success branch (line 339). Same anti-pattern as CR-1 and CR-2.
-
-**Fix:** Parse the body once before the `if (!res.ok)` check.
-
----
-
-## CR-4: `handleResetAccountPassword` inconsistent with other mutation handlers [LOW/MEDIUM]
-
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:282-301`
-
-`handleRevoke` (line 271) and `handleDelete` (line 311) both call `fetchAll()` after a successful mutation to refresh the invitations list and stats. `handleResetAccountPassword` does NOT call `fetchAll()` after success (line 297). While a password reset doesn't change visible invitation fields, the inconsistency suggests an omission, and if the backend adds side effects to the reset operation in the future, the UI would show stale data.
-
-**Fix:** Add `await fetchAll()` after the success toast in `handleResetAccountPassword`, or add a comment explaining why it is intentionally omitted.
+**Fix:** Add i18n keys for these strings and use `t()` calls, or accept the hardcoded keyboard shortcut labels as locale-independent (the `F` and `Esc` key names are universal).
 
 ---
 
-## CR-5: `compiler-client.tsx` catch block shows raw `error.message` in inline error display [LOW/MEDIUM]
+## CR-2: `edit-group-dialog.tsx` getErrorMessage lacks SyntaxError guard [LOW/MEDIUM]
 
-**File:** `src/components/code/compiler-client.tsx:292-296`
+**File:** `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:52-70`
 
-The catch block constructs `errorMessage = err instanceof Error ? err.message : "Network error"` and passes it to `updateTestCase` for inline display. While the toast correctly uses `t("networkError")`, the inline error display shows the raw `error.message` (e.g., "Failed to fetch"). This is inconsistent with the cycle-25 fix (AGG-1) that changed all `getErrorMessage` defaults to never show raw error messages.
+The `getErrorMessage` function switches on `error.message`. While the default case now correctly returns `tCommon("error")`, a `SyntaxError` from a failed `.json()` parse would match the default case rather than being explicitly handled. Other `getErrorMessage` functions in the codebase (e.g., `create-problem-form.tsx`) have the same pattern but with a broader set of known error codes.
 
-**Concrete scenario:** A network failure causes `TypeError: Failed to fetch`. The toast shows the localized "Network error", but the inline error panel below the code editor shows "Failed to fetch".
+The real concern is at line 92: `throw new Error((errorBody as { error?: string }).error || "updateError")` — this throws with the raw API error string. If the API returns an unexpected error code like `"SyntaxError"` or `"internal_server_error"`, the `getErrorMessage` switch won't match it, and the user sees `tCommon("error")` which is correct. But the thrown `Error.message` contains the raw API string, which is fine since it's only used for matching.
 
-**Fix:** Use `t("networkError")` for the inline error display as well, and log the raw error to console.
+**Fix:** This is already safe (the default case returns `tCommon("error")`). No action required beyond documentation.
 
 ---
 
-## CR-6: `contest-replay.tsx` uses `setInterval` instead of recursive `setTimeout` [LOW/LOW]
+## CR-3: `contest-join-client.tsx` error handling chain could be cleaner [LOW/LOW]
 
-**File:** `src/components/contest/contest-replay.tsx:77-87`
+**File:** `src/app/(dashboard)/dashboard/contests/join/contest-join-client.tsx:48-51`
 
-The auto-play feature uses `setInterval` which can accumulate drift over time. While the interval is short (1.4s/speed), using recursive `setTimeout` would be more precise and consistent with the pattern used in `countdown-timer.tsx` and `anti-cheat-monitor.tsx` which both use `setTimeout`.
+After `apiFetchJson` returns `!ok`, line 49 extracts the error: `(payload as { error?: string }).error ?? "joinFailed"` and throws it as `new Error(errorMessage)`. The catch block on line 66-69 catches this and shows `t("joinFailed")`. The thrown Error's message is never shown to the user, so this is safe. However, the `apiFetchJson` helper already returns `{ ok, data }` — the error code could be checked directly without the intermediate `throw new Error`.
 
-**Fix:** Replace `setInterval` with recursive `setTimeout` for consistency and precision.
+**Fix:** Low priority — the current pattern is functional and safe. Could be simplified to check `payload.error` directly for specific error codes (like `alreadyEnrolled`).
+
+---
+
+## Verified Safe / No Issue
+
+- All `.json()` patterns now follow "parse once, then branch" or use `apiFetchJson`
+- `localStorage` write operations all have try/catch guards
+- `console.error` calls all gated behind `process.env.NODE_ENV === "development"`
+- Error boundary `console.error` calls properly gated
+- Korean letter-spacing compliance maintained
+- No `as any`, `@ts-ignore`, or `@ts-expect-error` in production code
+- No silently swallowed catch blocks

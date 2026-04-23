@@ -1,28 +1,35 @@
-# Debugger Review — RPF Cycle 26
+# Debugger Review — RPF Cycle 28 (Fresh)
 
-**Date:** 2026-04-22
+**Date:** 2026-04-23
 **Reviewer:** debugger
-**Base commit:** f55836d0
+**Base commit:** 63557cc2
 
-## DBG-1: Double `.json()` is a latent "body already consumed" bug in 3 files [MEDIUM/HIGH]
+## Previously Fixed Items (Verified)
 
-**Files:**
-- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:273,277`
-- `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:67,71`
-- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:335,339`
+- localStorage crash in compiler-client: Fixed (try/catch at line 188)
+- localStorage crash in submission-detail-client: Fixed (try/catch at line 94)
+- Double `.json()` latent bug in 3 files: Fixed
+- admin-config double `.json()`: Fixed
+- handleResetAccountPassword missing fetchAll: Fixed
+- quick-stats redundant `!` assertions: Fixed
 
-**Failure mode:** If any developer refactors the error-first `.json()` pattern and accidentally removes or moves the `throw` statement, the second `.json()` call will throw `TypeError: Body already consumed` at runtime. This error would propagate up as an unhandled exception, bypassing the `getErrorMessage` mapping and potentially showing a raw error message to the user.
+## DBG-1: `contest-replay.tsx` setInterval drift — carried from cycle 26 [LOW/LOW]
 
-**Concrete scenario:** A developer changes `throw new Error(...)` to `setFormError(...)` (not throwing), and the code falls through to the second `.json()`, which throws. The catch block catches this new error but maps it through `getErrorMessage` where it does not match any known code, showing `tCommon("error")`.
+**File:** `src/components/contest/contest-replay.tsx:77-87`
 
-**Fix:** Migrate to "parse once, then branch" pattern to eliminate the latent bug.
+The auto-play uses `setInterval` which can accumulate drift. The callback increments `currentIndex` by 1 each tick, and the interval is `1400 / speed` ms. With `setInterval`, if a callback takes longer than expected (e.g., due to tab throttling), the next callback fires immediately after the previous one completes, causing "catch-up" behavior. With recursive `setTimeout`, each tick is spaced consistently from the end of the previous one.
+
+**Failure mode:** At 8x speed, the interval is 175ms. If the browser throttles the tab (e.g., it's in the background), multiple intervals may fire in rapid succession when the tab regains focus, causing the replay to jump forward.
+
+**Fix:** Replace `setInterval` with recursive `setTimeout`.
 
 ---
 
-## DBG-2: `handleResetAccountPassword` missing `fetchAll()` — stale data potential [LOW/LOW]
+## Verified Safe / No Issue
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:282-301`
-
-After a successful password reset, the invitations list is not refreshed. While this currently does not cause visible issues (password reset does not change invitation data), if the backend adds audit logging or status changes to the reset operation, the UI would show stale data.
-
-**Fix:** Add `fetchAll()` after the success toast for consistency with `handleRevoke` and `handleDelete`.
+- Error boundary console.error gating confirmed
+- use-unsaved-changes-guard handles all navigation interception scenarios
+- use-source-draft handles all localStorage access with try/catch
+- anti-cheat-monitor handles localStorage with try/catch and retry logic
+- SSE polling in use-submission-polling properly falls back to fetch polling
+- AbortController properly used in recruiting-invitations-panel and contest-quick-stats
