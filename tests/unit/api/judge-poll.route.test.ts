@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const { rawQueryOneMock, problemsFindFirstMock, dbSelectMock, recordAuditEventMock, consumeUserApiRateLimitMock } =
+const { rawQueryOneMock, problemsFindFirstMock, dbSelectMock, recordAuditEventMock, consumeUserApiRateLimitMock, getDbNowUncachedMock } =
   vi.hoisted(() => ({
     rawQueryOneMock: vi.fn(),
     problemsFindFirstMock: vi.fn(),
     dbSelectMock: vi.fn(),
     recordAuditEventMock: vi.fn(),
     consumeUserApiRateLimitMock: vi.fn(),
+    getDbNowUncachedMock: vi.fn(),
   }));
 
 vi.mock("@/lib/judge/auth", () => ({
@@ -22,6 +23,10 @@ vi.mock("@/lib/audit/events", () => ({
 
 vi.mock("@/lib/db/queries", () => ({
   rawQueryOne: rawQueryOneMock,
+}));
+
+vi.mock("@/lib/db-time", () => ({
+  getDbNowUncached: getDbNowUncachedMock,
 }));
 
 vi.mock("@/lib/system-settings-config", () => ({
@@ -90,6 +95,7 @@ beforeEach(() => {
 
   dbSelectMock.mockReturnValue(makeSelectChain([]));
   consumeUserApiRateLimitMock.mockResolvedValue(null);
+  getDbNowUncachedMock.mockResolvedValue(new Date());
 });
 
 describe("POST /api/v1/judge/claim", () => {
