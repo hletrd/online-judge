@@ -1,64 +1,33 @@
-# UI/UX Review — RPF Cycle 25
+# UI/UX Review — RPF Cycle 26
 
 **Date:** 2026-04-22
-**Base commit:** ac51baaa
+**Reviewer:** designer
+**Base commit:** f55836d0
 
-## DES-1: `submission-overview.tsx` Dialog has correct semantics -- confirmed from V-3 fix [VERIFIED]
+## DES-1: `contest-quick-stats.tsx` stat cards lack loading skeleton [LOW/MEDIUM]
 
-**File:** `src/components/lecture/submission-overview.tsx:145-148`
+**File:** `src/components/contest/contest-quick-stats.tsx:86-124`
 
-The component now uses the shared `Dialog` component which provides proper `role="dialog"`, `aria-modal`, and focus trap. Verified correct.
+When the stats are loading (initial state before `fetchStats` completes), the cards show "0" for participant count, submissions, and problems solved, and "---" for avg score. This can be misleading — "0" implies there are genuinely no participants, when in reality the data has not loaded yet. A skeleton/shimmer loading state would provide better UX feedback.
 
----
-
-## DES-2: `compiler-client.tsx` error alert has `role="alert"` -- confirmed [VERIFIED]
-
-**File:** `src/components/code/compiler-client.tsx:498-505`
-
-The error display div has `role="alert"`:
-```tsx
-<div role="alert" className="mb-3 flex items-start gap-2 ...">
-```
-
-This is correct. The error will be announced by screen readers when it appears. No fix needed.
+**Fix:** Show a skeleton loader or "---" for all stats until the first fetch completes.
 
 ---
 
-## DES-3: `contest-replay.tsx` slider accessibility -- confirmed via native input [VERIFIED]
+## DES-2: `recruiting-invitations-panel.tsx` create dialog has no loading state for form fields [LOW/LOW]
 
-**File:** `src/components/contest/contest-replay.tsx:159-169`
+**File:** `src/components/contest/recruiting-invitations-panel.tsx:410-521`
 
-The range input has `aria-valuetext` and the `value` attribute on `<input type="range">` sets `aria-valuenow` implicitly for native range inputs. Verified correct.
+The create invitation dialog disables the submit button while creating (`disabled={creating || !createName.trim()}`), but the form fields themselves remain enabled. If the creation takes time, a user could modify fields while the request is in flight, leading to confusion about what data was actually submitted.
 
----
-
-## DES-4: `recruiting-invitations-panel.tsx` table has poor responsive behavior on narrow screens [LOW/LOW]
-
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:522-634`
-
-The table is wrapped in `overflow-x-auto`, which allows horizontal scrolling. On narrow screens, the action column (with multiple icon buttons) may be clipped or require scrolling. This is a minor UX issue -- the table is usable but not ideal on mobile.
-
-**Fix:** Consider hiding less important columns on mobile or using a card layout for small screens. Low priority since this is primarily an admin feature used on desktop.
+**Fix:** Disable all form fields during creation, or add a visual overlay to the dialog.
 
 ---
 
-## DES-5: `active-timed-assignment-sidebar-panel.tsx` uses correct Korean letter-spacing handling [VERIFIED]
+## DES-3: `contest-replay.tsx` slider lacks step markers for key moments [LOW/LOW]
 
-**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:49-50`
+**File:** `src/components/contest/contest-replay.tsx:159-168`
 
-```ts
-const labelTracking = locale !== "ko" ? " tracking-[0.16em]" : "";
-const smallLabelTracking = locale !== "ko" ? " tracking-wide" : "";
-```
+The timeline slider shows a plain range input with no markers for key moments (e.g., when submissions happened, when standings changed). For large contests with many snapshots, the slider is hard to use because there is no visual indication of where interesting events occurred.
 
-This correctly follows the CLAUDE.md rule: "Keep Korean text at the browser/font default letter spacing." Verified correct.
-
----
-
-## DES-6: `compiler-client.tsx` test case tabs lack distinguishing `aria-label` [LOW/LOW]
-
-**File:** `src/components/code/compiler-client.tsx:439-443`
-
-The tab labels show test case names like "TC 1", "TC 2". When a user renames a test case, the tab label updates. This is correct behavior. However, there's no `aria-label` distinguishing the tabs as "test case" tabs vs other tab groups on the page.
-
-**Fix:** Add an `aria-label` to the `Tabs` component like `aria-label={t("testCaseLabel")}`. Low priority.
+**Fix:** Add tick marks or dots on the slider track to indicate snapshots where standings changed significantly.

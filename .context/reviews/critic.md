@@ -1,65 +1,38 @@
-# Critic Review — RPF Cycle 25
+# Critic Review — RPF Cycle 26
 
 **Date:** 2026-04-22
-**Base commit:** ac51baaa
+**Reviewer:** critic
+**Base commit:** f55836d0
 
-## CRI-1: Default error handlers leaking raw `error.message` -- systemic pattern [MEDIUM/HIGH]
+## CRI-1: Three files still have double `.json()` anti-pattern — migration incomplete [MEDIUM/HIGH]
 
-Multiple components have `default: return error.message || tCommon("error")` in their `getErrorMessage` switch/case. This is a systemic pattern that needs a unified fix:
+**Files:**
+- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:273,277`
+- `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:67,71`
+- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:335,339`
 
-- `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:66-69` -- has `SyntaxError` check but then also returns `tCommon("error")` in the same block, making the SyntaxError check dead code
-- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:206`
-- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:310`
-- `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:33`
+Previous cycles (23-25) fixed the double `.json()` anti-pattern in multiple files (`compiler-client.tsx`, `discussion-post-form.tsx`, `group-members-manager.tsx`, `problem-submission-form.tsx`). However, three files were missed because the review focused on the `error.message` leaking issue rather than the structural pattern. The `apiFetchJson` JSDoc explicitly documents this as an anti-pattern, yet it persists in these files.
 
-The `edit-group-dialog.tsx` case is particularly odd:
-```ts
-default:
-  if (error instanceof SyntaxError) {
-    return tCommon("error");
-  }
-  return tCommon("error");
-```
-Both branches return the same value, making the `SyntaxError` check dead code.
+**Why this matters:** The "parse once, branch on ok" convention exists because it eliminates an entire class of bugs. Every file that uses the error-first pattern is a regression risk.
 
-**Fix:** Unify all default cases to `return tCommon("error")` with `console.error()`. Remove the dead SyntaxError check in edit-group-dialog.
+**Fix:** Migrate all three files to `apiFetchJson` or the "parse once, then branch" pattern.
 
 ---
 
-## CRI-2: `compiler-client.tsx` error messages flow is inconsistent -- some use i18n, some use raw strings [MEDIUM/MEDIUM]
+## CRI-2: `compiler-client.tsx` catch block inconsistent with AGG-1 fix from cycle 25 [LOW/MEDIUM]
 
-**File:** `src/components/code/compiler-client.tsx:271-279, 292-299`
+**File:** `src/components/code/compiler-client.tsx:292-296`
 
-In the `!res.ok` branch, raw `data.error`/`data.message`/`res.statusText` are shown in both the inline error display and the toast description. In the catch branch, `err.message` or `"Network error"` is shown. Neither uses i18n for the actual error content.
+The cycle-25 fix (AGG-1) changed all `getErrorMessage` default cases to return `tCommon("error")` instead of `error.message`. However, the `handleRun` catch block still uses `err instanceof Error ? err.message : "Network error"` for the inline error display. While the toast correctly uses `t("networkError")`, the inline display still shows raw error messages. This is a partial fix — the spirit of AGG-1 was to never show raw error messages to users.
 
-Meanwhile, the `problem-submission-form.tsx` properly uses `translateSubmissionError` to map errors to i18n keys. The inconsistency suggests the compiler client was not updated to follow the same convention.
-
-**Fix:** Add i18n keys for compiler error types and use them in toasts. The inline error display can keep raw messages for debugging purposes.
+**Fix:** Use `t("networkError")` for the inline error display and log the raw error to console.
 
 ---
 
-## CRI-3: `contest-quick-stats.tsx` uses non-null assertion on potentially undefined data [LOW/LOW]
+## CRI-3: `contest-quick-stats.tsx` still has redundant `!` non-null assertions [LOW/LOW]
 
 **File:** `src/components/contest/contest-quick-stats.tsx:65-68`
 
-```ts
-Number(data.data!.participantCount)
-```
+The cycle-25 fix (AGG-3) replaced `Number.isFinite(Number(x))` with `typeof x === "number" && Number.isFinite(x)`, but left `data.data!.participantCount` with the `!` non-null assertion. The `typeof` guard already ensures the value exists, so the `!` is redundant.
 
-The `!` non-null assertion is used inside a conditional that checks `ok && data.data && typeof data.data === "object"`. While this is technically safe due to the guard, the double-wrapping of `Number()` on already-numeric values is the real issue. Using `data.data!.participantCount` directly after the type guard would be cleaner and avoid unnecessary coercion.
-
-**Fix:** Remove `Number()` wrapping and use direct property access after the type guard.
-
----
-
-## CRI-4: `contest-replay.tsx` speed selector uses `Number(v)` instead of `parseInt(v)` [LOW/LOW]
-
-**File:** `src/components/contest/contest-replay.tsx:185`
-
-```ts
-onValueChange={(v) => setSpeed(Number(v) as (typeof PLAYBACK_SPEEDS)[number])}
-```
-
-Per the established convention in the codebase (cycle 23/24 fixes), `parseInt()` should be used for numeric input parsing instead of `Number()`. While `Number()` works for this case since the values come from `String(speed)` and are always valid integers, it's inconsistent with the established pattern.
-
-**Fix:** Use `parseInt(v, 10)` for consistency with codebase conventions.
+**Fix:** Remove the `!` assertions where the `typeof` guard already ensures safety.

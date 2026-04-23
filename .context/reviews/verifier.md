@@ -1,94 +1,38 @@
-# Verifier Review — RPF Cycle 25
+# Verifier Review — RPF Cycle 26
 
 **Date:** 2026-04-22
-**Base commit:** ac51baaa
+**Reviewer:** verifier
+**Base commit:** f55836d0
 
-## V-1: Verify `handleBulkAddMembers` double `.json()` fix -- CONFIRMED FIXED
+## V-1: Verify double `.json()` anti-pattern — CONFIRMED in 3 files [MEDIUM/HIGH]
 
-**File:** `src/app/(dashboard)/dashboard/groups/[id]/group-members-manager.tsx:181`
+**Files verified:**
+- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:273+277` — CONFIRMED
+- `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:67+71` — CONFIRMED
+- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:335+339` — CONFIRMED
 
-Verified: The function now parses body once before branching:
-```ts
-const payload = await response.json().catch(() => ({ enrolled: 0, skipped: 0 }))
-if (!response.ok) { throw new Error(payload.error || "bulkAddFailed"); }
-```
-Correctly implemented. No double `.json()` call.
+Each file calls `response.json().catch(...)` twice on the same Response object. In all three cases, the first call is inside an `if (!response.ok)` block followed by a `throw`, preventing the second call from executing. However, this is the error-first anti-pattern explicitly documented as incorrect in `src/lib/api/client.ts:44-52`.
 
----
-
-## V-2: Verify discussion components raw error.message fix -- CONFIRMED FIXED
-
-**Files:**
-- `src/components/discussions/discussion-post-form.tsx`
-- `src/components/discussions/discussion-thread-form.tsx`
-- `src/components/discussions/discussion-post-delete-button.tsx`
-- `src/components/discussions/discussion-thread-moderation-controls.tsx`
-
-All four now use `toast.error(errorLabel)` in their catch blocks with `console.error()` for logging. Verified correct.
+**Evidence:** Read each file directly. The pattern is consistent across all three:
+1. `if (!response.ok) { const errorBody = await response.json().catch(() => ({})); throw new Error(...) }`
+2. `const data = await response.json().catch(() => ({ data: {} }))`
 
 ---
 
-## V-3: Verify `submission-overview.tsx` silent error swallowing fix -- CONFIRMED FIXED
+## V-2: Verify cycle-25 fixes — ALL VERIFIED
 
-**File:** `src/components/lecture/submission-overview.tsx:92`
-
-Now shows `toast.error(t("fetchError"))` on initial load when `!res.ok`. Verified correct.
-
----
-
-## V-4: Verify `problem-submission-form.tsx` double `.json()` fix -- CONFIRMED FIXED
-
-**File:** `src/components/problem/problem-submission-form.tsx:184,247`
-
-Both `handleRun` and `handleSubmit` now parse body once before branching. Verified correct.
+- AGG-1 (default error handlers): Verified `getErrorMessage` defaults return `tCommon("error")` with `console.error` in `create-problem-form.tsx`, `assignment-form-dialog.tsx`, `create-group-dialog.tsx`, `edit-group-dialog.tsx`, `role-editor-dialog.tsx`, `role-delete-dialog.tsx`, `problem-set-form.tsx`, `group-members-manager.tsx`.
+- AGG-2 (compiler-client i18n): Verified `toast.error(t("runFailed"))` at line 279 without raw description. Verified `String(rawError)` wrapping at line 273.
+- AGG-3 (quick-stats typeof): Verified `typeof x === "number" && Number.isFinite(x)` pattern at lines 65-68.
+- AGG-4 (parseInt): Verified `parseInt(v, 10)` at line 185 in `contest-replay.tsx`.
+- AGG-5 (separate stats fetch): Verified `fetchStats` is separate from `fetchInvitations` in `recruiting-invitations-panel.tsx`.
 
 ---
 
-## V-5: Verify `compiler-client.tsx` double `.json()` fix -- CONFIRMED FIXED
+## V-3: `compiler-client.tsx` catch block still shows raw error in inline display [LOW/MEDIUM]
 
-**File:** `src/components/code/compiler-client.tsx:268`
+**File:** `src/components/code/compiler-client.tsx:292-296`
 
-Now parses body once before branching. Verified correct.
+The catch block: `const errorMessage = err instanceof Error ? err.message : "Network error"`. This `errorMessage` is passed to `updateTestCase` for the inline error panel. While the toast at line 298 correctly uses `t("networkError")`, the inline display shows the raw `error.message`. This is a partial implementation of the AGG-2 fix from cycle 25.
 
----
-
-## V-6: `create-problem-form.tsx` default error handler still leaks raw error.message -- NEW FINDING [MEDIUM/MEDIUM]
-
-**File:** `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:310`
-
-```ts
-default:
-  return error.message || tCommon("error");
-```
-
-This was NOT addressed in previous cycles. The `getErrorMessage` function's default case returns `error.message` for any unmapped error type, potentially exposing raw error text to users.
-
-**Fix:** Change default to `return tCommon("error")` and add `console.error("Unmapped error:", error)`.
-
----
-
-## V-7: `assignment-form-dialog.tsx` default error handler still leaks raw error.message -- NEW FINDING [MEDIUM/MEDIUM]
-
-**File:** `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:206`
-
-Same issue as V-6. The default case returns `error.message || tCommon("error")`.
-
-**Fix:** Same as V-6.
-
----
-
-## V-8: `edit-group-dialog.tsx` SyntaxError check is dead code -- NEW FINDING [LOW/LOW]
-
-**File:** `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:66-69`
-
-```ts
-default:
-  if (error instanceof SyntaxError) {
-    return tCommon("error");
-  }
-  return tCommon("error");
-```
-
-Both branches return the same value. The `SyntaxError` check was presumably meant to filter out SyntaxError from the `error.message` fallback, but since both paths return the i18n key, the check is dead code.
-
-**Fix:** Remove the dead SyntaxError check. Simplify to `default: console.error("Unmapped error:", error); return tCommon("error")`.
+**Fix:** Change line 292 to use `t("networkError")` for the inline display as well.

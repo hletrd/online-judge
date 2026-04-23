@@ -1,57 +1,41 @@
-# Tracer Review — RPF Cycle 25
+# Tracer Review — RPF Cycle 26
 
 **Date:** 2026-04-22
-**Base commit:** ac51baaa
+**Reviewer:** tracer
+**Base commit:** f55836d0
 
-## TR-1: Trace raw error.message leak through `getErrorMessage` default cases
+## TR-1: Causal trace of double `.json()` anti-pattern in `assignment-form-dialog.tsx` [MEDIUM/HIGH]
 
-**Hypothesis:** A `SyntaxError` from `.json()` on a non-JSON response body could reach the `getErrorMessage` default case and leak its message to the user.
+**File:** `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:270-278`
 
 **Trace:**
-1. User submits form (e.g., create-problem-form)
-2. `apiFetch()` returns a Response with `!response.ok`
-3. `.json().catch(() => ({}))` catches the SyntaxError if body is not JSON -- returns `{}`
-4. `throw new Error(({} as {error?:string}).error || "createFailed")` -- throws `new Error("createFailed")`
-5. In catch block, `getErrorMessage(error)` is called
-6. `error.message === "createFailed"` doesn't match any case
-7. Falls to `default: return error.message || tCommon("error")`
-8. Returns `"createFailed"` -- which is a known i18n key, not a raw server error
+1. User clicks "Create Assignment" button
+2. `handleSubmit` fires, calls `apiFetch(...)` which returns a `Response`
+3. `if (!response.ok)` — suppose the server returns 400 with JSON body `{ error: "assignmentTitleRequired" }`
+4. Line 273: `const errorBody = await response.json().catch(() => ({}))` — parses body successfully
+5. Line 274: `throw new Error(errorBody.error || "assignmentCreateFailed")` — throws with "assignmentTitleRequired"
+6. The catch block catches this, calls `getErrorMessage`, shows localized toast
+7. **Key observation:** Line 277 (`const payload = await response.json()...`) is never reached because of the throw. But if the throw were removed, `.json()` would throw "body already consumed" since the body was already read on line 273.
 
-**Verdict:** In this specific flow, the `error.message` value is actually a server-thrown error string that gets used as an i18n key lookup. The leak risk is lower than initially assessed because the throw always uses known error strings. However, if a completely unexpected error (e.g., TypeError from a network disconnection) reaches the catch block, `error.message` would be a raw browser error string like `"Failed to fetch"`.
-
-**Confidence:** MEDIUM -- the most likely failure mode (server errors) are safe, but unexpected client-side errors could leak.
+**Hypothesis:** This code works correctly today but is fragile. The pattern should be "parse once, then branch" to eliminate the possibility of the body-already-consumed error.
 
 ---
 
-## TR-2: Trace `compiler-client.tsx` error flow for non-string error values
+## TR-2: Causal trace of `compiler-client.tsx` catch block error display [LOW/MEDIUM]
 
-**Hypothesis:** If `data.error` is an object instead of a string, the toast would show `[object Object]`.
-
-**Trace:**
-1. API returns `{ error: { code: "rate_limited" } }` with `!res.ok`
-2. `data.error` is `{ code: "rate_limited" }`
-3. `errorMessage = data.error || data.message || res.statusText || "Request failed"`
-4. `errorMessage` is now `{ code: "rate_limited" }` (an object)
-5. `toast.error(t("runFailed"), { description: errorMessage })` -- shows `[object Object]`
-6. `updateTestCase(..., { error: errorMessage, ... })` -- React renders `[object Object]` in the error alert
-
-**Verdict:** Confirmed. The `errorMessage` variable is not guaranteed to be a string. Any object-valued `data.error` or `data.message` would be coerced to `[object Object]`.
-
-**Confidence:** HIGH -- this is a real bug that can occur with non-standard API responses.
-
----
-
-## TR-3: Trace `contest-quick-stats.tsx` avgScore null handling
-
-**Hypothesis:** `avgScore: null` from the API could become `0` in the UI.
+**File:** `src/components/code/compiler-client.tsx:288-298`
 
 **Trace:**
-1. API returns `{ data: { avgScore: null } }`
-2. `data.data!.avgScore !== null` -- false
-3. Falls to `null` in the ternary
-4. `stats.avgScore` is `null`
-5. UI renders `stats.avgScore !== null ? formatNumber(...) : "---"` -- shows "---"
+1. User clicks "Run" button
+2. `handleRun` fires, calls `apiFetch(...)` which fails with a network error
+3. The catch block catches `err` (a `TypeError: Failed to fetch`)
+4. Line 289: `err.name === "AbortError"` — false for network errors
+5. Line 292: `errorMessage = "Failed to fetch"` — raw error message
+6. Line 293-296: `updateTestCase` sets `error: "Failed to fetch"` — shown in inline error panel
+7. Line 298: `toast.error(t("networkError"))` — correctly shows localized message
 
-**Verdict:** Correctly handled. The null check is explicit and the UI shows "---" for null avgScore.
+**Competing hypotheses:**
+- H1: The raw `error.message` in the inline display is intentional (compiler context where users need to see the specific error)
+- H2: This is an oversight from the AGG-2 fix that only addressed toasts
 
-**Confidence:** HIGH -- the fix from cycle 23 is working correctly.
+**Assessment:** H2 is more likely. The cycle-25 fix explicitly targeted "never leak raw error messages", but only the toast was fixed. The inline display should also use the i18n key.

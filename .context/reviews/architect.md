@@ -1,47 +1,38 @@
-# Architecture Review — RPF Cycle 25
+# Architecture Review — RPF Cycle 26
 
 **Date:** 2026-04-22
-**Base commit:** ac51baaa
+**Reviewer:** architect
+**Base commit:** f55836d0
 
-## ARCH-1: Error message mapping pattern is inconsistent across components [MEDIUM/MEDIUM]
+## ARCH-1: Double `.json()` anti-pattern indicates incomplete migration to `apiFetchJson` [MEDIUM/MEDIUM]
 
 **Files:**
-- `src/app/(dashboard)/dashboard/groups/[id]/group-members-manager.tsx:84-103`
-- `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:47-71`
-- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:184-206`
-- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:286-310`
-- `src/components/exam/start-exam-button.tsx:48-55`
+- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:273,277`
+- `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:67,71`
+- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:335,339`
 
-Each component implements its own `getErrorMessage` function with a switch/case on `error.message`. This creates several problems:
-1. **Inconsistent default handling** -- some use `error.message || tCommon("error")` (leaks raw messages), others use `tCommon("error")` (safe).
-2. **Fragile server-client coupling** -- matching on `error.message` string values means server-side error string changes break client-side mapping silently.
-3. **Code duplication** -- similar switch/case logic repeated across 5+ components.
+Three components still use the error-first `.json()` pattern instead of `apiFetchJson`. This was the same class of issue fixed in cycles 23-24 for other files, but these were missed because the previous review cycles focused on the `error.message` leaking issue, not the structural pattern.
 
-**Fix:** Create a shared `mapServerErrorCode(message: string, i18nMap: Record<string, string>, fallback: string)` utility that:
-- Maps known error strings to i18n keys
-- Always returns the fallback for unknown errors
-- Logs unmapped errors to console for debugging
-- Can be extended with a lint rule to enforce usage
+The `apiFetchJson` helper was specifically created to eliminate this class of bug. The remaining instances suggest the migration was incomplete.
+
+**Fix:** Migrate these three components to `apiFetchJson` or the "parse once, then branch" pattern. This relates to DEFER-1/DEFER-38/DEFER-46 (apiFetchJson adoption for remaining components).
 
 ---
 
-## ARCH-2: `apiFetchJson` adoption is incomplete -- most components still use manual `apiFetch` + `.json()` pattern [LOW/MEDIUM]
+## ARCH-2: `handleResetAccountPassword` missing `fetchAll()` — inconsistent mutation pattern [LOW/LOW]
 
-**Files:** Many across `src/components/` and `src/app/`
+**File:** `src/components/contest/recruiting-invitations-panel.tsx:282-301`
 
-The `apiFetchJson` helper in `src/lib/api/client.ts` was created to eliminate the double-`.json()` and missing-`.catch()` anti-patterns. However, the majority of components still use the raw `apiFetch` + manual `.json().catch()` pattern. This means:
-1. The anti-pattern surface area remains large
-2. Future developers must remember the manual pattern
-3. No compile-time enforcement of safe patterns
+All other mutation handlers (`handleRevoke`, `handleDelete`) call `fetchAll()` after success. `handleResetAccountPassword` does not. While the reset does not change visible invitation fields today, the inconsistency creates a pattern where future mutations might also forget to refresh data.
 
-**Fix:** Incrementally migrate components to `apiFetchJson`. Consider adding a lint rule that flags `apiFetch(...).json()` without `.catch()`. Tracked as DEFER-1/DEFER-38.
+**Fix:** Add `fetchAll()` after the success toast for consistency, or document the intentional omission.
 
 ---
 
-## ARCH-3: `useVisibilityPolling` hook has no mechanism for exponential backoff on repeated failures [LOW/LOW]
+## ARCH-3: `contest-replay.tsx` auto-play uses `setInterval` unlike other timed components [LOW/LOW]
 
-**File:** `src/hooks/use-visibility-polling.ts`
+**File:** `src/components/contest/contest-replay.tsx:77-87`
 
-The hook polls at a fixed interval regardless of whether previous fetches succeeded or failed. For components that experience persistent failures (e.g., server is down), this creates a steady stream of failed requests.
+The auto-play feature uses `setInterval`, while `countdown-timer.tsx` and `anti-cheat-monitor.tsx` use recursive `setTimeout`. The `setInterval` approach can accumulate drift and does not allow adjusting the interval dynamically. The recursive `setTimeout` pattern is more consistent and precise.
 
-**Fix:** Consider adding optional failure-count tracking that increases the interval on consecutive failures. Low priority since all current consumers handle their own errors.
+**Fix:** Replace `setInterval` with recursive `setTimeout`.

@@ -1,93 +1,102 @@
-# RPF Cycle 25 — Aggregate Review
+# RPF Cycle 26 — Aggregate Review
 
 **Date:** 2026-04-22
-**Base commit:** ac51baaa
+**Base commit:** f55836d0
 **Review artifacts:** code-reviewer.md, perf-reviewer.md, security-reviewer.md, architect.md, critic.md, verifier.md, debugger.md, test-engineer.md, tracer.md, designer.md, document-specialist.md
 
 ## Previously Fixed Items (Verified in Current Code)
 
-All cycle-24 aggregate findings have been addressed:
-- AGG-1 (handleBulkAddMembers double .json()): Fixed — body parsed once before branching
-- AGG-2 (discussion components raw error.message): Fixed — always use i18n labels in toasts
-- AGG-3 (group-members-manager default error handler): Fixed — returns tCommon("error") in default
-- AGG-4 (submission-overview silent error swallowing): Fixed — shows toast on non-OK
-- AGG-5 (problem-submission-form double .json()): Fixed — body parsed once
-- AGG-6 (compiler-client double .json()): Fixed — body parsed once
+All cycle-25 aggregate findings have been addressed:
+- AGG-1 (default error handlers leaking raw error.message): Fixed across 8+ components
+- AGG-2 (compiler-client raw API error messages in toasts): Fixed — uses i18n keys and String() wrapping
+- AGG-3 (contest-quick-stats double-wrapping Number()): Fixed — uses typeof checks
+- AGG-4 (contest-replay Number() to parseInt()): Fixed — uses parseInt(v, 10)
+- AGG-5 (recruiting-invitations-panel stats+invitations combined fetch): Fixed — separated
 
 ## Deduped Findings (sorted by severity then signal)
 
-### AGG-1: Default error handlers leak raw `error.message` — systemic pattern across 4+ components [MEDIUM/HIGH]
+### AGG-1: Double `.json()` anti-pattern in 3 files — incomplete migration from cycles 23-24 [MEDIUM/HIGH]
 
-**Flagged by:** code-reviewer (CR-3, CR-4), security-reviewer (SEC-2), critic (CRI-1), verifier (V-6, V-7), debugger (DBG-3, DBG-4), tracer (TR-1)
-**Signal strength:** 9 of 11 review perspectives
+**Flagged by:** code-reviewer (CR-1, CR-2, CR-3), security-reviewer (SEC-1), critic (CRI-1), verifier (V-1), debugger (DBG-1), architect (ARCH-1), tracer (TR-1), perf-reviewer (PERF-1), test-engineer (TE-1)
+**Signal strength:** 10 of 11 review perspectives
 
 **Files:**
-- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:310`
-- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:206`
-- `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:33`
-- `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:66-69` (dead SyntaxError check)
+- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:273+277`
+- `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:67+71`
+- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:335+339`
 
-**Description:** Multiple `getErrorMessage` functions have `default: return error.message || tCommon("error")`. While server-thrown errors use known error codes as `error.message`, unexpected client-side errors (TypeError, SyntaxError) would have their raw messages shown. The `edit-group-dialog.tsx` also has dead code: a SyntaxError check where both branches return `tCommon("error")`.
+**Description:** Three files still use the error-first double `.json()` anti-pattern where `response.json()` is called once in the `if (!response.ok)` branch and once in the success branch. While the `throw` after the error branch prevents the second `.json()` from running, this pattern is explicitly documented as "DO NOT USE" in `src/lib/api/client.ts:44-52`. Previous cycles 23-24 fixed this same pattern in `compiler-client.tsx`, `discussion-post-form.tsx`, `group-members-manager.tsx`, and `problem-submission-form.tsx`, but these three files were missed.
 
-**Concrete failure scenario:** Network error causes `TypeError: Failed to fetch`. This reaches the catch block, `getErrorMessage` doesn't match it, and `"Failed to fetch"` is shown to the user instead of a localized error message.
+**Concrete failure scenario:** A developer refactors the error handling and removes or replaces the `throw` with a non-throwing statement (e.g., `setFormError(...)`). The code falls through to the second `.json()` call, which throws `TypeError: Body already consumed`. This bypasses the `getErrorMessage` mapping and shows a raw error to the user.
 
-**Fix:** Change all default cases to `return tCommon("error")` with `console.error()`. Remove dead SyntaxError check in edit-group-dialog.
+**Fix:** Migrate all three files to the "parse once, then branch" pattern (parse body before checking `response.ok`, then branch on the result).
 
 ---
 
-### AGG-2: `compiler-client.tsx` exposes raw API error messages in toasts and could show `[object Object]` [MEDIUM/HIGH]
+### AGG-2: `compiler-client.tsx` catch block leaks raw `error.message` in inline error display [LOW/MEDIUM]
 
-**Flagged by:** code-reviewer (CR-1), security-reviewer (SEC-1), critic (CRI-2), debugger (DBG-1), tracer (TR-2)
+**Flagged by:** code-reviewer (CR-5), security-reviewer (SEC-2), critic (CRI-2), verifier (V-3), tracer (TR-2)
 **Signal strength:** 5 of 11 review perspectives
 
-**File:** `src/components/code/compiler-client.tsx:271-279, 292-299`
+**File:** `src/components/code/compiler-client.tsx:292-296`
 
-**Description:** The `handleRun` function constructs `errorMessage = data.error || data.message || res.statusText || "Request failed"`. This value is used in both `toast.error(t("runFailed"), { description: errorMessage })` and the inline error display. Two issues:
-1. Raw API errors are exposed to users via toast descriptions, violating the i18n convention.
-2. If `data.error` is an object (non-standard API response), `errorMessage` becomes `[object Object]`.
+**Description:** The `handleRun` catch block constructs `errorMessage = err instanceof Error ? err.message : "Network error"` and passes it to `updateTestCase` for inline display. While the toast at line 298 correctly uses `t("networkError")`, the inline error display shows the raw `error.message`. This is inconsistent with the spirit of the cycle-25 AGG-1 fix that eliminated raw error messages from all `getErrorMessage` default cases.
 
-**Concrete failure scenario:** API returns `{ error: { code: "rate_limited" } }`. Toast shows `[object Object]` as the description.
+**Concrete failure scenario:** A network failure produces `TypeError: Failed to fetch`. The toast shows the localized "Network error", but the inline error panel below the code editor shows "Failed to fetch".
 
-**Fix:** Use i18n keys in toast descriptions. Ensure `errorMessage` is always a string with `String()` wrapping. Log raw errors to console.
+**Fix:** Use `t("networkError")` for the inline error display as well, and log the raw error to console for debugging.
 
 ---
 
-### AGG-3: `contest-quick-stats.tsx` double-wraps `Number()` on already-numeric JSON values [LOW/MEDIUM]
+### AGG-3: `handleResetAccountPassword` missing `fetchAll()` — inconsistent with other mutation handlers [LOW/LOW]
 
-**Flagged by:** code-reviewer (CR-2), critic (CRI-3), perf-reviewer (PERF-2)
+**Flagged by:** code-reviewer (CR-4), architect (ARCH-2), debugger (DBG-2)
 **Signal strength:** 3 of 11 review perspectives
+
+**File:** `src/components/contest/recruiting-invitations-panel.tsx:282-301`
+
+**Description:** `handleRevoke` (line 271) and `handleDelete` (line 311) both call `fetchAll()` after success to refresh the invitations list and stats. `handleResetAccountPassword` does NOT call `fetchAll()` after success. While a password reset doesn't change visible invitation fields today, the inconsistency suggests an omission. If the backend adds side effects (e.g., status change, audit entry), the UI would show stale data.
+
+**Fix:** Add `await fetchAll()` after the success toast in `handleResetAccountPassword`, or add a comment documenting the intentional omission.
+
+---
+
+### AGG-4: `contest-quick-stats.tsx` still has redundant `!` non-null assertions [LOW/LOW]
+
+**Flagged by:** critic (CRI-3), perf-reviewer (PERF-2)
+**Signal strength:** 2 of 11 review perspectives
 
 **File:** `src/components/contest/contest-quick-stats.tsx:65-68`
 
-**Description:** The stats parsing uses `Number.isFinite(Number(data.data!.participantCount))` where `data.data!.participantCount` is already a number from JSON parsing. The `Number()` call is a no-op on numeric values. Using `typeof` checks would be more idiomatic and avoid unnecessary coercion.
+**Description:** The cycle-25 fix (AGG-3) replaced `Number.isFinite(Number(x))` with `typeof x === "number" && Number.isFinite(x)`, but left `data.data!.participantCount` with the `!` non-null assertion. The `typeof` guard already ensures the value is a number, making the `!` redundant.
 
-**Fix:** Replace `Number.isFinite(Number(x))` with `typeof x === "number" && Number.isFinite(x)`. Also remove the non-null assertion `!` when the type guard already ensures the value exists.
-
----
-
-### AGG-4: `contest-replay.tsx` speed selector uses `Number(v)` instead of `parseInt(v, 10)` [LOW/LOW]
-
-**Flagged by:** critic (CRI-4)
-**Signal strength:** 1 of 11 review perspectives
-
-**File:** `src/components/contest/contest-replay.tsx:185`
-
-**Description:** Per the established convention from cycle 23/24 fixes, `parseInt()` should be used for numeric input parsing instead of `Number()`. While `Number()` works for this specific case (values from `String(speed)`), it's inconsistent with the codebase convention.
-
-**Fix:** Use `parseInt(v, 10)` for consistency.
+**Fix:** Remove the `!` non-null assertions where the `typeof` guard already ensures safety.
 
 ---
 
-### AGG-5: Recruiting invitations panel re-fetches stats on every filter change [MEDIUM/LOW]
+### AGG-5: `contest-replay.tsx` auto-play uses `setInterval` instead of recursive `setTimeout` [LOW/LOW]
 
-**Flagged by:** perf-reviewer (PERF-4)
+**Flagged by:** code-reviewer (CR-6), architect (ARCH-3)
+**Signal strength:** 2 of 11 review perspectives
+
+**File:** `src/components/contest/contest-replay.tsx:77-87`
+
+**Description:** The auto-play feature uses `setInterval` which can accumulate drift. The recursive `setTimeout` pattern used in `countdown-timer.tsx` and `anti-cheat-monitor.tsx` is more precise and consistent.
+
+**Fix:** Replace `setInterval` with recursive `setTimeout`.
+
+---
+
+### AGG-6: `active-timed-assignment-sidebar-panel.tsx` interval stops but effect doesn't re-enter [LOW/LOW]
+
+**Flagged by:** perf-reviewer (PERF-3)
 **Signal strength:** 1 of 11 review perspectives
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:166-168`
+**File:** `src/components/layout/active-timed-assignment-sidebar-panel.tsx:63-75`
 
-**Description:** `fetchData` combines both `fetchInvitations` and `fetchStats`, so every filter change triggers a stats re-fetch even though stats are independent of search/filter. This creates unnecessary network traffic.
+**Description:** The `setInterval` callback clears itself when all assignments expire. However, the effect depends on `[assignments]`, not on a derived "has active" boolean. If a new assignment is added while the interval is stopped (but the component is still mounted), the effect won't re-run because `assignments` reference equality hasn't changed.
 
-**Fix:** Separate stats fetch so it only runs on mount and after mutations.
+**Fix:** Add a derived `hasActiveAssignment` boolean to the effect dependencies.
 
 ---
 
@@ -96,43 +105,39 @@ All cycle-24 aggregate findings have been addressed:
 ### SEC-3: `window.location.origin` for URL construction — covered by DEFER-24 (2 instances still present)
 ### SEC-4: Encryption plaintext fallback — MEDIUM/MEDIUM, carried from DEFER-39
 ### SEC-5: `AUTH_CACHE_TTL_MS` has no upper bound — LOW/MEDIUM, carried from DEFER-40
-### SEC-6: Anti-cheat localStorage persistence — LOW/LOW, new finding this cycle
-### SEC-7: sanitizeHtml root-relative img src — LOW/LOW, new finding this cycle
+### SEC-6: Anti-cheat localStorage persistence — LOW/LOW, carried from DEFER-48
+### SEC-7: `sanitizeHtml` root-relative img src — LOW/LOW, carried from DEFER-49
 
 ## Performance Findings
 
-### PERF-1: `submission-overview.tsx` polling when dialog closed — RESOLVED (properly guarded with `paused` flag)
-### PERF-3: Active-timed-assignment sidebar extra tick after expiry — LOW/LOW, new finding
-### PERF-5: Contest-replay FLIP animation synchronous layout — LOW/LOW, new finding
+### PERF-1: Double `.json()` anti-pattern — merged into AGG-1
+### PERF-2: Quick-stats redundant `!` assertions — merged into AGG-4
+### PERF-3: Sidebar interval re-entry — AGG-6
 
 ## Test Coverage Gaps (from test-engineer)
 
-### TE-1: No unit tests for `getErrorMessage` default case behavior — new [LOW/MEDIUM]
-### TE-2: No tests for compiler-client error display behavior — new [LOW/MEDIUM]
-### TE-3: No tests for contest-quick-stats data validation logic — new [LOW/MEDIUM]
-### TE-4: Carried test coverage gaps from previous cycles
+### TE-1: No tests for double `.json()` anti-pattern regression — new [MEDIUM/MEDIUM]
+### TE-2: No tests for `handleResetAccountPassword` behavior — new [LOW/MEDIUM]
+### TE-3: Carried test coverage gaps from previous cycles
 
 ## Documentation Findings (from document-specialist)
 
-### DOC-1: `apiFetchJson` JSDoc could be clearer about fallback on error responses — LOW/LOW
-### DOC-2: `getErrorMessage` functions lack JSDoc — LOW/LOW
-### DOC-3: `useVisibilityPolling` JSDoc missing `paused` parameter — LOW/LOW
+### DOC-1: `apiFetchJson` JSDoc migration note — LOW/LOW
+### DOC-2: `handleResetAccountPassword` missing `fetchAll()` comment — LOW/LOW
+
+## UI/UX Findings (from designer)
+
+### DES-1: Quick-stats cards lack loading skeleton — LOW/MEDIUM
+### DES-2: Create invitation dialog fields not disabled during creation — LOW/LOW
+### DES-3: Contest replay slider lacks step markers — LOW/LOW
 
 ## Previously Deferred Items (Carried Forward)
 
-- DEFER-1: Migrate raw route handlers to `createApiHandler` (22 routes)
-- DEFER-2: SSE connection tracking eviction optimization
-- DEFER-3: SSE connection cleanup test coverage
-- D1: JWT authenticatedAt clock skew with DB tokenInvalidatedAt (MEDIUM)
-- D2: JWT callback DB query on every request — add TTL cache (MEDIUM)
-- A19: `new Date()` clock skew risk in remaining routes (LOW)
-- DEFER-24: Invitation URL uses window.location.origin (same as SEC-3)
-- DEFER-29: Add dedicated candidates summary endpoint (same as PERF-3 from cycle 28)
-- DEFER-30 through DEFER-44: See RPF cycle 28 and cycle 24 plans
-- DEFER-38: Unguarded `response.json()` on success paths — systemic fix
-- DEFER-39: Encryption plaintext fallback (same as SEC-4)
-- DEFER-40: Proxy auth cache TTL upper bound (same as SEC-5)
-- DEFER-41: `submission-overview.tsx` polls when dialog closed — RESOLVED this cycle (properly guarded)
+All previously deferred items from prior cycle plans remain in effect:
+- DEFER-1 through DEFER-5 (from cycle 1 plan)
+- DEFER-20 through DEFER-25 (from cycle 2 plan)
+- D1, D2, A19 (from earlier cycles)
+- DEFER-26 through DEFER-55 (from RPF cycle 28 and cycle 24/25 plans)
 
 ## Agent Failures
 

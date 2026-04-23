@@ -1,88 +1,38 @@
-# Security Review — RPF Cycle 25
+# Security Review — RPF Cycle 26
 
 **Date:** 2026-04-22
-**Base commit:** ac51baaa
+**Reviewer:** security-reviewer
+**Base commit:** f55836d0
 
-## SEC-1: `compiler-client.tsx` exposes raw API error messages in toast descriptions [MEDIUM/HIGH]
-
-**File:** `src/components/code/compiler-client.tsx:277-279`
-
-```ts
-toast.error(t("runFailed"), { description: errorMessage });
-```
-
-Where `errorMessage = data.error || data.message || res.statusText || "Request failed"`. The `res.statusText` and any unexpected `data.error`/`data.message` values could leak server internals (version numbers, stack traces if debug mode is on, etc.) to the user.
-
-**Fix:** Use i18n keys only in toast descriptions. Log raw errors to console.
-
----
-
-## SEC-2: `create-problem-form.tsx` and `assignment-form-dialog.tsx` default error cases leak `error.message` [MEDIUM/MEDIUM]
+## SEC-1: Double `.json()` anti-pattern risks "body already consumed" errors in 3 files [MEDIUM/MEDIUM]
 
 **Files:**
-- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:310`
-- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:206`
+- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:273,277`
+- `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:67,71`
+- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:335,339`
 
-Both have `default: return error.message || tCommon("error")` in their error message mappers. Any unexpected error (TypeError, SyntaxError from `.json()` parse failure, etc.) will have its raw message shown to the user.
+While the current code works because the `throw` prevents the second `.json()`, this error-first pattern creates a latent risk. If a developer refactors the error handling (e.g., replacing `throw` with a state update), the second `.json()` call would throw "body already consumed" at runtime, which is an unhandled exception that bypasses the catch block's error mapping. This would result in a raw error being shown to the user or silently failing.
 
-**Fix:** Default case should return `tCommon("error")` and log the raw error.
-
----
-
-## SEC-3: `window.location.origin` for URL construction -- carried from DEFER-24 [MEDIUM/MEDIUM]
-
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:99`
-
-Carried from DEFER-24. Two instances still present in recruiting-invitations-panel and access-code-manager.
+**Fix:** Migrate to the "parse once, then branch" pattern documented in `apiFetchJson`.
 
 ---
 
-## SEC-4: Encryption plaintext fallback -- carried from cycle 11 [MEDIUM/MEDIUM]
+## SEC-2: `compiler-client.tsx` catch block leaks raw error message in inline display [LOW/MEDIUM]
 
-**File:** `src/lib/security/encryption.ts:79-81`
+**File:** `src/components/code/compiler-client.tsx:292-296`
 
-The `decrypt()` function returns plaintext as-is if the value doesn't start with `enc:`. This means any old unencrypted data is silently readable, and an attacker who can write to the database could inject plaintext values that would be treated as valid.
+The catch block uses `err instanceof Error ? err.message : "Network error"` for the inline error display. While the toast correctly uses the i18n key `t("networkError")`, the inline error still shows raw `error.message`. This is inconsistent with the cycle-25 fix that eliminated raw error messages from all `getErrorMessage` default cases.
 
-Carried from DEFER-39.
+**Concrete scenario:** A DNS resolution failure produces `TypeError: getaddrinfo ENOTFOUND`. The inline error display shows this raw message.
 
----
-
-## SEC-5: `AUTH_CACHE_TTL_MS` has no upper bound [LOW/MEDIUM]
-
-**File:** `src/proxy.ts:24-27`
-
-```ts
-const AUTH_CACHE_TTL_MS = (() => {
-  const parsed = parseInt(process.env.AUTH_CACHE_TTL_MS ?? '2000', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 2000;
-})();
-```
-
-An operator could set `AUTH_CACHE_TTL_MS=3600000` (1 hour), meaning revoked users retain access for up to an hour. There's no upper bound validation.
-
-Carried from DEFER-40.
+**Fix:** Use `t("networkError")` for the inline display as well.
 
 ---
 
-## SEC-6: `anti-cheat-monitor.tsx` stores event details in localStorage unencrypted [LOW/LOW]
+## SEC-3: Carried findings (unchanged)
 
-**File:** `src/components/exam/anti-cheat-monitor.tsx:41-63`
-
-Pending anti-cheat events are stored in localStorage as JSON. The `details` field contains element descriptions including text snippets from the page (line 209: `const text = (el.textContent ?? "").trim().slice(0, 80)`). While this is a client-side-only concern and localStorage is same-origin, it means exam content snippets could persist in localStorage after the exam.
-
-**Fix:** Clear localStorage keys on exam completion or use sessionStorage instead. Low severity since exam content is visible to the student anyway.
-
----
-
-## SEC-7: `sanitizeHtml` allows `img` tags with root-relative src -- potential for local resource enumeration [LOW/LOW]
-
-**File:** `src/lib/security/sanitize-html.ts:11-14`
-
-```ts
-const isRootRelative = src.startsWith("/") && !src.startsWith("//");
-if (!isRootRelative) { node.removeAttribute("src"); }
-```
-
-Root-relative image URLs are allowed. An admin could inject `<img src="/api/v1/admin/backup">` to check if the endpoint exists (though the response wouldn't render as an image). This is extremely low risk since only admins can set problem descriptions, and CSP's `img-src 'self' data: blob:` already restricts to same-origin.
-
-**Fix:** Consider restricting img src to only allow specific patterns (e.g., `/api/v1/files/`). Very low priority.
+- SEC-3: `window.location.origin` for URL construction — covered by DEFER-24
+- SEC-4: Encryption plaintext fallback — covered by DEFER-39
+- SEC-5: `AUTH_CACHE_TTL_MS` has no upper bound — covered by DEFER-40
+- SEC-6: Anti-cheat localStorage persistence — covered by DEFER-48
+- SEC-7: `sanitizeHtml` root-relative img src — covered by DEFER-49
