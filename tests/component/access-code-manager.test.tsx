@@ -23,6 +23,7 @@ const translations: Record<string, string> = {
 
 vi.mock("next-intl", () => ({
   useTranslations: (_namespace: string) => (key: string) => translations[key] ?? key,
+  useLocale: () => "en",
 }));
 
 vi.mock("@/lib/api/client", () => ({

@@ -60,6 +60,7 @@ const translations: Record<string, string> = {
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => translations[key] ?? key,
+  useLocale: () => "en",
 }));
 
 vi.mock("sonner", () => ({

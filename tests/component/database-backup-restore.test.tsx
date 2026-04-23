@@ -53,6 +53,7 @@ vi.mock("next-intl", () => ({
           },
         }[namespace as "admin.settings" | "common"] as Record<string, string>
       )[key] ?? key,
+  useLocale: () => "en",
 }));
 
 vi.mock("@/lib/api/client", () => ({

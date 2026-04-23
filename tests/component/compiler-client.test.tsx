@@ -9,6 +9,7 @@ const { apiFetchMock } = vi.hoisted(() => ({
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string, values?: Record<string, string | number>) =>
     values?.defaultValue ?? key,
+  useLocale: () => "en",
 }));
 
 vi.mock("sonner", () => ({
