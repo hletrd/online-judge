@@ -138,9 +138,10 @@ export default function EditGroupDialog({ group }: { group: EditableGroup }) {
             <Select value={instructorId} onValueChange={(value) => setInstructorId(value ?? "")}>
               <SelectTrigger>
                 <SelectValue>
-                  {group.availableInstructors.find((instructor) => instructor.id === instructorId)
-                    ? `${group.availableInstructors.find((instructor) => instructor.id === instructorId)?.name} (${group.availableInstructors.find((instructor) => instructor.id === instructorId)?.username})`
-                    : t("selectInstructor")}
+                  {(() => {
+                    const selected = group.availableInstructors.find((instructor) => instructor.id === instructorId);
+                    return selected ? `${selected.name} (${selected.username})` : t("selectInstructor");
+                  })()}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
