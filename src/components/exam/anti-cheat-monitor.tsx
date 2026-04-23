@@ -258,8 +258,8 @@ export function AntiCheatMonitor({
 
   if (showPrivacyNotice) {
     return (
-      <Dialog open={true} onOpenChange={(open) => { if (!open) setShowPrivacyNotice(false); }}>
-        <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+      <Dialog open={true} onOpenChange={() => { /* prevent closing — notice must be accepted */ }} disablePointerDismissal>
+        <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShieldAlert className="size-5 text-muted-foreground" />
