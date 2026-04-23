@@ -217,8 +217,8 @@ export default function CreateProblemForm({
     try {
       const res = await apiFetch(`/api/v1/tags?q=${encodeURIComponent(query)}&limit=10`);
       if (res.ok) {
-        const data = await res.json();
-        setTagSuggestions(data.data ?? []);
+        const data = await res.json().catch(() => ({ data: [] }));
+        setTagSuggestions((data as { data?: unknown[] }).data ?? []);
       }
     } catch {
       // Tag suggestions are non-critical — log in development only.
@@ -329,12 +329,13 @@ export default function CreateProblemForm({
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "uploadFailed");
+        const errData = await res.json().catch(() => ({}));
+        throw new Error((errData as { error?: string }).error ?? "uploadFailed");
       }
 
-      const { data } = await res.json();
-      const markdown = `![${data.originalName}](${data.url})`;
+      const uploadData = await res.json().catch(() => ({ data: {} })) as { data?: { originalName?: string; url?: string } };
+      const { originalName, url } = uploadData.data ?? {};
+      const markdown = `![${originalName}](${url})`;
       setDescription((prev) => prev.replace(placeholder, markdown));
       toast.success(t("imageUploadSuccess"));
     } catch {
@@ -420,13 +421,13 @@ export default function CreateProblemForm({
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error || (isEditing ? "updateError" : "createError"));
+        const errData = await res.json().catch(() => ({}));
+        throw new Error((errData as { error?: string }).error || (isEditing ? "updateError" : "createError"));
       }
 
-      const data = await res.json();
+      const resultData = await res.json().catch(() => ({ data: {} })) as { data?: { id?: string } };
 
-      const nextProblemId = data.data?.id ?? initialProblem?.id;
+      const nextProblemId = resultData.data?.id ?? initialProblem?.id;
 
       toast.success(
         isEditing
