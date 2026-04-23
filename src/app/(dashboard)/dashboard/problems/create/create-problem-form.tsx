@@ -193,8 +193,8 @@ export default function CreateProblemForm({
       const imported: ProblemTestCaseDraft[] = [];
 
       for (const key of sortedKeys) {
-        const pair = fileMap.get(key)!;
-        if (pair.input === undefined || pair.output === undefined) continue;
+        const pair = fileMap.get(key);
+        if (!pair || pair.input === undefined || pair.output === undefined) continue;
         imported.push({
           ...createEmptyProblemTestCaseDraft(),
           input: pair.input,
