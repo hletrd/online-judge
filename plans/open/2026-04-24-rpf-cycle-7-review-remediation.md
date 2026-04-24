@@ -3,7 +3,7 @@
 **Date:** 2026-04-24
 **Cycle:** 7/100 (new RPF loop)
 **Base commit:** b0666b7a (cycle 6 — no new findings)
-**HEAD commit:** b0666b7a
+**HEAD commit:** ee569c55
 
 ## Findings to Address
 
@@ -81,3 +81,7 @@ Per `CLAUDE.md` and `.context/development/conventions.md`:
 ## Progress Log
 
 - 2026-04-24: Plan created. 3 tasks scheduled (2 MEDIUM, 1 LOW). 5 new deferred items. Active deferred count: 28.
+- 2026-04-24: TASK-1 COMPLETED — Fixed `/api/v1/time` to use `getDbNowMs()` instead of `Date.now()`. Added `dynamic = "force-dynamic"`. Commit `6afc157e`.
+- 2026-04-24: TASK-2 COMPLETED — Created migration `0013_null_recruiting_tokens.sql` to NULL out plaintext tokens and drop `ri_token_idx`. Verified no code reads `recruitingInvitations.token` for auth. Commit `9934372f`.
+- 2026-04-24: TASK-3 COMPLETED — Added `logger.warn` for decrypt plaintext fallback in production. Commit `6700b145`.
+- 2026-04-24: ALL GATES PASS — eslint: 0 errors. tsc --noEmit: 0 errors. vitest: 2121/2121 passing. next build: success. All commits pushed.
