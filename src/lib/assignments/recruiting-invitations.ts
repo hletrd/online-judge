@@ -22,6 +22,14 @@ type RecruitingInvitationExecutor =
 
 const ACCOUNT_PASSWORD_RESET_REQUIRED_KEY = "accountPasswordResetRequired";
 
+/**
+ * Shared SQL expression: a pending invitation is expired when its
+ * expiresAt is before NOW(). Computed server-side using DB time so
+ * the client doesn't need to compare raw timestamps against the
+ * browser clock.
+ */
+const isExpiredExpr = sql<boolean>`CASE WHEN ${recruitingInvitations.status} = 'pending' AND ${recruitingInvitations.expiresAt} IS NOT NULL AND ${recruitingInvitations.expiresAt} < NOW() THEN true ELSE false END`;
+
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
@@ -125,7 +133,7 @@ export async function getRecruitingInvitations(
       // Compute isExpired server-side using DB time so the client doesn't need
       // to compare raw timestamps against the browser clock. A pending
       // invitation is expired when its expiresAt is before NOW().
-      isExpired: sql<boolean>`CASE WHEN ${recruitingInvitations.status} = 'pending' AND ${recruitingInvitations.expiresAt} IS NOT NULL AND ${recruitingInvitations.expiresAt} < NOW() THEN true ELSE false END`,
+      isExpired: isExpiredExpr,
       redeemedAt: recruitingInvitations.redeemedAt,
       ipAddress: recruitingInvitations.ipAddress,
       createdBy: recruitingInvitations.createdBy,
@@ -150,7 +158,7 @@ export async function getRecruitingInvitation(id: string) {
       metadata: recruitingInvitations.metadata,
       userId: recruitingInvitations.userId,
       expiresAt: recruitingInvitations.expiresAt,
-      isExpired: sql<boolean>`CASE WHEN ${recruitingInvitations.status} = 'pending' AND ${recruitingInvitations.expiresAt} IS NOT NULL AND ${recruitingInvitations.expiresAt} < NOW() THEN true ELSE false END`,
+      isExpired: isExpiredExpr,
       redeemedAt: recruitingInvitations.redeemedAt,
       ipAddress: recruitingInvitations.ipAddress,
       createdBy: recruitingInvitations.createdBy,
@@ -174,7 +182,7 @@ export async function getRecruitingInvitationByToken(token: string) {
       metadata: recruitingInvitations.metadata,
       userId: recruitingInvitations.userId,
       expiresAt: recruitingInvitations.expiresAt,
-      isExpired: sql<boolean>`CASE WHEN ${recruitingInvitations.status} = 'pending' AND ${recruitingInvitations.expiresAt} IS NOT NULL AND ${recruitingInvitations.expiresAt} < NOW() THEN true ELSE false END`,
+      isExpired: isExpiredExpr,
       redeemedAt: recruitingInvitations.redeemedAt,
       ipAddress: recruitingInvitations.ipAddress,
       createdBy: recruitingInvitations.createdBy,
