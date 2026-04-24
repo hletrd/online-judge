@@ -70,7 +70,8 @@ export function GroupInstructorsManager({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error((data as { error?: string }).error ?? t("addInstructorFailed"));
+        console.error(data);
+        toast.error(t("addInstructorFailed"));
         return;
       }
       const user = availableUsers.find((u) => u.id === selectedUserId);
