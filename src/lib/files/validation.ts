@@ -37,9 +37,20 @@ export function validateFileSize(
 }
 
 /**
+ * Maximum decompressed size for a single ZIP entry.
+ * Prevents a single entry from consuming excessive memory during validation,
+ * even when the total archive size is below the overall limit.
+ */
+const MAX_SINGLE_ENTRY_DECOMPRESSED_BYTES = 50 * 1024 * 1024; // 50 MB
+
+/**
  * Validate the total decompressed size of a ZIP buffer to prevent ZIP bombs.
  * Iterates all entries and sums their uncompressed sizes. Returns an error
  * message key if the total exceeds maxDecompressedSizeBytes, null otherwise.
+ *
+ * Per-entry size cap prevents OOM from a ZIP bomb with many small entries
+ * that each decompress to a large payload — the total check alone would
+ * allow up to 10,000 entries * 50 MB each before triggering.
  */
 export async function validateZipDecompressedSize(
   buffer: Buffer,
@@ -56,6 +67,11 @@ export async function validateZipDecompressedSize(
       // so we use async() with a size accumulator. Decompress entry by
       // entry and abort early if the running total exceeds the limit.
       const content = await entry.async("uint8array");
+      // Per-entry size cap: reject any single entry that decompresses beyond
+      // this limit to prevent OOM before the total accumulator can catch it.
+      if (content.length > MAX_SINGLE_ENTRY_DECOMPRESSED_BYTES) {
+        return "zipDecompressedSizeExceeded";
+      }
       totalUncompressed += content.length;
       if (totalUncompressed > maxDecompressedSizeBytes) {
         return "zipDecompressedSizeExceeded";
