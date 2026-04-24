@@ -106,7 +106,6 @@ describe("isJudgeAuthorized", () => {
 describe("isJudgeAuthorizedForWorker", () => {
   it("uses the worker-specific secret hash when present", async () => {
     judgeWorkerFindFirstMock.mockResolvedValueOnce({
-      secretToken: null,
       secretTokenHash: hashToken("worker-secret-token"),
     });
 
@@ -119,7 +118,6 @@ describe("isJudgeAuthorizedForWorker", () => {
 
   it("rejects a mismatched token when hash is stored without falling back to shared token", async () => {
     judgeWorkerFindFirstMock.mockResolvedValueOnce({
-      secretToken: null,
       secretTokenHash: hashToken("worker-secret-token"),
     });
 
@@ -132,7 +130,7 @@ describe("isJudgeAuthorizedForWorker", () => {
   });
 
   it("returns workerSecretNotMigrated when worker has no hash stored", async () => {
-    judgeWorkerFindFirstMock.mockResolvedValueOnce({ secretToken: "worker-secret-token", secretTokenHash: null });
+    judgeWorkerFindFirstMock.mockResolvedValueOnce({ secretTokenHash: null });
 
     const request = makeRequest("Bearer worker-secret-token");
 
@@ -143,7 +141,7 @@ describe("isJudgeAuthorizedForWorker", () => {
   });
 
   it("rejects a mismatched worker-specific secret without falling back to the shared token", async () => {
-    judgeWorkerFindFirstMock.mockResolvedValueOnce({ secretToken: "worker-secret-token", secretTokenHash: null });
+    judgeWorkerFindFirstMock.mockResolvedValueOnce({ secretTokenHash: null });
 
     const request = makeRequest(`Bearer ${EXPECTED_TOKEN}`);
 
@@ -164,7 +162,7 @@ describe("isJudgeAuthorizedForWorker", () => {
   });
 
   it("rejects requests with no bearer token", async () => {
-    judgeWorkerFindFirstMock.mockResolvedValueOnce({ secretToken: "worker-secret-token" });
+    judgeWorkerFindFirstMock.mockResolvedValueOnce({ secretTokenHash: hashToken("worker-secret-token") });
 
     await expect(isJudgeAuthorizedForWorker(makeRequest(), "worker-1")).resolves.toEqual({
       authorized: false,
@@ -172,10 +170,9 @@ describe("isJudgeAuthorizedForWorker", () => {
     });
   });
 
-  it("uses hash for comparison even when plaintext is also stored", async () => {
-    // When both secretTokenHash and secretToken exist, hash is used for comparison
+  it("uses hash for comparison when secretTokenHash is stored", async () => {
+    // Hash is the sole auth mechanism now (plaintext secretToken column dropped)
     judgeWorkerFindFirstMock.mockResolvedValueOnce({
-      secretToken: "wrong-plaintext-secret",
       secretTokenHash: hashToken("correct-hashed-secret"),
     });
 

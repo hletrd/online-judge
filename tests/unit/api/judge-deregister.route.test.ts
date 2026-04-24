@@ -115,7 +115,7 @@ describe("POST /api/v1/judge/deregister", () => {
   });
 
   it("returns 403 when worker secret is invalid", async () => {
-    findFirstMock.mockResolvedValue({ secretToken: "correct-secret" });
+    findFirstMock.mockResolvedValue({ secretTokenHash: "hashed:wrong-secret" });
 
     const response = await POST(
       makeRequest({ workerId: "w1", workerSecret: "wrong-secret-x" })
@@ -125,7 +125,7 @@ describe("POST /api/v1/judge/deregister", () => {
   });
 
   it("accepts a hashed worker secret during deregistration", async () => {
-    findFirstMock.mockResolvedValue({ secretToken: null, secretTokenHash: "hashed:secret-abc" });
+    findFirstMock.mockResolvedValue({ secretTokenHash: "hashed:secret-abc" });
 
     const response = await POST(
       makeRequest({ workerId: "worker-1", workerSecret: "secret-abc" })

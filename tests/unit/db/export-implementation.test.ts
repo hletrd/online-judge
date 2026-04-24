@@ -34,9 +34,8 @@ describe("exportDatabase implementation guards", () => {
     expect(source).toContain('users: new Set(["passwordHash"])');
     expect(source).toContain('sessions: new Set(["sessionToken"])');
     expect(source).toContain('apiKeys: new Set(["encryptedKey"])');
-    expect(source).toContain('judgeWorkers: new Set(["secretToken", "secretTokenHash", "judgeClaimToken"])');
-    expect(source).toContain('recruitingInvitations: new Set(["token", "tokenHash"])');
-    expect(source).toContain('contestAccessTokens: new Set(["token"])');
+    expect(source).toContain('judgeWorkers: new Set(["secretTokenHash", "judgeClaimToken"])');
+    expect(source).toContain('recruitingInvitations: new Set(["tokenHash"])');
     expect(source).toContain("const redactionMode = getExportRedactionMode(options.sanitize)");
   });
 

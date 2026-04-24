@@ -236,7 +236,7 @@ export interface MockWorkerRow {
   labels: string[];
   status: "online" | "offline" | "stale";
   alias: string | null;
-  secretToken: string | null;
+  secretToken: string | null; // legacy — column dropped in migration 0020
   activeTasks: number;
   registeredAt: number;
   lastHeartbeatAt: number | null;
@@ -261,7 +261,7 @@ export function createMockWorkerRow(
     labels: [],
     status: "online",
     alias: null,
-    secretToken: null,
+    secretToken: null, // legacy — column dropped in migration 0020
     activeTasks: 0,
     registeredAt: Date.now(),
     lastHeartbeatAt: Date.now(),

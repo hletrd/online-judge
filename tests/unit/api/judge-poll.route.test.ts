@@ -366,7 +366,6 @@ describe("POST /api/v1/judge/claim", () => {
         makeSelectChain([
           {
             status: "online",
-            secretToken: null,
             secretTokenHash: "hashed:worker-secret",
           },
         ])

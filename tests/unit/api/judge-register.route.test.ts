@@ -114,7 +114,6 @@ describe("POST /api/v1/judge/register", () => {
 
     expect(response.status).toBe(200);
     const valuesArg = valuesMock.mock.calls[0]?.[0];
-    expect(valuesArg.secretToken).toBeNull();
     expect(valuesArg.secretTokenHash).toBe(`hashed:${payload.data.workerSecret}`);
     expect(valuesArg.secretTokenHash).not.toBe(payload.data.workerSecret);
   });
