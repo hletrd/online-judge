@@ -37,3 +37,17 @@ export async function getDbNowUncached(): Promise<Date> {
   }
   return row.now;
 }
+
+/**
+ * Fetch the current time from the PostgreSQL server as milliseconds since epoch.
+ *
+ * Convenience wrapper for the common pattern `(await getDbNowUncached()).getTime()`.
+ * Use this instead of `Date.now()` in any server-side code that compares
+ * timestamps against DB-stored values (rate limits, claim times, deadlines, etc.)
+ * to avoid clock skew between the app server and the database server.
+ *
+ * @see getDbNowUncached for the underlying Date-returning version
+ */
+export async function getDbNowMs(): Promise<number> {
+  return (await getDbNowUncached()).getTime();
+}
