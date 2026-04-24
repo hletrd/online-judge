@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-24
 **Source:** `.context/reviews/rpf-cycle-18b-aggregate.md`
-**Status:** In Progress
+**Status:** In Progress (M1, M2, L1 done)
 
 ## Scope
 
@@ -48,9 +48,7 @@ No review finding is silently dropped. No new refactor-only work is added under 
   3. When enabled, log an additional info message noting the in-process pruners are preferred
   4. Add a test for the 410 response when disabled
   5. Verify all gates pass
-- **Status:** TODO
-
-### L1: Fix proxy auth cache stale entry accumulation (AGG-6)
+- **Status:** DONE — Commit `a8592451`
 
 - **Source:** AGG-6 (F6)
 - **Severity / confidence:** LOW / LOW
@@ -62,7 +60,7 @@ No review finding is silently dropped. No new refactor-only work is added under 
   2. Iterate the cache and delete entries where `expiresAt <= Date.now()`
   3. Only then check if size >= max and evict oldest
   4. Verify all gates pass
-- **Status:** TODO
+- **Status:** DONE — Commit `44983044`
 
 ---
 
@@ -114,3 +112,4 @@ All DEFER-1 through DEFER-72 from prior cycle plans carry forward unchanged.
 ## Progress log
 
 - 2026-04-24: Plan created from RPF cycle 18b aggregate review. 3 new tasks (M1, M2, L1). 3 new deferred items (DEFER-73 through DEFER-75). All findings from the aggregate review are either scheduled for implementation or explicitly deferred.
+- 2026-04-24: M1 DONE (fd750e60 — clarified flushAuditBuffer re-buffer ordering + added test, original code was correct). M2 DONE (a8592451 — gate deprecated cleanup endpoint behind ENABLE_CRON_CLEANUP, returns 410 Gone by default). L1 DONE (44983044 — clean up expired proxy auth cache entries before size check). All gates pass: eslint (0 errors), tsc (0 errors), vitest (298/298 files, 2139/2139 tests), next build (success).
