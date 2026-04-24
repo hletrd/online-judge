@@ -184,7 +184,10 @@ let _refreshing = false;
 
 /** Call after admin updates settings to force immediate reload. */
 export function invalidateSettingsCache(): void {
-  cached = null;
+  // Preserve the previous cached value so that concurrent requests between
+  // invalidation and async reload completion still see the last-known settings
+  // rather than falling back to hardcoded defaults. Setting cachedAt = 0
+  // forces the next getConfiguredSettings() call to trigger an async reload.
   cachedAt = 0;
 }
 
