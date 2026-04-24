@@ -114,7 +114,6 @@ export async function POST(request: NextRequest) {
         resourceLabel: submission.id,
         summary: `Marked submission ${submission.id} as ${status}`,
         details: {
-          claimTokenPresent: true,
           previousStatus: submission.status,
           status,
         },
