@@ -43,9 +43,8 @@ export async function createRecruitingInvitation(params: {
     .insert(recruitingInvitations)
     .values({
       assignmentId: params.assignmentId,
-      // Do not persist the plaintext token; only the hash goes to the DB.
-      // The caller still sees the token below via the returned object.
-      token: null,
+      // Only the hash is persisted to the DB; the plaintext token is
+      // returned to the caller via the attached object below.
       tokenHash: hashToken(token),
       candidateName: params.candidateName,
       candidateEmail: params.candidateEmail ?? null,
@@ -73,8 +72,7 @@ export async function bulkCreateRecruitingInvitations(params: {
       token,
       insertValues: {
         assignmentId: params.assignmentId,
-        // plaintext stays in memory for the returned response only
-        token: null as string | null,
+        // Only the hash is persisted; plaintext stays in memory for the response.
         tokenHash: hashToken(token),
         candidateName: inv.candidateName,
         candidateEmail: inv.candidateEmail ?? null,

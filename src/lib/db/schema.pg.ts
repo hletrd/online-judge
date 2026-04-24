@@ -934,10 +934,8 @@ export const recruitingInvitations = pgTable(
     assignmentId: text("assignment_id")
       .notNull()
       .references(() => assignments.id, { onDelete: "cascade" }),
-    // Plaintext token is deprecated: kept nullable for migration compatibility.
-    // Callers receive the plaintext only once from the creation server action;
-    // DB persistence relies on tokenHash alone for lookups.
-    token: text("token"),
+    // Plaintext token removed: callers receive the plaintext only once from
+    // the creation server action; DB persistence relies on tokenHash alone.
     tokenHash: varchar("token_hash", { length: 64 }),
     candidateName: text("candidate_name").notNull(),
     candidateEmail: text("candidate_email"),
@@ -958,7 +956,6 @@ export const recruitingInvitations = pgTable(
       .$defaultFn(() => new Date()),
   },
   (table) => [
-    uniqueIndex("ri_token_idx").on(table.token),
     uniqueIndex("ri_token_hash_idx").on(table.tokenHash),
     index("ri_assignment_idx").on(table.assignmentId),
     index("ri_status_idx").on(table.status),
