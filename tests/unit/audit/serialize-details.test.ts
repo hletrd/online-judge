@@ -152,4 +152,50 @@ describe("serializeDetails", () => {
     expect(parsed.nil).toBeNull();
     expect(parsed.arr).toEqual([1, 2, 3]);
   });
+
+  // Boundary tests for truncateObject
+  it("handles nested objects that individually fit but together exceed budget", () => {
+    // Each sub-object is small, but together they exceed the budget
+    const obj: Record<string, unknown> = {};
+    for (let i = 0; i < 100; i++) {
+      obj[`field_${i}`] = { data: "x".repeat(100) };
+    }
+    const result = serializeDetails(obj as JsonValue);
+    expect(result).not.toBeNull();
+    expect(() => JSON.parse(result!)).not.toThrow();
+    expect(result!.length).toBeLessThanOrEqual(MAX_JSON_LENGTH);
+  });
+
+  it("handles empty arrays and objects within nested structures", () => {
+    const result = serializeDetails({
+      emptyArr: [],
+      emptyObj: {},
+      nested: { inner: [] },
+    });
+    expect(result).not.toBeNull();
+    const parsed = JSON.parse(result!);
+    expect(parsed.emptyArr).toEqual([]);
+    expect(parsed.emptyObj).toEqual({});
+    expect(parsed.nested.inner).toEqual([]);
+  });
+
+  it("handles non-ASCII string values (multi-byte UTF-8)", () => {
+    // Korean and emoji characters are multi-byte in UTF-8
+    const koreanText = "한글 테스트".repeat(200);
+    const result = serializeDetails({ text: koreanText });
+    expect(result).not.toBeNull();
+    expect(() => JSON.parse(result!)).not.toThrow();
+    expect(result!.length).toBeLessThanOrEqual(MAX_JSON_LENGTH);
+    // The parsed value should be a valid string (possibly truncated)
+    const parsed = JSON.parse(result!);
+    expect(typeof parsed.text).toBe("string");
+  });
+
+  it("handles undefined values in arrays gracefully", () => {
+    // JSON.stringify converts undefined in arrays to null
+    const arr: (string | undefined)[] = ["a", undefined, "c"];
+    const result = serializeDetails({ items: arr as JsonValue[] });
+    expect(result).not.toBeNull();
+    expect(() => JSON.parse(result!)).not.toThrow();
+  });
 });
