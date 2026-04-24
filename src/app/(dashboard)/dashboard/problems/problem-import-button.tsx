@@ -35,13 +35,19 @@ export function ProblemImportButton() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        toast.error((err as { error?: string }).error ?? t("importFailed"));
+        console.error(err);
+        toast.error(t("importFailed"));
         return;
       }
 
-      const result = await res.json().catch(() => ({ data: {} }));
+      const result = await res.json().catch(() => ({ data: {} })) as { data?: { id?: string } };
       toast.success(t("importSuccess"));
-      router.push(`/dashboard/problems/${result.data.id}`);
+      const problemId = result.data?.id;
+      if (problemId) {
+        router.push(`/dashboard/problems/${problemId}`);
+      } else {
+        router.push("/dashboard/problems");
+      }
     } catch {
       toast.error(t("importFailed"));
     }
