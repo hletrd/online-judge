@@ -30,7 +30,9 @@ export default function ContestsLayout({ children }: { children: React.ReactNode
       if (!anchor.hasAttribute("data-full-navigate")) return;
 
       const href = anchor.getAttribute("href");
-      if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("http") || href.startsWith("javascript:") || href.startsWith("data:")) return;
+      // Only allow relative paths (internal routes). Reject protocol-relative,
+      // absolute, and any scheme-prefixed URLs as a defense-in-depth measure.
+      if (!href || !href.startsWith("/") || href.startsWith("//")) return;
 
       // Force full page navigation for links that need it
       me.preventDefault();
