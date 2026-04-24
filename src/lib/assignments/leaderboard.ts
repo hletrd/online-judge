@@ -4,6 +4,7 @@ import type { LeaderboardEntry } from "./contest-scoring";
 import type { ScoringModel } from "@/types";
 import { TERMINAL_SUBMISSION_STATUSES_SQL_LIST } from "@/lib/submissions/status";
 import { buildIoiLatePenaltyCaseExpr } from "./scoring";
+import { getDbNowMs } from "@/lib/db-time";
 
 type AssignmentFreezeRow = {
   freezeLeaderboardAt: Date | null;
@@ -49,7 +50,10 @@ export async function computeLeaderboard(
 
   const freezeAt = meta?.freezeLeaderboardAt ? new Date(meta.freezeLeaderboardAt).getTime() : null;
   const startsAt = meta?.startsAt ? new Date(meta.startsAt).getTime() : null;
-  const nowMs = Date.now();
+  // Use DB server time for the freeze boundary check to avoid clock skew
+  // between app and DB servers, consistent with other contest boundary checks
+  // (anti-cheat route, submissions, assignment PATCH).
+  const nowMs = await getDbNowMs();
   const isFrozen = !isInstructorView && freezeAt != null && nowMs >= freezeAt;
 
   if (isFrozen && freezeAt) {
