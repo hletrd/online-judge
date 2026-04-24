@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { logger } from "@/lib/logger";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12; // 96-bit IV recommended for GCM
@@ -77,6 +78,12 @@ export function encrypt(plaintext: string): string {
  */
 export function decrypt(encoded: string): string {
   if (!encoded.startsWith("enc:")) {
+    if (process.env.NODE_ENV === "production") {
+      logger.warn(
+        { prefix: encoded.slice(0, 10) },
+        "[encryption] decrypt() called on non-encrypted value — possible data tampering or incomplete migration"
+      );
+    }
     return encoded;
   }
 
