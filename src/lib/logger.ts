@@ -20,6 +20,8 @@ const REDACT_PATHS = [
   "refresh_token",
   "id_token",
   "encryptedKey",
+  "hcaptchaSecret",
+  "body.hcaptchaSecret",
   "authToken",
   "runnerAuthToken",
 ];
