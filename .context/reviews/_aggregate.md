@@ -1,32 +1,35 @@
-# RPF Cycle 9 (Loop Cycle 9/100) — Aggregate Review
+# RPF Cycle 10 Aggregate Review — JudgeKit (Loop 10/100)
 
 **Date:** 2026-04-24
-**Base commit:** 524d59de (cycle 8 — no new findings)
-**HEAD commit:** 524d59de
-**Review artifacts:** code-reviewer, security-reviewer, architect, test-engineer, perf-reviewer, critic, debugger, verifier, tracer, designer — 10 lanes. (Document-specialist lane merged into code-reviewer; no separate doc findings.)
+**HEAD commit:** b6151c2a (cycle 9 — no new findings)
+**Reviewers:** code-reviewer, security-reviewer, perf-reviewer, architect, critic, debugger, verifier, test-engineer, tracer, designer
 
-## Deduped Findings (sorted by severity then signal)
+## Summary
 
-**No new production-code findings this cycle.** All 10 review perspectives confirm: no source code has changed since cycle 8, and the codebase remains in a stable, mature state.
+**No new findings this cycle.** All 10 review perspectives found no new issues. No source code has changed since cycle 9. The codebase remains in a stable, mature state.
 
-## Verified Prior Fixes (from old loop, now confirmed in current codebase)
+### Refinement to Deferred Item #1
+
+Code-reviewer identified that `atomicConsumeRateLimit()` in `src/lib/security/api-rate-limit.ts` uses `Date.now()` (line 56) while `checkServerActionRateLimit()` in the same file uses `getDbNowUncached()` (line 223). This cross-function time source inconsistency means rate limit rows written by one function could be misinterpreted by the other if app-server and DB-server clocks diverge. This refines the existing deferred item #1 (which noted `Date.now()` in the hot path) by making the impact more concrete — it is not just clock skew vs DB round-trip, but also internal consistency within the module. No change to severity (MEDIUM) or recommended fix (use `getDbNowUncached()`).
+
+### Cross-Agent Agreement
+
+No finding was flagged by multiple agents this cycle.
+
+## Verified Prior Fixes
 
 | ID | Finding | Status | Evidence |
 |----|---------|--------|----------|
-| F1 | `json_extract()` SQLite function in PostgreSQL path | FIXED | Grep returns no matches; audit-logs uses LIKE pattern |
-| F2 | `DELETE ... LIMIT` invalid PostgreSQL syntax | FIXED | All batched deletes use `ctid IN (SELECT ctid ... LIMIT)` |
-| CR9-CR1 | Auth field mapping duplication across 3 locations | FIXED | `mapUserToAuthFields()` centralizes mapping |
-| CR9-SR1 | SSE re-auth race — fire-and-forget allows one more event | FIXED | Re-auth awaits before processing; `return` prevents sync path |
-| CR9-SR3 | Tags route lacks rate limiting | FIXED | Tags route uses `createApiHandler` with `rateLimit: "tags:read"` |
+| F1 | `json_extract()` SQLite function in PostgreSQL path | FIXED | Grep returns no matches |
+| F2 | `DELETE ... LIMIT` invalid PostgreSQL syntax | FIXED | All use `ctid IN (SELECT ctid ... LIMIT)` |
+| CR9-CR1 | Auth field mapping duplication across 3 locations | FIXED | `mapUserToAuthFields()` centralizes |
+| CR9-SR1 | SSE re-auth race — fire-and-forget allows one more event | FIXED | Re-auth awaits before processing |
+| CR9-SR3 | Tags route lacks rate limiting | FIXED | Uses `createApiHandler` with `rateLimit: "tags:read"` |
 
-## Cross-Agent Agreement
+## Deferred Items Carried Forward
 
-All 10 agents independently confirmed: **no new findings**. This is the second consecutive cycle with zero new findings (cycles 8 and 9).
-
-## Deferred Items (carried from cycle 4 — UNCHANGED)
-
-All 21 deferred items from the cycle 4 aggregate are carried forward intact. No additions, no removals, no severity downgrades. Full table maintained in `plans/open/2026-04-24-rpf-cycle-3-review-remediation.md`.
+The 21-item deferred registry from cycle 4 is carried forward intact. No additions, no removals, no severity downgrades.
 
 ## Agent Failures
 
-None. All 10 review lanes completed successfully.
+None. All 10 review agents completed successfully.
