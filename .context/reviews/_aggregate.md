@@ -1,26 +1,39 @@
-# RPF Cycle 3 (Loop Cycle 3/100) — Aggregate Review
+# RPF Cycle 4 (Loop Cycle 4/100) — Aggregate Review
 
 **Date:** 2026-04-24
-**Base commit:** 1669501d (cycle 2 multi-agent review — no new findings)
-**HEAD commit:** 1669501d
+**Base commit:** a717b371 (cycle 3 multi-agent review — no new findings)
+**HEAD commit:** a717b371
 **Review artifacts:** code-reviewer, perf-reviewer, security-reviewer, architect, critic, verifier, debugger, test-engineer, tracer, designer (source-level fallback), document-specialist — 11 lanes.
 
 ## Deduped Findings (sorted by severity then signal)
 
-**No new production-code findings this cycle.** All 11 review perspectives agree: the only source code change since cycle 2 is the `SKIP_INSTRUMENTATION_SYNC` flag in `src/lib/judge/sync-language-configs.ts`, which is well-documented, production-safe (strict-literal `"1"` check, loud warning log, not present in production configs), and architecturally appropriate.
+**No new production-code findings this cycle.** All 11 review perspectives confirm: no source code has changed since cycle 3, and the codebase remains in a stable, mature state.
+
+### New Observations (Non-Code, Process Improvements)
+
+**ARCH-4 (architect lane): No lint guard against `Date.now()` in DB transactions** [LOW/MEDIUM]
+- The `Date.now()` clock-skew class of bugs keeps recurring because there is no linting or compile-time guard against it. A custom ESLint rule or wrapper function that enforces DB time would prevent future regressions.
+- This is not a code bug but a systemic risk observation. No code change required.
+- Confidence: MEDIUM
+
+**TE-2 (test-engineer lane): Missing unit test for judge claim route `getDbNowUncached()` usage** [LOW/MEDIUM]
+- The recently-fixed judge claim route (line 126) now uses `getDbNowUncached()` but has no targeted test verifying this. A regression test would catch if `Date.now()` is re-introduced.
+- Currently tested indirectly through API route tests.
+- Confidence: MEDIUM
 
 ## Cross-Agent Agreement
 
 All 11 reviewers confirm:
 1. No new production-code findings this cycle.
-2. All prior fixes from cycles 37-55 remain intact (non-null assertion removals, DB-time usage, deterministic leaderboard sorts, token-invalidation bypass fix).
-3. The codebase is in a stable, mature state.
-4. The `SKIP_INSTRUMENTATION_SYNC` short-circuit is production-safe (strict-literal `"1"`, loud warning log, not present in `.env.deploy.algo` or `docker-compose.production.yml`).
-5. Runtime UI/UX review remains sandbox-blocked pending a Docker-enabled sandbox or managed-Postgres sidecar.
+2. No source code has changed since cycle 3.
+3. The judge claim route `Date.now()` fix (CR-1 from cycle 48) is verified intact — line 126 now uses `getDbNowUncached()`.
+4. All prior fixes from cycles 37-55 remain intact (non-null assertion removals, DB-time usage, deterministic leaderboard sorts, token-invalidation bypass fix).
+5. The codebase is in a stable, mature state.
+6. Runtime UI/UX review remains sandbox-blocked pending a Docker-enabled sandbox or managed-Postgres sidecar.
 
-## Carry-Over Deferred Items (unchanged from cycle 2 aggregate)
+## Carry-Over Deferred Items (unchanged from cycle 3 aggregate)
 
-Total: **19+1 deferred items** — all carried forward. Unchanged list:
+Total: **21 deferred items** — all carried forward. Unchanged list:
 
 - **AGG-2 (cycle 45):** `atomicConsumeRateLimit` uses `Date.now()` in hot path — MEDIUM/MEDIUM, deferred.
 - **AGG-2:** Leaderboard freeze uses `Date.now()` — LOW/LOW, deferred.
@@ -42,10 +55,14 @@ Total: **19+1 deferred items** — all carried forward. Unchanged list:
 - **TE-1 (cycle 51):** Missing integration test for concurrent recruiting token redemption — LOW/MEDIUM, deferred (requires DB).
 - **I18N-JA-ASPIRATIONAL (cycle 55):** `messages/ja.json` absent — LOW/LOW, deferred.
 - **DES-RUNTIME-{1..5} (cycle 55):** blocked-by-sandbox runtime findings — severities LOW..HIGH-if-violated, deferred under documented exit criterion.
+- **#21: vitest unit parallel-contention flakes** — LOW/MEDIUM, deferred.
 
-## Deferred Finding (Carried from Cycle 4)
+## New Items Added This Cycle
 
-- **#21: vitest unit parallel-contention flakes** — `tests/unit/api/submissions.route.test.ts:212-228` and other `it.each` parametrized API route tests. LOW/MEDIUM. Reason: sandbox CPU/IO contention under parallel vitest workers; tests pass cleanly in isolation (25/25 with `--no-file-parallelism`). Not a code bug. Exit criterion: tune `vitest.config.ts` pool, or run RPF loop in a higher-CPU sandbox.
+- **ARCH-4:** No lint guard against `Date.now()` in DB transactions — LOW/MEDIUM. Process improvement, not a code bug. Can be picked up when ESLint custom rules are next reviewed.
+- **TE-2:** Missing unit test for judge claim route `getDbNowUncached()` usage — LOW/MEDIUM. Regression test for recently-fixed clock-skew bug.
+
+**Total deferred items: 21 + 2 new = 23 entries.**
 
 ## AGENT FAILURES
 
@@ -53,4 +70,4 @@ None. All 11 reviewer lanes completed and wrote artifacts.
 
 ## Verified Fixes From Prior Cycles (All Still Intact)
 
-All fixes from cycles 37-55 remain intact. Spot-verified across multiple angles (code-quality, security, performance, debugger, test-engineer, architect).
+All fixes from cycles 37-55 remain intact. Spot-verified across multiple angles (code-quality, security, performance, debugger, test-engineer, architect, verifier, tracer).
