@@ -23,11 +23,14 @@ import { canManageContest } from "@/lib/assignments/contests";
 import { rawQueryOne } from "@/lib/db/queries";
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { TERMINAL_SUBMISSION_STATUSES_SQL_LIST } from "@/lib/submissions/status";
+import { buildIoiLatePenaltyCaseExpr } from "@/lib/assignments/scoring";
 
 type AssignmentAccessRow = {
   groupId: string;
   instructorId: string | null;
   examMode: string;
+  deadline: Date | null;
+  latePenalty: number | null;
 };
 
 type ContestStatsRow = {
@@ -44,7 +47,7 @@ export const GET = createApiHandler({
     const recruitingAccess = await getRecruitingAccessContext(user.id);
 
     const assignment = await rawQueryOne<AssignmentAccessRow>(
-      `SELECT a.group_id AS "groupId", g.instructor_id AS "instructorId", a.exam_mode AS "examMode"
+      `SELECT a.group_id AS "groupId", g.instructor_id AS "instructorId", a.exam_mode AS "examMode", a.deadline, a.late_penalty AS "latePenalty"
        FROM assignments a
        INNER JOIN groups g ON g.id = a.group_id
        WHERE a.id = @assignmentId`,
@@ -76,7 +79,13 @@ export const GET = createApiHandler({
       }
     }
 
-    // Compute all stats in a single query using CTEs to reduce DB round trips
+    // Compute all stats in a single query using CTEs to reduce DB round trips.
+    // Uses the same late-penalty scoring as the leaderboard (via
+    // buildIoiLatePenaltyCaseExpr) so stats are consistent with ranking data.
+    const deadlineSec = assignment.deadline ? Math.floor(new Date(assignment.deadline).getTime() / 1000) : null;
+    const latePenalty = assignment.latePenalty ?? 0;
+    const examMode = assignment.examMode ?? "none";
+
     const statsResult = await rawQueryOne<ContestStatsRow>(
       `WITH participants AS (
         SELECT COUNT(*)::int AS count FROM enrollments WHERE group_id = @groupId
@@ -85,8 +94,12 @@ export const GET = createApiHandler({
         SELECT
           s.user_id,
           s.problem_id,
-          MAX(s.score) AS best_score
+          MAX(
+            ${buildIoiLatePenaltyCaseExpr("s.score", "COALESCE(ap.points, 100)", "s.submitted_at", "es.personal_deadline")}
+          ) AS best_score
         FROM submissions s
+        INNER JOIN assignment_problems ap ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
+        LEFT JOIN exam_sessions es ON es.assignment_id = s.assignment_id AND es.user_id = s.user_id
         WHERE s.assignment_id = @assignmentId AND s.status IN (${TERMINAL_SUBMISSION_STATUSES_SQL_LIST})
         GROUP BY s.user_id, s.problem_id
       ),
@@ -114,7 +127,7 @@ export const GET = createApiHandler({
         (SELECT submitted_count FROM submission_stats) AS "submittedCount",
         (SELECT avg_score FROM submission_stats) AS "avgScore",
         (SELECT solved_count FROM solved_problems) AS "problemsSolvedCount"`,
-      { groupId: assignment.groupId, assignmentId }
+      { groupId: assignment.groupId, assignmentId, deadline: deadlineSec, latePenalty, examMode }
     );
 
     return apiSuccess({
