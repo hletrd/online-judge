@@ -1,37 +1,41 @@
-# RPF Cycle 2 — Architect
+# RPF Cycle 2 (loop cycle 2/100) — Architect
 
-**Date:** 2026-04-22
-**Base commit:** 14218f45
+**Date:** 2026-04-24
+**HEAD:** fab30962
+**Reviewer:** architect
 
-## Findings
+## Inventory of Reviewed Files
 
-### ARCH-1: Visibility-aware polling pattern duplicated across 6+ components — no shared hook [LOW/MEDIUM]
+- src/lib/compiler/execute.ts — Docker execution engine, concurrency, sandboxing
+- src/lib/docker/client.ts — Docker API wrapper, dual-path (local/remote)
+- src/lib/realtime/realtime-coordination.ts — PostgreSQL advisory locks, SSE slot management
+- src/app/api/v1/submissions/[id]/events/route.ts — SSE route, connection tracking
+- src/lib/data-retention.ts — data retention policy, legal hold
+- src/lib/db/import.ts — database import engine, TABLE_MAP
+- src/lib/security/api-rate-limit.ts — two-tier rate limiting
+- src/proxy.ts — middleware, CSP, auth cache
+- src/lib/auth/config.ts — NextAuth, JWT management
+- src/lib/auth/permissions.ts — access control layering
+- src/lib/submissions/visibility.ts — submission sanitization for viewer
+- src/lib/audit/node-shutdown.ts — graceful shutdown, audit flush
 
-**Files:**
-- `src/components/contest/contest-clarifications.tsx:87-111`
-- `src/components/contest/contest-announcements.tsx:71-95`
-- `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:247-270`
-- `src/components/contest/participant-anti-cheat-timeline.tsx:128-142`
-- `src/components/contest/leaderboard-table.tsx:250-265`
-- `src/components/contest/contest-replay.tsx:70-82`
+## New Findings
 
-**Description:** At least 6 components implement their own visibility-aware polling pattern with `document.addEventListener("visibilitychange", ...)` + `setInterval` + cleanup. While each has slight variations, the core logic (start interval when visible, clear when hidden, fetch on visibility change) is identical. This was deferred as DEFER-21 in cycle 28. The risk is that a bug fix in one component (e.g., adding backoff) would need to be manually replicated across all others.
+**No new findings this cycle.**
 
-**Fix:** Extract a `useVisibilityAwarePolling(fetchFn, intervalMs)` hook.
+## Architectural Observations (Re-verified)
 
-### ARCH-2: `copyToClipboard` imported via dynamic `await import()` in 5 components but static import in 2 — inconsistent import strategy [LOW/LOW]
+1. Layered access control — capabilities (coarse) -> group membership (medium) -> object ownership (fine). Recruiting candidates are a separate access tier.
+2. Dual-path Docker API — local/remote path abstraction is clean. Error sanitization in both paths.
+3. Compiler sandbox — Multi-layered: Docker security options + shell command validation + concurrency limiter.
+4. Audit system — Buffer-based with unref() timer. Graceful shutdown hooks.
+5. Data retention — Legal hold as process-level boolean. Simple and effective.
 
-**Files:**
-- Static: `src/components/code/copy-code-button.tsx:8`
-- Dynamic: `src/components/contest/access-code-manager.tsx:61`, `src/components/contest/recruiting-invitations-panel.tsx:183,208,310`, `src/app/(dashboard)/dashboard/admin/api-keys/api-keys-client.tsx:196,211`, `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:158`, `src/app/(dashboard)/dashboard/admin/files/file-management-client.tsx:97`
+## Carry-Over Confirmations
 
-**Description:** After the cycle 1 clipboard consolidation, most components use `const { copyToClipboard } = await import("@/lib/clipboard")` while `copy-code-button.tsx` uses a static import. The dynamic import is unnecessary here — `@/lib/clipboard` is a tiny module (37 lines) with no heavy dependencies. Dynamic imports add micro-overhead and make the code harder to grep.
+- ARCH-2: Stale-while-revalidate cache pattern duplication — LOW/LOW, deferred
+- ARCH-3: Manual routes duplicate createApiHandler boilerplate — MEDIUM/MEDIUM, deferred
 
-**Fix:** Use static imports across all components for consistency and bundle optimization.
+## Confidence
 
-## Verified Safe
-
-- `createApiHandler` provides consistent middleware pipeline for API routes
-- SSE events route has proper connection tracking and cleanup
-- Draft persistence architecture (useSyncExternalStore + debounced writes) is well-designed
-- Auth config uses Argon2id with timing-safe dummy hash
+HIGH — the architecture is sound, well-layered, and has good defense-in-depth.

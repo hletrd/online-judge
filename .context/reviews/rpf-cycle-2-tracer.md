@@ -1,34 +1,28 @@
-# RPF Cycle 2 — Tracer
+# RPF Cycle 2 (loop cycle 2/100) — Tracer
 
-**Date:** 2026-04-22
-**Base commit:** 14218f45
+**Date:** 2026-04-24
+**HEAD:** fab30962
+**Reviewer:** tracer
 
-## Findings
+## Causal Tracing Analysis
 
-### TR-1: Invitation link construction flow — `window.location.origin` trust chain [LOW/MEDIUM]
+### Traced Flows
 
-**Trace path:**
-1. `recruiting-invitations-panel.tsx:95` — `const baseUrl = typeof window !== "undefined" ? window.location.origin : ""`
-2. `recruiting-invitations-panel.tsx:181` — `const link = \`${baseUrl}/recruit/${token}\``
-3. `recruiting-invitations-panel.tsx:207` — `const url = \`${baseUrl}/recruit/${invitation.token}\``
-4. User copies link and shares it externally
+1. Login -> JWT -> Session -> Permission Check — No causal gap found.
+2. Submission -> SSE -> Judge -> Result — No causal gap found. All error paths handled.
+3. Docker Build -> Execute -> Cleanup — No causal gap found. Cleanup is comprehensive.
+4. Data Retention -> Legal Hold — No causal gap found. Legal hold correctly enforced.
 
-**Hypothesis 1 (confirmed):** In normal deployments, `window.location.origin` returns the correct origin and links are valid.
-**Hypothesis 2 (potential):** If the app is behind a misconfigured reverse proxy that doesn't properly override `X-Forwarded-Host`, `window.location.origin` could reflect an incorrect value. This is unlikely but not impossible given the existing RSC streaming bug workaround in `contests/layout.tsx` (which exists precisely because proxy header handling has been problematic).
-**Verdict:** Low risk in current deployment, but the trust chain is fragile. The server should be the authoritative source for the app's base URL.
+### Hypothesis Testing
 
-### TR-2: Expiry date min-value flow — timezone mismatch confirmed [MEDIUM/HIGH]
+- H1: Rate limiter could allow double-spend — DB is authoritative. No double-spend.
+- H2: SSE connection tracking could leak on double close — if (closed) return guard. No leak.
+- H3: Import could leave partial data — Single transaction with FK ordering. No partial data.
 
-**Trace path:**
-1. `recruiting-invitations-panel.tsx:407` — `min={new Date().toISOString().split("T")[0]}`
-2. Browser renders `<input type="date">` in local timezone
-3. User selects a date that may be blocked or allowed incorrectly
+## New Findings
 
-**Hypothesis (confirmed):** `new Date().toISOString()` returns UTC, but `<input type="date">` compares against local time. Users in timezones ahead of UTC may be blocked from selecting the current local date; users behind UTC may be allowed to select yesterday's date.
-**Verdict:** This is a concrete bug affecting Korean users (UTC+9) between midnight and 9 AM local time.
+**No new findings this cycle.**
 
-## Verified Safe
+## Confidence
 
-- Clipboard copy flow: all components now go through shared `copyToClipboard` utility with fallback
-- Contest layout navigation flow: only `data-full-navigate` links trigger hard navigation
-- Draft persistence flow: debounced writes + visibility-aware flushing + try/catch on removeItem
+HIGH — all causal chains are complete with no gaps.

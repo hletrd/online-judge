@@ -1,31 +1,36 @@
-# RPF Cycle 2 — Designer (UI/UX)
+# RPF Cycle 2 (loop cycle 2/100) — Designer (Source-Level Review)
 
-**Date:** 2026-04-22
-**Base commit:** 14218f45
+**Date:** 2026-04-24
+**HEAD:** fab30962
+**Reviewer:** designer
 
-## Findings
+Note: Runtime UI/UX review remains blocked pending a Docker-enabled sandbox or managed-Postgres sidecar. This review is source-level only.
 
-### DES-1: `contest-clarifications.tsx` shows raw UUID `userId` to participants — poor UX [LOW/MEDIUM]
+## UI/UX Source-Level Assessment
 
-**File:** `src/components/contest/contest-clarifications.tsx:257`
-**Description:** When a non-admin participant views clarifications from other users, the component displays `clarification.userId` (a raw UUID like `550e8400-e29b-41d4-a716-446655440000`). This is meaningless to users and breaks the mental model of "who asked this question." The current user's own clarifications show "Asked by me" which is good, but all other users' questions show a UUID.
-**Fix:** Requires backend change to include `userName` in the API response. Frontend should then display the resolved name.
+### Accessibility
 
-### DES-2: `contest-clarifications.tsx` uses native `<select>` element instead of project's `Select` component — inconsistent styling [LOW/LOW]
+1. Chat widget — role="log" and aria-label on messages container. aria-label on all interactive buttons. Error messages use role="alert". Typing indicator uses motion-safe:animate-bounce. Good.
+2. Form accessibility — Textarea has aria-label. Send button has aria-label. Disabled states properly convey inaccessibility. Good.
+3. Minimized badge — aria-label includes count information. Good.
+4. Missing: Textarea aria-label uses placeholder text — LOW/LOW, carry-over (DES-2).
 
-**File:** `src/components/contest/contest-clarifications.tsx:204-217`
-**Description:** The problem selector in the clarification form uses a native `<select>` element with Tailwind classes instead of the project's `Select`/`SelectTrigger`/`SelectContent`/`SelectItem` components used everywhere else (e.g., in `recruiting-invitations-panel.tsx`). This creates visual inconsistency — the native select has a different appearance, focus ring, and dropdown behavior compared to the Radix-based Select.
-**Fix:** Replace the native `<select>` with the project's `Select` component family.
+### Korean Typography (CLAUDE.md Compliance)
 
-### DES-3: `recruiting-invitations-panel.tsx` date input has no aria-label [LOW/LOW]
+All tracking-* utilities guarded with locale !== "ko" conditionals. globals.css has :lang(ko) rules. font-mono tracking-widest for access codes is safe. Compliant.
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:403-408`
-**Description:** The custom expiry date `<Input type="date">` has no `aria-label` or associated `<Label htmlFor>` attribute. Screen readers will announce it as "date" without context about what date it represents.
-**Fix:** Add `aria-label={t("expiryDate")}` or use a `Label` with `htmlFor`.
+### Responsive Design
 
-## Verified Safe
+Chat widget full-screen on mobile, fixed-size panel on desktop. Good.
 
-- Anti-cheat privacy notice now uses `<Button>` component (cycle 1 fix verified)
-- All form inputs in compiler-client have proper labels and aria attributes
-- Focus management in dialogs uses proper component patterns
-- Korean letter spacing rule is correctly applied — no custom tracking on Korean text
+### Loading/Empty/Error States
+
+Chat widget empty state, error state with role="alert". Loading skeletons present for dashboard pages. Good.
+
+## New Findings
+
+**No new findings this cycle.**
+
+## Confidence
+
+MEDIUM (source-level only, no runtime verification)

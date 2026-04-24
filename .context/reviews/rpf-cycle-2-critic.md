@@ -1,27 +1,30 @@
-# RPF Cycle 2 — Critic
+# RPF Cycle 2 (loop cycle 2/100) — Critic
 
-**Date:** 2026-04-22
-**Base commit:** 14218f45
+**Date:** 2026-04-24
+**HEAD:** fab30962
+**Reviewer:** critic
 
-## Findings
+## Multi-Perspective Critique
 
-### CRI-1: `recruiting-invitations-panel.tsx` timezone bug is the highest-priority new finding this cycle [MEDIUM/HIGH]
+### Correctness
+Strong correctness. All DB-time comparisons use getDbNowUncached() for transaction-scoped operations. Client-side Date.now() is used appropriately for UI-only timing. The beforeExit shutdown hook is correct.
 
-**Cross-reference:** CR-1, DBG-1, V-1, TR-2, TE-1
-**Description:** The `min` attribute on the custom expiry date input uses UTC time instead of local time. This affects Korean users (the primary audience per CLAUDE.md) between midnight and 9 AM local time, preventing them from selecting the current date as the minimum. Five of eight review perspectives flagged this issue, making it the highest-signal finding of cycle 2. It directly impacts a user-facing feature in a Korean-locale application.
+### Security
+CSRF, XSS, injection, and auth patterns are solid. Docker sandbox is the primary security boundary for code execution. Encryption module correctly throws in production if key is missing.
 
-### CRI-2: `workers-client.tsx` silent error swallowing in AliasCell save [LOW/MEDIUM]
+### Maintainability
+TABLE_MAP typing with Record<string, any> is the most notable gap — derived from TABLE_ORDER so it can't drift, but loses type safety. createApiHandler boilerplate duplication in manual routes is a moderate concern but not a bug.
 
-**Cross-reference:** DBG-2, TE-2
-**Description:** The worker alias save function does not show any feedback on failure. While this is an admin-only feature, silent data loss is still problematic — the admin might not realize the alias wasn't saved. Two perspectives flagged this.
+### Performance
+Two-tier rate limiting (sidecar + DB) is well-designed. SSE connection tracking with userConnectionCounts for O(1) lookup is a good optimization. Stale threshold caching with TTL reduces DB queries.
 
-### CRI-3: Inconsistent component patterns — native `<select>` vs. Radix `Select` [LOW/LOW]
+### Documentation
+Well-documented with inline comments explaining security boundaries, trust models, and architectural decisions. The TODO in contests/layout.tsx references an upstream Next.js bug and is appropriately tracked.
 
-**Cross-reference:** DES-2
-**Description:** The clarifications component uses a native `<select>` while all other components in the same feature area use the project's Radix-based `Select` component. This is a minor consistency issue but contributes to UI fragmentation over time.
+## New Findings
 
-## Verified Safe
+**No new findings this cycle.**
 
-- Cycle 1 remediation was thorough — all 11 findings were addressed
-- The codebase is well-structured with consistent use of `createApiHandler` for new API routes
-- Auth and security patterns are solid
+## Confidence
+
+HIGH — the codebase is mature and well-maintained.

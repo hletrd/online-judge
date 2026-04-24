@@ -1,33 +1,41 @@
-# RPF Cycle 2 — Performance Reviewer
+# RPF Cycle 2 (loop cycle 2/100) — Performance Reviewer
 
-**Date:** 2026-04-22
-**Base commit:** 14218f45
+**Date:** 2026-04-24
+**HEAD:** fab30962
+**Reviewer:** perf-reviewer
 
-## Findings
+## Scope
 
-### PERF-1: `SubmissionListAutoRefresh` lacks error-state backoff — compounding load during server stress [MEDIUM/MEDIUM]
+Reviewed performance-relevant code across:
+- src/lib/compiler/execute.ts — Docker container execution, concurrency limiter
+- src/lib/security/rate-limit.ts — DB-backed rate limiting, FOR UPDATE row locks
+- src/lib/security/api-rate-limit.ts — API rate limiting, sidecar pre-check
+- src/app/api/v1/submissions/[id]/events/route.ts — SSE connection coordination
+- src/lib/realtime/realtime-coordination.ts — PostgreSQL advisory locks
+- src/lib/assignments/contest-scoring.ts — stale-while-revalidate cache
+- src/lib/assignments/leaderboard.ts — leaderboard computation
+- src/proxy.ts — auth user cache with TTL
 
-**File:** `src/components/submission-list-auto-refresh.tsx:24-28`
-**Description:** (Carried forward from AGG-9, upgraded severity.) The auto-refresh component calls `router.refresh()` on a fixed interval (5s active, 10s idle) with no error handling. During server overload, this creates a compounding load problem because every client continues polling at the same rate. The submission detail polling in `use-submission-polling.ts` correctly implements exponential backoff (`delayMs = Math.min(delayMs * 2, 30000)`), but this list component does not.
-**Concrete failure scenario:** During a large contest with 200 participants viewing the submission list, the server starts returning errors. All 200 clients continue polling at 5-second intervals, generating 40 req/s of useless traffic that delays recovery.
-**Fix:** Add error-state tracking and exponential backoff. On `router.refresh()` failure (detectable via the `useRouter` error state or by wrapping the call), switch to a longer interval and gradually restore.
+## New Findings
 
-### PERF-2: Practice page Path B progress filter still fetches all matching IDs + submissions into memory [MEDIUM/MEDIUM] (carried forward)
+**No new findings this cycle.**
 
-**File:** `src/app/(public)/practice/page.tsx:410-519`
-**Description:** Carried forward from cycle 18 (AGG-3). When a progress filter is active, Path B fetches ALL matching problem IDs and ALL user submissions into memory, filters in JavaScript, and paginates. The code has a comment acknowledging this should be moved to SQL. Not an immediate bug but a scalability concern.
-**Fix:** Move the progress filter logic into a SQL CTE or subquery.
+## Performance Observations (Re-verified)
 
-### PERF-3: `contest-clarifications.tsx` and `contest-announcements.tsx` both fetch full data on every visibility change — no cache/ETag [LOW/LOW]
+1. Compiler concurrency — pLimit caps parallel containers to CPU count - 1.
+2. Rate limit sidecar — Two-tier: sidecar fast path + authoritative DB check. Sidecar fail-open.
+3. SSE connection tracking — userConnectionCounts map for O(1) per-user count lookup. O(n) stale eviction is known deferred (AGG-6, LOW/LOW).
+4. SSE stale threshold cache — 5-minute TTL avoids unnecessary DB queries.
+5. Auth proxy cache — FIFO with 500-entry cap. 2s TTL. Negative results not cached.
 
-**Files:** `src/components/contest/contest-clarifications.tsx:87-111`, `src/components/contest/contest-announcements.tsx:71-95`
-**Description:** Both components fetch the full dataset on every `visibilitychange` event (tab focus) and on a 30-second interval. There's no `If-None-Match` / ETag caching or incremental update mechanism. For small datasets this is fine, but for contests with many clarifications, this creates unnecessary network and server load.
-**Fix:** Consider adding conditional fetch headers or incremental sync.
+## Deferred Item Status (Unchanged)
 
-## Verified Safe
+- AGG-2: atomicConsumeRateLimit uses Date.now() in hot path — MEDIUM/MEDIUM, deferred
+- AGG-6: SSE O(n) eviction scan — LOW/LOW, deferred
+- PERF-3: Anti-cheat heartbeat gap query transfers up to 5000 rows — MEDIUM/MEDIUM, deferred
+- ARCH-3: Stale-while-revalidate cache pattern duplication — LOW/LOW, deferred
+- AGG-8: Global timer HMR pattern duplication — LOW/MEDIUM, deferred
 
-- SSE connection management uses shared polling — one DB query per tick for all subscribers
-- SSE connection limits are enforced (global 500, per-user configurable)
-- Submission detail polling has proper exponential backoff
-- Draft persistence uses debounced writes (500ms)
-- Anti-cheat heartbeat uses 30-second intervals with visibility gating
+## Confidence
+
+HIGH

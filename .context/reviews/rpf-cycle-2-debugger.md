@@ -1,33 +1,30 @@
-# RPF Cycle 2 — Debugger
+# RPF Cycle 2 (loop cycle 2/100) — Debugger
 
-**Date:** 2026-04-22
-**Base commit:** 14218f45
+**Date:** 2026-04-24
+**HEAD:** fab30962
+**Reviewer:** debugger
 
-## Findings
+## Latent Bug Surface Analysis
 
-### DBG-1: `recruiting-invitations-panel.tsx` custom expiry date `min` attribute uses UTC date — blocks valid local dates [MEDIUM/HIGH]
+### Failure Modes Examined
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:407`
-**Description:** The `min` attribute on the custom expiry date input is computed as `new Date().toISOString().split("T")[0]`, which produces a UTC date. The native `<input type="date">` renders in the user's local timezone. This creates a mismatch where users in timezones ahead of UTC may be blocked from selecting the current local date, and users behind UTC may be allowed to select yesterday's date.
-**Concrete failure scenario:** A Korean user (UTC+9) at 2 AM local time on April 22 runs `new Date().toISOString().split("T")[0]` — this returns `2026-04-21` (UTC). The date picker's `min` is set to April 21, but the user's local date is April 22. When they try to select April 22, the browser may not allow it because the min constraint says April 21 is the earliest, and April 22 should be selectable — but the real issue is the reverse: a user in UTC-5 at 11 PM on April 21 gets `min=2026-04-22` (UTC), which blocks April 21 in their local time even though it's still their current date.
-**Fix:** Use local date: `new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split("T')[0]` or format with `toLocaleDateString('sv-SE')`.
+1. Compiler container orphan — cleanupOrphanedContainers() handles exited, created, dead, and stale running containers. MAX_CONTAINER_AGE_MS = 10 min. stopContainer() fire-and-forget with .unref(). Low risk.
+2. SSE connection tracking drift — MAX_TRACKED_CONNECTIONS cap with O(n) eviction-by-age is known deferred (AGG-6, LOW/LOW). 60-second cleanup timer with unref() is correct.
+3. Rate limiter circuit breaker — correct pattern. When sidecar is down, circuit opens and all requests fall through to DB.
+4. Auth proxy cache negative results — Not cached (correct for security). 2-second TTL on positive cache is documented tradeoff.
+5. Shutdown hook ordering — beforeExit for clean exits, SIGTERM/SIGINT for forced shutdowns. Low risk of data loss.
+6. Chat widget streaming interruption — pathname effect aborts controller and resets state. isStreamingRef prevents stale-closure race. Correct.
 
-### DBG-2: `workers-client.tsx` `AliasCell` does not handle save errors — silently drops failed edits [LOW/MEDIUM]
+### Edge Cases Examined
 
-**File:** `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:91-101`
-**Description:** The `handleSave` function in `AliasCell` calls `apiFetch` to update the alias but only checks `res.ok` to close the editing state. When the request fails, the edit UI closes and the old alias is shown, but no error feedback is given to the user. The user might assume the save succeeded.
-**Concrete failure scenario:** Admin edits a worker alias, presses Enter, the API returns 403 (permission denied). The editing UI closes, the old alias is displayed, and no error toast is shown. The admin assumes the rename worked.
-**Fix:** Add an `else` branch showing `toast.error(t("saveFailed"))` or similar.
+1. Empty rows in import batch — handled correctly (empty array, no insert).
+2. NaN from Date.parse in container cleanup — Number.isNaN guard present.
+3. getTokenUserId(token) returning null — if (!userId) return clearAuthToken(token) handles this.
 
-### DBG-3: `workers-client.tsx` `AliasCell` keyboard handler calls `handleSave` without awaiting — potential double-fire [LOW/LOW]
+## New Findings
 
-**File:** `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:112-113`
-**Description:** The `onKeyDown` handler calls `handleSave()` without `await` or `void`. Since `handleSave` is async, pressing Enter rapidly could trigger multiple concurrent API requests. The UI does not disable the save button during the request.
-**Fix:** Add `void handleSave()` and disable the input during save.
+**No new findings this cycle.**
 
-## Verified Safe
+## Confidence
 
-- Cycle 1 fixes (clipboard, layout, localStorage, defaultValue) are working correctly
-- Anti-cheat monitor properly cleans up timers and event listeners on unmount
-- `use-source-draft.ts` properly handles edge cases (empty drafts, version mismatch, TTL expiry)
-- Submission polling cleanup works correctly in both SSE and fetch fallback paths
+HIGH — the codebase has good defensive programming.

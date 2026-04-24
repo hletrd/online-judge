@@ -1,30 +1,29 @@
-# RPF Cycle 2 — Test Engineer
+# RPF Cycle 2 (loop cycle 2/100) — Test Engineer
 
-**Date:** 2026-04-22
-**Base commit:** 14218f45
+**Date:** 2026-04-24
+**HEAD:** fab30962
+**Reviewer:** test-engineer
 
-## Findings
+## Test Coverage Assessment
 
-### TE-1: No test coverage for `recruiting-invitations-panel.tsx` timezone-aware date `min` attribute [MEDIUM/MEDIUM]
+### Existing Test Inventory
 
-**File:** `src/components/contest/recruiting-invitations-panel.tsx:407`
-**Description:** The custom expiry date input computes `min={new Date().toISOString().split("T")[0]}` which has a timezone bug (see CR-1, DBG-1). There is no test that validates the `min` attribute behavior across timezone offsets. This is a data-entry validation issue that could allow users to set past expiry dates (or block valid current dates) depending on their timezone.
-**Fix:** Add a component test that validates the `min` attribute uses local time, not UTC. Mock `Date` to simulate different timezone scenarios.
+- Unit tests: 60+ test files covering validators, API routes, security, auth, assignments, plugins, admin, files, db, compiler, judge, realtime, anti-cheat, data retention
+- Component tests: 10+ test files covering chat widget, comment section, access code manager, home page, compiler client, score timeline chart
+- Integration tests: DB submission lifecycle, API health
+- E2E tests: Playwright tests for admin, problem management, contests, student submission flow, profile, remediation smoke
 
-### TE-2: No test for `workers-client.tsx` `AliasCell` error handling [LOW/MEDIUM]
+### Coverage Gaps (Carry-Over)
 
-**File:** `src/app/(dashboard)/dashboard/admin/workers/workers-client.tsx:91-101`
-**Description:** The `AliasCell` component's `handleSave` function does not handle API errors (see DBG-2). There is no test for the save failure path.
-**Fix:** Add a test that verifies behavior when the API returns an error status.
+1. Missing integration test for concurrent recruiting token redemption — LOW/MEDIUM, deferred
+2. Vitest parallel-contention flakes — LOW/MEDIUM, not a code bug
+3. No E2E test for SSE reconnection behavior
+4. No component test for chat widget auto-analysis flow
 
-### TE-3: No test for `SubmissionListAutoRefresh` backoff behavior [LOW/LOW]
+## New Findings
 
-**File:** `src/components/submission-list-auto-refresh.tsx`
-**Description:** There is no test for the auto-refresh component's behavior under server errors. Since the component currently has no error handling, this is a test-gap and implementation-gap issue.
-**Fix:** First add error handling (see PERF-1), then add tests for backoff behavior.
+**No new findings this cycle.**
 
-## Verified Safe
+## Confidence
 
-- `access-code-manager.test.tsx` test name was fixed in cycle 1 to match actual behavior
-- `compiler-client` keyboard shortcut tests exist and pass
-- `use-source-draft.test.ts` covers localStorage edge cases
+MEDIUM — test coverage is good for core functionality, but gaps exist for SSE reconnection and chat widget auto-analysis.
