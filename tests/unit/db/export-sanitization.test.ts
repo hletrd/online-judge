@@ -58,6 +58,7 @@ describe("export.ts sanitization", () => {
     expect(source).toContain("secretTokenHash");
     expect(source).toContain("judgeClaimToken");
     expect(source).toContain("tokenHash");
+    expect(source).toContain("hcaptchaSecret");
   });
 
   it("does NOT reference columns that have been dropped from the schema", () => {
@@ -126,5 +127,33 @@ describe("export.ts sanitization", () => {
   it("does not export the deprecated OOM-prone exportDatabase function", () => {
     const source = readFileSync(join(process.cwd(), EXPORT_PATH), "utf8");
     expect(source).not.toContain("export async function exportDatabase");
+  });
+
+  it("ALWAYS_REDACT includes all required always-redacted columns", () => {
+    const source = readFileSync(join(process.cwd(), EXPORT_PATH), "utf8");
+
+    // ALWAYS_REDACT must include passwordHash (users) and encryptedKey (apiKeys)
+    // and hcaptchaSecret (systemSettings) — these must never appear in any export
+    expect(source).toContain("ALWAYS_REDACT");
+    expect(source).toMatch(/users: new Set\(\["passwordHash"\]\)/);
+    expect(source).toMatch(/apiKeys: new Set\(\["encryptedKey"\]\)/);
+    expect(source).toMatch(/systemSettings: new Set\(\["hcaptchaSecret"\]\)/);
+  });
+
+  it("systemSettings.hcaptchaSecret is in SANITIZED_COLUMNS and ALWAYS_REDACT", () => {
+    const source = readFileSync(join(process.cwd(), EXPORT_PATH), "utf8");
+
+    // hcaptchaSecret must be in both maps — it's an encrypted secret that
+    // should never appear in any export format, even full-fidelity backups.
+    expect(source).toContain("systemSettings: new Set([\"hcaptchaSecret\"])");
+    // Count occurrences: should appear exactly twice (once in each map)
+    const matches = source.match(/systemSettings: new Set\(\["hcaptchaSecret"\]\)/g);
+    expect(matches).toHaveLength(2);
+  });
+
+  it("hcaptchaSecret column exists in the systemSettings schema table", () => {
+    // Validate the column referenced in the redaction maps actually exists
+    const columns = getSchemaColumnNames("systemSettings");
+    expect(columns).toContain("hcaptchaSecret");
   });
 });

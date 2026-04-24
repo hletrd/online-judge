@@ -249,12 +249,14 @@ const SANITIZED_COLUMNS: Record<string, Set<string>> = {
   apiKeys: new Set(["encryptedKey"]),
   judgeWorkers: new Set(["secretTokenHash", "judgeClaimToken"]),
   recruitingInvitations: new Set(["tokenHash"]),
+  systemSettings: new Set(["hcaptchaSecret"]),
 };
 
 /** Columns that are ALWAYS redacted, even in full-fidelity backup exports. */
 const ALWAYS_REDACT: Record<string, Set<string>> = {
   users: new Set(["passwordHash"]),
   apiKeys: new Set(["encryptedKey"]),
+  systemSettings: new Set(["hcaptchaSecret"]),
 };
 
 type ColumnRef = Parameters<typeof asc>[0];
