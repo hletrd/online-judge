@@ -97,11 +97,12 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
       });
       // Parse response body once — the Response body can only be consumed once
       const data = await response.json().catch(() => ({ success: false, error: "parseError" })) as { success: boolean; error?: string };
-      if (!response.ok) {
-        setTestResult({ success: false, error: data.error ?? tCommon("error") });
+      if (!response.ok || !data.success) {
+        // Display a localized error string — never embed raw API error codes in the UI
+        setTestResult({ success: false, error: tCommon("error") });
         return;
       }
-      setTestResult(data);
+      setTestResult({ success: true });
     } catch {
       setTestResult({ success: false, error: tCommon("error") });
     } finally {
@@ -239,7 +240,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
             </Button>
             {testResult && (
               <span role="status" aria-live="polite" className={`text-sm ${testResult.success ? "text-green-600" : "text-destructive"}`}>
-                {testResult.success ? t("testSuccess") : t("testFailed", { error: testResult.error ?? "" })}
+                {testResult.success ? t("testSuccess") : testResult.error}
               </span>
             )}
           </div>
