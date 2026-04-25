@@ -120,7 +120,7 @@ async function atomicConsumeRateLimit(key: string): Promise<{ limited: boolean; 
   return { limited, nowMs: now };
 }
 
-function rateLimitedResponse(windowMs?: number, nowMs: number = Date.now()) {
+function rateLimitedResponse(windowMs: number | undefined, nowMs: number) {
   const retryAfter = windowMs ? Math.ceil(windowMs / 1000) : 60;
   const resetMs = nowMs + (windowMs ?? 60_000);
   return NextResponse.json(
@@ -159,7 +159,11 @@ export async function consumeApiRateLimit(
 
   const sidecarVerdict = await sidecarConsume(key);
   if (sidecarVerdict === true) {
-    return rateLimitedResponse(windowMs);
+    // Use DB server time for the X-RateLimit-Reset header to maintain
+    // consistency with the DB path and avoid clock-skew between app
+    // and DB servers, consistent with atomicConsumeRateLimit.
+    const nowMs = await getDbNowMs();
+    return rateLimitedResponse(windowMs, nowMs);
   }
 
   const { limited, nowMs } = await atomicConsumeRateLimit(key);
@@ -193,7 +197,11 @@ export async function consumeUserApiRateLimit(
 
   const sidecarVerdict = await sidecarConsume(key);
   if (sidecarVerdict === true) {
-    return rateLimitedResponse(windowMs);
+    // Use DB server time for the X-RateLimit-Reset header to maintain
+    // consistency with the DB path and avoid clock-skew between app
+    // and DB servers, consistent with atomicConsumeRateLimit.
+    const nowMs = await getDbNowMs();
+    return rateLimitedResponse(windowMs, nowMs);
   }
 
   const { limited, nowMs } = await atomicConsumeRateLimit(key);
