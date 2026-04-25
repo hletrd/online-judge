@@ -34,34 +34,16 @@ All cycle 31 tasks are complete:
 3. Verify all gates pass
 4. Verify the discussion features still work correctly
 
-**Status:** TODO
+**Status:** DONE (commit f8f3d659)
 
 ---
 
-### Task B: Gate ungated `console.error` calls in admin and group management client components behind dev-only checks [MEDIUM/HIGH]
+### Task B: ~~Gate ungated `console.error` calls in admin and group management client components~~ — FALSE POSITIVE
 
 **From:** AGG-2 (NEW-2)
-**Severity / confidence:** MEDIUM / HIGH
-**Files:**
-- `src/app/(dashboard)/dashboard/groups/edit-group-dialog.tsx:67`
-- `src/app/(dashboard)/dashboard/groups/create-group-dialog.tsx:44`
-- `src/app/(dashboard)/dashboard/groups/[id]/assignment-form-dialog.tsx:207`
-- `src/app/(dashboard)/dashboard/groups/[id]/group-instructors-manager.tsx:74`
-- `src/app/(dashboard)/dashboard/problems/create/create-problem-form.tsx:228,311`
-- `src/app/(dashboard)/dashboard/problems/problem-import-button.tsx:39`
-- `src/app/(dashboard)/dashboard/admin/languages/language-config-table.tsx:138,164,194`
-- `src/app/(dashboard)/dashboard/admin/roles/role-editor-dialog.tsx:107`
-- `src/app/(dashboard)/dashboard/admin/roles/role-delete-dialog.tsx:59`
-- `src/app/(dashboard)/dashboard/admin/users/bulk-create-dialog.tsx:215`
+**Severity / confidence:** MEDIUM / HIGH (false positive upon re-inspection)
 
-**Problem:** 14 `console.error`/`console.warn` calls in admin and group management client components are not gated behind dev-only checks. The `group-instructors-manager.tsx:74` call is especially concerning — it dumps the entire API error response object.
-
-**Plan:**
-1. Wrap each `console.error()`/`console.warn()` call with `if (process.env.NODE_ENV === "development")` guard
-2. Keep the error handling logic unchanged
-3. Verify all gates pass
-
-**Status:** TODO
+**Resolution:** Upon detailed re-inspection, all 14 `console.error`/`console.warn` calls listed in the original finding are already gated behind `process.env.NODE_ENV === "development"` checks. The initial review's grep-based audit incorrectly flagged these as ungated. Each was verified individually to already have the dev-only guard.
 
 ---
 
@@ -82,7 +64,7 @@ All cycle 31 tasks are complete:
 2. Remove the try/catch where it becomes unnecessary
 3. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commits f8f3d659, 6a1ca812)
 
 ---
 
@@ -104,3 +86,7 @@ See cycle 31 plan (now archived) for full details. All carry forward unchanged.
 ## Progress log
 
 - 2026-04-25: Plan created with 3 tasks (A-C) and 1 new deferred item (DEFER-45).
+- 2026-04-25: Task A DONE — gated 5 console.error calls in discussion components behind dev-only checks, also replaced throw-then-match with inline error handling in 2 discussion components (commit f8f3d659).
+- 2026-04-25: Task B FALSE POSITIVE — all 14 admin/group console.error calls were already gated behind dev-only checks. No changes needed.
+- 2026-04-25: Task C DONE — replaced throw-then-match with inline error handling in 7 contest handlers (commit 6a1ca812).
+- 2026-04-25: All gates green (eslint 0, tsc clean, vitest 302/302 pass 2197 tests, next build success).
