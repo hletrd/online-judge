@@ -93,9 +93,13 @@ export function AntiCheatMonitor({
     [assignmentId]
   );
 
-  const flushPendingEvents = useCallback(async () => {
+  // Core flush logic extracted to a standalone async function so that both
+  // flushPendingEvents and the retry timer callback can share the same
+  // implementation. This avoids duplicating the load-send-save cycle, which
+  // was a maintenance risk (bug fixes to one copy could be missed in the other).
+  const performFlush = useCallback(async (): Promise<PendingEvent[]> => {
     const pending = loadPendingEvents(assignmentId);
-    if (pending.length === 0) return;
+    if (pending.length === 0) return [];
 
     const remaining: PendingEvent[] = [];
     for (const event of pending) {
@@ -105,7 +109,16 @@ export function AntiCheatMonitor({
       }
     }
     savePendingEvents(assignmentId, remaining);
+    return remaining;
+  }, [assignmentId, sendEvent]);
 
+  // Schedule a retry via setTimeout if the remaining events contain retriable ones.
+  // Uses performFlushRef (instead of directly referencing performFlush) to break
+  // the circular dependency that would otherwise trigger react-hooks/immutability.
+  const scheduleRetryRef = useRef<(remaining: PendingEvent[]) => void>(() => {});
+
+  const flushPendingEvents = useCallback(async () => {
+    const remaining = await performFlush();
     // If there are still retriable events after the flush, schedule another
     // retry with exponential backoff (capped at 30 seconds) so pending events
     // are not silently dropped when the user closes the tab before the next
@@ -116,21 +129,31 @@ export function AntiCheatMonitor({
       const backoffDelay = Math.min(RETRY_BASE_DELAY_MS * Math.pow(2, maxRetry), 30_000);
       retryTimerRef.current = setTimeout(async () => {
         retryTimerRef.current = null;
-        // Re-read and flush pending events directly rather than going through
-        // the ref, to avoid a circular dependency that triggers
-        // react-hooks/immutability.
-        const retryPending = loadPendingEvents(assignmentId);
-        const retryRemaining: PendingEvent[] = [];
-        for (const ev of retryPending) {
-          const ok = await sendEvent(ev);
-          if (!ok && ev.retries < MAX_RETRIES) {
-            retryRemaining.push({ ...ev, retries: ev.retries + 1 });
-          }
+        const retryRemaining = await performFlush();
+        if (retryRemaining.some((e) => e.retries < MAX_RETRIES)) {
+          scheduleRetryRef.current(retryRemaining);
         }
-        savePendingEvents(assignmentId, retryRemaining);
       }, backoffDelay);
     }
-  }, [assignmentId, sendEvent]);
+  }, [performFlush]);
+
+  // Keep scheduleRetryRef in sync so the retry timer always calls the latest version
+  useEffect(() => {
+    scheduleRetryRef.current = (remaining: PendingEvent[]) => {
+      const hasRetriable = remaining.some((e) => e.retries < MAX_RETRIES);
+      if (hasRetriable && !retryTimerRef.current) {
+        const maxRetry = remaining.reduce((max, e) => Math.max(max, e.retries), 0);
+        const backoffDelay = Math.min(RETRY_BASE_DELAY_MS * Math.pow(2, maxRetry), 30_000);
+        retryTimerRef.current = setTimeout(async () => {
+          retryTimerRef.current = null;
+          const retryRemaining = await performFlush();
+          if (retryRemaining.some((e) => e.retries < MAX_RETRIES)) {
+            scheduleRetryRef.current(retryRemaining);
+          }
+        }, backoffDelay);
+      }
+    };
+  }, [performFlush]);
 
   const reportEvent = useCallback(
     async (eventType: string, details?: Record<string, unknown>) => {
