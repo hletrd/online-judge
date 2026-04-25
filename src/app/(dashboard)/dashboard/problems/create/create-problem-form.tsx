@@ -4,7 +4,6 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Plus, Trash2, X, ImageIcon, Upload } from "lucide-react";
-import JSZip from "jszip";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -169,6 +168,7 @@ export default function CreateProblemForm({
     event.target.value = "";
 
     try {
+      const JSZip = (await import("jszip")).default;
       const zip = await JSZip.loadAsync(file);
       const fileMap = new Map<string, { input?: string; output?: string }>();
 
