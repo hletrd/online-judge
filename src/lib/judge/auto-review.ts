@@ -64,9 +64,13 @@ export async function triggerAutoCodeReview(submissionId: string): Promise<void>
 
     // Skip auto-review for very large source files to avoid exceeding the AI
     // provider's context window and incurring unnecessary token costs.
-    if (submission.sourceCode.length > AUTO_REVIEW_MAX_SOURCE_CODE_BYTES) {
+    // Use Buffer.byteLength (not String.length) to correctly measure UTF-8
+    // byte count — String.length counts UTF-16 code units, which undercounts
+    // CJK/multi-byte characters by 2-3x. Consistent with execute.ts:614.
+    const sourceCodeBytes = Buffer.byteLength(submission.sourceCode, "utf8");
+    if (sourceCodeBytes > AUTO_REVIEW_MAX_SOURCE_CODE_BYTES) {
       logger.debug(
-        { submissionId, sourceCodeBytes: submission.sourceCode.length, limit: AUTO_REVIEW_MAX_SOURCE_CODE_BYTES },
+        { submissionId, sourceCodeBytes, limit: AUTO_REVIEW_MAX_SOURCE_CODE_BYTES },
         "[auto-review] Skipping — source code exceeds size cap",
       );
       return;
