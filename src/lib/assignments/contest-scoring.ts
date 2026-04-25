@@ -124,7 +124,16 @@ export async function computeContestRanking(assignmentId: string, cutoffSec?: nu
           rankingCache.set(cacheKey, { data: fresh, createdAt: await getDbNowMs() });
           _lastRefreshFailureAt.delete(cacheKey);
         } catch {
-          _lastRefreshFailureAt.set(cacheKey, await getDbNowMs());
+          // Use Date.now() as fallback for the cooldown timestamp. If the DB
+          // is unreachable, getDbNowMs() will also throw, leaving the cooldown
+          // unset and allowing a thundering herd on every subsequent request.
+          // Date.now() is acceptable here because the cooldown is only 5s —
+          // 1-2s of clock skew is tolerable.
+          try {
+            _lastRefreshFailureAt.set(cacheKey, await getDbNowMs());
+          } catch {
+            _lastRefreshFailureAt.set(cacheKey, Date.now());
+          }
           logger.error({ assignmentId }, "[contest-scoring] Failed to refresh ranking cache");
         } finally {
           _refreshingKeys.delete(cacheKey);
