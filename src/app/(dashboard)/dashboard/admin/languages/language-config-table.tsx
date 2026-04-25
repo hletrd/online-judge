@@ -134,7 +134,9 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
           fetchImageStatus();
         } else {
           const data = await res.json().catch(() => ({}));
-          console.error(data.error);
+          if (process.env.NODE_ENV === "development") {
+            console.error(data.error);
+          }
           toast.error(t("toast.buildError"));
         }
       })
@@ -158,7 +160,9 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
           fetchImageStatus();
         } else {
           const data = await res.json().catch(() => ({}));
-          console.error(data.error);
+          if (process.env.NODE_ENV === "development") {
+            console.error(data.error);
+          }
           toast.error(t("toast.removeError"));
         }
       })
@@ -186,7 +190,9 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
           }
           fetchImageStatus();
         } else {
-          console.error(data.error);
+          if (process.env.NODE_ENV === "development") {
+            console.error(data.error);
+          }
           toast.error(t("toast.pruneError"));
         }
       })

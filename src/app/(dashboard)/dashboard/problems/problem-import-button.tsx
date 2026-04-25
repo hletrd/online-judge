@@ -35,7 +35,9 @@ export function ProblemImportButton() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        console.error(err);
+        if (process.env.NODE_ENV === "development") {
+          console.error(err);
+        }
         toast.error(t("importFailed"));
         return;
       }

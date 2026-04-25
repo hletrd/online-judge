@@ -143,7 +143,9 @@ export function DatabaseBackupRestore({ isSuperAdmin }: { isSuperAdmin: boolean 
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        console.error(data);
+        if (process.env.NODE_ENV === "development") {
+          console.error(data);
+        }
         toast.error(t("restoreFailed"));
         return;
       }

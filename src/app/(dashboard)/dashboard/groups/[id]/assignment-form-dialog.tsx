@@ -203,7 +203,9 @@ export default function AssignmentFormDialog({
       case "examTimingChangeBlocked":
         return t(error.message);
       default:
-        console.error("Unmapped error in assignment-form-dialog:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Unmapped error in assignment-form-dialog:", error);
+        }
         return tCommon("error");
     }
   }

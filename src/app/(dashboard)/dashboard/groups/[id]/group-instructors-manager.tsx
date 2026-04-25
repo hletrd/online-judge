@@ -70,7 +70,9 @@ export function GroupInstructorsManager({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        console.error(data);
+        if (process.env.NODE_ENV === "development") {
+          console.error(data);
+        }
         toast.error(t("addInstructorFailed"));
         return;
       }
