@@ -453,8 +453,19 @@ async function runDocker(opts: {
       const finish = async (wallDurationMs: number) => {
         clearTimeout(timer);
 
-        // Inspect container BEFORE removal so OOM/timing metadata is still available
-        const state = await inspectContainerState(containerName);
+        // Inspect container BEFORE removal so OOM/timing metadata is still available.
+        // When the container was killed by the timeout handler (killed=true), Docker
+        // may not have finished processing the kill signal or updating the OOM state.
+        // Retry the inspect up to 3 times with a short delay to give Docker time to
+        // reflect the true container state, especially when OOM and timeout race.
+        let state = await inspectContainerState(containerName);
+        if (killed && !state.oomKilled) {
+          for (let attempt = 0; attempt < 3; attempt++) {
+            await new Promise((r) => setTimeout(r, 200));
+            state = await inspectContainerState(containerName);
+            if (state.oomKilled) break;
+          }
+        }
 
         await cleanup(true);
 
@@ -462,7 +473,7 @@ async function runDocker(opts: {
           stdout: stdout.slice(0, MAX_OUTPUT_BYTES),
           stderr: stderr.slice(0, MAX_OUTPUT_BYTES),
           exitCode: child?.exitCode ?? null,
-          timedOut: killed,
+          timedOut: killed && !state.oomKilled,
           oomKilled: state.oomKilled,
           durationMs: state.durationMs ?? wallDurationMs,
         });
