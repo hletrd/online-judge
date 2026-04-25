@@ -106,7 +106,12 @@ export async function computeSingleUserLiveRank(
   // Returns null when the user has no scored submissions (they are not on the
   // leaderboard, so "rank 1" would be misleading).
   if (scoringModel === "icpc") {
-    // ICPC: rank = 1 + count of users with more problems solved OR (same solved + less penalty)
+    // ICPC: rank = 1 + count of users ranked higher using the same tie-breakers
+    // as the main leaderboard (contest-scoring.ts):
+    //   1. More problems solved
+    //   2. Less penalty
+    //   3. Earlier last AC time
+    //   4. userId lexicographic order (deterministic tie-break)
     // Uses wrong_before_ac (window-function-based, same as contest-scoring.ts) instead of
     // attempt_count - has_ac to correctly exclude post-AC wrong submissions from penalty.
     type IcpcRankRow = { rank: number | null; hasSubmissions: boolean };
@@ -144,12 +149,13 @@ export async function computeSingleUserLiveRank(
             CASE WHEN us.has_ac = 1 THEN
               EXTRACT(EPOCH FROM us.first_ac_at)::bigint / 60 + 20 * us.wrong_before_ac
             ELSE 0 END
-          ) AS total_penalty
+          ) AS total_penalty,
+          MAX(CASE WHEN us.has_ac = 1 THEN us.first_ac_at ELSE NULL END) AS last_ac_at
         FROM user_score us
         GROUP BY us.user_id
       ),
       target AS (
-        SELECT solved_count, total_penalty FROM user_totals WHERE user_id = @userId
+        SELECT solved_count, total_penalty, last_ac_at, user_id FROM user_totals WHERE user_id = @userId
       )
       SELECT
         CASE WHEN t.solved_count IS NULL THEN NULL ELSE COALESCE(1 + COUNT(*), 1) END AS rank,
@@ -157,6 +163,8 @@ export async function computeSingleUserLiveRank(
       FROM user_totals ut, target t
       WHERE ut.solved_count > t.solved_count
          OR (ut.solved_count = t.solved_count AND ut.total_penalty < t.total_penalty)
+         OR (ut.solved_count = t.solved_count AND ut.total_penalty = t.total_penalty AND ut.last_ac_at > t.last_ac_at)
+         OR (ut.solved_count = t.solved_count AND ut.total_penalty = t.total_penalty AND ut.last_ac_at = t.last_ac_at AND ut.user_id < t.user_id)
       GROUP BY t.solved_count, t.total_penalty`,
       { assignmentId, userId },
     );
