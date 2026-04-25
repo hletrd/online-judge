@@ -117,7 +117,8 @@ export function ContestClarifications({
         }),
       });
       if (!response.ok) {
-        throw new Error("contestClarificationCreateFailed");
+        toast.error(t("saveFailed"));
+        return;
       }
       toast.success(t("createSuccess"));
       setQuestion("");
@@ -143,7 +144,8 @@ export function ContestClarifications({
         }),
       });
       if (!response.ok) {
-        throw new Error("contestClarificationAnswerFailed");
+        toast.error(t("saveFailed"));
+        return;
       }
       toast.success(t("answerSuccess"));
       setAnswerDrafts((current) => ({ ...current, [id]: "" }));
@@ -161,7 +163,8 @@ export function ContestClarifications({
         body: JSON.stringify({ isPublic: !clarification.isPublic }),
       });
       if (!response.ok) {
-        throw new Error("contestClarificationVisibilityFailed");
+        toast.error(t("saveFailed"));
+        return;
       }
       await loadClarifications();
     } catch {
@@ -175,7 +178,8 @@ export function ContestClarifications({
         method: "DELETE",
       });
       if (!response.ok) {
-        throw new Error("contestClarificationDeleteFailed");
+        toast.error(t("deleteFailed"));
+        return;
       }
       toast.success(t("deleteSuccess"));
       await loadClarifications();

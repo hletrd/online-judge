@@ -94,7 +94,8 @@ export function ContestAnnouncements({
         body: JSON.stringify({ title, content, isPinned }),
       });
       if (!response.ok) {
-        throw new Error("contestAnnouncementSaveFailed");
+        toast.error(t("saveFailed"));
+        return;
       }
       toast.success(editingId ? t("updateSuccess") : t("createSuccess"));
       setTitle("");
@@ -115,7 +116,8 @@ export function ContestAnnouncements({
         method: "DELETE",
       });
       if (!response.ok) {
-        throw new Error("contestAnnouncementDeleteFailed");
+        toast.error(t("deleteFailed"));
+        return;
       }
       toast.success(t("deleteSuccess"));
       if (editingId === id) {
@@ -138,7 +140,8 @@ export function ContestAnnouncements({
         body: JSON.stringify({ isPinned: !announcement.isPinned }),
       });
       if (!response.ok) {
-        throw new Error("contestAnnouncementPinFailed");
+        toast.error(t("saveFailed"));
+        return;
       }
       await loadAnnouncements();
     } catch {
