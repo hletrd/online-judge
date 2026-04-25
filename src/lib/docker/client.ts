@@ -151,19 +151,40 @@ async function buildDockerImageLocal(
 
   const contextDir = ".";
 
+  // Head+tail buffer strategy: keep the first 32KB (contains Dockerfile
+  // commands, build context, and early-stage output — the most useful
+  // diagnostic info) plus the last ~2MB-32KB (recent output). A simple
+  // tail-only slice would discard the critical prefix.
+  const HEAD_SIZE = 32 * 1024;
+  const MAX_TOTAL = 2 * 1024 * 1024;
+  const TAIL_SIZE = MAX_TOTAL - HEAD_SIZE;
+
   return new Promise((resolve) => {
     const proc = spawn("docker", ["build", "-t", imageName, "-f", dockerfilePath, contextDir]);
-    let stdout = "";
-    let stderr = "";
+    let head = "";
+    let headFinalized = false;
+    let tail = "";
 
-    proc.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString();
-      if (stdout.length > 2 * 1024 * 1024) stdout = stdout.slice(-2 * 1024 * 1024);
-    });
-    proc.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString();
-      if (stderr.length > 2 * 1024 * 1024) stderr = stderr.slice(-2 * 1024 * 1024);
-    });
+    function appendOutput(chunk: string) {
+      if (!headFinalized) {
+        const remaining = HEAD_SIZE - head.length;
+        if (remaining > 0) {
+          head += chunk.slice(0, remaining);
+          const overflow = chunk.slice(remaining);
+          if (overflow) tail += overflow;
+        } else {
+          headFinalized = true;
+          tail += chunk;
+        }
+        if (head.length >= HEAD_SIZE) headFinalized = true;
+      } else {
+        tail += chunk;
+        if (tail.length > TAIL_SIZE) tail = tail.slice(-TAIL_SIZE);
+      }
+    }
+
+    proc.stdout.on("data", (chunk: Buffer) => appendOutput(chunk.toString()));
+    proc.stderr.on("data", (chunk: Buffer) => appendOutput(chunk.toString()));
 
     const timer = setTimeout(() => {
       proc.kill();
@@ -173,7 +194,10 @@ async function buildDockerImageLocal(
     proc.on("close", (code) => {
       clearTimeout(timer);
       if (code === 0) {
-        resolve({ success: true, logs: (stdout + "\n" + stderr).trim() });
+        const combined = headFinalized && tail.length > 0
+          ? head + "\n... [truncated] ...\n" + tail
+          : head + tail;
+        resolve({ success: true, logs: combined.trim() });
       } else {
         // Do not expose Docker build stderr/stdout in the API response — it may
         // contain internal paths, env var names, or registry URLs. Full output
