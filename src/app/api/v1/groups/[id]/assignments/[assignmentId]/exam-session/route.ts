@@ -100,9 +100,10 @@ export const GET = createApiHandler({
 
     const assignment = await db.query.assignments.findFirst({
       where: eq(assignments.id, assignmentId),
-      columns: { id: true, groupId: true },
+      columns: { id: true, groupId: true, examMode: true },
     });
     if (!assignment || assignment.groupId !== id) return notFound("Assignment");
+    if (assignment.examMode === "none") return notFound("ExamSession");
 
     // Only group owner or admin can query another user's session
     const url = new URL(_req.url);
