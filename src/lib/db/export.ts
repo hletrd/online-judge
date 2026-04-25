@@ -255,6 +255,8 @@ const SANITIZED_COLUMNS: Record<string, Set<string>> = {
 /** Columns that are ALWAYS redacted, even in full-fidelity backup exports. */
 const ALWAYS_REDACT: Record<string, Set<string>> = {
   users: new Set(["passwordHash"]),
+  sessions: new Set(["sessionToken"]),
+  accounts: new Set(["refresh_token", "access_token", "id_token"]),
   apiKeys: new Set(["encryptedKey"]),
   systemSettings: new Set(["hcaptchaSecret"]),
 };
