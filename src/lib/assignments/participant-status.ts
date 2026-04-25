@@ -25,7 +25,8 @@ export type AssignmentParticipantStatusParams = {
   totalPoints: number;
   examSessionStartedAt?: Date | string | null;
   examSessionPersonalDeadline?: Date | string | null;
-  now?: number;
+  /** Current time in ms — required. Server callers: use `getDbNowMs()`. Client callers: use `Date.now()`. */
+  now: number;
 };
 
 function toTimestamp(value: Date | string | null | undefined): number | null {
@@ -37,9 +38,16 @@ function toTimestamp(value: Date | string | null | undefined): number | null {
   return Number.isFinite(timestamp) ? timestamp : null;
 }
 
+/**
+ * Check whether an exam session is currently active (started and not yet expired).
+ *
+ * @param now - Current time in ms. Server-side callers MUST use `getDbNowMs()`
+ *   or `getDbNow().getTime()` to avoid clock skew between app and DB servers.
+ *   Client-side callers should use `Date.now()` (the only option in the browser).
+ */
 export function hasActiveExamSession(
   examSessionPersonalDeadline: Date | string | null | undefined,
-  now = Date.now(),
+  now: number,
   examSessionStartedAt?: Date | string | null
 ): boolean {
   if (!examSessionPersonalDeadline) {
@@ -55,6 +63,13 @@ export function hasActiveExamSession(
   return deadline != null && deadline >= now;
 }
 
+/**
+ * Compute the participant status for an assignment row.
+ *
+ * @param now - Current time in ms. Server-side callers MUST use `getDbNowMs()`
+ *   or `getDbNow().getTime()` to avoid clock skew between app and DB servers.
+ *   Client-side callers should use `Date.now()` (the only option in the browser).
+ */
 export function getAssignmentParticipantStatus({
   latestStatus,
   attemptCount,
@@ -62,7 +77,7 @@ export function getAssignmentParticipantStatus({
   totalPoints,
   examSessionStartedAt,
   examSessionPersonalDeadline,
-  now = Date.now(),
+  now,
 }: AssignmentParticipantStatusParams): AssignmentParticipantStatus {
   if (isActiveSubmissionStatus(latestStatus) || latestStatus === "submitted") {
     return latestStatus as AssignmentParticipantStatus;
