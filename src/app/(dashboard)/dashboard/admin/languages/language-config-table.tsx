@@ -317,7 +317,8 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
   return (
     <>
       {diskUsage && (() => {
-        const usagePercent = parseInt(diskUsage.usePercent) || 0;
+        const usagePercentParsed = parseInt(diskUsage.usePercent, 10);
+        const usagePercent = Number.isFinite(usagePercentParsed) ? usagePercentParsed : 0;
         const widthValue = diskUsage.usePercent.includes('%') ? diskUsage.usePercent : `${diskUsage.usePercent}%`;
         return (
         <div className="flex items-center gap-3 rounded-lg border p-3 text-sm mb-4">
