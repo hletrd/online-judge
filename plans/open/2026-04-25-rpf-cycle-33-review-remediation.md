@@ -28,7 +28,7 @@ All cycle 32 tasks are complete:
 3. Verify the button is still disabled when no key is entered AND no key is configured
 4. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 38dc241e)
 
 ---
 
@@ -46,7 +46,7 @@ All cycle 32 tasks are complete:
 2. Replace the `useLayoutEffect` import and usage in contest-replay.tsx
 3. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 7cbc97b5)
 
 ---
 
@@ -78,3 +78,7 @@ See archived cycle 32 plan for full details. All carry forward unchanged.
 ## Progress log
 
 - 2026-04-25: Plan created with 3 tasks (A-C). Task C re-evaluated as FALSE POSITIVE.
+- 2026-04-25: Task A DONE — fixed Test Connection button disabled condition (commit 38dc241e).
+- 2026-04-25: Task B DONE — replaced useLayoutEffect with isomorphic layout effect (commit 7cbc97b5).
+- 2026-04-25: Task C FALSE POSITIVE — `parseInt || fallback` is correct since 0 is invalid for these inputs.
+- 2026-04-25: All gates green (eslint 0, tsc clean, vitest 302/302 pass 2197 tests, next build success).
