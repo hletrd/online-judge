@@ -24,28 +24,25 @@ function maybeEvict() {
   const now = Date.now();
   if (now - lastEviction < 60_000) return;
   lastEviction = now;
+  // Single-pass eviction: collect expired keys, then delete them.
+  // After expired entries are removed, if still over capacity, evict
+  // oldest by insertion order (Map preserves insertion order, so
+  // deleting from the front is O(1) per entry).
+  const expiredKeys: string[] = [];
   for (const [key, entry] of store) {
     if (now - entry.lastAttempt > EVICTION_AGE_MS) {
-      store.delete(key);
+      expiredKeys.push(key);
     }
   }
-  // FIFO eviction if over capacity: evict expired entries first, then
-  // oldest by insertion order (Map preserves insertion order, so deleting
-  // from the front is O(1) per entry).
+  for (const key of expiredKeys) {
+    store.delete(key);
+  }
+  // FIFO eviction if still over capacity after removing expired entries
   if (store.size > MAX_ENTRIES) {
-    // First pass: evict expired entries
-    for (const [key, entry] of store) {
-      if (now - entry.lastAttempt > EVICTION_AGE_MS) {
-        store.delete(key);
-      }
-    }
-    // Second pass: if still over capacity, evict oldest by insertion order
-    if (store.size > MAX_ENTRIES) {
-      const excess = store.size - MAX_ENTRIES;
-      for (let i = 0; i < excess; i++) {
-        const firstKey = store.keys().next().value;
-        if (firstKey !== undefined) store.delete(firstKey);
-      }
+    const excess = store.size - MAX_ENTRIES;
+    for (let i = 0; i < excess; i++) {
+      const firstKey = store.keys().next().value;
+      if (firstKey !== undefined) store.delete(firstKey);
     }
   }
 }
