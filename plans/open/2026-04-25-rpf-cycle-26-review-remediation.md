@@ -30,7 +30,7 @@ No cycle-26 review finding is silently dropped. No new refactor-only work is add
   3. In `consumeUserApiRateLimit` (line 196): same pattern — call `await getDbNowMs()` and pass as `nowMs`.
   4. Add a test verifying the `X-RateLimit-Reset` header uses DB-consistent time in both rejection paths.
   5. Verify all gates pass.
-- **Status:** Pending
+- **Status:** DONE
 
 ### L1: Add late-penalty scoring to analytics progression and participant timeline (AGG-2)
 
@@ -44,7 +44,7 @@ No cycle-26 review finding is silently dropped. No new refactor-only work is add
   2. In `participant-timeline.ts`, apply late-penalty logic to the `bestScore` computation, or add a `bestAdjustedScore` alongside the raw `bestScore`.
   3. Update the existing comments that acknowledge the gap to reflect that the gap is now closed.
   4. Verify all gates pass.
-- **Status:** Pending
+- **Status:** DONE
 
 ---
 
@@ -68,3 +68,4 @@ All prior deferred items (DEFER-1 through DEFER-14 from cycle 24 plan) remain un
 ## Progress log
 
 - 2026-04-25: Plan created from cycle-26 aggregate review. 3 findings, 2 fix tasks, 1 deferred.
+- 2026-04-25: Both fixes implemented and committed. H1 (rateLimitedResponse sidecar path), L1 (analytics/timeline late penalties). All gates pass: eslint, tsc --noEmit, vitest run, next build.
