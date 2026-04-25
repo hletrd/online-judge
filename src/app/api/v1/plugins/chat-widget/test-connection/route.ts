@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createApiHandler } from "@/lib/api/handler";
 import { getPluginState } from "@/lib/plugins/data";
@@ -19,7 +19,7 @@ export const POST = createApiHandler({
   auth: { capabilities: ["system.plugins"] },
   rateLimit: "plugins:chat-widget:test-connection",
   schema: requestSchema,
-  handler: async (req, { user, body }) => {
+  handler: async (_req, { body }) => {
     const { provider, model } = body;
 
     // Validate model names against strict patterns to prevent injection
