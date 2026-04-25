@@ -30,7 +30,7 @@ All prior cycle 45 tasks are complete:
 4. Check that callers of `processImage` propagate the error appropriately
 5. Verify all gates pass
 
-**Status:** PENDING
+**Status:** DONE — commit b2131977
 
 ---
 
@@ -50,7 +50,7 @@ All prior cycle 45 tasks are complete:
 4. Ensure the retry timer is properly cleaned up on unmount
 5. Verify all gates pass
 
-**Status:** PENDING
+**Status:** DONE — commit 67c1ae2f
 
 ---
 
@@ -68,7 +68,7 @@ All prior cycle 45 tasks are complete:
 2. Replace `Math.max(...bSolvedTimes)` with `bSolvedTimes.reduce((a, b) => Math.max(a, b), 0)` on line 378
 3. Verify all gates pass
 
-**Status:** PENDING
+**Status:** DONE — commit f4bf0649
 
 ---
 
@@ -112,3 +112,4 @@ All prior cycle 45 tasks are complete:
 ## Progress log
 
 - 2026-04-25: Plan created with 3 tasks (A, B, C). 2 new deferred items this cycle.
+- 2026-04-25: All 3 tasks implemented. Task A in commit b2131977, Task B in commit 67c1ae2f, Task C in commit f4bf0649. All gates pass.
