@@ -38,7 +38,7 @@ All cycle 36 findings verified as already fixed in current code:
 2. Line 172: Change `parseInt(e.target.value, 10) || 100` to `const v = parseInt(e.target.value, 10); updateProblemPoints(i, Number.isFinite(v) ? v : 100);`
 3. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 80013bb0)
 
 ---
 
@@ -59,7 +59,7 @@ All cycle 36 findings verified as already fixed in current code:
 3. Line 457: Change `parseInt(e.target.value, 10) || null` to `const v = parseInt(e.target.value, 10); setExamDurationMinutes(e.target.value && Number.isFinite(v) ? v : null);`
 4. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE (commit 37c05274)
 
 ---
 
@@ -76,7 +76,7 @@ All cycle 36 findings verified as already fixed in current code:
 1. Add explicit timeout of 15000ms to the affected test case
 2. Verify the test passes both individually and in the full suite
 
-**Status:** TODO
+**Status:** DONE (commit 66ec71bd)
 
 ---
 
@@ -107,3 +107,7 @@ Reason for deferral unchanged. See cycle 34 plan for details.
 ## Progress log
 
 - 2026-04-25: Plan created with 3 tasks (A-C).
+- 2026-04-25: Task A DONE — fix parseInt || default in quick-create-contest-form (commit 80013bb0).
+- 2026-04-25: Task B DONE — fix parseFloat || 0 and parseInt || null in assignment-form-dialog (commit 37c05274).
+- 2026-04-25: Task C DONE — add 15s timeout to flaky public-seo-metadata test (commit 66ec71bd).
+- 2026-04-25: All gates green (eslint 0, tsc clean, vitest 302/302 pass 2197 tests, next build success).
