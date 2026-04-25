@@ -37,21 +37,37 @@ function generateConnectionId(userId: string): string {
 }
 
 function addConnection(connId: string, userId: string): void {
-  // Evict oldest-by-age entries if tracking map exceeds cap.
-  // Must evict by createdAt, not by insertion order, to avoid removing
-  // tracking entries for active long-lived connections while keeping
-  // entries for newer connections that may already be closed.
-  while (connectionInfoMap.size >= MAX_TRACKED_CONNECTIONS) {
-    let oldestKey: string | null = null;
-    let oldestTime = Infinity;
+  // Evict entries if tracking map exceeds cap.
+  // Two-phase approach to avoid O(n^2) behavior:
+  //   1. Single O(n) pass to evict stale entries (those past the SSE timeout).
+  //   2. FIFO eviction using Map insertion order as a proxy for age.
+  //      Connections are added roughly in chronological order (connection IDs
+  //      encode timestamps), so evicting from the front of the Map removes the
+  //      oldest entries with high probability. This is O(excess) instead of
+  //      O(excess * map.size), making the total cost O(n) + O(excess).
+  if (connectionInfoMap.size >= MAX_TRACKED_CONNECTIONS) {
+    // Phase 1: single pass to evict stale entries
+    const staleThreshold = getStaleThreshold();
+    const staleKeys: string[] = [];
+    const now = Date.now();
     for (const [key, info] of connectionInfoMap) {
-      if (info.createdAt < oldestTime) {
-        oldestTime = info.createdAt;
-        oldestKey = key;
+      if (now - info.createdAt > staleThreshold) {
+        staleKeys.push(key);
       }
     }
-    if (oldestKey) removeConnection(oldestKey);
-    else break;
+    for (const key of staleKeys) {
+      removeConnection(key);
+    }
+
+    // Phase 2: FIFO eviction for remaining excess (insertion order ≈ age order)
+    while (connectionInfoMap.size >= MAX_TRACKED_CONNECTIONS) {
+      const firstKey = connectionInfoMap.keys().next().value;
+      if (firstKey !== undefined) {
+        removeConnection(firstKey);
+      } else {
+        break;
+      }
+    }
   }
   activeConnectionSet.add(connId);
   connectionInfoMap.set(connId, { userId, createdAt: Date.now() });
