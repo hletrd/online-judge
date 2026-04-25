@@ -31,7 +31,7 @@ All prior cycle 41 tasks are complete:
 3. Ensure the `nanoid(10)` length provides sufficient entropy for uniqueness (10 chars of base62 = ~59 bits, sufficient for this use case)
 4. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE — commit a70c7b1d
 
 ---
 
@@ -49,7 +49,7 @@ All prior cycle 41 tasks are complete:
 2. The `Date.now()` fallback is acceptable here because this timestamp is only used for a 5-second cooldown (1-2 seconds of clock skew is tolerable)
 3. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE — commit b9c661be
 
 ---
 
@@ -68,7 +68,7 @@ All prior cycle 41 tasks are complete:
 3. If the deadline has passed, return `{ ok: false, error: "assignmentClosed" }`
 4. Verify all gates pass
 
-**Status:** TODO
+**Status:** DONE — commit a70c7b1d
 
 ---
 
@@ -112,3 +112,4 @@ Reason for deferral unchanged. See cycle 42 plan for details.
 ## Progress log
 
 - 2026-04-25: Plan created with 3 tasks (A, B, C). 2 new deferred items this cycle.
+- 2026-04-25: All 3 tasks implemented. Task A+C in commit a70c7b1d, Task B in commit b9c661be. All gates pass.
