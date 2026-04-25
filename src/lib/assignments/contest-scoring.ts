@@ -4,6 +4,7 @@ import { LRUCache } from "lru-cache";
 import type { ScoringModel } from "@/types";
 import { TERMINAL_SUBMISSION_STATUSES_SQL_LIST } from "@/lib/submissions/status";
 import { buildIoiLatePenaltyCaseExpr } from "./scoring";
+import { getDbNowMs } from "@/lib/db-time";
 
 /**
  * ICPC penalty: minutes from contest start to first AC + 20 min per wrong attempt before AC.
@@ -97,7 +98,14 @@ export async function computeContestRanking(assignmentId: string, cutoffSec?: nu
   const cacheKey = `${assignmentId}:${cutoffSec ?? 'live'}`;
   const cached = rankingCache.get(cacheKey);
   if (cached) {
-    const age = Date.now() - cached.createdAt;
+    // Use Date.now() for the staleness check instead of getDbNowMs() to avoid
+    // a DB round-trip on every cache-hit request. The staleness tolerance is
+    // 15 seconds, so clock skew of 1-2 seconds between app and DB servers is
+    // acceptable for deciding whether to trigger a background refresh.
+    // getDbNowMs() is still used for cache-write timestamps (below) where
+    // authoritative time is needed.
+    const nowMs = Date.now();
+    const age = nowMs - cached.createdAt;
     if (age <= STALE_AFTER_MS) {
       // Fresh — return immediately
       return cached.data;
@@ -105,16 +113,16 @@ export async function computeContestRanking(assignmentId: string, cutoffSec?: nu
     // Stale but still within TTL — return stale data and trigger ONE background refresh
     // (unless a refresh failed recently — avoid amplifying DB failures)
     const lastFailure = _lastRefreshFailureAt.get(cacheKey) ?? 0;
-    if (!_refreshingKeys.has(cacheKey) && Date.now() - lastFailure >= REFRESH_FAILURE_COOLDOWN_MS) {
+    if (!_refreshingKeys.has(cacheKey) && nowMs - lastFailure >= REFRESH_FAILURE_COOLDOWN_MS) {
       _refreshingKeys.add(cacheKey);
       _computeContestRankingInner(assignmentId, cutoffSec)
-        .then((fresh) => {
-          rankingCache.set(cacheKey, { data: fresh, createdAt: Date.now() });
+        .then(async (fresh) => {
+          rankingCache.set(cacheKey, { data: fresh, createdAt: await getDbNowMs() });
           _lastRefreshFailureAt.delete(cacheKey);
         })
-        .catch((err) => {
-          _lastRefreshFailureAt.set(cacheKey, Date.now());
-          logger.error({ err }, "[contest-scoring] Failed to refresh ranking cache");
+        .catch(async () => {
+          _lastRefreshFailureAt.set(cacheKey, await getDbNowMs());
+          logger.error({ assignmentId }, "[contest-scoring] Failed to refresh ranking cache");
         })
         .finally(() => {
           _refreshingKeys.delete(cacheKey);
@@ -125,7 +133,7 @@ export async function computeContestRanking(assignmentId: string, cutoffSec?: nu
 
   // Cache miss — compute fresh and populate cache
   const result = await _computeContestRankingInner(assignmentId, cutoffSec);
-  rankingCache.set(cacheKey, { data: result, createdAt: Date.now() });
+  rankingCache.set(cacheKey, { data: result, createdAt: await getDbNowMs() });
   return result;
 }
 
