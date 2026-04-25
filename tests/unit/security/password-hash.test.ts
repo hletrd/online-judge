@@ -48,7 +48,6 @@ describe("verifyPassword", () => {
 
     // Verify the hash was created with different parameters
     expect(argon2.needsRehash(hash, {
-      type: argon2.argon2id,
       memoryCost: 19456,
       timeCost: 2,
       parallelism: 1,
