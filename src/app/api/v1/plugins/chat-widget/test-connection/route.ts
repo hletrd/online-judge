@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
-import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { createApiHandler } from "@/lib/api/handler";
 import { getPluginState } from "@/lib/plugins/data";
 import { SAFE_GEMINI_MODEL_PATTERN } from "@/lib/plugins/chat-widget/providers";
@@ -18,34 +16,11 @@ const requestSchema = z.object({
 const TEST_CONNECTION_TIMEOUT_MS = 15_000;
 
 export const POST = createApiHandler({
-  auth: false,
-  handler: async (req: NextRequest) => {
-    // CSRF check — auth:false disables the handler's built-in check
-    const { validateCsrf } = await import("@/lib/security/csrf");
-    const csrfError = validateCsrf(req);
-    if (csrfError) return csrfError;
-
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
-    const caps = await resolveCapabilities(session.user.role);
-    if (!caps.has("system.plugins")) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
-
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      return NextResponse.json({ error: "invalidJson" }, { status: 400 });
-    }
-    const parsed = requestSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: "invalidRequest" }, { status: 400 });
-    }
-
-    const { provider, model } = parsed.data;
+  auth: { capabilities: ["system.plugins"] },
+  rateLimit: "plugins:chat-widget:test-connection",
+  schema: requestSchema,
+  handler: async (req, { user, body }) => {
+    const { provider, model } = body;
 
     // Validate model names against strict patterns to prevent injection
     if (provider === "openai" && !OPENAI_MODEL_PATTERN.test(model)) {
