@@ -11,6 +11,12 @@ import pLimit from "p-limit";
  *  when multiple submissions are judged and accepted simultaneously. */
 const reviewLimiter = pLimit(2);
 
+/** Maximum source code size (bytes) eligible for auto-review.
+ *  Files exceeding this are silently skipped to avoid overflowing the AI
+ *  provider's context window and incurring unnecessary token costs.
+ *  8 KB ≈ 200 lines of typical code — sufficient for educational feedback. */
+const AUTO_REVIEW_MAX_SOURCE_CODE_BYTES = 8192;
+
 /**
  * Trigger an AI code review for an accepted submission.
  * Runs in the background — errors are logged but do not affect the judge result.
@@ -40,6 +46,16 @@ export async function triggerAutoCodeReview(submissionId: string): Promise<void>
     });
 
     if (!submission || !submission.sourceCode) return;
+
+    // Skip auto-review for very large source files to avoid exceeding the AI
+    // provider's context window and incurring unnecessary token costs.
+    if (submission.sourceCode.length > AUTO_REVIEW_MAX_SOURCE_CODE_BYTES) {
+      logger.debug(
+        { submissionId, sourceCodeBytes: submission.sourceCode.length, limit: AUTO_REVIEW_MAX_SOURCE_CODE_BYTES },
+        "[auto-review] Skipping — source code exceeds size cap",
+      );
+      return;
+    }
 
     const globalEnabled = await isAiAssistantEnabledForContext({
       userId: submission.userId,
