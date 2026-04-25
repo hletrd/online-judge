@@ -9,6 +9,9 @@ import { apiFetch } from "@/lib/api/client";
 
 type DownloadMode = "portable" | "backup";
 
+/** Known API error codes that can be safely used as i18n keys */
+const KNOWN_BACKUP_ERRORS = new Set(["passwordRequired", "invalidPassword", "authenticationFailed", "forbidden"]);
+
 export function DatabaseBackupRestore({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const t = useTranslations("admin.settings");
   const tCommon = useTranslations("common");
@@ -43,8 +46,7 @@ export function DatabaseBackupRestore({ isSuperAdmin }: { isSuperAdmin: boolean 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         // Only use known i18n keys — never pass raw API error strings to t()
-        const knownErrors = new Set(["passwordRequired", "invalidPassword", "authenticationFailed", "forbidden"]);
-        const errorKey = typeof data.error === "string" && knownErrors.has(data.error)
+        const errorKey = typeof data.error === "string" && KNOWN_BACKUP_ERRORS.has(data.error)
           ? data.error
           : (isPortableExport ? "portableExportFailed" : "backupFailed");
         toast.error(t(errorKey));
