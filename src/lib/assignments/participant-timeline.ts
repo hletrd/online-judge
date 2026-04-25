@@ -1,5 +1,6 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { mapSubmissionPercentageToAssignmentPoints } from "@/lib/assignments/scoring";
 import {
   antiCheatEvents,
   assignments,
@@ -128,6 +129,9 @@ export async function getParticipantTimeline(
       where: eq(assignments.id, assignmentId),
       columns: {
         scoringModel: true,
+        deadline: true,
+        latePenalty: true,
+        examMode: true,
       },
     }),
     db
@@ -196,6 +200,10 @@ export async function getParticipantTimeline(
   }
 
   const scoringModel = assignmentMeta?.scoringModel ?? "ioi";
+  const deadline = assignmentMeta?.deadline ?? null;
+  const latePenalty = assignmentMeta?.latePenalty ?? 0;
+  const examMode = assignmentMeta?.examMode ?? "none";
+  const personalDeadline = examSession?.personalDeadline ?? null;
 
   const problemsTimeline = assignmentProblemRows.map((problemRow) => {
     const problemSubmissions = submissionsByProblem.get(problemRow.problemId) ?? [];
@@ -223,10 +231,20 @@ export async function getParticipantTimeline(
             && submission.submittedAt.getTime() < firstAccepted.submittedAt.getTime()
         ).length
       : 0;
+    // Apply late penalties using mapSubmissionPercentageToAssignmentPoints for
+    // consistency with the leaderboard (which uses buildIoiLatePenaltyCaseExpr at
+    // the SQL level). Both share the same late-penalty semantics.
     const bestScore = problemSubmissions.reduce<number | null>((best, submission) => {
       if (submission.score === null || submission.score === undefined) return best;
-      if (best === null) return submission.score;
-      return Math.max(best, submission.score);
+      const adjusted = mapSubmissionPercentageToAssignmentPoints(submission.score, problemPoints, {
+        submittedAt: submission.submittedAt,
+        deadline,
+        latePenalty,
+        personalDeadline,
+        examMode,
+      });
+      if (best === null) return adjusted;
+      return Math.max(best, adjusted);
     }, null);
 
     const timeline = sortTimeline([

@@ -1,5 +1,6 @@
 import { rawQueryOne, rawQueryAll } from "@/lib/db/queries";
 import { computeContestRanking } from "./contest-scoring";
+import { mapSubmissionPercentageToAssignmentPoints } from "./scoring";
 
 type HistogramBucket = {
   label: string;
@@ -172,8 +173,8 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
   // adjusted score < 100 (e.g., 90 after a 10% late penalty), so the "first AC"
   // concept here represents "first full raw score" rather than "first full
   // adjusted score". The main leaderboard in contest-scoring.ts correctly uses
-  // adjusted scores for ranking. A future enhancement could add IOI-aware
-  // "first max adjusted score" tracking if needed.
+  // adjusted scores for ranking. The student progression chart (section 4 below)
+  // also uses adjusted scores for consistency with the leaderboard.
   //
   // Parallelize the independent queries: first-AC, contest meta, and cheat
   // summary can all run concurrently since they don't depend on each other.
@@ -185,8 +186,8 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
        ORDER BY s.submitted_at ASC`,
       { assignmentId }
     ),
-    rawQueryOne<{ startsAt: Date | null }>(
-      `SELECT starts_at AS "startsAt" FROM assignments WHERE id = @assignmentId`,
+    rawQueryOne<{ startsAt: Date | null; deadline: Date | null; latePenalty: number | null; examMode: string }>(
+      `SELECT starts_at AS "startsAt", deadline, late_penalty AS "latePenalty", exam_mode AS "examMode" FROM assignments WHERE id = @assignmentId`,
       { assignmentId }
     ),
     rawQueryAll<CheatCountRow>(
@@ -231,24 +232,29 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
   }
 
   // 4. Student score progression (only when requested)
-  // NOTE: The progression chart uses raw scores (score / 100 * points) without
-  // applying late penalties. For IOI contests with late penalties, a student's
-  // progression total may exceed their leaderboard total. This is intentional —
-  // the progression chart shows the raw score trajectory, while the leaderboard
-  // applies penalty adjustments. A future enhancement could apply late penalties
-  // here for full consistency with the leaderboard.
+  // Applies late penalties using mapSubmissionPercentageToAssignmentPoints()
+  // for full consistency with the leaderboard (which uses buildIoiLatePenaltyCaseExpr
+  // at the SQL level). Both share the same late-penalty semantics: non-windowed
+  // exams check against the global deadline, windowed exams check against the
+  // per-user personal_deadline.
   let studentProgressions: StudentProgression[] | undefined;
   if (includeTimeline) {
-    const submissionRows = await rawQueryAll<SubmissionTimeRow>(
+    const submissionRows = await rawQueryAll<SubmissionTimeRow & { personalDeadline: Date | null }>(
       `SELECT s.user_id AS "userId", u.name, s.problem_id AS "problemId", s.score, s.submitted_at AS "submittedAt",
-              COALESCE(ap.points, 100) AS points
+              COALESCE(ap.points, 100) AS points,
+              es.personal_deadline AS "personalDeadline"
        FROM submissions s
        INNER JOIN users u ON u.id = s.user_id
        INNER JOIN assignment_problems ap ON ap.assignment_id = s.assignment_id AND ap.problem_id = s.problem_id
+       LEFT JOIN exam_sessions es ON es.assignment_id = s.assignment_id AND es.user_id = s.user_id
        WHERE s.assignment_id = @assignmentId
        ORDER BY s.submitted_at ASC`,
       { assignmentId }
     );
+
+    const latePenalty = contestMeta?.latePenalty ?? 0;
+    const deadline = contestMeta?.deadline ?? null;
+    const examMode = contestMeta?.examMode ?? "none";
 
     const userProgressMap = new Map<string, { name: string; bestScores: Map<string, number>; progressionPoints: Array<{ timestamp: number; totalScore: number }> }>();
 
@@ -258,12 +264,20 @@ export async function computeContestAnalytics(assignmentId: string, includeTimel
       }
       const userData = userProgressMap.get(sub.userId);
       if (!userData) continue;
-      const rawScaledScore = sub.score != null ? Math.round(Math.min(Math.max(Number(sub.score), 0), 100) / 100 * Number(sub.points) * 100) / 100 : 0;
+      const adjustedScore = sub.score != null
+        ? mapSubmissionPercentageToAssignmentPoints(Number(sub.score), Number(sub.points), {
+            submittedAt: new Date(sub.submittedAt),
+            deadline,
+            latePenalty,
+            personalDeadline: sub.personalDeadline ? new Date(sub.personalDeadline) : null,
+            examMode,
+          })
+        : 0;
       const currentBest = userData.bestScores.get(sub.problemId) ?? 0;
       const submittedAtMs = new Date(sub.submittedAt).getTime();
 
-      if (rawScaledScore > currentBest) {
-        userData.bestScores.set(sub.problemId, rawScaledScore);
+      if (adjustedScore > currentBest) {
+        userData.bestScores.set(sub.problemId, adjustedScore);
         const totalScore = Array.from(userData.bestScores.values()).reduce((s, v) => s + v, 0);
         userData.progressionPoints.push({ timestamp: submittedAtMs, totalScore });
       }
