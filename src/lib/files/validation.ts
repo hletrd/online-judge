@@ -45,8 +45,11 @@ const MAX_SINGLE_ENTRY_DECOMPRESSED_BYTES = 50 * 1024 * 1024; // 50 MB
 
 /**
  * Validate the total decompressed size of a ZIP buffer to prevent ZIP bombs.
- * Iterates all entries and sums their uncompressed sizes. Returns an error
- * message key if the total exceeds maxDecompressedSizeBytes, null otherwise.
+ *
+ * Reads `uncompressedSize` from each entry's metadata when available (O(1) per
+ * entry) instead of decompressing every entry into memory. Falls back to full
+ * decompression only when the metadata is missing (e.g., ZIPs using data
+ * descriptors without sizes — rare in practice).
  *
  * Per-entry size cap prevents OOM from a ZIP bomb with many small entries
  * that each decompress to a large payload — the total check alone would
@@ -61,14 +64,39 @@ export async function validateZipDecompressedSize(
     const entries = Object.values(zip.files).filter((e) => !e.dir);
     // Limit the number of entries to prevent ZIP bomb with millions of tiny files
     if (entries.length > 10000) return "zipDecompressedSizeExceeded";
+
+    // Fast path: read uncompressedSize from ZIP metadata without decompressing.
+    // This avoids allocating hundreds of MB of memory for the common case.
+    // JSZip exposes entry._data.uncompressedSize after loadAsync for most ZIPs.
     let totalUncompressed = 0;
+    let allMetadataAvailable = true;
     for (const entry of entries) {
-      // JSZip doesn't expose uncompressed size without decompressing,
-      // so we use async() with a size accumulator. Decompress entry by
-      // entry and abort early if the running total exceeds the limit.
-      const content = await entry.async("uint8array");
+      const metadataSize: number | undefined = (entry as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize;
+      if (metadataSize === undefined) {
+        allMetadataAvailable = false;
+        break;
+      }
       // Per-entry size cap: reject any single entry that decompresses beyond
       // this limit to prevent OOM before the total accumulator can catch it.
+      if (metadataSize > MAX_SINGLE_ENTRY_DECOMPRESSED_BYTES) {
+        return "zipDecompressedSizeExceeded";
+      }
+      totalUncompressed += metadataSize;
+      if (totalUncompressed > maxDecompressedSizeBytes) {
+        return "zipDecompressedSizeExceeded";
+      }
+    }
+
+    if (allMetadataAvailable) {
+      return null; // All entries within limits
+    }
+
+    // Slow path: some entries lack metadata (data descriptors without sizes).
+    // Fall back to decompressing entry by entry to measure actual sizes.
+    totalUncompressed = 0;
+    for (const entry of entries) {
+      const content = await entry.async("uint8array");
+      // Per-entry size cap
       if (content.length > MAX_SINGLE_ENTRY_DECOMPRESSED_BYTES) {
         return "zipDecompressedSizeExceeded";
       }
