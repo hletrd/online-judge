@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getApiUser, unauthorized, forbidden, csrfForbidden } from "@/lib/api/auth";
 import { consumeApiRateLimit } from "@/lib/security/api-rate-limit";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
@@ -11,6 +12,12 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+
+/** Zod schema for the JSON body import path: { password, data? } */
+const jsonImportBodySchema = z.object({
+  password: z.string().min(1, "passwordRequired"),
+  data: z.unknown().optional(),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -114,9 +121,9 @@ export async function POST(request: NextRequest) {
     // Prefer multipart/form-data which keeps the password out of JSON request bodies
     // that may be logged by middleware or reverse proxies.
     logger.warn({ userId: user.id }, "[migrate-import] JSON body path is deprecated — use multipart/form-data instead");
-    let jsonBody: { password?: string; data?: JudgeKitExport };
+    let rawJsonBody: unknown;
     try {
-      jsonBody = await readJsonBodyWithLimit(request) as unknown as { password?: string; data?: JudgeKitExport };
+      rawJsonBody = await readJsonBodyWithLimit(request);
     } catch (error) {
       if (error instanceof Error && error.message === "fileTooLarge") {
         return NextResponse.json({ error: "fileTooLarge" }, { status: 400 });
@@ -127,11 +134,13 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
-    // For backwards compatibility, accept either { password, data: {...} } or flat export with password field
-    const jsonPassword = (jsonBody as Record<string, unknown>).password as string | undefined;
-    if (!jsonPassword || typeof jsonPassword !== "string") {
+    // Validate JSON body structure with Zod instead of unsafe casts
+    const parsedBody = jsonImportBodySchema.safeParse(rawJsonBody);
+    if (!parsedBody.success) {
       return NextResponse.json({ error: "passwordRequired" }, { status: 400 });
     }
+
+    const jsonPassword = parsedBody.data.password;
 
     const [dbUser] = await db
       .select({ passwordHash: users.passwordHash })
@@ -149,13 +158,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract the actual export data, stripping the password field
-    const jsonBodyRecord = { ...(jsonBody as Record<string, unknown>) };
-    const nestedData = jsonBodyRecord.data;
-    delete jsonBodyRecord.password;
-    delete jsonBodyRecord.data;
-    const data: JudgeKitExport = nestedData
-      ? nestedData as JudgeKitExport
-      : jsonBodyRecord as unknown as JudgeKitExport;
+    // Use Zod-validated data instead of unsafe casts
+    const rawRecord = rawJsonBody as Record<string, unknown>;
+    const { password: _, data: _data, ...restFields } = rawRecord;
+    const data: JudgeKitExport = parsedBody.data.data
+      ? parsedBody.data.data as JudgeKitExport
+      : restFields as unknown as JudgeKitExport;
 
     const errors = validateExport(data);
     if (errors.length > 0) {
