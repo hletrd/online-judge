@@ -76,6 +76,7 @@ function removeConnection(connId: string): void {
 const CLEANUP_INTERVAL_MS = 60_000;
 declare global {
   var __sseCleanupTimer: ReturnType<typeof setInterval> | undefined;
+  var __sseCleanupInitialized: boolean | undefined;
 }
 
 // Cached stale threshold with 5-minute TTL to avoid calling getConfiguredSettings()
@@ -98,17 +99,30 @@ function getStaleThreshold(): number {
   return cachedStaleThreshold;
 }
 
-if (globalThis.__sseCleanupTimer) clearInterval(globalThis.__sseCleanupTimer);
-globalThis.__sseCleanupTimer = setInterval(() => {
-  if (connectionInfoMap.size === 0) return;
-  const now = Date.now();
-  const staleThreshold = getStaleThreshold();
-  for (const [connId, info] of connectionInfoMap) {
-    if (now - info.createdAt > staleThreshold) {
-      removeConnection(connId)
+// Use an atomic guard flag to prevent double-registration of the cleanup
+// timer during HMR/turbopack hot reloads. Without this guard, concurrent
+// module re-evaluations could each read the same old globalThis.__sseCleanupTimer,
+// both clear it, and both set new intervals — leaking one timer.
+if (!globalThis.__sseCleanupInitialized) {
+  if (globalThis.__sseCleanupTimer) clearInterval(globalThis.__sseCleanupTimer);
+  globalThis.__sseCleanupInitialized = true;
+  globalThis.__sseCleanupTimer = setInterval(() => {
+    if (connectionInfoMap.size === 0) return;
+    const now = Date.now();
+    const staleThreshold = getStaleThreshold();
+    // Collect keys to delete first to avoid mutating the Map during iteration,
+    // which can cause the iterator to skip entries that have not yet been visited.
+    const staleKeys: string[] = [];
+    for (const [connId, info] of connectionInfoMap) {
+      if (now - info.createdAt > staleThreshold) {
+        staleKeys.push(connId);
+      }
     }
-  }
-}, CLEANUP_INTERVAL_MS);
+    for (const key of staleKeys) {
+      removeConnection(key);
+    }
+  }, CLEANUP_INTERVAL_MS);
+}
 // Allow the process to exit even if the timer is still active
 if (globalThis.__sseCleanupTimer && typeof globalThis.__sseCleanupTimer === "object" && "unref" in globalThis.__sseCleanupTimer) {
   globalThis.__sseCleanupTimer.unref();
@@ -209,6 +223,15 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Capture coordination state before the try block so the outer catch can
+  // release the connection slot on unexpected errors (e.g., DB query failure
+  // after the slot was acquired). Without this, leaked slots can cause
+  // "tooManyConnections" (429) rejections for legitimate subsequent requests.
+  let useSharedCoordination = false;
+  let connId = "";
+  let sharedConnectionKey = "";
+  let slotAcquired = false;
+
   try {
     const user = await getApiUser(request);
     if (!user) return unauthorized();
@@ -228,9 +251,9 @@ export async function GET(
     // Enforce global/per-user SSE connection caps.
     const sseConfig = getConfiguredSettings();
     const userId = user.id;
-    const connId = generateConnectionId(userId);
-    const useSharedCoordination = usesSharedRealtimeCoordination();
-    const sharedConnectionKey = getRealtimeConnectionKey(userId, connId);
+    connId = generateConnectionId(userId);
+    useSharedCoordination = usesSharedRealtimeCoordination();
+    sharedConnectionKey = getRealtimeConnectionKey(userId, connId);
 
     if (useSharedCoordination) {
       const sharedResult = await acquireSharedSseConnectionSlot({
@@ -252,6 +275,7 @@ export async function GET(
       }
       addConnection(connId, userId);
     }
+    slotAcquired = true;
 
     const { id } = await params;
 
@@ -465,6 +489,21 @@ export async function GET(
       headers: sseHeaders(),
     });
   } catch (error) {
+    // Release the connection slot if it was acquired but not yet handed off
+    // to the ReadableStream's close() handler. Without this cleanup, leaked
+    // slots can cause "tooManyConnections" (429) rejections for legitimate
+    // subsequent requests.
+    if (slotAcquired) {
+      try {
+        if (useSharedCoordination) {
+          await releaseSharedSseConnectionSlot(sharedConnectionKey);
+        } else {
+          removeConnection(connId);
+        }
+      } catch (cleanupErr) {
+        logger.debug({ err: cleanupErr }, "[sse] failed to release connection slot in error path");
+      }
+    }
     logger.error({ err: error }, "GET /api/v1/submissions/[id]/events error");
     return apiError("internalServerError", 500);
   }
