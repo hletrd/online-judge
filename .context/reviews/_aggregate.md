@@ -1,10 +1,10 @@
-# Aggregate Review — RPF Cycle 2/100
+# Aggregate Review — RPF Cycle 3/100
 
-**Date:** 2026-04-26
-**Cycle:** 2/100 of review-plan-fix loop
+**Date:** 2026-04-27
+**Cycle:** 3/100 of review-plan-fix loop
 **Reviewers:** architect, code-reviewer, critic, debugger, designer, document-specialist, perf-reviewer, security-reviewer, test-engineer, tracer, verifier (11 lanes — designer covered as web frontend exists)
-**Total findings:** 3 HIGH (uncommitted source changes + Date.now() staleness uncommitted), 6 MEDIUM, 12 LOW, plus verification notes
-**Cross-agent agreement:** Uncommitted-source-code finding flagged by code-reviewer, architect, critic, debugger, verifier, tracer (6 lanes converged) → highest signal
+**Total findings:** 0 HIGH, 5 MEDIUM, 25 LOW, plus several INFO/verification notes
+**Cross-agent agreement:** No HIGH-severity convergence this cycle. Cycle 2 closed the previously-converging items (cookie clearing, analytics time domain, IIFE refactor, tests). Cycle 3 is a steady-state cycle.
 
 ---
 
@@ -12,196 +12,196 @@
 
 | Topic | Agents flagging | Severity peak |
 |-------|-----------------|---------------|
-| Cycle-1 source changes uncommitted (env.ts, proxy.ts, analytics route) | CR2-1, ARCH2-1, CRIT2-1, DBG2-1, VER2-1, TRC2-1 | **HIGH** |
-| Analytics route Date.now() staleness optimization uncommitted | CR2-2, ARCH2-4, VER2-2, TRC2-2 | **HIGH** |
-| Analytics IIFE 4-deep error nesting | CR2-3, DBG2-2 | MEDIUM |
-| Analytics cooldown DB-call amplifier in failure path | PERF2-1, DBG2-2 | MEDIUM |
-| Analytics tests gap (cycle-1 AGG-5 carryover) | TE2-1 | MEDIUM |
-| Plan/code drift on Task B | DOC2-1, CRIT2-2 | LOW |
-| Misleading 30s clamp comment in retry | CR2-5 | LOW |
-| `__Secure-` cookie clear over HTTP no-op | SEC2-1 | LOW |
-| Anti-cheat online/timer race | DBG2-3 | LOW |
+| `_lastRefreshFailureAt` Map grows unbounded (no LRU eviction handler) | PERF3-2, CRIT3-2 (via cohesion gap), ARCH3-1 (via encapsulation gap) | **MEDIUM** |
+| `getAuthSessionCookieNames` literal-value contract test (already exists in env.test.ts:418-419, 422-432) | TE3-1, DBG3-4 | resolved (false-positive — verified during planning pass) |
+| `plans/open/` directory has 80+ unarchived plan files | CRIT3-1, DOC3-2 | LOW |
+| AGENTS.md vs `password.ts` policy mismatch (carried) | DOC3-1, SEC3-3 | MEDIUM (deferred — needs user/PM decision) |
+| `__Secure-` cookie clear over HTTP no-op (carried) | SEC3-1 (deferred from cycle 2 AGG-9) | LOW |
+| Anti-cheat retry/backoff lacks direct timing tests (carried) | TE3-2 (deferred from cycle 2 AGG-13) | LOW |
 
 ---
 
 ## Deduplicated Findings (sorted by severity)
 
-### AGG-1: [HIGH] Three production source changes from cycle 1 are uncommitted in working tree
+### AGG3-1: [MEDIUM] `_lastRefreshFailureAt` Map grows unbounded — no LRU eviction handler
 
-**Sources:** CR2-1, ARCH2-1, CRIT2-1, DBG2-1, VER2-1, TRC2-1 | **Confidence:** HIGH
+**Sources:** PERF3-2, ARCH3-1 (encapsulation), CRIT3-2 (cohesion) | **Confidence:** MEDIUM
 
-`src/proxy.ts`, `src/lib/security/env.ts`, and `src/app/api/v1/contests/[assignmentId]/analytics/route.ts` have working-tree-only modifications that cycle 1's tests depend on. Without committing these:
+`src/app/api/v1/contests/[assignmentId]/analytics/route.ts:24` declares `const _lastRefreshFailureAt = new Map<string, number>()` at module scope. Entries are deleted on successful refresh (`_lastRefreshFailureAt.delete(cacheKey)` line 48), but never deleted when the LRU `analyticsCache` evicts a key (because it's a separate structure).
 
-- `tests/unit/security/env.test.ts` would fail at HEAD (function doesn't exist).
-- `tests/unit/proxy.test.ts` mock would mock a non-existent function (mock noop, but production import would fail at build).
-- Cycle-1 plan AGG-1 fix is incomplete.
-
-**Concrete failure scenario:** Clean checkout of HEAD → run `npm run test:unit` → 51 env tests fail because `getAuthSessionCookieNames` is undefined. Production build would also fail because `proxy.ts` imports a non-existent function.
+**Failure scenario:** Long-running app server that sees many distinct `assignmentId`s experiencing refresh failures. Over weeks, `_lastRefreshFailureAt.size` grows past the LRU's max=100, leaking memory. Slow leak (each entry is ~16 bytes), but unbounded.
 
 **Fix:**
-1. Commit `src/lib/security/env.ts` `getAuthSessionCookieNames` factory.
-2. Commit `src/proxy.ts` updated `clearAuthSessionCookies` using the factory.
-3. Commit `src/app/api/v1/contests/[assignmentId]/analytics/route.ts` Date.now() staleness + cooldown fallback (or revert if reverting Task B).
+1. Pass an `lru-cache` `dispose` (or `onEvict`) handler to `analyticsCache` that removes the same key from `_lastRefreshFailureAt`. This couples the two structures' eviction.
+2. Alternatively: replace the `Map` with another `LRUCache` of equal capacity. Simplest, but less precise (cooldown could survive even if the cache entry was evicted by capacity pressure unrelated to failure).
+
+Approach (1) is cheaper and clearer. Add a comment noting both data structures share key-space.
+
+**Exit criteria:**
+- `analyticsCache` has a `dispose` (or `onEvict`) callback that calls `_lastRefreshFailureAt.delete(key)`.
+- Unit test asserts that, after eviction, the key is no longer present in `_lastRefreshFailureAt`.
 
 ---
 
-### AGG-2: [HIGH] Analytics route Date.now() staleness optimization is uncommitted
+### AGG3-2: [resolved during planning] `getAuthSessionCookieNames` literal-value test already exists
 
-**Sources:** CR2-2, ARCH2-4, VER2-2, TRC2-2 | **Confidence:** HIGH
+**Sources:** TE3-1, DBG3-4 (initially flagged) | **Confidence:** HIGH (verified)
 
-Cycle-1 plan task B was deferred. Working tree contains a hybrid implementation:
-- `Date.now()` for staleness check (line 62) — ✅ matches Option 1 read side.
-- `getDbNowMs()` for cache writes (line 79, 106) — ✗ does not match Option 1.
-- Inner `try/catch` around cooldown set with `Date.now()` fallback (line 87-91) — partial mitigation for DB unreachable.
+Initial review claimed the literal-value test was missing. Verification via `grep -n getAuthSessionCookieNames tests/unit/security/env.test.ts` found three existing tests at lines 415-419, 422-432, 434-440. The first asserts:
+```ts
+expect(names.name).toBe("authjs.session-token");
+expect(names.secureName).toBe("__Secure-authjs.session-token");
+```
 
-This is a different decision than what cycle-1 plan task B specified. Either commit and update plan, or fully apply Option 1.
+This is sufficient to catch a refactor that swaps or renames a constant. **No action needed.** Lane reviewers (TE3-1, DBG3-4) were operating on a stale read; corrected during plan synthesis.
 
-**Recommendation:** Commit the hybrid approach as a deliberate decision (DB time for persistence-relevant timestamps) and update the plan. Then add tests covering the staleness behavior (carries cycle-1 AGG-5 forward).
-
----
-
-### AGG-3: [MEDIUM] Analytics IIFE has 4-deep nested error handling
-
-**Sources:** CR2-3, DBG2-2 | **Confidence:** HIGH
-
-`src/app/api/v1/contests/[assignmentId]/analytics/route.ts:76-99` — async IIFE with 4 catch blocks (inner catch with nested try/catch, outer .catch). Hard to read; outer .catch swallows all errors silently (no logging).
-
-**Fix:**
-1. Extract refresh body into a named function `refreshAnalyticsCacheInBackground`.
-2. Replace outer `.catch(() => {})` with `.catch((err) => logger.warn({ err, assignmentId }, "..."))`.
-3. Drop inner cooldown-set try/catch — use `Date.now()` directly per PERF2-1.
+**Fix:** None. Note in plan that this is a verified false-positive.
 
 ---
 
-### AGG-4: [MEDIUM] Analytics cooldown failure path makes 2 DB calls
+### AGG3-3: [LOW] `plans/open/` has accumulated 80+ entries; archival lag
 
-**Sources:** PERF2-1 | **Confidence:** MEDIUM
+**Sources:** CRIT3-1, DOC3-2 | **Confidence:** HIGH
 
-When `getDbNowMs()` fails on line 79, the inner catch retries `getDbNowMs()` on line 88, then falls back to `Date.now()`. Under DB pressure, this duplicates the failing call.
+Many fully-implemented (`[x]`) plans remain under `plans/open/` instead of being moved to `plans/done/`. Discoverability suffers.
 
-**Fix:** Use `Date.now()` directly in the cooldown-fallback path. Bundles with AGG-3.
+**Fix:** Single-commit housekeeping pass that:
+1. Greps `plans/open/*.md` for files where every task line is `[x]` or `[d]` (no `[ ]` or `[~]`).
+2. Moves those into `plans/done/` (already exists per repo structure).
+3. Adds a one-line README convention in `plans/open/README.md` so future cycles archive consistently.
 
----
+**Note:** Several earlier cycles attempted this; the pattern recurs because each cycle adds a new plan and only sometimes archives the one it implements. The README convention would close the loop.
 
-### AGG-5: [MEDIUM] Analytics route lacks tests for staleness/cooldown behavior
-
-**Sources:** TE2-1 (carries cycle-1 AGG-5) | **Confidence:** HIGH
-
-Same finding as cycle-1 AGG-5; still open.
-
-**Fix:** Create `tests/unit/api/contests/analytics.test.ts` with mocked `computeContestAnalytics` and `getDbNowMs`. Use `vi.useFakeTimers()` to advance clock through staleness window. Cover: cache hit (fresh), cache hit (stale → background refresh), refresh failure (cooldown set), in-cooldown (no refresh), post-cooldown (refresh resumed), getDbNowMs failure (Date.now fallback used).
-
----
-
-### AGG-6: [MEDIUM] Plan/code drift on Task B
-
-**Sources:** DOC2-1, CRIT2-2 | **Confidence:** HIGH
-
-Plan says Task B is `[d]` (deferred), but working tree contains partial implementation. Document or revert.
-
-**Fix:** Bundles with AGG-1/AGG-2 commits — once committed, update Task B status.
+**Exit criteria:**
+- All plans with all-`[x]`-tasks under `plans/open/` are moved to `plans/done/` (this cycle, conservative scope).
+- `plans/open/README.md` documents the convention.
 
 ---
 
-### AGG-7: [LOW] Outer `.catch(() => {})` swallows all errors silently
+### AGG3-4: [LOW] Add doc comment explaining test pattern (`vi.runAllTimersAsync` drains microtasks)
 
-**Sources:** CR2-3 (also part of AGG-3) | **Confidence:** MEDIUM
+**Sources:** DBG3-2, TRC3-2 (informational) | **Confidence:** MEDIUM
 
-Bundled into AGG-3 fix.
+The cycle-2 test "respects cooldown" relies on `await vi.runAllTimersAsync()` draining the detached `.catch` chain on the failed refresh. This works in Vitest 4.x but isn't obvious to readers.
 
----
+**Fix:** Add a one-line comment to `tests/unit/api/contests-analytics-route.test.ts` near the cooldown test explaining that `vi.runAllTimersAsync()` drains both timers and pending microtasks.
 
-### AGG-8: [LOW] Anti-cheat retry MAX_RETRIES=3 makes 30s clamp unreachable
-
-**Sources:** CR2-5 | **Confidence:** HIGH
-
-Comment claims clamp matters; with MAX_RETRIES=3 max delay is 8s. Tighten comment.
-
-**Fix:** Update doc comment.
+**Exit criteria:** Test file has a comment near the cooldown assertion explaining the pattern.
 
 ---
 
-### AGG-9: [LOW] `__Secure-` cookie clear over HTTP is no-op
+### AGG3-5: [LOW] AGENTS.md vs `password.ts` mismatch (carried, requires user/PM decision)
 
-**Sources:** SEC2-1 | **Confidence:** MEDIUM
+**Sources:** DOC3-1, SEC3-3 (carried from cycle 2 AGG-11) | **Confidence:** MEDIUM (deferred)
 
-Browser ignores Set-Cookie with `Secure` over HTTP. Dev-only nuisance.
+AGENTS.md:516-521 says "Password validation MUST only check minimum length"; `src/lib/security/password.ts:45,50,59` enforces dictionary + similarity checks. Removing the checks weakens security; updating the doc changes the rule.
 
-**Fix:** Defer; document if becomes a problem.
-
----
-
-### AGG-10: [LOW] Anti-cheat online event handler can race with retry timer
-
-**Sources:** DBG2-3 | **Confidence:** LOW
-
-`flushPendingEventsRef.current()` and `retryTimerRef.current` can both fire concurrently after `online` event. Causes duplicate POSTs.
-
-**Fix:** Cancel `retryTimerRef.current` at start of `flushPendingEventsRef.current()`.
+**Fix (deferred):** No change this cycle. Re-flag in plan with quoted policy.
 
 ---
 
-### AGG-11: [LOW] AGENTS.md vs `password.ts` mismatch (carried from cycle 1 AGG-11)
+### AGG3-6: [LOW] `__Secure-` cookie clear over HTTP is no-op (carried, deferred)
 
-Pre-existing policy ambiguity. Carried as deferred.
+**Sources:** SEC3-1 (carried from cycle 2 AGG-9) | **Confidence:** MEDIUM (deferred)
 
----
+`src/proxy.ts:94` sets `secure: true` unconditionally on the `__Secure-` cookie clear. Browser ignores `Secure` over HTTP, so dev environments won't clear the cookie. Production HTTPS-only — no impact.
 
-### AGG-12: [LOW] Privacy notice has no decline path
-
-**Sources:** DES2-3 | **Confidence:** LOW
-
-User must close tab to decline. UX judgment call.
-
-**Fix:** Defer.
+**Fix (deferred):** No change. Reopen if a developer reports stuck `__Secure-` cookie in dev/non-HTTPS deployment.
 
 ---
 
-### AGG-13: [LOW] Anti-cheat retry/backoff has only indirect test coverage
+### AGG3-7: [LOW] Anti-cheat retry/backoff lacks direct timing tests (carried, deferred)
 
-**Sources:** TE2-3 | **Confidence:** LOW
+**Sources:** TE3-2 (carried from cycle 2 AGG-13) | **Confidence:** LOW (deferred)
 
-No direct tests for backoff timing.
+`src/components/exam/anti-cheat-monitor.tsx` exponential backoff has only indirect coverage. Testing requires `vi.useFakeTimers` + `apiFetch` mock + `localStorage` mock — non-trivial setup.
 
-**Fix:** Defer; track for future cycle.
+**Fix (deferred):** Pick up in a dedicated testing-focused cycle.
 
 ---
 
-### AGG-14: [LOW] Anti-cheat monitor at 332 lines borders single-component complexity
+### AGG3-8: [LOW] Anti-cheat privacy notice has no decline path (carried, deferred)
 
-**Sources:** ARCH2-2 | **Confidence:** MEDIUM
+**Sources:** DES3-1 (carried from cycle 2 AGG-12) | **Confidence:** LOW (deferred)
 
-Refactor into hooks would help. No behavior change.
+Privacy notice has only an "Accept" button. Declining requires closing the tab.
 
-**Fix:** Defer; track.
+**Fix (deferred):** Defer; UX judgment call.
+
+---
+
+### AGG3-9: [LOW] Anti-cheat at 336 lines borders single-component complexity (carried, deferred)
+
+**Sources:** ARCH3-2 (carried from cycle 2 AGG-14) | **Confidence:** MEDIUM (deferred)
+
+Refactor would split into `useAntiCheatEventReporter`, `usePendingEventQueue`, `useAntiCheatListeners` hooks.
+
+**Fix (deferred):** Reopen when a feature pushes the file past 400 lines.
+
+---
+
+### AGG3-10: [LOW] Optional cosmetic items (deferred)
+
+- CR3-2 (`_refreshingKeys` / `_lastRefreshFailureAt` underscore convention) — cosmetic.
+- DOC3-4 (extend `refreshAnalyticsCacheInBackground` doc with dedup-invariant note) — optional.
+- TE3-3 (extend dedup test with cache-update assertion) — optional.
+- TE3-5 (`any` types in test mock signature) — cosmetic.
+- SEC3-2 (log `user.id` on background refresh failures) — optional.
+- PERF3-1 (use `Date.now()` for `createdAt` to eliminate per-refresh DB call) — optional, requires revisiting cycle-2 hybrid decision.
+- PERF3-3 (`getAuthSessionCookieNames` allocates new object per call) — negligible.
+
+All deferrable; track with no-op exit criteria.
+
+---
+
+## Workspace-to-Public Migration Note
+
+**Source:** `user-injected/workspace-to-public-migration.md`
+**Confidence:** N/A (no review opportunity surfaced)
+
+Cycle 3 review surfaced no new candidate page or navigation concern. Standing observations from prior cycles still apply (Submissions unification candidate; admin pages stay in workspace). Continue tracking under `plans/open/2026-04-19-workspace-to-public-migration.md`. **No cycle-3 migration task added.**
 
 ---
 
 ## Verification Notes (no action — informational)
 
-- `npm run lint`: 0 errors, 14 warnings (untracked .mjs scripts).
-- `npm run build`: passes.
-- `npm run test:unit`: 2210/2210 pass against working tree.
-- aria-hidden, anti-cheat dep array, env tests all verified per cycle 1 plan.
-- No security regressions; SEC2-1 only marginal.
-- No UI/UX regressions; designer findings are minor and deferred.
-- Workspace-to-public migration: no review opportunity surfaced this cycle.
+- `npm run lint`: 0 errors, 14 warnings (untracked `.mjs` dev scripts in repo root + `.context/tmp/uiux-audit.mjs` + `playwright.visual.config.ts`).
+- `npm run test:unit -- tests/unit/api/contests-analytics-route.test.ts`: 7/7 pass in 79ms.
+- Build: presumed green per cycle-2 plan; will revalidate during gates.
+- All cycle-2 task exit criteria verified met (see verifier.md table).
+- No security regressions; cycle-2 commits clean.
+- No UI/UX regressions; designer cycle is in pause-state.
+- Plans/open count: ~80 files (substantial archival lag).
 
 ---
 
-## Carried Deferred Items (cycle 1 → cycle 2, unchanged)
+## Carried Deferred Items (cycle 2 → cycle 3, unchanged)
 
-| Cycle 1 ID | Description | Reason for deferral |
+| Cycle 2 ID | Description | Reason for deferral |
 |------------|-------------|---------------------|
-| AGG-4 (cycle 1) | Anti-cheat retry timer holds stale `performFlush` closure | Theoretical only |
-| AGG-7 (cycle 1) | `getAuthSessionCookieNames()` is function-wrapped constant | Now justified — cycle 2 introduces second callsite (proxy.ts), keep as function |
-| AGG-8 (cycle 1) | Analytics IIFE 3-level nesting | Now 4-level — promoted to AGG-3 above |
-| AGG-10 (cycle 1) | Anti-cheat lacks user-visible offline indicator | Design tradeoff |
-| AGG-11 (cycle 1) | AGENTS.md / password.ts mismatch | Policy decision needed |
-| DEFER-22..57 | Carried from cycles 38-48 | See `_aggregate-cycle-48.md` |
+| AGG-9 | `__Secure-` cookie clear over HTTP no-op | Dev-only nuisance; production HTTPS guaranteed |
+| AGG-10 | Anti-cheat online event can race with retry timer | Server-idempotent; duplicate POSTs benign |
+| AGG-11 | AGENTS.md vs password.ts mismatch | Requires user/PM decision |
+| AGG-12 | Privacy notice has no decline path | UX judgment call |
+| AGG-13 | Anti-cheat backoff lacks direct timing tests | Test setup non-trivial |
+| AGG-14 | Anti-cheat at 332+ lines | Refactor without behavior change |
+| Cycle 1 AGG-4 | Anti-cheat retry timer holds stale closure across `assignmentId` change | Component is keyed on `assignmentId` |
+| DEFER-22..57 | Carried from cycles 38–48 | See `_aggregate-cycle-48.md` |
 
 ---
 
 ## No Agent Failures
 
 All 11 lanes (architect, code-reviewer, critic, debugger, designer, document-specialist, perf-reviewer, security-reviewer, test-engineer, tracer, verifier) completed successfully. Aggregate written without retries.
+
+---
+
+## Recommended Cycle-3 Plan Tasks
+
+Based on the converging-and-actionable findings (after AGG3-2 verified resolved during planning):
+
+1. **Task A [MEDIUM]** — Fix `_lastRefreshFailureAt` unbounded growth via `lru-cache` dispose hook (AGG3-1).
+2. **Task B [LOW]** — Archive ~70 completed plans from `plans/open/` to `plans/done/`; add archival convention to `plans/open/README.md` (AGG3-3).
+3. **Task C [LOW]** — Add comment explaining `vi.runAllTimersAsync()` microtask drain in cooldown test (AGG3-4).
+
+All other items either carried-deferred or optional cosmetic. Cycle 3 is a small focused cycle.

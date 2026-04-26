@@ -1,53 +1,74 @@
-# Perf-Reviewer Pass — RPF Cycle 2/100
+# Perf-Reviewer Pass — RPF Cycle 3/100
 
-**Date:** 2026-04-26
+**Date:** 2026-04-27
 **Lane:** perf-reviewer
-**Scope:** Full repo with focus on hot paths (proxy middleware, analytics endpoint, anti-cheat client, judge worker, SSE)
+**Scope:** Performance, concurrency, CPU/memory/UI responsiveness
 
 ## Summary
 
-Cycle-1 perf wins (Date.now() staleness, single-pass eviction, head+tail truncation, buffer-based size cap) all confirmed in HEAD. Working-tree changes preserve those wins. New low-priority finding around redundant DB calls in cooldown-fallback path.
+Cycle 2 closed the analytics-route DB-call amplification (cycle-2 PERF2-1) by extracting `refreshAnalyticsCacheInBackground` and using `Date.now()` for the cooldown timestamp directly. No DB round-trip on cache hit (good). No new perf regressions detected in this cycle's surface.
 
 ## Findings
 
-### PERF2-1: [LOW] Cooldown fallback path makes 2 sequential DB calls when DB is sick
-**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:79,87-91`
+### PERF3-1: [LOW] `analyticsCache.set(cacheKey, { data: fresh, createdAt: await getDbNowMs() })` still does one DB round-trip per refresh
+
+**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:47, 115`
+**Confidence:** LOW
+
+Both the cache-miss path (line 115) and the background refresh (line 47) call `await getDbNowMs()` to record the `createdAt` timestamp. Each is one DB round-trip per refresh. This is intentional (cycle-2 design: DB time for persisted-style timestamps) and the trade-off is documented in the route's doc comment.
+
+The optimization opportunity: `Date.now()` for `createdAt` would eliminate the DB call on every cache miss / refresh, since the staleness comparison at line 89 already uses `Date.now()`. The clock skew tolerance is 30s, well above NTP drift. The 1-2s skew window doesn't matter for a 30s threshold.
+
+But: cycle-2 plan task C explicitly committed the hybrid as "deliberate decision (DB time for persistence-relevant timestamps)". Reopening this would require revisiting that decision.
+
+**Fix:** Defer. Reopen if the analytics endpoint becomes a perf hotspot.
+
+---
+
+### PERF3-2: [MEDIUM] `_refreshingKeys` is a `Set<string>` and `_lastRefreshFailureAt` is a `Map<string, number>` — both grow unbounded
+
+**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:20, 24`
 **Confidence:** MEDIUM
 
-When `computeContestAnalytics` succeeds but `await getDbNowMs()` (line 79) fails, the inner catch block runs, which re-attempts `await getDbNowMs()` (line 88) inside another try, then falls back to `Date.now()` (line 90). Under DB pressure, this means the unhappy path makes one DB call that fails (line 79), enters catch, then retries the same call (line 88). Effectively a small DB-pressure amplifier.
+The `Set` is cleaned in `finally` after each refresh, so it should never exceed (number of concurrent refreshes) ≤ 100 (LRU max).
 
-**Fix:** Use `Date.now()` directly in the cooldown-fallback path, avoiding the redundant DB attempt. Or apply the cycle-1 plan task-B Option 1 (use `Date.now()` consistently for cache/cooldown timestamps). 
+The `Map` is cleaned on success (`_lastRefreshFailureAt.delete(cacheKey)` line 48) but NOT cleaned on entry eviction from the LRU. If a cache key fails to refresh, then the LRU evicts that key (e.g., 100 fresh keys arrive after), the cooldown entry persists in `_lastRefreshFailureAt` forever.
 
-### PERF2-2: [LOW] `authUserCache` cleanup at 90% capacity iterates entire Map
-**File:** `src/proxy.ts:71-78`
+Memory bound: O(cacheKeys * 8 bytes for the timestamp) ≈ tiny in practice. But there's no upper bound on `_lastRefreshFailureAt.size` — if assignment IDs change over time, it grows unboundedly.
+
+**Failure scenario:** Long-running app server with many distinct assignment IDs that all experience refresh failures: `_lastRefreshFailureAt.size` grows over weeks. Memory leak (slow).
+
+**Fix:** Either bound `_lastRefreshFailureAt` with an LRU of equal capacity to `analyticsCache`, or attach a stub-eviction handler so when `analyticsCache` evicts a key, we also delete from `_lastRefreshFailureAt`. Slightly involved; can pick up this cycle as a small fix.
+
+---
+
+### PERF3-3: [LOW] `getAuthSessionCookieNames()` allocates a new object on every call
+
+**File:** `src/lib/security/env.ts:178-180`
 **Confidence:** LOW
 
-When cache hits 450 entries (90% of 500), every subsequent set triggers a full Map iteration to expire stale entries. Worst case: 500 iterations per `set` until eviction. In a steady state with light churn, this can run for many requests.
+Per CR3-4. Negligible perf impact (one allocation per logout). Defer.
 
-**Fix:** Track expired count separately, trigger cleanup only when expired count > N. Or run cleanup async via `queueMicrotask`. Defer — current behaviour is bounded and infrequent.
+---
 
-### PERF2-3: [LOW] `loadPendingEvents` parses JSON on every visibility / online / blur event
-**File:** `src/components/exam/anti-cheat-monitor.tsx:101,170`
-**Confidence:** LOW
+### PERF3-4: [INFO] `npm run lint` and `npm run test:unit` runtimes
 
-Each call to `performFlush` and `reportEvent` (when offline) reads and parses localStorage. Per-event cost is microseconds, not a real perf risk.
+**Confidence:** N/A (informational)
 
-**Fix:** Defer; not measurable.
+- Lint completes in ~5–10s; clean.
+- Unit-test analytics file alone: 79ms for 7 tests.
+- Full unit-test suite presumably: ~10–20s based on prior cycles (will validate during gates).
 
-### PERF2-4: [LOW] Heartbeat self-rescheduling closure allocates new setTimeout per fire
-**File:** `src/components/exam/anti-cheat-monitor.tsx:204-210`
-**Confidence:** LOW
-
-`scheduleHeartbeat` creates a new closure on each call. Over a 60-minute exam with 30s interval, that's 120 timer allocations. Negligible per-call.
-
-**Fix:** Defer; current implementation is correct and cost is negligible.
+No perf regressions in CI surface.
 
 ## Verification Notes
 
-- `getDbNowMs()` in cache-hit fast path is ELIMINATED (line 62 uses `Date.now()`). Confirmed perf win from cycle 1.
-- Anti-cheat `performFlush` is shared between manual flush and timer retry — no duplicated work.
-- Proxy CSP header construction allocates strings, but unavoidable for nonce-based CSP.
+- Verified the cooldown failure path no longer makes a DB call: `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:52` uses `Date.now()` directly.
+- Verified the dedup guard (`_refreshingKeys.has(cacheKey)`) prevents N concurrent refreshes for the same key.
 
 ## Confidence
 
-All findings LOW or MEDIUM with low impact. No HIGH-severity perf regressions.
+- LOW: PERF3-1, PERF3-3.
+- MEDIUM: PERF3-2 (real but slow leak; bounded in practice by the small assignment-ID space).
+
+No HIGH-severity findings. PERF3-2 is the cycle-3 actionable item — small `lru-cache` config or `dispose` hook will close it.

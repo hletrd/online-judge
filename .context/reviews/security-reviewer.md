@@ -1,47 +1,85 @@
-# Security-Reviewer Pass — RPF Cycle 2/100
+# Security-Reviewer Pass — RPF Cycle 3/100
 
-**Date:** 2026-04-26
+**Date:** 2026-04-27
 **Lane:** security-reviewer
-**Scope:** OWASP Top 10, secrets, auth/authz, CSP, cookies
+**Scope:** OWASP Top 10, secrets, unsafe patterns, auth/authz, with emphasis on cycle-2 commits (env.ts factory, proxy.ts cookie clearing, analytics route)
 
 ## Summary
 
-No new security regressions from cycle-1 changes. The new `getAuthSessionCookieNames` factory makes cookie clearing more maintainable — both variants are cleared on logout regardless of current security context, which is a security positive. Working-tree changes preserve these improvements.
+The cycle-2 security surface is clean. The `getAuthSessionCookieNames` factory consolidates cookie naming in one place, reducing drift risk. The analytics route changes do not affect authn/authz (the original `canViewAssignmentSubmissions` check is preserved).
+
+The deferred items from cycle 2 (AGG-9 `__Secure-` cookie clear over HTTP, AGG-11 password.ts vs AGENTS.md) are both still applicable — neither is exploitable, both have clear deferral rationales.
 
 ## Findings
 
-### SEC2-1: [LOW] `__Secure-` cookie cleared with `secure: true` over HTTP — browser silently ignores
+### SEC3-1: [LOW] `clearAuthSessionCookies` clears `__Secure-` cookie with literal `secure: true` regardless of request protocol
+
 **File:** `src/proxy.ts:94`
 **Confidence:** MEDIUM
 
-`response.cookies.set(secureName, "", { maxAge: 0, path: "/", secure: true })` is called unconditionally on every clear. If the request arrived over HTTP (e.g., dev mode or behind a misconfigured proxy without HTTPS), the browser ignores `Set-Cookie` with `Secure`, leaving the `__Secure-` cookie in place. In production this is correct (HTTPS guaranteed).
+In dev (HTTP), the browser ignores `Set-Cookie` with `Secure`, so the clear is a no-op. In production (HTTPS), the `Secure` flag is correct.
 
-**Fix:** Either condition `secure: true` on `request.url.startsWith("https://")` or accept this is dev-only nuisance and document it. Defer — production unaffected.
+Risk surface: dev-only nuisance (a stale `__Secure-` cookie could persist if a developer flipped between HTTPS and HTTP). Production is HTTPS-only and `__Secure-` is the only variant set, so the clear works.
 
-### SEC2-2: [LOW] CSRF protection relies on cookie clearing during invalidation; brief race window
-**File:** `src/proxy.ts:294-318`
+**Fix:** Defer (cycle-2 AGG-9 deferred). No security impact in production.
+
+---
+
+### SEC3-2: [LOW] Analytics route does not log the user ID on background refresh failures
+
+**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:53`
 **Confidence:** LOW
 
-If a request arrives with a token that no longer maps to an active user (`!activeUser`), the proxy clears cookies and redirects/401s. During the next-immediately-fired request, the old cookie may still be sent (browser hasn't processed Set-Cookie yet) and trigger another full DB lookup before being rejected. Not a vulnerability per se — wasted DB roundtrip.
+The `logger.error({ err, assignmentId }, ...)` does not include the `user.id` of the requester. For audit purposes, knowing which user triggered a stale refresh that then failed could help correlate with abuse patterns (e.g., a user repeatedly hitting an endpoint to trigger DB load).
 
-**Fix:** Defer; benign.
+**Failure scenario:** Forensic — debugging an abuse vector requires correlating logs against access logs.
 
-### SEC2-3: [INFO] `aria-hidden="true"` on ShieldAlert is correct and doesn't impact security
-Verified via `git show 5cde234e`.
+**Fix:** Optional. Pass `user.id` into `refreshAnalyticsCacheInBackground` (or a request-correlation ID). Not a security bug.
 
-### SEC2-4: [INFO] Anti-cheat localStorage stores event timestamps and types but **not** problem text — verified
-Comment at line 249 confirms text content is intentionally NOT captured to avoid storing copyrighted exam problem text in audit logs. Good privacy hygiene.
+---
 
-### SEC2-5: [INFO] CSP correctly uses nonce-based script-src; no `unsafe-inline` for scripts
-File: `src/proxy.ts:206-222`. Style-src has `unsafe-inline` (Tailwind requirement). Dev includes `unsafe-eval` for HMR. Signup page allows hCaptcha. All correct.
+### SEC3-3: [LOW] AGENTS.md vs `src/lib/security/password.ts` policy mismatch (carried from cycle 2 AGG-11)
 
-### SEC2-6: [INFO] `frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` set
-File: `src/proxy.ts:218,225,226`. OWASP-recommended headers all present.
+**File:** `AGENTS.md:516-521`, `src/lib/security/password.ts:45,50,59`
+**Confidence:** MEDIUM
 
-## Carried Items
+AGENTS.md states "Password validation MUST only check minimum length"; `password.ts` enforces dictionary + similarity checks. Either side could be the truth — removing the checks would weaken security; updating the doc would change the rule.
 
-- AGG-11 from cycle 1 (password.ts dictionary/similarity vs AGENTS.md doc) remains DEFERRED pending policy decision per `AGENTS.md:517-521`.
+Per cycle-2 deferral: requires user/PM decision before any code or doc change. Neither side should be silently flipped.
+
+**Fix:** Defer. Re-flag in cycle-3 plan.
+
+---
+
+### SEC3-4: [INFO] Cycle-2 commits did not introduce any new credentials, secrets, or unsafe patterns
+
+**Confidence:** N/A (informational)
+
+- `getAuthSessionCookieNames` only returns string constants; no secrets touched.
+- `proxy.ts` change is name-only; no auth logic change.
+- Analytics route refactor preserves the existing `canViewAssignmentSubmissions` authorization check (line 74).
+- No `eval`, `Function(...)`, `dangerouslySetInnerHTML`, raw HTML injection, or unsafe deserialization introduced.
+- `npm audit` was not run this cycle but was clean as of the cycle-2 baseline.
+
+---
+
+### SEC3-5: [LOW] No CSRF token check observed for `/api/v1/contests/[assignmentId]/analytics` (GET only)
+
+**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts`
+**Confidence:** LOW
+
+GET requests don't typically need CSRF protection (no mutating side effect). The route is GET-only, so this is correct. Confirming the absence — not a finding.
+
+## Verification Notes
+
+- `git log --since="3 days ago" --grep="(security)"` shows only the cycle-2 commits (`1c25cbed feat(security)`).
+- No secrets in git diff or log.
+- `npm run lint` clean.
 
 ## Confidence
 
-No HIGH severity findings. SEC2-1 is the only marginal one (MEDIUM, dev-only nuisance).
+- MEDIUM: SEC3-1 (deferred, dev-only nuisance), SEC3-3 (deferred, requires user decision).
+- LOW: SEC3-2 (optional log enrichment), SEC3-5 (confirm-no-finding).
+- INFO: SEC3-4.
+
+No HIGH-severity findings. Cycle-3 security surface is steady-state.

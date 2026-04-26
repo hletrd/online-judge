@@ -1,50 +1,60 @@
-# Designer Pass — RPF Cycle 2/100
+# Designer Pass — RPF Cycle 3/100
 
-**Date:** 2026-04-26
+**Date:** 2026-04-27
 **Lane:** designer
-**Scope:** UI/UX, accessibility, responsive design
+**Scope:** UI/UX surfaces touched by recent commits (anti-cheat privacy notice dialog, cycle-2 analytics surfaces — all backend).
 
 ## Summary
 
-UI/UX surface has Next.js + React 19 frontend. Cycle-1 review covered designer findings. Working-tree changes don't touch UI, so this cycle's designer review focuses on regression check and any latent UI a11y issues spotted while cross-reading.
+No UI/UX changes shipped in cycles 1–3 that warrant a runtime browser audit. The anti-cheat privacy notice dialog (`AntiCheatMonitor`) was the most recent UI-touching commit and was properly addressed in cycles 38–48. The cycle-2 surface area (env.ts, proxy.ts, analytics route, anti-cheat retry comment) is all server-side or non-rendering.
+
+Per `user-injected/pending-next-cycle.md`, the runtime designer-runtime-cycle-3 lane was completed at `.context/reviews/designer-runtime-cycle-3.md` previously. There's no new sandbox/runtime opportunity surfaced this cycle.
 
 ## Findings
 
-### DES2-1: [INFO] `aria-hidden="true"` on ShieldAlert verified correct
-**File:** `src/components/exam/anti-cheat-monitor.tsx:310`
-**Confidence:** HIGH
+### DES3-1: [LOW] Anti-cheat privacy notice has no decline path (carried from cycle 2 deferred AGG-12)
 
-Cycle-1 commit `5cde234e` added `aria-hidden="true"` correctly. Verified.
-
-### DES2-2: [LOW] Privacy notice dialog has no accept-then-cancel undo path
-**File:** `src/components/exam/anti-cheat-monitor.tsx:304-329`
+**File:** `src/components/exam/anti-cheat-monitor.tsx:307-332`
 **Confidence:** LOW
 
-Once accepted, the privacy notice cannot be revisited. If a user accidentally accepts (misclick), there's no way to review the privacy notice contents during the exam. Tradeoff: simpler UX vs. transparency. Defer — design judgment call.
+The dialog has a single "Accept" button and the user must close the tab to decline. UX judgment call: in a proctored exam, declining = exiting the exam, so a decline button could direct users to the dashboard or exit cleanly.
 
-### DES2-3: [LOW] Privacy notice button label uses `t("privacyNoticeAccept")` — should we add cancel/decline?
-**File:** `src/components/exam/anti-cheat-monitor.tsx:323`
-**Confidence:** LOW
+**Fix:** Defer. Reopen with explicit UX direction.
 
-UX convention: privacy consent typically offers accept + decline. Decline could mean "exit exam." Currently no decline button — user must close the tab to refuse.
+---
 
-**Fix:** Defer; design discussion needed.
+### DES3-2: [INFO] Workspace-to-public migration — no UI candidate surfaced this cycle
 
-### DES2-4: [LOW] No "events failing to send" indicator (cycle-1 AGG-10)
-Already deferred from cycle 1.
+**File:** `src/lib/navigation/public-nav.ts`
+**Confidence:** N/A (informational)
 
-### DES2-5: [LOW] No reduced-motion handling check for animations in privacy dialog
-**File:** `src/components/exam/anti-cheat-monitor.tsx:304-329`
-**Confidence:** LOW
+The directive at `user-injected/workspace-to-public-migration.md` calls for migration of dashboard-only pages to the public navbar. No specific candidate emerged from this cycle's review.
 
-The Dialog component (shadcn/ui) typically uses transition animations. Likely already handled by Radix UI defaults.
+Standing observations from prior cycles (still valid):
+- "Submissions" exists in both public (`/submissions`) and dashboard (`/dashboard/submissions`). Unification candidate.
+- "Compiler" / "Playground" already unified.
+- Admin pages stay in workspace.
 
-**Fix:** Check `Dialog` source from `@/components/ui/dialog`. Defer if Radix handles it.
+**Fix:** Track under existing `plans/open/2026-04-19-workspace-to-public-migration.md`. No cycle-3 task.
 
-## Korean Letter Spacing Compliance
+---
 
-Working-tree changes don't touch styles. Verified no `tracking-*` Tailwind classes added in any cycle 2 working-tree changes. CLAUDE.md rule honored.
+### DES3-3: [INFO] No runtime browser audit performed this cycle
+
+**Confidence:** N/A (informational)
+
+The user-injected pending-next-cycle.md confirms the runtime designer audit is not auto-queued for every cycle and was completed for the prior sandbox state. No new runtime audit triggers were surfaced this cycle.
+
+**Fix:** No change.
+
+## Verification Notes
+
+- No UI files in `git diff HEAD~5 HEAD --stat` outside `src/components/exam/anti-cheat-monitor.tsx` (which had only doc-comment changes in cycle 2 commit `a68b31c0`, no behavior or visual change).
+- Lint and tests confirm no UI regression.
 
 ## Confidence
 
-No HIGH-severity UX findings this cycle. The aria-hidden fix from cycle 1 is the only material change; verified correct.
+- LOW: DES3-1 (deferred from cycle 2).
+- INFO: DES3-2, DES3-3 (no actionable item this cycle).
+
+No HIGH or MEDIUM findings. Designer cycle is in a pause-state until a new UI surface or sandbox opportunity emerges.

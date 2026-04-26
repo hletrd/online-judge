@@ -1,4 +1,4 @@
-# Architect Pass — RPF Cycle 2/100
+# Architect Pass — RPF Cycle 3/100
 
 **Date:** 2026-04-26
 **Lane:** architect
@@ -6,44 +6,78 @@
 
 ## Summary
 
-Architecture remains clean. Cycle-1 plan deferred AGG-7 (function-wrapped constant) but the cycle-2 introduction of `getAuthSessionCookieNames()` (returning both variants) actually justifies a function abstraction now since the proxy needs both names — single-callsite concern is now resolved. Recommendation: keep as function.
+Architecture is clean and stable after cycle 2. The cycle-2 introduction of `getAuthSessionCookieNames()` (single source of truth for both cookie names, used by `proxy.ts`) and the named `refreshAnalyticsCacheInBackground` function both improved layering. No new architectural smells introduced this cycle.
+
+The remaining open seams are previously-deferred cycle-2 items (anti-cheat monolith size, `_refreshingKeys/_lastRefreshFailureAt` cohesion) plus the long-running workspace-to-public migration. Neither requires immediate action this cycle; both are tracked.
 
 ## Findings
 
-### ARCH2-1: [HIGH] Working-tree contains 3 production-source changes that need to be committed or stashed
-**Files:** `src/proxy.ts`, `src/lib/security/env.ts`, `src/app/api/v1/contests/[assignmentId]/analytics/route.ts`
-**Confidence:** HIGH
+### ARCH3-1: [LOW] Analytics module-level state (`_refreshingKeys`, `_lastRefreshFailureAt`, `analyticsCache`) lacks cohesion
 
-Cycle 1 committed test/refactor changes that depend on production source updates that were NOT committed. This is an architectural integrity issue: the test suite passes against the working tree but would fail against HEAD. Any developer who clones at HEAD and runs tests gets failures.
+**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:17-24`
+**Confidence:** LOW
 
-**Fix:** Commit the source changes (one commit per concern: env.ts factory, proxy.ts cookie-clearing using factory, analytics time-reconciliation).
+Three module-level variables back the same caching feature. They share lifecycle, key space (`cacheKey = assignmentId`), and failure semantics. They're ripe for encapsulation in a single `AnalyticsCache` class or factory:
 
-### ARCH2-2: [LOW] Anti-cheat monitor is now 332 lines — borderline single-component complexity
+```ts
+const analyticsCache = new AnalyticsCacheStore<ContestAnalytics>({
+  ttlMs: CACHE_TTL_MS,
+  staleAfterMs: STALE_AFTER_MS,
+  cooldownMs: REFRESH_FAILURE_COOLDOWN_MS,
+  max: 100,
+  refresh: async (key) => computeContestAnalytics(key, true),
+});
+```
+
+Pros: handler is a 10-line route. The cache type is reusable for the next caching surface (e.g., leaderboard, scoring summaries). Single concern boundary.
+Cons: bigger PR; refactor without behavior change; test surface stays the same.
+
+**Fix:** Defer. Track for a future cycle when a second cache surface needs the same shape (leaderboard would).
+
+**Exit criterion:** A second route in the codebase wants the same stale-while-revalidate + cooldown semantic.
+
+---
+
+### ARCH3-2: [LOW] `src/components/exam/anti-cheat-monitor.tsx` is now 336 lines
+
 **File:** `src/components/exam/anti-cheat-monitor.tsx`
 **Confidence:** MEDIUM
 
-The component holds privacy notice dialog state, event reporting with debouncing, pending event persistence, retry scheduling with exponential backoff, heartbeat scheduling, and multiple event listeners (visibility, blur, copy, paste, contextmenu, online).
+Cycle 2 added the `performFlush` extraction and a doc comment, taking the file from 332 → 336 lines. Borderline single-component complexity. Per cycle-2 deferral notes, the refactor would split into `useAntiCheatEventReporter`, `usePendingEventQueue`, `useAntiCheatListeners` hooks.
 
-Splitting into `useAntiCheatEventReporter`, `usePendingEventQueue`, `useAntiCheatListeners` hooks would clarify responsibilities. Tests would be easier to write per-hook.
+**Fix:** Defer. Per cycle-2 deferred AGG-14 exit criterion: reopen when adding a feature that pushes the file past 400 lines.
 
-**Fix:** Defer — refactor without behavior change. Track for future cycle when refactor is needed for new feature.
+---
 
-### ARCH2-3: [LOW] `_refreshingKeys` and `_lastRefreshFailureAt` should be in a `RefreshState` object for cohesion
-**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:20-24`
-**Confidence:** LOW
+### ARCH3-3: [INFO] Workspace-to-public migration — no review-surfaced opportunity this cycle
 
-Two related module-level state variables. Single object would make their relationship explicit.
+**Files:** `src/lib/navigation/public-nav.ts`, `src/components/layout/app-sidebar.tsx`
+**Confidence:** N/A (informational)
 
-**Fix:** Defer; cosmetic.
+The user-injected directive `user-injected/workspace-to-public-migration.md` calls for incremental migration of dashboard-only pages to the public top navbar where appropriate. This cycle's review surfaced no specific candidate page or navigation issue. Continue tracking under `plans/open/2026-04-19-workspace-to-public-migration.md`.
 
-### ARCH2-4: [INFO] Time-domain inconsistency in analytics route is the only architectural smell
-File: `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:62,79,88,90`. Already covered in code-reviewer CR2-2 and cycle-1 AGG-2. Architectural fix: commit to one time domain throughout — proposed: `Date.now()` everywhere for in-process cache state; `getDbNowMs()` only when comparing against persisted DB rows.
+**Fix:** None this cycle. Keep watching.
+
+---
+
+### ARCH3-4: [INFO] Cycle-2 architectural improvements
+
+**Confidence:** N/A (informational, no fix needed)
+
+For provenance: cycle 2 made three positive architectural moves —
+
+1. `getAuthSessionCookieNames()` factory: single source of truth for cookie names; `proxy.ts` no longer hardcodes them. Future cookie-name changes touch one file.
+2. `refreshAnalyticsCacheInBackground`: extracted the IIFE body to a named top-level function. Reduced nesting from 4 levels to 2, made the contract testable in isolation, named the operation for tracing/log search.
+3. `performFlush` extraction in anti-cheat: removed code duplication between the user-triggered flush and the retry-timer callback. Single place to fix bugs.
+
+These compound: cycle-1 introduced the abstraction, cycle-2 used it, and cycle-3 baseline benefits from both.
 
 ## Verification Notes
 
-- ARCH-2 from cycle 1 (anti-cheat 321→332 lines) — slight growth from doc comments and aria-hidden change. No functional explosion.
-- Cookie naming abstraction is now in the right place (`@/lib/security/env`) since production code (`proxy.ts`) imports it. Architectural consistency improved over cycle 1.
+- `git log --since="3 days ago"` shows clean conventional + gitmoji history with no monolithic commits.
+- `git diff HEAD~5 HEAD --stat` shows only the analytics, anti-cheat, env.ts, proxy.ts surfaces touched, plus tests + plan docs. No accidental cross-module changes.
+- No abstraction leaks introduced; cycle 2 cleaned up (rather than added) coupling.
 
 ## Confidence
 
-ARCH2-1 is the most actionable finding — uncommitted changes need to flow through.
+No HIGH or MEDIUM findings actionable this cycle. ARCH3-1 and ARCH3-2 carry forward as deferred items with concrete exit criteria. ARCH3-3 is informational. Cycle 3 is a steady-state architectural cycle — small or absent code-change footprint expected.

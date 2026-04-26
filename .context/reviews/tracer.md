@@ -1,60 +1,85 @@
-# Tracer Pass — RPF Cycle 2/100
+# Tracer Pass — RPF Cycle 3/100
 
-**Date:** 2026-04-26
+**Date:** 2026-04-27
 **Lane:** tracer
-**Scope:** Causal flow tracing, hypothesis competition
+**Scope:** Causal tracing of suspicious flows, competing hypotheses
 
-## Hypothesis Tournament
+## Summary
 
-### H1: "Cycle-1 commits are inconsistent at HEAD because cycle 1 forgot to git-add source changes"
-**Evidence for:**
-- `git diff` shows 3 modified files in working tree.
-- `git show c915da0b` modifies only test file, not src/proxy.ts.
-- `git show 5cde234e` modifies only anti-cheat monitor, not env.ts.
-- `git show 000bdfe5` modifies only env.test.ts, not env.ts source.
+I traced two flows this cycle:
+1. **Analytics cache → background refresh → cooldown** (cycle-2 surface): the new `refreshAnalyticsCacheInBackground` is correctly called, cleaned up, and the cooldown is correctly read against `Date.now()`. No causal anomalies.
+2. **Logout → cookie clearing**: the `getAuthSessionCookieNames` factory is correctly called from `proxy.ts:92` in `clearAuthSessionCookies`. The two `response.cookies.set(..., "", { maxAge: 0 })` calls clear the right cookies.
 
-**Verdict:** TRUE with high confidence. The source changes in `src/proxy.ts`, `src/lib/security/env.ts`, and `src/app/api/v1/contests/[assignmentId]/analytics/route.ts` were never `git add`-ed during cycle 1.
+No anomalies surfaced. The investigation cleared the cycle-2 commit traces.
 
-### H2: "The unstaged changes are leftovers from a prior cycle that wasn't fully committed either"
-**Evidence:** `git stash list` shows 5 stashes; topmost is "tle-verify wip". None match these source changes specifically. The changes match cycle-1 plan task B (analytics time reconciliation, partial) plus introduction of `getAuthSessionCookieNames` factory.
+## Findings
 
-**Verdict:** Possible but more likely cycle 1 itself. Either way, cycle 2 must commit them.
+### TRC3-1: [LOW] Analytics route — verified flow
 
-### H3: "Test for getAuthSessionCookieNames passes because of Vitest module mocking auto-discovery"
-**Evidence:** Vitest with `vi.mock` resolves the mock factory; the production code's missing export doesn't affect proxy.test.ts because the import is replaced with the mock. So tests in `tests/unit/security/env.test.ts` (which test the REAL exports) would fail at HEAD because the function doesn't exist there.
+**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:80-110`
+**Confidence:** HIGH
 
-Trace: at HEAD, run `tests/unit/security/env.test.ts` → vitest imports `@/lib/security/env` → tries `getAuthSessionCookieNames()` → ReferenceError (function not defined).
+Trace of GET request flow:
+1. `assignment` fetched via `rawQueryOne` (line 64). If null or `examMode === "none"` → 404.
+2. `canViewAssignmentSubmissions` checked (line 74). If false → 403.
+3. `cached = analyticsCache.get(cacheKey)` (line 81). If cache hit:
+   - `nowMs = Date.now()` (line 89). `age = nowMs - cached.createdAt` (line 90).
+   - If `age <= STALE_AFTER_MS (30_000)` → return cached, no refresh (line 91-93).
+   - Else (stale-but-within-TTL): check `_refreshingKeys` and `_lastRefreshFailureAt` cooldown. If both clear, schedule `refreshAnalyticsCacheInBackground(...).catch(logger.warn)`.
+   - Return cached (line 110).
+4. Cache miss (line 113): `analytics = await computeContestAnalytics(...)`, `analyticsCache.set(...)`, return fresh.
 
-**Verdict:** TRUE — running env.test.ts at HEAD would fail. Working tree has the function defined, so it passes.
+**No anomalies.** The decision tree is exhaustive and the dedup + cooldown guards are correctly composed.
 
-### H4: "Analytics route staleness optimization regresses if working-tree change reverts"
-**Evidence:** Working tree at line 62 uses `Date.now()`. HEAD (per `git show`) at the same line uses `await getDbNowMs()`. So the perf optimization is in the working tree only, not at HEAD.
+---
 
-So the working tree IS introducing two concrete behavioral changes:
-1. Cache-hit fast path: from DB-time read to Date.now() read.
-2. Cooldown failure fallback: try DB-time, fallback to Date.now() if DB unreachable.
+### TRC3-2: [LOW] Logout / cookie-clearing — verified flow
 
-**Verdict:** Behavioral changes confirmed. They should be committed.
-
-## Findings (from traces)
-
-### TRC2-1: [HIGH] Three source-file changes in working tree must be committed, otherwise CI breaks at HEAD
-Already covered by VER2-1, ARCH2-1, CR2-1. Multi-lane convergence.
-
-### TRC2-2: [MEDIUM] Cooldown-fallback chain has 4 possible time paths
-**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:88-90`
+**File:** `src/proxy.ts:294-318`, `src/proxy.ts:87-97`, `src/lib/security/env.ts:178-180`
 **Confidence:** HIGH
 
 Trace:
-1. Refresh succeeds → `getDbNowMs()` succeeds → `createdAt` written in DB time. Subsequent stale check uses `Date.now()`, mixing domains.
-2. Refresh succeeds → `getDbNowMs()` fails → outer catch fires, sets `_lastRefreshFailureAt` (via inner try/catch).
-3. Refresh fails → outer catch → tries `getDbNowMs()` → succeeds → cooldown set in DB time. Subsequent cooldown check uses `Date.now()`.
-4. Refresh fails → outer catch → tries `getDbNowMs()` → fails → cooldown set with `Date.now()` (working tree only).
+1. `proxy(request)` is called (line 240). `token` is fetched via `getToken(...)` (line 242).
+2. If `isAuthPage && token && !activeUser` → call `clearAuthSessionCookies(createSecuredNextResponse(request))` (line 295). This clears stale session cookies on the login page when the user record is gone (e.g., deactivated).
+3. If protected route and `!activeUser` → API: `clearAuthSessionCookies(NextResponse.json({ error: "unauthorized" }, { status: 401 }))` (line 311). Page: redirect-to-login + `clearAuthSessionCookies` (line 318).
+4. `clearAuthSessionCookies` (line 87) calls `getAuthSessionCookieNames()` and sets both `name` and `secureName` cookies to empty with `maxAge: 0`.
 
-Path #2 is interesting: refresh fresh data is computed (cost paid) but the post-write `getDbNowMs()` failure means `_lastRefreshFailureAt` is set as a failure timestamp (same as outright refresh failure), which means a successful refresh that just couldn't get a DB timestamp will trigger a cooldown anyway. Wasteful but acceptable.
+**No anomalies.** The cookie names are sourced from the factory, not hardcoded. The two paths (auth page vs. protected route) both correctly invoke the clearing.
 
-**Fix:** Reorder: compute fresh, then `await getDbNowMs()` ONCE, then set cache. Or accept that DB time is best-effort for the createdAt.
+---
+
+### TRC3-3: [INFO] Anti-cheat retry timer cleanup trace
+
+**File:** `src/components/exam/anti-cheat-monitor.tsx:298-302`
+**Confidence:** HIGH
+
+Trace:
+1. Component mounts. The cleanup effect (line 291) registers a return cleanup that includes:
+   ```ts
+   if (retryTimerRef.current) {
+     clearTimeout(retryTimerRef.current);
+     retryTimerRef.current = null;
+   }
+   ```
+2. On unmount, the cleanup runs. The retry timer (if scheduled) is cleared.
+3. `scheduleRetryRef.current` is reassigned in a separate effect (line 142) on `[performFlush]` change. The reassignment happens during render, so any in-flight timer body that reads `scheduleRetryRef.current` gets the latest closure.
+
+**No anomalies.** The two effects are independent but co-coordinated through the ref.
+
+## Hypotheses Ruled Out
+
+- **Hypothesis: Background refresh could leak `_refreshingKeys` if `refreshAnalyticsCacheInBackground` throws synchronously before the `try` block.** Verified: the `_refreshingKeys.add(cacheKey)` happens BEFORE the function call (line 99), and the function body's `try/finally` ensures `_refreshingKeys.delete(cacheKey)` even on `throw`. ✓
+- **Hypothesis: Cookie clearing could miss the `__Host-` variant if next-auth ever changes naming.** Verified: the `getAuthSessionCookieNames` factory is the single source of truth; if next-auth changes, only env.ts needs updating. The proxy.ts caller is name-agnostic. ✓
+- **Hypothesis: `vi.runAllTimersAsync()` doesn't drain the detached `.catch` chain in the cooldown test.** Verified: Vitest 4.x `runAllTimersAsync` drains both timers and pending microtasks. The test asserts `loggerErrorMock` was called, which only happens if the `.catch` ran — confirming the chain is drained. ✓
+
+## Verification Notes
+
+- Tests pass cleanly (7/7 analytics, no leaked timers).
+- Lint clean.
+- No suspicious behavior surfaced via `grep -n "@ts-expect-error\|@ts-ignore"` in the cycle-2 surface (none).
 
 ## Confidence
 
-H1, H3 high. H4 confirms working-tree changes are real and behavioral.
+All findings: HIGH confidence in correctness. No causal anomalies surfaced. Cycle-2 commits behave as documented.
+
+No HIGH-severity findings. Cycle-3 tracer surface is clean — no actionable items emerged from this lane.
