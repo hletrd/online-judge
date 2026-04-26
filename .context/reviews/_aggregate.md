@@ -1,93 +1,210 @@
-# Aggregate Review — Cycle 19
+# Aggregate Review — RPF Cycle 1/100
 
-**Date:** 2026-04-24
-**Reviewers:** code-reviewer, security-reviewer, perf-reviewer, architect, test-engineer, debugger
-**Total findings:** 8 (deduplicated to 3)
+**Date:** 2026-04-26
+**Cycle:** 1/100 of review-plan-fix loop
+**Reviewers:** architect, code-reviewer, critic, debugger, designer, document-specialist, perf-reviewer, security-reviewer, test-engineer, tracer, verifier (11 lanes)
+**Total findings:** 1 HIGH (blocking — test failure), 5 MEDIUM, 13 LOW, plus verification notes
+**Cross-agent agreement:** Test mock failure flagged by code-reviewer, debugger, test-engineer, verifier (4 lanes converged) → highest signal
+
+---
+
+## Cross-Agent Convergence Map
+
+| Topic | Agents flagging | Severity peak |
+|-------|-----------------|---------------|
+| `tests/unit/proxy.test.ts` mock missing `getAuthSessionCookieNames` | CR-1, DBG-1, TE-1, VER-6 | **HIGH** |
+| Mixed time sources (`Date.now()` vs `getDbNowMs()`) in analytics | ARCH-1, CR-2, CRI-1 | MEDIUM |
+| Anti-cheat retry semantics inconsistency | CR-3, CR-5, CRI-2, DBG-4 | MEDIUM |
+| Anti-cheat unused dependency | CR-4, PERF-8 | LOW |
+| Cookie constants in wrong module | ARCH-3, CRI-3 | LOW |
+| Nested error handling complexity in analytics IIFE | CRI-4, DBG-2 | LOW |
+| Anti-cheat ARIA / loading-state gaps | DES-4, DES-6 | LOW |
+| Password validation doc/code mismatch (pre-existing) | DOC-6 | LOW |
 
 ---
 
 ## Deduplicated Findings (sorted by severity)
 
-### AGG-1: [MEDIUM] `hcaptchaSecret` Missing from Export Redaction Maps — Leaked in All Backup Exports
+### AGG-1: [HIGH] proxy.test.ts mock missing `getAuthSessionCookieNames` export — 15 unit-test failures
 
-**Sources:** CR-1, CR-4, S-1, S-2, A-1, D-1 | **Confidence:** HIGH
-**Cross-agent signal:** 6 of 6 review perspectives
+**Sources:** CR-1, DBG-1, TE-1, VER-6 | **Confidence:** HIGH
 
-The `systemSettings.hcaptchaSecret` column is not included in either `SANITIZED_COLUMNS` or `ALWAYS_REDACT` in `src/lib/db/export.ts:245-258`. While the logger's `REDACT_PATHS` was updated to include `hcaptchaSecret` in cycle 17, the parallel update to the export module was never made. As a result, all backup exports (both sanitized and full-fidelity) include the encrypted hCaptcha secret ciphertext.
+`tests/unit/proxy.test.ts:51-53` — `vi.mock("@/lib/security/env")` only exports `getValidatedAuthSecret`. `proxy.ts` now imports and calls `getAuthSessionCookieNames()` (line 7, called at 92). Result: 15 tests reaching the 401 / redirect paths fail with: "No `getAuthSessionCookieNames` export is defined on the mock."
 
-The `ALWAYS_REDACT` map already protects `users.passwordHash` and `apiKeys.encryptedKey` in full-fidelity backups. The `hcaptchaSecret` column stores the hCaptcha site secret encrypted with AES-256-GCM, but in operational disaster recovery scenarios, the backup file and `NODE_ENCRYPTION_KEY` are often co-located, making the ciphertext decryptable.
+**Concrete failure scenario:** `npm run test:unit` reports 15 failures. CI pipeline fails. PROMPT 3 requires fixing this before commit/push.
 
-This is a systemic issue: secret column redaction is fragmented across three independent configuration points (logger, export, audit), and there is no test to validate consistency. The `hcaptchaSecret` omission in the logger was caught and fixed in cycle 17, but the same omission in the export module was not.
+**Fix:** Add `getAuthSessionCookieNames` to the `vi.mock` factory:
 
-**Concrete failure scenario:** An admin downloads a full-fidelity backup for disaster recovery. The JSON file contains `systemSettings.hcaptchaSecret: "enc:a1b2c3:..."`. The backup is stored on a shared drive alongside the `.env` file containing `NODE_ENCRYPTION_KEY`. A low-privileged user with access to both can decrypt the hCaptcha secret and programmatically bypass CAPTCHA verification.
+```typescript
+vi.mock("@/lib/security/env", () => ({
+  getValidatedAuthSecret: getValidatedAuthSecretMock,
+  getAuthSessionCookieNames: vi.fn().mockReturnValue({
+    name: "authjs.session-token",
+    secureName: "__Secure-authjs.session-token",
+  }),
+}));
+```
+
+---
+
+### AGG-2: [MEDIUM] Analytics route mixes `Date.now()` (read) with `getDbNowMs()` (write) — clock-skew brittleness
+
+**Sources:** ARCH-1, CR-2, CRI-1 | **Confidence:** MEDIUM
+
+`src/app/api/v1/contests/[assignmentId]/analytics/route.ts:62` reads `Date.now()` for cache-staleness check; lines 79 and 106 write `await getDbNowMs()` to `cached.createdAt`. If the DB and app server clocks diverge, the staleness comparison subtracts two different time domains. Within 30s tolerance this is acceptable, but the inconsistency is a design smell and creates risk of replication.
+
+**Concrete failure scenario:** NTP drift on app server → `Date.now()` lags 40s behind DB → `Date.now() - cached.createdAt` always < `STALE_AFTER_MS` → cache never refreshes; or the inverse → cache refreshes every request.
+
+**Fix options:**
+1. Always read `Date.now()` (matching write side too) — minimal DB hits, drops architectural consistency.
+2. Always read `await getDbNowMs()` for staleness — restores consistency, costs 1 DB query per cache hit.
+3. Add comment explicitly noting tolerance window and cap clock-skew tolerance via a guard.
+
+**Recommendation:** Option 1 — change cache writes to also use `Date.now()` so staleness math is internally consistent. The 30s window is well above any plausible clock drift in a well-NTP'd deployment.
+
+---
+
+### AGG-3: [MEDIUM] Anti-cheat `scheduleRetryRef` has subtly inconsistent semantics between callers
+
+**Sources:** CR-3, CR-5, CRI-2, DBG-4 | **Confidence:** MEDIUM
+
+`src/components/exam/anti-cheat-monitor.tsx`:
+- Line 125: `flushPendingEvents` calls `scheduleRetryRef.current(remaining)` where `remaining` = the events that *just failed*.
+- Line 169: `reportEvent` calls `scheduleRetryRef.current(pending)` where `pending` = ALL pending events (including the one just added).
+
+The backoff uses `maxRetry` derived from the input list, so the two callers can produce different backoff values for the same underlying failure stream. Additionally, `reportEvent` lists `flushPendingEvents` in its `useCallback` dependency array (line 172) but no longer calls it post-refactor — causing unnecessary re-creation of `reportEvent` and `reportEventRef`.
+
+**Concrete failure scenario:** Two failures in quick succession. First triggers `scheduleRetryRef([failedA])` → backoff 2s. Second event added before timer fires; `reportEvent` calls `scheduleRetryRef([pendingA, pendingB])` → guard `!retryTimerRef.current` is false → no new timer. The original timer fires at 2s and uses `performFlush()` which loads all pending. So behavior is correct, but the semantic mismatch is confusing.
 
 **Fix:**
-1. Add `systemSettings: new Set(["hcaptchaSecret"])` to `SANITIZED_COLUMNS` in `src/lib/db/export.ts`
-2. Add `systemSettings: new Set(["hcaptchaSecret"])` to `ALWAYS_REDACT` in `src/lib/db/export.ts`
-3. Add a test that validates `ALWAYS_REDACT` and `SANITIZED_COLUMNS` include entries for known secret columns (`passwordHash`, `encryptedKey`, `hcaptchaSecret`)
+1. Remove `flushPendingEvents` from `reportEvent`'s dependency array (it's no longer used in the body).
+2. Add a comment near `scheduleRetryRef` describing the contract: "the input list is informational for backoff calculation only; the timer always reloads pending events from localStorage via `performFlush`."
 
 ---
 
-### AGG-2: [LOW] `computeLeaderboard` Uses `Date.now()` for Freeze Boundary — Clock Skew Inconsistency
+### AGG-4: [MEDIUM] Anti-cheat retry timer holds stale `performFlush` closure across `assignmentId` change
 
-**Sources:** CR-2, CR-3, A-2, D-2, T-2 | **Confidence:** MEDIUM
-**Cross-agent signal:** 5 of 6 review perspectives
+**Sources:** DBG-4 | **Confidence:** MEDIUM
 
-`computeLeaderboard()` in `src/lib/assignments/leaderboard.ts:52` uses `Date.now()` to determine whether the leaderboard should be frozen (`nowMs >= freezeAt`), while the freeze time is stored in PostgreSQL. All other contest boundary checks (anti-cheat route, submission routes, assignment PATCH route) use DB server time via `getDbNowMs()` or `SELECT NOW()`.
+`src/components/exam/anti-cheat-monitor.tsx:138-141` — when a retry timer is already pending and `performFlush` changes (e.g., `assignmentId` prop or `sendEvent` identity changes), the running timer keeps the old closure. The next-generation timer self-corrects but one fired retry can use stale state.
 
-Under clock skew between the app server and database, students may see the leaderboard freeze too early (app server clock ahead) or too late (app server clock behind) relative to the actual freeze time recorded in the database.
+**Concrete failure scenario:** In practice the `assignmentId` prop doesn't change in the lifetime of one mount (the component is keyed on it), so this is mostly theoretical. But if a future caller passes `assignmentId` as a changing prop, the bug becomes real.
 
-**Concrete failure scenario:** An instructor sets `freezeLeaderboardAt` to 14:00:00 via the admin UI. The app server's clock is 3 seconds ahead. At 13:59:57 local time (14:00:00 DB time), `Date.now()` returns 13:59:57, which is before the freeze. Students continue seeing the live leaderboard for 3 extra seconds after the actual freeze time.
-
-**Fix:** Replace `const nowMs = Date.now()` with `const nowMs = await getDbNowMs()` at line 52 of `src/lib/assignments/leaderboard.ts`. The function is already async.
+**Fix:** Document the assumption in a JSDoc comment, OR clear the retry timer in the `useEffect` that depends on `[performFlush]` so a fresh closure is always used. The latter is safer but slightly perturbs the retry schedule.
 
 ---
 
-### AGG-3: [LOW] Proxy Auth Cache Cleanup Iterates All Entries on Every `setCachedAuthUser` Call
+### AGG-5: [MEDIUM] No tests cover the new analytics `Date.now()` staleness optimization or the `Date.now()` cooldown fallback
 
-**Sources:** P-2 | **Confidence:** LOW
-**Cross-agent signal:** 1 of 6 review perspectives
+**Sources:** TE-3, TE-5 | **Confidence:** HIGH
 
-The fix from cycle 18b (AGG-6) added expired entry cleanup in `setCachedAuthUser` (lines 68-75 of `src/proxy.ts`). However, the cleanup iterates ALL entries in the cache on every `set` call when `size > 0`. Under high traffic, this adds per-request overhead proportional to cache size.
+`src/app/api/v1/contests/[assignmentId]/analytics/route.ts` — the new cache-staleness check (line 62) and the catch-block fallback (line 90) have no automated test coverage. The behavior is correct per code review, but regressions would slip through.
 
-`getCachedAuthUser` already deletes expired entries on read (line 60). The `setCachedAuthUser` cleanup is redundant for entries that will be read soon, and wasteful for entries that won't be read again.
+**Concrete failure scenario:** A future refactor reverts `Date.now()` to `await getDbNowMs()` for staleness, reintroducing the per-request DB hit. No test would catch the regression.
 
-**Concrete failure scenario:** 500 concurrent users. Each request calls `setCachedAuthUser` after a DB lookup. The cleanup iterates 500+ entries each time, adding ~0.1ms per request.
-
-**Fix:** Only run cleanup when `size >= AUTH_CACHE_MAX_SIZE * 0.9` (i.e., when eviction is imminent) rather than on every set.
+**Fix:** Add API-level vitest tests under `tests/unit/api/contests/analytics.test.ts` covering:
+1. Cache hit + within TTL → no DB call for staleness.
+2. Cache hit + stale → background refresh triggered exactly once.
+3. Background refresh failure → cooldown timestamp stored (DB or `Date.now()` fallback).
 
 ---
 
-## Carried Forward from Prior Cycle-18b Aggregate (AGG-1 through AGG-6)
+### AGG-6: [LOW] `reportEvent` declares unused `flushPendingEvents` dependency (also covered by AGG-3)
 
-The following findings from `rpf-cycle-18b-aggregate.md` are carried forward unchanged:
+**Sources:** CR-4, PERF-8 | **Confidence:** HIGH
 
-| ID | Finding | Severity | Status |
-|----|---------|----------|--------|
-| AGG-1(c18) | Inconsistent locale handling in number formatting | MEDIUM/MEDIUM | Open |
-| AGG-2(c18) | Access code share link missing locale prefix | LOW/MEDIUM | Open |
-| AGG-3(c18) | Practice page progress-filter in-JS filtering at scale | MEDIUM/MEDIUM | Open |
-| AGG-4(c18) | Hardcoded English error string in api-keys clipboard | LOW/MEDIUM | Open |
-| AGG-5(c18) | `userId!` non-null assertion in practice page | LOW/MEDIUM | Open |
-| AGG-6(c18) | Copy-code-button no error feedback on clipboard failure | LOW/LOW | Open |
-| AGG-7(c18) | Practice page component exceeds 700 lines | LOW/MEDIUM | Open |
-| AGG-8(c18) | Recruiting invitations panel `min` date uses client time | LOW/LOW | Open |
+See AGG-3. The dependency causes minor benign re-renders and signals intent that no longer matches the body.
 
-## Previously Deferred Items (Still Active)
+**Fix:** Drop `flushPendingEvents` from `reportEvent`'s dep array.
 
-All prior deferred items from cycle 18b and earlier remain unchanged. See `rpf-cycle-18b-comprehensive-review.md` lines 119-141 for the full list.
+---
 
-## Positive Observations
+### AGG-7: [LOW] `getAuthSessionCookieNames()` is a function-wrapped constant — abstraction without payoff
 
-- `sanitizeMarkdown` now has comprehensive unit tests (resolves cycle 17 AGG-6)
-- No `@ts-ignore`, `@ts-expect-error`, or `eslint-disable` suppressions found
-- No `as any` type casts in server code (1 in management.ts for Drizzle ORM)
-- `dangerouslySetInnerHTML` usage is safe (DOMPurify + safeJsonForScript)
-- Audit event flush re-buffer now preserves chronological ordering (cycle 18b fix verified)
-- Proxy auth cache expired entry cleanup works correctly (cycle 18b fix verified)
-- Cron cleanup endpoint properly gated behind `ENABLE_CRON_CLEANUP` (cycle 18b fix verified)
-- All prior cycle 16-18 fixes remain correctly implemented
+**Sources:** ARCH-3, CRI-3 | **Confidence:** MEDIUM
+
+`src/lib/security/env.ts:178-180` exports a function that returns hardcoded object constants. Single callsite, no dynamic behavior. Could be `export const AUTH_SESSION_COOKIE_NAMES = { ... } as const`. Mild impedance mismatch with the dynamic `getAuthSessionCookieName()` (singular, HTTPS-aware).
+
+**Fix:** Either keep as-is (no harm done) or convert to a `const` object and update callers. Defer unless multiple callsites emerge.
+
+---
+
+### AGG-8: [LOW] Analytics IIFE has 3-level nested error handling — readability cost
+
+**Sources:** CRI-4, DBG-2 | **Confidence:** LOW
+
+`src/app/api/v1/contests/[assignmentId]/analytics/route.ts:76-99` — async IIFE with try/catch (with nested try/catch inside catch) and an outer `.catch(() => {})`. Defensive but hard to read. Extracting to a named `async function refreshAnalyticsCache(...)` would clarify control flow.
+
+**Fix:** Extract the refresh body into a named function.
+
+---
+
+### AGG-9: [LOW] `ShieldAlert` icon in privacy notice lacks `aria-hidden="true"`
+
+**Sources:** DES-6 | **Confidence:** MEDIUM
+
+`src/components/exam/anti-cheat-monitor.tsx` — decorative icon on the privacy-consent dialog should be hidden from assistive tech.
+
+**Fix:** Add `aria-hidden="true"` to the `<ShieldAlert />` element.
+
+---
+
+### AGG-10: [LOW] Anti-cheat monitor has no user-visible "events failing to send" indicator
+
+**Sources:** DES-4 | **Confidence:** LOW
+
+If the network is persistently down throughout an exam, the user has no feedback. Tradeoff: avoiding distraction. Could add a subtle "offline" indicator after N consecutive failures.
+
+**Fix:** Defer — design judgment call. Track as deferred enhancement.
+
+---
+
+### AGG-11: [LOW] AGENTS.md says "only check minimum length" but `password.ts` has dictionary + similarity checks (pre-existing)
+
+**Sources:** DOC-6 | **Confidence:** MEDIUM
+
+`AGENTS.md:517-521` says password validation must "only check minimum length — exactly 8 characters minimum, no other rules." Code at `src/lib/security/password.ts` also performs:
+- Common-password dictionary check (line 45)
+- Username similarity check (line 50-55)
+- Email local-part similarity check (line 59-66)
+
+Pre-existing. The CLAUDE.md rule explicitly says "Do NOT add complexity requirements (uppercase, numbers, symbols), similarity checks, or dictionary checks."
+
+**Fix:** Either (a) remove the extra checks in code to match the documented rule, or (b) update AGENTS.md/CLAUDE.md to reflect the actual checks. This is a policy decision needing user input — DEFER.
+
+---
+
+### AGG-12: [LOW] No unit test for `getAuthSessionCookieNames()`
+
+**Sources:** TE-2 | **Confidence:** HIGH
+
+New exported function has no dedicated unit test. Trivial to add.
+
+**Fix:** Add a test in `tests/unit/security/env.test.ts` (or create the file).
+
+---
+
+## Verification Notes (no action — informational)
+
+- ARCH-2: Anti-cheat component is 321 lines; SRP suggestion to decompose into hooks. Tracked but not actioned this cycle.
+- ARCH-4: Proxy import coupling unchanged; no regression.
+- ARCH-5: Module-level cache acceptable for Docker single-process deployment.
+- DBG-3: `scheduleRetryRef.current = () => {}` initial no-op never fires with real data. SAFE.
+- DBG-5: localStorage keyed by `assignmentId` — no cross-contest leakage. SAFE.
+- DES-1, DES-2, DES-3, DES-5: All UX/typography rules verified compliant.
+- PERF-1: `Date.now()` staleness check eliminates one DB query per cache hit — confirmed perf improvement.
+- PERF-2..7: All other perf observations verify good design.
+- SEC-1..7 + OBS-1..3: No security regressions, only improvements (cookie name single-source-of-truth).
+- DOC-1..5: Documentation matches code. Only DOC-6 (pre-existing) flagged.
+
+---
+
+## Carried Deferred Items (cycle 48 → cycle 1, unchanged)
+
+DEFER-22 through DEFER-57 carried forward from prior cycles. See `.context/reviews/_aggregate-cycle-48.md` for full list. None re-opened by this cycle's reviews.
+
+---
 
 ## No Agent Failures
 
-All 6 review perspectives completed successfully.
+All 11 lanes completed successfully. Aggregate written without retries.

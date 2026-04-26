@@ -1,43 +1,116 @@
-# Verifier Review — RPF Cycle 48
+# Verifier Lane - Cycle 1
 
-**Date:** 2026-04-23
-**Reviewer:** verifier
-**Base commit:** 6831c05e
+**Date:** 2026-04-26
+**Angle:** Evidence-based correctness verification against stated behavior
 
-## Verification Method
+## Verification Results
 
-Evidence-based correctness check against stated behavior. Each finding is verified against the actual code path, not just the comments.
+### VER-1: Analytics staleness optimization — VERIFIED CORRECT
 
-## Findings
+**Stated behavior:** "Use Date.now() for the staleness check instead of getDbNowMs() to avoid a DB round-trip on every cache-hit request."
 
-### V-1: Judge claim route `Date.now()` for `claimCreatedAt` — verified clock-skew impact [MEDIUM/MEDIUM]
+**Evidence:**
+- Line 62: `const nowMs = Date.now()` — local time, no DB call. VERIFIED.
+- `getDbNowMs()` at `db-time.ts:51-52` calls `getDbNowUncached()` which executes `SELECT NOW()::timestamptz AS now`. VERIFIED it's a DB query.
+- Lines 79, 106: Cache writes still use `await getDbNowMs()`. VERIFIED.
+- Lines 88-90: Fallback pattern: try `await getDbNowMs()`, catch → `Date.now()`. VERIFIED.
 
-**File:** `src/app/api/v1/judge/claim/route.ts:122`
-
-**Verification:** I traced the full data flow:
-1. `claimCreatedAt = Date.now()` — captures app-server time
-2. SQL: `to_timestamp(@claimCreatedAt::double precision / 1000)` — converts to DB timestamp
-3. Stale check: `s.judge_claimed_at < NOW() - (@staleClaimTimeoutMs || ' milliseconds')::interval`
-4. The comparison is between an app-time-originated value and DB `NOW()`
-
-**Verified failure scenario:** If the app server clock is 30 seconds behind the DB server, a claim made "just now" will appear 30 seconds old from the DB's perspective. With a 5-minute stale timeout, the claim would be detected as stale 30 seconds early. This is confirmed by tracing the SQL logic.
-
-**Evidence:** The same pattern was fixed and verified in `realtime-coordination.ts` (cycle 46), `checkServerActionRateLimit` (cycle 47), and `validateAssignmentSubmission` (cycle 45). The fix pattern is established.
+**Behavior match:** Code matches stated behavior. The staleness check avoids DB round-trips. Cache writes (where authoritative time matters) still use DB time.
 
 ---
 
-### V-2: Prior fixes remain intact
+### VER-2: Date.now() fallback on DB failure — VERIFIED CORRECT but implementation is nested
 
-All fixes from cycles 37-47 were verified to still be present:
-1. `checkServerActionRateLimit` uses `getDbNowUncached()` — confirmed in api-rate-limit.ts:219
-2. `realtime-coordination.ts` uses `getDbNowUncached()` — confirmed in lines 94 and 157
-3. No `Map.get()!` patterns remain in the codebase — confirmed via grep
-4. No `as any` patterns remain in the codebase — confirmed via grep
+**Stated behavior:** "If the DB is unreachable, getDbNowMs() will also throw, leaving the cooldown unset and allowing a thundering herd on every subsequent request. Date.now() is acceptable here."
+
+**Evidence:**
+- Line 87-91: `try { _lastRefreshFailureAt.set(cacheKey, await getDbNowMs()); } catch { _lastRefreshFailureAt.set(cacheKey, Date.now()); }`
+- This nested try/catch is inside the outer `catch` block of the refresh IIFE.
+
+**Match:** The code does implement the stated fallback. If `getDbNowMs()` throws, `Date.now()` is used as the cooldown timestamp. VERIFIED.
+
+**Edge case:** What if both `computeContestAnalytics` AND `getDbNowMs()` fail? The outer IIFE's `.catch(() => {})` handles the rejection. The `_refreshingKeys` key is deleted in `finally`. This is correct — the guard is reset even on double-failure.
 
 ---
 
-### V-3: `rateLimitedResponse` X-RateLimit-Reset header accuracy [LOW/LOW]
+### VER-3: scheduleRetryRef as single source of truth — VERIFIED CORRECT
 
-**File:** `src/lib/security/api-rate-limit.ts:125`
+**Stated behavior:** "This is the single source of truth for retry scheduling logic — both flushPendingEvents and reportEvent delegate here instead of duplicating the has-retriable check, backoff calculation, and timer setup."
 
-**Verification:** The header value `Math.ceil((Date.now() + windowMs) / 1000)` gives an approximate reset time. The actual reset in the DB depends on `windowStartedAt + windowMs`. Under normal conditions (clocks synchronized to within milliseconds), the difference is negligible. Under extreme clock skew (seconds+), clients could retry slightly early or late. Not a correctness issue since the DB check is authoritative.
+**Evidence:**
+- Line 125: `flushPendingEvents` calls `scheduleRetryRef.current(remaining)` after performFlush
+- Line 169: `reportEvent` calls `scheduleRetryRef.current(pending)` on send failure
+- Lines 132-145: `useEffect` updates `scheduleRetryRef.current` with the full retry logic
+- Both callers go through the same ref. There is no duplicated retry logic elsewhere.
+
+**Match:** VERIFIED. The retry scheduling logic exists in exactly one place (the useEffect at 132-145).
+
+**Check:** The ref is initialized as `() => {}` (line 118). If called before the useEffect runs, it's a no-op. Is this OK?
+- `flushPendingEvents` is called in `useEffect` at line 183 (`void flushPendingEventsRef.current()`)
+- `reportEvent` is called in event handlers (copy, paste, visibility change)
+- The `useEffect` at 132 runs after the initial render and sets `scheduleRetryRef.current`
+- `reportEvent` can't fire before the component mounts (event handlers are registered in useEffect at 209)
+- THEREFORE: the initial `() => {}` is never called with real events. VERIFIED SAFE.
+
+---
+
+### VER-4: Cookie name identity — VERIFIED CORRECT
+
+**Stated behavior:** "The cookie names are derived from the same source as authConfig so they stay in sync if the naming convention ever changes."
+
+**Evidence:**
+- `env.ts:8-9`: `SECURE_AUTH_SESSION_COOKIE_NAME = "__Secure-authjs.session-token"`, `AUTH_SESSION_COOKIE_NAME = "authjs.session-token"`
+- `env.ts:178-179`: `getAuthSessionCookieNames()` returns `{ name: AUTH_SESSION_COOKIE_NAME, secureName: SECURE_AUTH_SESSION_COOKIE_NAME }`
+- Old code in proxy.ts (pre-change): `response.cookies.set("authjs.session-token", ...)`, `response.cookies.set("__Secure-authjs.session-token", ...)`
+- New code: `const { name, secureName } = getAuthSessionCookieNames()` then uses `name` and `secureName`
+
+**Identity check:**
+- `name` = `AUTH_SESSION_COOKIE_NAME` = `"authjs.session-token"` — matches old hardcoded string
+- `secureName` = `SECURE_AUTH_SESSION_COOKIE_NAME` = `"__Secure-authjs.session-token"` — matches old hardcoded string
+
+**Match:** VERIFIED. The function returns exactly the same values as the old hardcoded strings.
+
+---
+
+### VER-5: authConfig cookie name source — VERIFIED CONSISTENT
+
+Let's check what authConfig uses for cookie names.
+
+**Evidence:**
+- `env.ts:166-169`: `getAuthSessionCookieName()` returns `shouldUseSecureSessionCookie() ? SECURE_AUTH_SESSION_COOKIE_NAME : AUTH_SESSION_COOKIE_NAME`
+- The same constants are used. authConfig picks one, proxy clears both.
+
+**Match:** VERIFIED. Both modules use the same source constants.
+
+---
+
+### VER-6: Test suite status — 1 FAILURE (proxy.test.ts)
+
+**Unit tests:** 302 files, 2192 passed, 15 failed (all in proxy.test.ts)
+**Root cause:** Test mock at `tests/unit/proxy.test.ts:51-53` does not export `getAuthSessionCookieNames`.
+**Integration tests:** All 3 files skipped (no DB connection)
+**Component tests:** All passed
+
+**Match:** The code itself is correct, but the test mock needs updating. This is a test-configuration issue, not a code bug.
+
+---
+
+### VER-7: TypeScript type check — PASSED
+
+`npx tsc --noEmit` completed with exit code 0. No type errors.
+
+---
+
+## Summary
+
+| ID | Finding | Status |
+|----|---------|--------|
+| VER-1 | Analytics staleness optimization | VERIFIED CORRECT |
+| VER-2 | Date.now() fallback on DB failure | VERIFIED CORRECT |
+| VER-3 | scheduleRetryRef as single source of truth | VERIFIED CORRECT |
+| VER-4 | Cookie name identity with hardcoded strings | VERIFIED CORRECT |
+| VER-5 | authConfig source consistency | VERIFIED CONSISTENT |
+| VER-6 | Test suite — 15 failures | NEEDS FIX (mock) |
+| VER-7 | TypeScript check | PASSED |
+
+All 4 changed files behave as stated in their comments. The only issue is the test mock gap.

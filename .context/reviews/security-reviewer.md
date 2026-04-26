@@ -1,73 +1,117 @@
-# Security Review - Cycle 15
+# Security Reviewer Lane - Cycle 1
+
+**Date:** 2026-04-26
+**Scope:** Full repository security audit, focus on 4 changed files
+
+## Findings
+
+### Finding SEC-1: Cookie clearing now follows single source of truth — improvement [LOW/HIGH]
+
+**File:** `src/proxy.ts:87-96`, `src/lib/security/env.ts:172-180`
+
+The cookie clearing function now derives cookie names from the same constants used by authConfig, eliminating the risk of hardcoded-string drift. Previously, the strings `"authjs.session-token"` and `"__Secure-authjs.session-token"` were hardcoded in proxy.ts. The new approach ensures consistency.
+
+**Verdict:** Security improvement. No vulnerability introduced.
+
+---
+
+### Finding SEC-2: No X-Requested-With header check in analytics route [MEDIUM/MEDIUM]
+
+**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:32`
+
+AGENTS.md states: "CSRF: Mutation API routes require the X-Requested-With: XMLHttpRequest header." The analytics route is GET (not a mutation), but `createApiHandler` defaults CSRF check to false for GET requests. This is correct per the handler framework.
+
+**Verdict:** No issue — GET routes don't require CSRF headers. Verified via `handler.ts:143`: `MUTATION_METHODS.has(req.method)` only includes POST/PUT/PATCH/DELETE.
+
+---
+
+### Finding SEC-3: Date.now() usage in rate-limit cooldown doesn't weaken security [LOW/MEDIUM]
+
+**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:90`
+
+The Date.now() fallback in `_lastRefreshFailureAt` is only used for cooldown (preventing thundering herd on DB failure), not for authorization or rate-limiting. Clock skew of 1-2s is irrelevant for a 5s cooldown. The rate limiter itself (`api-rate-limit.ts`) correctly uses `getDbNowMs()` for all authorization-relevant time comparisons.
+
+**Example:** `api-rate-limit.ts:58-59` uses `const now = await getDbNowMs()` for all rate-limit window comparisons. `api-rate-limit.ts:165,203` uses `await getDbNowMs()` for `X-RateLimit-Reset` headers.
+
+**Verdict:** No security issue. Analytics cache cooldown is not a security boundary.
+
+---
+
+### Finding SEC-4: Cookie name constants are appropriate for their scope [LOW/HIGH]
+
+**File:** `src/lib/security/env.ts:8-9`
+
+The constants `AUTH_SESSION_COOKIE_NAME` and `SECURE_AUTH_SESSION_COOKIE_NAME` are module-level constants not exported. The new `getAuthSessionCookieNames()` is the only public API to access them. This encapsulation is correct — the constants should not be spread across the codebase.
+
+**Verdict:** Good security encapsulation.
+
+---
+
+### Finding SEC-5: No auth bypass in analytics route [MEDIUM/HIGH]
+
+**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:32-43`
+
+The analytics route:
+1. Uses `createApiHandler` which defaults `auth = true` — requires authentication
+2. Checks DB for assignment existence and exam mode
+3. Validates `canViewAssignmentSubmissions` for authorization
+
+**Verdict:** Properly secured. No bypass.
+
+---
+
+### Finding SEC-6: Anti-cheat monitor sends user behavior data — no PII exposure [LOW/HIGH]
+
+**File:** `src/components/exam/anti-cheat-monitor.tsx:226-247`
+
+The `describeElement` function intentionally avoids capturing text content (line 238-239: "text content is intentionally NOT captured to avoid storing copyrighted exam problem text"). Only element types and parent class names are captured.
+
+**Verdict:** Privacy-conscious design. No PII in anti-cheat events.
+
+---
+
+### Finding SEC-7: Proxy CSP headers remain unchanged [LOW/HIGH]
+
+**File:** `src/proxy.ts:210-222`
+
+CSP headers are not affected by the cookie name change. The `createSecuredNextResponse` function is called separately from `clearAuthSessionCookies`. No CSP regression.
+
+**Verdict:** No security regression.
+
+---
+
+## Broader Security Observations
+
+### OBS-1: Auth cache TTL and security tradeoff documented
+
+**File:** `src/proxy.ts:23-27`
+
+The in-process auth cache has a 2-second TTL with explicit documentation of the security tradeoff: revoked/deactivated users may retain access for up to 2 seconds. This is a reasonable tradeoff documented in comments.
+
+### OBS-2: Session cookie clearing handles both variants
+
+**File:** `src/proxy.ts:87-96`
+
+Clearing both `authjs.session-token` and `__Secure-authjs.session-token` prevents session-fixation-like issues where a cookie from a previous security context lingers. The non-secure cookie is cleared without `secure: true` flag, matching how it was set.
+
+### OBS-3: Rate limiter sidecar architecture is defense-in-depth
+
+**File:** `src/lib/security/api-rate-limit.ts:28-35,148-176`
+
+Two-tier rate limiting: Rust sidecar for fast pre-check, PostgreSQL for authoritative enforcement. Sidecar failure falls through to DB path — never fail-closed (line 25: "MUST NEVER fail-closed here").
+
+---
 
 ## Summary
-Comprehensive security review of the judgekit platform. The codebase demonstrates strong security posture overall: CSP headers, CSRF protection, encrypted secrets, timing-safe comparisons, input validation, and Docker sandboxing. Found a few issues and areas for hardening.
 
----
+| ID | Finding | Severity | Confidence |
+|----|---------|----------|------------|
+| SEC-1 | Cookie name consistency — improvement | LOW | HIGH |
+| SEC-2 | CSRF check for GET — no issue | MEDIUM | MEDIUM |
+| SEC-3 | Date.now() in cooldown — no security impact | LOW | MEDIUM |
+| SEC-4 | Cookie constant encapsulation — good | LOW | HIGH |
+| SEC-5 | Auth check — no bypass | MEDIUM | HIGH |
+| SEC-6 | Anti-cheat privacy — good design | LOW | HIGH |
+| SEC-7 | CSP headers — no change | LOW | HIGH |
 
-## Finding S1: Plaintext recruitingInvitations.token Column (Data-at-Rest)
-**File:** `src/lib/db/schema.pg.ts:940-941, 961`
-**Severity:** Medium | **Confidence:** High
-
-The `recruitingInvitations` table has both `token` (plaintext, nullable) and `tokenHash` (varchar(64)). The unique index `ri_token_idx` is on the plaintext `token` column. If a database backup or read-only compromise occurs, all active recruiting tokens are exposed in cleartext.
-
-**Concrete scenario:** An SQL injection in a different part of the application (or a compromised DB replica) exposes `recruitingInvitations.token` values. An attacker can use these tokens to impersonate recruiting candidates.
-
-**Fix:** Drop the `token` column and `ri_token_idx` index. The `tokenHash` column and `ri_token_hash_idx` already support all lookup operations. Before dropping, ensure no code path reads `token` from the DB.
-
----
-
-## Finding S2: RUNNER_AUTH_TOKEN Falls Back to JUDGE_AUTH_TOKEN
-**File:** `src/lib/docker/client.ts:8`
-**Severity:** Low | **Confidence:** High
-
-`const RUNNER_AUTH_TOKEN = process.env.RUNNER_AUTH_TOKEN || process.env.JUDGE_AUTH_TOKEN || "";`
-
-This fallback means if `RUNNER_AUTH_TOKEN` is not set, the judge auth token is used for the runner endpoint. While both are internal services, this violates the principle of unique credentials per service. A compromise of the runner endpoint would also compromise judge worker authentication.
-
-**Fix:** Remove the fallback. Require `RUNNER_AUTH_TOKEN` explicitly when `COMPILER_RUNNER_URL` is set (already partially enforced in execute.ts lines 58-63, but the fallback in client.ts undermines it).
-
----
-
-## Finding S3: Dev Encryption Key Hardcoded in Source
-**File:** `src/lib/security/encryption.ts:14-17`
-**Severity:** Low | **Confidence:** High
-
-The `DEV_ENCRYPTION_KEY` is hardcoded as `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f`. While only used in development, if someone accidentally runs the app with `NODE_ENV` not set to `production` and `NODE_ENCRYPTION_KEY` unset, all encrypted data uses this known key.
-
-**Fix:** Generate a random dev key on first use and store it in a local file, or require explicit opt-in via an env var like `ALLOW_DEV_ENCRYPTION_KEY=1`.
-
----
-
-## Finding S4: Legacy Plaintext secretToken Still Present in judgeWorkers Schema
-**File:** `src/lib/db/schema.pg.ts:419`
-**Severity:** Low | **Confidence:** Medium
-
-`judgeWorkers.secretToken` is still defined in the schema (though `secretTokenHash` is the preferred column). The auth logic in `isJudgeAuthorizedForWorker` (auth.ts:76-81) already rejects workers that have no `secretTokenHash`, logging a migration warning. But the column still exists and could be read if someone adds a query that includes it.
-
-**Fix:** Drop the `secretToken` column from the schema once all workers have been migrated to `secretTokenHash`.
-
----
-
-## Finding S5: SEC-FETCH-SITE "none" Allowed in CSRF Check
-**File:** `src/lib/security/csrf.ts:49-51`
-**Severity:** Low | **Confidence:** Medium
-
-The CSRF check allows `sec-fetch-site: none`, which browsers send for top-level navigations (e.g., clicking a link). While the `X-Requested-With: XMLHttpRequest` check prevents cross-origin form submissions, the combination of `sec-fetch-site: none` + `X-Requested-With: XMLHttpRequest` is unusual (browsers don't normally send this header on top-level navigations). This is technically safe but reduces the defense-in-depth value of the sec-fetch-site check.
-
-**Fix:** Consider removing the `sec-fetch-site === "none"` exception, or document why it is needed (likely for compatibility with certain browser extensions or APIs that set X-Requested-With).
-
----
-
-## Positive Security Observations
-- Strong CSP with nonce-based scripts (proxy.ts:192-204)
-- Comprehensive Docker sandboxing: --network=none, --cap-drop=ALL, --read-only, --pids-limit, seccomp (execute.ts:332-363)
-- Shell command validation with denylist matching Rust worker (execute.ts:159-163)
-- Timing-safe token comparisons throughout (timing.ts)
-- User enumeration prevention with dummy password hash (config.ts:51-52)
-- Proper Argon2id password hashing with rehash on login
-- DB-backed rate limiting with exponential backoff
-- Anti-cheat user-agent hashing for session binding
-- Path traversal protection in file storage (storage.ts:19-26)
-- HTML sanitization with DOMPurify and strict allowlists
-- Encryption at rest with AES-256-GCM
+Total: 0 security vulnerabilities found in the changes. 7 findings, all verifying correct security posture.

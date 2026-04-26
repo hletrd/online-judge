@@ -1,60 +1,127 @@
-# Architecture Review - Cycle 15
+# Architect Lane - Cycle 1
+
+**Date:** 2026-04-26
+**Angle:** Architectural/design risks, coupling, layering, abstraction quality
+
+## Finding ARCH-1: Time authority is now split across the codebase
+
+**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:62`
+
+**Architectural concern:** The codebase has a well-defined time authority pattern: `getDbNowMs()` for server-side time. The `db-time.ts` module provides:
+- `getDbNow()` — React cached version for Server Components
+- `getDbNowUncached()` — for API routes
+- `getDbNowMs()` — convenience wrapper returning milliseconds
+
+These are used consistently in:
+- `api-rate-limit.ts` — rate limit window computation
+- Judge claim route — claim timestamp
+- `contest-scoring.ts` — ranking cache staleness
+
+Now `analytics/route.ts` introduces `Date.now()` for cache staleness. This breaks the architectural convention. While justified by performance, it creates a split time-source pattern.
+
+**Risk:** Future developers see `Date.now()` patterns and replicate them in correctness-critical contexts (e.g., rate limits, deadlines) where clock skew matters.
+
+**Mitigation:** The comments in the analytics route (lines 56-61, 82-86) carefully explain the rationale and explicitly state that DB time is still used where authoritative time is needed. This is good documentation.
+
+**Suggestion:** Consider adding a lightweight `getApproximateNowMs()` utility that uses `Date.now()` but with a JSDoc discouraging use in correctness-critical contexts.
+
+---
+
+## Finding ARCH-2: Anti-cheat monitor component is architecturally complex
+
+**File:** `src/components/exam/anti-cheat-monitor.tsx`
+
+**Architectural assessment:** The component has grown to 321 lines handling:
+1. Privacy notice UI (dialog)
+2. Event recording (tab switch, blur, copy, paste, contextmenu)
+3. Event deduplication (MIN_INTERVAL_MS)
+4. LocalStorage persistence (load/save/flush)
+5. API reporting (sendEvent)
+6. Retry scheduling (exponential backoff)
+7. Heartbeat monitoring
+8. Visibility change handling
+9. Online/offline event handling
+10. Element description (describeElement)
+
+This violates the Single Responsibility Principle. The component manages state, I/O, scheduling, and UI rendering — all in one file.
+
+**Suggestion:** Decompose into:
+- `useAntiCheatEvents` — hook for event recording, deduplication, API sending
+- `useAntiCheatRetry` — hook for retry scheduling, localStorage persistence
+- `AntiCheatPrivacyNotice` — component for the privacy dialog
+- `AntiCheatMonitor` — thin orchestrator composing the above
+
+The current refactoring (extracting `performFlush` and `scheduleRetryRef`) is a step in the right direction but doesn't fully address the coupling.
+
+---
+
+## Finding ARCH-3: Cookie name constants belong in auth config, not security/env
+
+**File:** `src/lib/security/env.ts:8-9,178-180`
+
+**Architectural concern:** `env.ts` is becoming a dumping ground for configuration constants that aren't necessarily environment-related.
+
+- `AUTH_SESSION_COOKIE_NAME` and `SECURE_AUTH_SESSION_COOKIE_NAME` are auth configuration constants
+- `getAuthSessionCookieNames()` is an auth utility
+- `shouldUseSecureSessionCookie()` uses AUTH_URL (environment) but is about auth behavior
+- `getAuthUrl()` / `getAuthUrlObject()` / `validateAuthUrl()` are true environment functions
+
+The module mixes two concerns: environment variable validation and auth cookie configuration.
+
+**Suggestion:** Move auth cookie name constants to `src/lib/auth/config.ts` (which already exists per CLAUDE.md line 5). The `getAuthSessionCookieName()` and `getAuthSessionCookieNames()` functions could live there too.
+
+**Note:** CLAUDE.md says "always use the current src/lib/auth/config.ts as-is" for deployment. Moving constants there would need careful handling.
+
+---
+
+## Finding ARCH-4: Module coupling via proxy.ts imports
+
+**File:** `src/proxy.ts:1-16`
+
+**Architectural assessment:** `proxy.ts` imports from 10 different modules:
+- `next-auth/jwt` (external)
+- `@/lib/auth/secure-cookie`
+- `@/lib/auth/session-security`
+- `@/lib/api/auth`
+- `@/lib/security/env`
+- `@/lib/audit/events`
+- `@/lib/public-route-seo`
+- `@/lib/i18n/constants`
+
+This is the middleware layer — it's expected to be the integration point. The addition of `getAuthSessionCookieNames` adds one more import from `@/lib/security/env`, which is already imported. No increase in coupling.
+
+**Verdict:** No architectural regression.
+
+---
+
+## Finding ARCH-5: Analytics cache uses module-level mutable state
+
+**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:17,20,24`
+
+**Architectural concern:** Three pieces of module-level mutable state:
+```typescript
+const analyticsCache = new LRUCache<string, CacheEntry>({ max: 100, ttl: CACHE_TTL_MS });
+const _refreshingKeys = new Set<string>();
+const _lastRefreshFailureAt = new Map<string, number>();
+```
+
+This is a common Next.js App Router pattern (module-level state survives between requests in the same process). But:
+1. In serverless deployments (Vercel), each function instance has its own cache — not shared across instances
+2. The cache is per-process, so horizontal scaling reduces cache hit rate
+3. The `_refreshingKeys` guard only works within a single process
+
+**Assessment:** This is an acceptable tradeoff for a self-hosted Docker deployment (single process). For serverless, a Redis-backed cache would be needed. The current implementation is appropriate for the documented Docker deployment architecture.
+
+---
 
 ## Summary
-Architectural review of the judgekit platform. The codebase follows solid Next.js App Router conventions with clear separation of concerns. Found several architectural observations.
 
----
+| ID | Finding | Severity | Confidence |
+|----|---------|----------|------------|
+| ARCH-1 | Split time authority pattern | MEDIUM | HIGH |
+| ARCH-2 | Anti-cheat component complexity | LOW | MEDIUM |
+| ARCH-3 | Cookie constants in wrong module | LOW | LOW |
+| ARCH-4 | Proxy import coupling — no change | — | HIGH |
+| ARCH-5 | Module-level cache in serverless | LOW | MEDIUM |
 
-## Finding A1: Dual Rate Limiting Systems (In-Memory + DB) Without Unified Interface
-**Files:** `src/lib/security/in-memory-rate-limit.ts`, `src/lib/security/rate-limit.ts`, `src/lib/security/api-rate-limit.ts`
-**Severity:** Medium | **Confidence:** Medium
-
-The codebase has two independent rate limiting systems:
-1. **DB-backed** (`rate-limit.ts`): PostgreSQL-backed, used for login auth
-2. **In-memory** (`in-memory-rate-limit.ts`): Map-based, used for API rate limiting
-
-They have different APIs, different eviction strategies, and different key formats. This creates confusion about which rate limiter to use where and makes it harder to reason about rate limiting behavior globally.
-
-**Fix:** Create a unified `RateLimiter` interface with pluggable backends (in-memory for dev/fast paths, DB for persistent/critical paths). This would also make it easier to add a Redis backend later.
-
----
-
-## Finding A2: Proxy (middleware.ts) Mixing Auth, CSP, Locale, and Caching Logic
-**File:** `src/proxy.ts`
-**Severity:** Medium | **Confidence:** Medium
-
-The `proxy` function (Next.js middleware) handles:
-1. Authentication and session validation
-2. CSP header generation
-3. Locale resolution and cookie setting
-4. API response caching headers
-5. User-agent mismatch auditing
-6. HSTS header management
-
-This is a single 340-line function with mixed concerns. While it works, any change to one concern (e.g., CSP) requires careful review to avoid breaking auth or locale logic.
-
-**Fix:** Split into composable middleware functions: `withAuth`, `withSecurityHeaders`, `withLocale`, `withCaching`. The main `proxy` function would chain them. This also makes each piece independently testable.
-
----
-
-## Finding A3: Encryption Key Management Spread Across Multiple Files
-**Files:** `src/lib/security/encryption.ts`, `src/lib/security/derive-key.ts`
-**Severity:** Low | **Confidence:** Medium
-
-Two separate encryption key derivation mechanisms exist:
-1. `encryption.ts`: Uses `NODE_ENCRYPTION_KEY` directly (or dev key) for AES-256-GCM
-2. `derive-key.ts`: Uses HKDF from `PLUGIN_CONFIG_ENCRYPTION_KEY` for domain-separated keys
-
-They read from different env vars and use different derivation strategies. If both are needed (which they are -- one for general encryption, one for plugin secrets), they should share a common key management module to avoid confusion.
-
-**Fix:** Consolidate into a single key management module that reads from a single env var (or clearly documents why two separate keys are needed) and provides domain-separated derivation via HKDF for all use cases.
-
----
-
-## Finding A4: Schema Exports Through Re-export Barrel
-**File:** `src/lib/db/schema.ts`
-**Severity:** Low | **Confidence:** Low
-
-`schema.ts` re-exports everything from `schema.pg.ts`. This is fine now but could become a maintenance issue. The barrel file is now an unnecessary indirection.
-
-**Fix:** Rename `schema.pg.ts` to `schema.ts` directly, or at minimum add a comment explaining why the indirection is kept (presumably for backwards compatibility with imports).
+Total: 3 architectural findings, 2 verification notes.
