@@ -120,8 +120,11 @@ export function AntiCheatMonitor({
   // only — the timer always reloads the latest pending events from localStorage
   // via `performFlush`. Both flushPendingEvents and reportEvent are allowed to
   // pass either the just-failed subset or the full pending list; the resulting
-  // backoff is `min(2^maxRetry * RETRY_BASE_DELAY_MS, 30s)`. The
-  // `!retryTimerRef.current` guard inside the body prevents duplicate timers.
+  // backoff is `min(2^maxRetry * RETRY_BASE_DELAY_MS, 30s)`. With the current
+  // MAX_RETRIES=3 the worst-case backoff is 8000ms (2^3 * 1000ms), so the
+  // 30000ms clamp is unreachable today and remains as defensive code in case
+  // MAX_RETRIES is increased in the future. The `!retryTimerRef.current` guard
+  // inside the body prevents duplicate timers.
   const scheduleRetryRef = useRef<(remaining: PendingEvent[]) => void>(() => {});
 
   const flushPendingEvents = useCallback(async () => {
