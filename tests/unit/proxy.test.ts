@@ -478,6 +478,33 @@ describe("proxy", () => {
       expect(cookieNames).toContain("authjs.session-token");
       expect(cookieNames).toContain("__Secure-authjs.session-token");
     });
+
+    // Cycle 5 AGG5-6 / SEC5-2 / TE5-2: assert the cookie-clearing semantics
+    // (Max-Age=0) and the Secure flag on the secure variant are correct,
+    // not just that the cookie names appear in Set-Cookie. Without this
+    // explicit check, a future refactor could rename the dual-clear into
+    // a no-op set (e.g., set value="" without Max-Age) and the previous
+    // assertion would still pass while the cookies are not actually cleared.
+    it("clears BOTH session cookie variants with Max-Age=0 (and Secure on the secure variant)", async () => {
+      const response = await proxy(makeRequest("/api/v1/users"));
+
+      expect(response.status).toBe(401);
+      const setCookieHeader = response.headers.getSetCookie();
+      const plain = setCookieHeader.find((c: string) => c.startsWith("authjs.session-token="));
+      const secure = setCookieHeader.find((c: string) => c.startsWith("__Secure-authjs.session-token="));
+
+      expect(plain, "non-secure session cookie missing from Set-Cookie").toBeDefined();
+      expect(secure, "secure session cookie missing from Set-Cookie").toBeDefined();
+
+      // Max-Age=0 is the canonical "delete this cookie" instruction.
+      // (Next.js may also include Expires=Thu, 01 Jan 1970; both are valid.)
+      expect(plain!.toLowerCase()).toMatch(/max-age=0|expires=thu, 01 jan 1970/);
+      expect(secure!.toLowerCase()).toMatch(/max-age=0|expires=thu, 01 jan 1970/);
+
+      // The secure variant MUST carry the Secure attribute, otherwise
+      // browsers won't accept the deletion over HTTPS.
+      expect(secure!.toLowerCase()).toContain("secure");
+    });
   });
 
   // =========================================================================
