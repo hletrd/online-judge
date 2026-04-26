@@ -16,7 +16,12 @@ The cycle-4 review was a steady-state pass following cycles 1–3 which closed t
 
 Key observation during planning: the 5-agent convergence on `__test_internals` (AGG4-1) is the highest-signal finding this cycle even though severity is LOW. The fix is one-line.
 
-**Implementation status (2026-04-27):** plan written; tasks pending implementation in PROMPT 3.
+**Implementation status (2026-04-27):**
+- Task A `[x]` commit `54e0203f` — `__test_internals` gated behind `NODE_ENV === "test"`. Existing dispose-hook test still passes (8/8 in 82ms). JSDoc updated.
+- Task B `[x]` commit `f6724762` — Extracted storage helpers to `src/components/exam/anti-cheat-storage.ts`. Added `MAX_PENDING_EVENTS = 200` cap. New unit suite at `tests/unit/components/anti-cheat-storage.test.ts` (14/14 in 127ms).
+- Task C `[x]` commit `54e0203f` (same as Task A) — Defensive comment added to `refreshAnalyticsCacheInBackground` catch block warning against `analyticsCache.set` in that branch.
+
+Gates: lint 0 errors (14 warnings in untracked dev `.mjs` scripts, unchanged), unit tests pending full suite confirmation in deploy phase.
 
 ---
 
@@ -24,7 +29,7 @@ Key observation during planning: the 5-agent convergence on `__test_internals` (
 
 ### Task A — [LOW, 5-agent convergence] Gate `__test_internals` behind `NODE_ENV === "test"` (AGG4-1)
 
-**Status:** `[ ]`
+**Status:** `[x]` — done in commit `54e0203f`. Conditional export gates behind `process.env.NODE_ENV === "test"`. JSDoc updated. Existing dispose-hook test passes (8/8 analytics tests in 82ms).
 **Severity:** LOW
 **Confidence:** HIGH
 **Reference:** `.context/reviews/_aggregate.md` AGG4-1; per-agent: `architect.md` ARCH4-1, `code-reviewer.md` CR4-1, `critic.md` CRIT4-1, `security-reviewer.md` SEC4-2, `verifier.md` VER4-2
@@ -69,7 +74,7 @@ The JSDoc warns "Production code MUST NOT depend on this export," but nothing en
 
 ### Task B — [LOW, 3-agent convergence] Cap `loadPendingEvents` array length at 200 (AGG4-2)
 
-**Status:** `[ ]`
+**Status:** `[x]` — done in commit `f6724762`. Storage helpers extracted to `src/components/exam/anti-cheat-storage.ts` with `MAX_PENDING_EVENTS = 200` cap. New unit suite at `tests/unit/components/anti-cheat-storage.test.ts` covers `isValidPendingEvent` edges, malformed JSON, the cap behavior (250 → 200), and save semantics. 14/14 tests pass in 127ms.
 **Severity:** LOW
 **Confidence:** MEDIUM
 **Reference:** `.context/reviews/_aggregate.md` AGG4-2; per-agent: `code-reviewer.md` CR4-2, `perf-reviewer.md` PERF4-3, `test-engineer.md` TE4-6
@@ -112,7 +117,7 @@ The JSDoc warns "Production code MUST NOT depend on this export," but nothing en
 
 ### Task C — [LOW] Add defensive comment in `refreshAnalyticsCacheInBackground` catch block (AGG4-3)
 
-**Status:** `[ ]`
+**Status:** `[x]` — shipped together with Task A (commit `54e0203f`). Comment added warning that `analyticsCache.set()` must NOT be called in this branch — the LRU dispose hook would synchronously delete the just-set cooldown timestamp, defeating the failure cooldown contract.
 **Severity:** LOW
 **Confidence:** MEDIUM
 **Reference:** `.context/reviews/_aggregate.md` AGG4-3; per-agent: `debugger.md` DBG4-1
