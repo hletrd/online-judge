@@ -1,85 +1,134 @@
-# Tracer Pass — RPF Cycle 3/100
+# Tracer Review — RPF Cycle 4/100
 
 **Date:** 2026-04-27
-**Lane:** tracer
-**Scope:** Causal tracing of suspicious flows, competing hypotheses
+**Method:** causal tracing of suspicious flows; competing-hypothesis evaluation
 
-## Summary
+## Trace Targets
 
-I traced two flows this cycle:
-1. **Analytics cache → background refresh → cooldown** (cycle-2 surface): the new `refreshAnalyticsCacheInBackground` is correctly called, cleaned up, and the cooldown is correctly read against `Date.now()`. No causal anomalies.
-2. **Logout → cookie clearing**: the `getAuthSessionCookieNames` factory is correctly called from `proxy.ts:92` in `clearAuthSessionCookies`. The two `response.cookies.set(..., "", { maxAge: 0 })` calls clear the right cookies.
+- Analytics route cache + cooldown lifecycle
+- Anti-cheat monitor retry scheduling chain
+- Proxy session-cookie clearing flow
 
-No anomalies surfaced. The investigation cleared the cycle-2 commit traces.
+## Trace 1: Analytics Cache + Cooldown Lifecycle
 
-## Findings
+**Hypothesis A (current):** `_lastRefreshFailureAt` cannot grow unbounded because the LRU `dispose` hook fires on every entry-loss.
 
-### TRC3-1: [LOW] Analytics route — verified flow
+**Trace:**
+1. `analyticsCache.delete(key)` → `dispose(value, key, 'delete')` → `_lastRefreshFailureAt.delete(key)`. ✓
+2. TTL expiry → internal cleanup → `dispose(value, key, 'expire')` → `_lastRefreshFailureAt.delete(key)`. ✓
+3. Capacity eviction → `dispose(value, key, 'evict')` → `_lastRefreshFailureAt.delete(key)`. ✓
+4. Overwrite via `analyticsCache.set(key, newVal)` → `dispose(oldVal, key, 'set')` fires BEFORE the new value is committed → `_lastRefreshFailureAt.delete(key)`. ✓
 
-**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:80-110`
-**Confidence:** HIGH
+**Hypothesis B (cycle 3 was wrong):** The dispose-on-`set` fires AFTER the new value is committed, leading to out-of-order delete.
 
-Trace of GET request flow:
-1. `assignment` fetched via `rawQueryOne` (line 64). If null or `examMode === "none"` → 404.
-2. `canViewAssignmentSubmissions` checked (line 74). If false → 403.
-3. `cached = analyticsCache.get(cacheKey)` (line 81). If cache hit:
-   - `nowMs = Date.now()` (line 89). `age = nowMs - cached.createdAt` (line 90).
-   - If `age <= STALE_AFTER_MS (30_000)` → return cached, no refresh (line 91-93).
-   - Else (stale-but-within-TTL): check `_refreshingKeys` and `_lastRefreshFailureAt` cooldown. If both clear, schedule `refreshAnalyticsCacheInBackground(...).catch(logger.warn)`.
-   - Return cached (line 110).
-4. Cache miss (line 113): `analytics = await computeContestAnalytics(...)`, `analyticsCache.set(...)`, return fresh.
+**Verification:** The lru-cache library docs and source confirm `dispose` for the previous value runs synchronously before the new value is committed. Test added in cycle 3 (`evicts cooldown metadata when the cache entry is removed (dispose hook)`) validates the contract for `delete`. The contract for `set` overwrites is implicit but documented in code comments.
 
-**No anomalies.** The decision tree is exhaustive and the dedup + cooldown guards are correctly composed.
+**Verdict:** Hypothesis A holds. **No bug.**
 
 ---
 
-### TRC3-2: [LOW] Logout / cookie-clearing — verified flow
+## Trace 2: Anti-Cheat Retry Scheduling Chain
 
-**File:** `src/proxy.ts:294-318`, `src/proxy.ts:87-97`, `src/lib/security/env.ts:178-180`
-**Confidence:** HIGH
+**Hypothesis A (current):** `scheduleRetryRef.current` is the single source of truth for retry scheduling; both `flushPendingEvents` and `reportEvent` delegate to it correctly.
 
-Trace:
-1. `proxy(request)` is called (line 240). `token` is fetched via `getToken(...)` (line 242).
-2. If `isAuthPage && token && !activeUser` → call `clearAuthSessionCookies(createSecuredNextResponse(request))` (line 295). This clears stale session cookies on the login page when the user record is gone (e.g., deactivated).
-3. If protected route and `!activeUser` → API: `clearAuthSessionCookies(NextResponse.json({ error: "unauthorized" }, { status: 401 }))` (line 311). Page: redirect-to-login + `clearAuthSessionCookies` (line 318).
-4. `clearAuthSessionCookies` (line 87) calls `getAuthSessionCookieNames()` and sets both `name` and `secureName` cookies to empty with `maxAge: 0`.
+**Trace flow on `reportEvent` failure path:**
+1. `reportEvent("tab_switch")` → `sendEvent` returns false → enters `if (!ok)` branch (line 172).
+2. `pending = loadPendingEvents()` → loads array.
+3. `pending.push({ ...event, retries: 1 })` → adds new event with retries=1.
+4. `savePendingEvents(assignmentId, pending)`.
+5. `scheduleRetryRef.current(pending)` (line 179) → executes the closure stored in scheduleRetryRef.current.
+6. Inside the closure: `hasRetriable = pending.some(e => e.retries < MAX_RETRIES)` → true (retries=1, MAX=3).
+7. `if (hasRetriable && !retryTimerRef.current)` → enters branch.
+8. `maxRetry = pending.reduce(...)` → max retries among pending = 1.
+9. `backoffDelay = Math.min(1000 * 2^1, 30000) = 2000ms`.
+10. `setTimeout` set for 2000ms.
 
-**No anomalies.** The cookie names are sourced from the factory, not hardcoded. The two paths (auth page vs. protected route) both correctly invoke the clearing.
+**Hypothesis B:** scheduleRetryRef may hold a stale closure if `useEffect` doesn't re-run when expected.
+
+**Trace:** scheduleRetryRef is updated in `useEffect(() => { scheduleRetryRef.current = (...) => {...}; }, [performFlush])`. `performFlush` itself is a `useCallback` with deps `[assignmentId, sendEvent]`. `sendEvent` deps are `[assignmentId]`. So scheduleRetryRef.current reflects the latest `performFlush` whenever `assignmentId` (or sendEvent) changes. In practice, `assignmentId` doesn't change in component lifetime today (the component is keyed on it).
+
+**Stale-closure check:** scheduleRetryRef.current's closure captures `performFlush` from its useEffect run. Inside the timer callback (line 148-152), it calls `await performFlush()` and then recursively `scheduleRetryRef.current(retryRemaining)`. Both refer to the latest version (via `.current`).
+
+**Verdict:** Hypothesis A holds. **No bug.**
+
+**Edge case noted:** If the React tree unmounts while a timer is pending, the cleanup at line 298-301 clears the timer. But `scheduleRetryRef.current` itself is never reset. If the component re-mounts, it will see the closure from the previous mount. This is unlikely to cause issues because (a) `assignmentId` is the same and (b) `useEffect` re-runs and re-assigns scheduleRetryRef.current. But it's a theoretical artifact worth a comment.
 
 ---
 
-### TRC3-3: [INFO] Anti-cheat retry timer cleanup trace
+## Trace 3: Proxy Session-Cookie Clearing
 
-**File:** `src/components/exam/anti-cheat-monitor.tsx:298-302`
-**Confidence:** HIGH
+**Hypothesis A (current):** `clearAuthSessionCookies` clears both the secure and non-secure variants on every code path that triggers it.
 
-Trace:
-1. Component mounts. The cleanup effect (line 291) registers a return cleanup that includes:
-   ```ts
-   if (retryTimerRef.current) {
-     clearTimeout(retryTimerRef.current);
-     retryTimerRef.current = null;
-   }
-   ```
-2. On unmount, the cleanup runs. The retry timer (if scheduled) is cleared.
-3. `scheduleRetryRef.current` is reassigned in a separate effect (line 142) on `[performFlush]` change. The reassignment happens during render, so any in-flight timer body that reads `scheduleRetryRef.current` gets the latest closure.
+**Trace call sites:**
+1. `proxy.ts:295` — `isAuthPage && token && !activeUser` → user has token but no active record → clear cookies + render auth page.
+2. `proxy.ts:312` — `(isProtectedRoute || isChangePasswordPage) && !activeUser && isApiRoute && !hasApiKeyAuth` → return 401 + cleared cookies.
+3. `proxy.ts:318` — same precondition but not API route → redirect to /login + cleared cookies.
 
-**No anomalies.** The two effects are independent but co-coordinated through the ref.
+In each case, `clearAuthSessionCookies` calls `response.cookies.set(name, "", { maxAge: 0, path: "/" })` for non-secure, and `response.cookies.set(secureName, "", { maxAge: 0, path: "/", secure: true })` for secure.
 
-## Hypotheses Ruled Out
+**Hypothesis B:** The clear-via-empty-string-with-maxAge-0 idiom may not work in all Next.js versions or browser versions.
 
-- **Hypothesis: Background refresh could leak `_refreshingKeys` if `refreshAnalyticsCacheInBackground` throws synchronously before the `try` block.** Verified: the `_refreshingKeys.add(cacheKey)` happens BEFORE the function call (line 99), and the function body's `try/finally` ensures `_refreshingKeys.delete(cacheKey)` even on `throw`. ✓
-- **Hypothesis: Cookie clearing could miss the `__Host-` variant if next-auth ever changes naming.** Verified: the `getAuthSessionCookieNames` factory is the single source of truth; if next-auth changes, only env.ts needs updating. The proxy.ts caller is name-agnostic. ✓
-- **Hypothesis: `vi.runAllTimersAsync()` doesn't drain the detached `.catch` chain in the cooldown test.** Verified: Vitest 4.x `runAllTimersAsync` drains both timers and pending microtasks. The test asserts `loggerErrorMock` was called, which only happens if the `.catch` ran — confirming the chain is drained. ✓
+**Trace:** Per RFC 6265, setting a cookie with `Max-Age=0` and an empty value causes the browser to expire it immediately. Next.js's `response.cookies.set(name, value, options)` translates this to a `Set-Cookie` header with `Max-Age=0; Path=/`. This is the standard expiration pattern.
 
-## Verification Notes
+**Verdict:** Hypothesis A holds. **No bug.** Carried deferred SEC4-1 (`__Secure-` over HTTP) is a separate dev-environment edge.
 
-- Tests pass cleanly (7/7 analytics, no leaked timers).
-- Lint clean.
-- No suspicious behavior surfaced via `grep -n "@ts-expect-error\|@ts-ignore"` in the cycle-2 surface (none).
+---
 
-## Confidence
+## Trace 4: Analytics Background Refresh Race (cross-trace check)
 
-All findings: HIGH confidence in correctness. No causal anomalies surfaced. Cycle-2 commits behave as documented.
+Two simultaneous GET requests for the same `assignmentId`, both seeing stale cache. Hypothesis: the dedup guard `_refreshingKeys.has(cacheKey)` prevents duplicate background refreshes.
 
-No HIGH-severity findings. Cycle-3 tracer surface is clean — no actionable items emerged from this lane.
+**Trace:**
+1. Request A enters route handler. Cache hit, age > STALE. `_refreshingKeys.has(key) === false`, `nowMs - lastFailure >= COOLDOWN_MS` (no recent failure).
+2. Request A: `_refreshingKeys.add(key)`. Then `refreshAnalyticsCacheInBackground(...)` (no await).
+3. Request A returns the stale data.
+4. Request B enters. Cache hit, age > STALE. `_refreshingKeys.has(key) === true`. Skips refresh.
+5. Request B returns the stale data.
+6. Eventually Request A's background refresh resolves: cache.set() updates the entry, `_refreshingKeys.delete(key)` in finally.
+
+**Test coverage:** `tests/unit/api/contests-analytics-route.test.ts:142-176` ("triggers exactly one background refresh when cache is stale (in-progress dedup)"). Validated.
+
+**Verdict:** **No bug.**
+
+---
+
+## Findings (Issues to Surface)
+
+### TRC4-1: [LOW] scheduleRetryRef.current outlives component unmount
+
+**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/components/exam/anti-cheat-monitor.tsx:142-155`
+
+The `useEffect` that assigns `scheduleRetryRef.current` does not have a cleanup that resets it on unmount. After unmount, scheduleRetryRef.current still holds a closure from the unmounted render. If the component re-mounts (e.g., navigation to/from the exam page), the previous closure runs first until the new useEffect runs and overwrites it.
+
+In practice this is benign because: (a) `retryTimerRef` is cleared on unmount (line 298-301), so no pending timer survives; (b) the closure captures `performFlush` which itself captures `assignmentId` and `sendEvent` from the previous render — but these are stable per-mount.
+
+**Failure scenario (theoretical):** If a future change makes the closure depend on something that *should* reset on remount (e.g., a session token), the stale closure would use the old value briefly until the useEffect runs.
+
+**Fix:** Add a cleanup function:
+```ts
+useEffect(() => {
+  scheduleRetryRef.current = (...) => { ... };
+  return () => {
+    scheduleRetryRef.current = () => {};
+  };
+}, [performFlush]);
+```
+
+This is defensive. Real-world impact is low.
+
+**Exit criterion:** Cleanup resets scheduleRetryRef.current to a no-op on unmount.
+
+---
+
+### TRC4-2: [INFO] No new race conditions found
+
+The analytics in-progress dedup, cooldown logic, and dispose-hook coupling are all correctly serialized through Node's single-threaded event loop. The anti-cheat retry chain is correctly serialized through the `retryTimerRef` guard. Proxy code runs in Edge runtime (serial per request). No data-race surface detected.
+
+**No action.**
+
+---
+
+## Confidence Summary
+
+- TRC4-1: MEDIUM (defensive; real-world impact low).
+- TRC4-2: HIGH (informational).

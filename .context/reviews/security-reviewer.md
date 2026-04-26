@@ -1,85 +1,124 @@
-# Security-Reviewer Pass — RPF Cycle 3/100
+# Security Reviewer Review — RPF Cycle 4/100
 
 **Date:** 2026-04-27
-**Lane:** security-reviewer
-**Scope:** OWASP Top 10, secrets, unsafe patterns, auth/authz, with emphasis on cycle-2 commits (env.ts factory, proxy.ts cookie clearing, analytics route)
-
-## Summary
-
-The cycle-2 security surface is clean. The `getAuthSessionCookieNames` factory consolidates cookie naming in one place, reducing drift risk. The analytics route changes do not affect authn/authz (the original `canViewAssignmentSubmissions` check is preserved).
-
-The deferred items from cycle 2 (AGG-9 `__Secure-` cookie clear over HTTP, AGG-11 password.ts vs AGENTS.md) are both still applicable — neither is exploitable, both have clear deferral rationales.
+**Scope:** OWASP top 10 + auth/authz + secrets + unsafe patterns
+**Method:** static review of recently-changed files (analytics, anti-cheat, env, proxy) and adjacent surfaces
 
 ## Findings
 
-### SEC3-1: [LOW] `clearAuthSessionCookies` clears `__Secure-` cookie with literal `secure: true` regardless of request protocol
+### SEC4-1: [LOW, deferred] `__Secure-` cookie clear over HTTP is a no-op (carried)
 
-**File:** `src/proxy.ts:94`
-**Confidence:** MEDIUM
+**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/proxy.ts:94`
 
-In dev (HTTP), the browser ignores `Set-Cookie` with `Secure`, so the clear is a no-op. In production (HTTPS), the `Secure` flag is correct.
+Carried from cycle 2 AGG-9 / cycle 3 AGG3-6. `response.cookies.set(secureName, "", { ..., secure: true })` over HTTP is silently dropped by the browser. Production is HTTPS-only, so this is a dev-environment nuisance only.
 
-Risk surface: dev-only nuisance (a stale `__Secure-` cookie could persist if a developer flipped between HTTPS and HTTP). Production is HTTPS-only and `__Secure-` is the only variant set, so the clear works.
+**Failure scenario:** Developer testing locally over plain HTTP can't clear a stuck `__Secure-` cookie. Workaround: use HTTPS dev cert or clear via DevTools.
 
-**Fix:** Defer (cycle-2 AGG-9 deferred). No security impact in production.
+**Fix (deferred):** Conditional: `secure: request.nextUrl.protocol === "https:"`. Not pursued this cycle (negligible production impact).
 
----
-
-### SEC3-2: [LOW] Analytics route does not log the user ID on background refresh failures
-
-**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:53`
-**Confidence:** LOW
-
-The `logger.error({ err, assignmentId }, ...)` does not include the `user.id` of the requester. For audit purposes, knowing which user triggered a stale refresh that then failed could help correlate with abuse patterns (e.g., a user repeatedly hitting an endpoint to trigger DB load).
-
-**Failure scenario:** Forensic — debugging an abuse vector requires correlating logs against access logs.
-
-**Fix:** Optional. Pass `user.id` into `refreshAnalyticsCacheInBackground` (or a request-correlation ID). Not a security bug.
+**Exit criterion:** Reopen if a developer reports a stuck `__Secure-` cookie in dev.
 
 ---
 
-### SEC3-3: [LOW] AGENTS.md vs `src/lib/security/password.ts` policy mismatch (carried from cycle 2 AGG-11)
+### SEC4-2: [LOW] `__test_internals` exported from production module increases attack surface marginally
 
-**File:** `AGENTS.md:516-521`, `src/lib/security/password.ts:45,50,59`
-**Confidence:** MEDIUM
+**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:92-101`
 
-AGENTS.md states "Password validation MUST only check minimum length"; `password.ts` enforces dictionary + similarity checks. Either side could be the truth — removing the checks would weaken security; updating the doc would change the rule.
+Same issue as ARCH4-1, CR4-1, CRIT4-1. From a security angle: `__test_internals.cacheClear()` allows arbitrary clearing of the analytics cache; `__test_internals.setCooldown` allows arbitrary cooldown manipulation. These are not user-reachable (the export is only callable from inside server code that imports the route module), but they are an internal-server attack surface that didn't exist before.
 
-Per cycle-2 deferral: requires user/PM decision before any code or doc change. Neither side should be silently flipped.
+**Concrete risk:** A future SSRF or RCE that lets an attacker execute code in the server process could call `__test_internals.cacheClear()` to denial-of-service the analytics cache. This is multi-step and unlikely, but the export is unnecessary surface.
 
-**Fix:** Defer. Re-flag in cycle-3 plan.
+**Fix:** Same as ARCH4-1 — gate behind `NODE_ENV === "test"`.
 
----
-
-### SEC3-4: [INFO] Cycle-2 commits did not introduce any new credentials, secrets, or unsafe patterns
-
-**Confidence:** N/A (informational)
-
-- `getAuthSessionCookieNames` only returns string constants; no secrets touched.
-- `proxy.ts` change is name-only; no auth logic change.
-- Analytics route refactor preserves the existing `canViewAssignmentSubmissions` authorization check (line 74).
-- No `eval`, `Function(...)`, `dangerouslySetInnerHTML`, raw HTML injection, or unsafe deserialization introduced.
-- `npm audit` was not run this cycle but was clean as of the cycle-2 baseline.
+**Exit criterion:** `__test_internals` is undefined in production runtime.
 
 ---
 
-### SEC3-5: [LOW] No CSRF token check observed for `/api/v1/contests/[assignmentId]/analytics` (GET only)
+### SEC4-3: [LOW] `password.ts` enforces dictionary + similarity (over-spec per AGENTS.md, deferred)
 
-**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts`
-**Confidence:** LOW
+**Severity:** LOW | **Confidence:** HIGH | **Files:** `AGENTS.md:516-521`, `src/lib/security/password.ts:45,50,59`
 
-GET requests don't typically need CSRF protection (no mutating side effect). The route is GET-only, so this is correct. Confirming the absence — not a finding.
+Carried from cycle 3 AGG3-5 / cycle 2 AGG-11. The password module is *more* restrictive than AGENTS.md says, which is the safer side. Removing the dictionary/similarity checks would weaken security; updating AGENTS.md to allow them aligns doc-with-code.
 
-## Verification Notes
+**Quoted policy (AGENTS.md:516-521):**
+> Password validation MUST only check minimum length
 
-- `git log --since="3 days ago" --grep="(security)"` shows only the cycle-2 commits (`1c25cbed feat(security)`).
-- No secrets in git diff or log.
-- `npm run lint` clean.
+**Fix (deferred):** Cannot decide without user/PM input. Carried.
 
-## Confidence
+**Exit criterion:** User decision on which side to reconcile.
 
-- MEDIUM: SEC3-1 (deferred, dev-only nuisance), SEC3-3 (deferred, requires user decision).
-- LOW: SEC3-2 (optional log enrichment), SEC3-5 (confirm-no-finding).
-- INFO: SEC3-4.
+---
 
-No HIGH-severity findings. Cycle-3 security surface is steady-state.
+### SEC4-4: [INFO] CSP, HSTS, and cookie security headers verified
+
+**File:** `src/proxy.ts:148-238`
+
+The CSP is dynamically built per request (with nonce), distinguishes `/signup` (allowing hcaptcha) from other pages, and properly restricts `frame-ancestors`, `object-src`, `base-uri`, `form-action`. HSTS is set when `x-forwarded-proto === "https"`. Cookies are cleared with `secure: true` for `__Secure-` variants.
+
+`SEC-M5` (UA hash audit) at lines 278-291 is correctly an audit-only signal, not a hard reject. Reasonable.
+
+**No action.**
+
+---
+
+### SEC4-5: [INFO] Anti-cheat data is correctly redacted
+
+**File:** `src/components/exam/anti-cheat-monitor.tsx:240-261`
+
+`describeElement` deliberately does NOT capture text content from the page (commented at line 252-253: "text content is intentionally NOT captured to avoid storing copyrighted exam problem text in the audit log"). This is a strong privacy-by-design choice. The `target` field reports element type and parent class only.
+
+**No action.**
+
+---
+
+### SEC4-6: [INFO] localStorage usage in anti-cheat is appropriate
+
+**File:** `src/components/exam/anti-cheat-monitor.tsx:41-63`
+
+The pending-events queue is stored in `localStorage` keyed by `assignmentId`. This is a queue of events to retry sending; no PII or auth tokens. The data is bounded by the user's own activity (visibility changes, copies, etc.) and cleared once delivered. Reasonable use of localStorage.
+
+Minor: see CR4-2 for length cap. No security impact today.
+
+**No action.**
+
+---
+
+### SEC4-7: [LOW] Test mock signatures use `any` for handler ctx
+
+**Severity:** LOW | **Confidence:** HIGH | **File:** `tests/unit/api/contests-analytics-route.test.ts:21-22`
+
+```ts
+({ handler }: { handler: (req: NextRequest, ctx: { user: any; params: any }) => Promise<Response> }) =>
+```
+
+`any` types in test mocks reduce type safety in tests. If the production route handler's expected ctx shape changes, the test mock won't catch it. Cosmetic.
+
+**Fix:** Type the mock as `Parameters<typeof createApiHandler>[0]` or use `unknown` with proper narrowing.
+
+**Exit criterion:** N/A this cycle (cosmetic; deferred).
+
+---
+
+### SEC4-8: [INFO] No new security regressions detected
+
+Verified clean:
+- Auth secret validation in `env.ts:182-190` (placeholder reject + 32-char min).
+- Judge auth token validation in `env.ts:192-210` (3 placeholder rejects + 32-char min).
+- Trust-host logic correctly defaults to `true` only in non-prod.
+- Cache clear cookies use `maxAge: 0` (immediate expiry, RFC-correct).
+- No SQL string interpolation in `analytics/route.ts:108-112` — uses `@assignmentId` placeholder via `rawQueryOne`.
+
+**No action.**
+
+---
+
+## Confidence Summary
+
+- SEC4-1: MEDIUM (carried-deferred, dev-only impact).
+- SEC4-2: MEDIUM (multi-step risk; defense-in-depth fix recommended).
+- SEC4-3: HIGH (carried-deferred, repo-policy ambiguity).
+- SEC4-4: HIGH (informational).
+- SEC4-5: HIGH (informational; intentional privacy choice).
+- SEC4-6: HIGH (informational).
+- SEC4-7: HIGH (cosmetic).
+- SEC4-8: HIGH (clean state).

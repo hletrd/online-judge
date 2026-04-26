@@ -1,74 +1,111 @@
-# Perf-Reviewer Pass — RPF Cycle 3/100
+# Performance Reviewer Review — RPF Cycle 4/100
 
 **Date:** 2026-04-27
-**Lane:** perf-reviewer
-**Scope:** Performance, concurrency, CPU/memory/UI responsiveness
-
-## Summary
-
-Cycle 2 closed the analytics-route DB-call amplification (cycle-2 PERF2-1) by extracting `refreshAnalyticsCacheInBackground` and using `Date.now()` for the cooldown timestamp directly. No DB round-trip on cache hit (good). No new perf regressions detected in this cycle's surface.
+**Scope:** CPU/memory/network/UI responsiveness, hot-path allocation, concurrency
 
 ## Findings
 
-### PERF3-1: [LOW] `analyticsCache.set(cacheKey, { data: fresh, createdAt: await getDbNowMs() })` still does one DB round-trip per refresh
+### PERF4-1: [INFO] `_lastRefreshFailureAt` lifecycle bound to `analyticsCache` via dispose hook
 
-**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:47, 115`
-**Confidence:** LOW
+**Severity:** INFO | **Confidence:** HIGH | **File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:34-47`
 
-Both the cache-miss path (line 115) and the background refresh (line 47) call `await getDbNowMs()` to record the `createdAt` timestamp. Each is one DB round-trip per refresh. This is intentional (cycle-2 design: DB time for persisted-style timestamps) and the trade-off is documented in the route's doc comment.
+The cycle-3 fix (commit `56dd6957`) closes the slow-leak finding from cycle 3 PERF3-2 / AGG3-1. After verification:
+- Eviction path (capacity, TTL): dispose fires → `_lastRefreshFailureAt.delete(key)` → no leak.
+- Explicit delete path: same.
+- Overwrite path: dispose fires for the OLD value, new value is set; cooldown semantics preserved by ordering of catch-block writes.
 
-The optimization opportunity: `Date.now()` for `createdAt` would eliminate the DB call on every cache miss / refresh, since the staleness comparison at line 89 already uses `Date.now()`. The clock skew tolerance is 30s, well above NTP drift. The 1-2s skew window doesn't matter for a 30s threshold.
-
-But: cycle-2 plan task C explicitly committed the hybrid as "deliberate decision (DB time for persistence-relevant timestamps)". Reopening this would require revisiting that decision.
-
-**Fix:** Defer. Reopen if the analytics endpoint becomes a perf hotspot.
+**No action.**
 
 ---
 
-### PERF3-2: [MEDIUM] `_refreshingKeys` is a `Set<string>` and `_lastRefreshFailureAt` is a `Map<string, number>` — both grow unbounded
+### PERF4-2: [LOW] `getAuthSessionCookieNames()` allocates a new object literal on every call
 
-**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:20, 24`
-**Confidence:** MEDIUM
+**Severity:** LOW | **Confidence:** HIGH | **File:** `src/lib/security/env.ts:178-180`
 
-The `Set` is cleaned in `finally` after each refresh, so it should never exceed (number of concurrent refreshes) ≤ 100 (LRU max).
+```ts
+export function getAuthSessionCookieNames(): { name: string; secureName: string } {
+  return { name: AUTH_SESSION_COOKIE_NAME, secureName: SECURE_AUTH_SESSION_COOKIE_NAME };
+}
+```
 
-The `Map` is cleaned on success (`_lastRefreshFailureAt.delete(cacheKey)` line 48) but NOT cleaned on entry eviction from the LRU. If a cache key fails to refresh, then the LRU evicts that key (e.g., 100 fresh keys arrive after), the cooldown entry persists in `_lastRefreshFailureAt` forever.
+Every call allocates: 1 fresh object + 2 string-property slots. Strings themselves are interned constants (no extra alloc). The function is called from `proxy.ts:92` on every unauthorized response and on every logout/cookie-clear path.
 
-Memory bound: O(cacheKeys * 8 bytes for the timestamp) ≈ tiny in practice. But there's no upper bound on `_lastRefreshFailureAt.size` — if assignment IDs change over time, it grows unboundedly.
+**Real-world cost:** Sub-microsecond per call. The proxy handles thousands of req/sec under load; this pattern adds maybe 10-100 microseconds total over a day. Negligible.
 
-**Failure scenario:** Long-running app server with many distinct assignment IDs that all experience refresh failures: `_lastRefreshFailureAt.size` grows over weeks. Memory leak (slow).
+**Fix (optional):** Hoist a frozen constant:
+```ts
+const AUTH_SESSION_COOKIE_NAMES = Object.freeze({
+  name: AUTH_SESSION_COOKIE_NAME,
+  secureName: SECURE_AUTH_SESSION_COOKIE_NAME,
+});
+export function getAuthSessionCookieNames() {
+  return AUTH_SESSION_COOKIE_NAMES;
+}
+```
 
-**Fix:** Either bound `_lastRefreshFailureAt` with an LRU of equal capacity to `analyticsCache`, or attach a stub-eviction handler so when `analyticsCache` evicts a key, we also delete from `_lastRefreshFailureAt`. Slightly involved; can pick up this cycle as a small fix.
+**Exit criterion:** N/A this cycle (cosmetic; carried from cycle 3 AGG3-10).
 
 ---
 
-### PERF3-3: [LOW] `getAuthSessionCookieNames()` allocates a new object on every call
+### PERF4-3: [LOW] Anti-cheat `loadPendingEvents` JSON parses on every visibility/online event
 
-**File:** `src/lib/security/env.ts:178-180`
-**Confidence:** LOW
+**Severity:** LOW | **Confidence:** HIGH | **File:** `src/components/exam/anti-cheat-monitor.tsx:41-51`
 
-Per CR3-4. Negligible perf impact (one allocation per logout). Defer.
+`loadPendingEvents` performs `JSON.parse` on the localStorage string every time it's called. Callers include `flushPendingEvents` (visibility change to visible, online event), `reportEvent` (whenever a network failure occurs), and the retry-timer callback. In an active exam, this could happen ~once per minute under normal conditions.
+
+**Real-world cost:** Negligible for small queues (<10 events). Could matter if the queue ever grows large (see CR4-2 — currently no upper bound).
+
+**Fix:** No code change today. If CR4-2 is fixed (add cap), this becomes a non-issue.
+
+**Exit criterion:** N/A this cycle.
 
 ---
 
-### PERF3-4: [INFO] `npm run lint` and `npm run test:unit` runtimes
+### PERF4-4: [LOW] `Date.now()` used for staleness check; `getDbNowMs()` used for cache writes — split is intentional
 
-**Confidence:** N/A (informational)
+**Severity:** LOW | **Confidence:** HIGH | **File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:127-134,159`
 
-- Lint completes in ~5–10s; clean.
-- Unit-test analytics file alone: 79ms for 7 tests.
-- Full unit-test suite presumably: ~10–20s based on prior cycles (will validate during gates).
+Per cycle 2 design (commit `e897b0a5`), staleness checks use `Date.now()` (no DB call) while cache writes use `await getDbNowMs()` (authoritative). This is the correct split: cache hits are zero-DB-roundtrip, while cache writes are infrequent and benefit from the authoritative time source.
 
-No perf regressions in CI surface.
+**No action.**
 
-## Verification Notes
+---
 
-- Verified the cooldown failure path no longer makes a DB call: `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:52` uses `Date.now()` directly.
-- Verified the dedup guard (`_refreshingKeys.has(cacheKey)`) prevents N concurrent refreshes for the same key.
+### PERF4-5: [LOW] `proxy.ts` cache cleanup at 90% capacity is correctly amortized
 
-## Confidence
+**Severity:** LOW | **Confidence:** HIGH | **File:** `src/proxy.ts:64-85`
 
-- LOW: PERF3-1, PERF3-3.
-- MEDIUM: PERF3-2 (real but slow leak; bounded in practice by the small assignment-ID space).
+The auth-cache cleanup loop iterates the full cache only when `size >= 0.9 * MAX_SIZE` (=450). Under steady load, this triggers infrequently (only when cache is near full, which requires ~450 distinct active users + token-refresh churn). The amortized cost is constant per `setCachedAuthUser` call. Correct design.
 
-No HIGH-severity findings. PERF3-2 is the cycle-3 actionable item — small `lru-cache` config or `dispose` hook will close it.
+**No action.**
+
+---
+
+### PERF4-6: [LOW] Heartbeat schedule could use `setInterval` instead of recursive `setTimeout`
+
+**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/components/exam/anti-cheat-monitor.tsx:200-216`
+
+Recursive `setTimeout` is functionally equivalent to `setInterval` for a fixed-cadence heartbeat. The current pattern correctly clears via `clearTimeout(heartbeatTimer)` on cleanup. `setInterval` would be marginally simpler:
+
+```ts
+heartbeatTimer = setInterval(() => {
+  if (document.visibilityState === "visible") {
+    void reportEventRef.current("heartbeat");
+  }
+}, HEARTBEAT_INTERVAL_MS);
+```
+
+But: `setInterval` doesn't naturally accommodate the immediate first-call (`void reportEventRef.current("heartbeat")` at line 203). The current recursive-setTimeout pattern allows that. Tradeoff is fine.
+
+**No action.**
+
+---
+
+## Confidence Summary
+
+- PERF4-1: HIGH (verified fix from cycle 3).
+- PERF4-2: HIGH (negligible cost; cosmetic).
+- PERF4-3: HIGH (negligible cost).
+- PERF4-4: HIGH (intentional design).
+- PERF4-5: HIGH (correct amortization).
+- PERF4-6: MEDIUM (subjective; current is fine).

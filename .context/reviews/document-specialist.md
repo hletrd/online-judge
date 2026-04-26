@@ -1,79 +1,102 @@
-# Document-Specialist Pass — RPF Cycle 3/100
+# Document-Specialist Review — RPF Cycle 4/100
 
 **Date:** 2026-04-27
-**Lane:** document-specialist
-**Scope:** Code/docs/comment alignment, with focus on cycle-2 plan accuracy and AGENTS.md/CLAUDE.md consistency
-
-## Summary
-
-Cycle 2 plan (`plans/open/2026-04-26-rpf-cycle-2-review-remediation.md`) accurately reflects the commits. Tasks A–F are all marked `[x]` with correct commit hashes. The plan structure follows the project's status-legend convention.
-
-The documentation gaps that remain are pre-existing: AGENTS.md vs `password.ts` divergence (cycle-2 deferred AGG-11), and the unarchived plan files in `plans/open/` (CRIT3-1).
+**Scope:** documentation accuracy, code/doc mismatches, plan hygiene, README convention compliance
 
 ## Findings
 
-### DOC3-1: [LOW] `AGENTS.md` `Password Validation` section conflicts with `src/lib/security/password.ts` (carried from cycle 2 AGG-11)
+### DOC4-1: [MEDIUM, deferred] AGENTS.md vs `password.ts` policy mismatch (carried)
 
-**File:** `AGENTS.md:516-521`, `src/lib/security/password.ts`
-**Confidence:** MEDIUM
+**Severity:** MEDIUM | **Confidence:** HIGH | **Files:** `AGENTS.md:516-521`, `src/lib/security/password.ts:45,50,59`
 
-Cycle 2 deferred this with a quoted policy reference. The deferral note correctly identifies that the resolution requires user/PM input — either:
-- (a) Strip dictionary + similarity checks from `password.ts` to match the doc.
-- (b) Update `AGENTS.md` to allow dictionary + similarity checks.
+Carried from cycle 3 AGG3-5. AGENTS.md says password validation MUST only check minimum length; code enforces dictionary + similarity. Requires user/PM decision before any reconciliation.
 
-Neither option is a doc-only fix.
+**Fix (deferred):** No change this cycle. Carried.
 
-**Fix (deferred):** No change this cycle. Re-flag in plan as "needs user/PM decision; do not silently change either side".
+**Exit criterion:** User decision on which side to reconcile.
 
 ---
 
-### DOC3-2: [LOW] `plans/open/` has 80+ files but `plans/open/README.md` doesn't describe the per-cycle archival pattern
+### DOC4-2: [LOW] `plans/open/` archival convention now documented but new plans still accumulate
 
-**File:** `plans/open/README.md`
-**Confidence:** LOW
+**Severity:** LOW | **Confidence:** HIGH | **Files:** `plans/open/README.md`, `plans/open/`
 
-Per CRIT3-1, the open dir has accumulated plans from many cycles. A short README convention note ("each cycle archives the plan from N-2 cycles back if all tasks `[x]`") would help future contributors.
+Cycle 3 archived 76 completed plans and added the convention to `plans/open/README.md` (commit `d0751786`). After that, cycle 3's plan was added (`2026-04-27-rpf-cycle-3-review-remediation.md`), and cycle 4 will add another. The pattern is now: each cycle adds 1 new plan and (per the convention) archives the previous cycle's plan when complete.
 
-**Fix:** Optional. Not a high-priority docs task.
+Currently `plans/open/` contains: workspace-migration plan + master backlogs (4 files) + the cycle-3 plan (now done, will be moved this cycle). After cycle 4 completes, `plans/open/` will contain: workspace-migration + 4 master backlogs + cycle-4 plan = ~6 files. Healthy.
 
----
+**Action this cycle:** As part of the cycle-4 plan execution, archive `plans/open/2026-04-27-rpf-cycle-3-review-remediation.md` to `plans/done/`. (Already done in this cycle's first commit batch.)
 
-### DOC3-3: [INFO] Cycle-2 plan correctly references the source aggregate path
-
-**File:** `plans/open/2026-04-26-rpf-cycle-2-review-remediation.md:5`
-**Confidence:** N/A (informational)
-
-`**Source aggregate:** ` `.context/reviews/_aggregate.md` is the right path. Maintains traceability between aggregate findings and the remediation tasks. Good.
+**Exit criterion:** Cycle-3 plan moved to `plans/done/`. Verified above.
 
 ---
 
-### DOC3-4: [LOW] `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:32-40` doc comment for `refreshAnalyticsCacheInBackground` is good but could mention the in-flight dedup invariant
+### DOC4-3: [LOW] Doc comment on `_lastRefreshFailureAt` mentions "the lifecycle" but the relevant `dispose` hook is below it
 
-**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:32-40`
-**Confidence:** LOW
+**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:21-31`
 
-Current doc:
-```
-Failure handling: any failure (compute or DB-time fetch) sets the cooldown
-timestamp to suppress thundering-herd refresh attempts. The cooldown
-uses Date.now() directly — there's no DB call to fail here, simplifying
-the error path compared to the previous nested try/catch.
+The doc comment above `_lastRefreshFailureAt` reads:
+> Bound to the same lifecycle as `analyticsCache` via the `dispose` hook below
+
+This is correct, but a reader scanning the file top-down sees the doc comment first and the `dispose` implementation 14 lines later. The comment refers to "below" without a line anchor. Easy to miss.
+
+**Fix:** Add `(see line ~37)` or move the cooldown declaration below the `analyticsCache` declaration so the spatial relationship is clearer:
+```ts
+const analyticsCache = new LRUCache<string, CacheEntry>({
+  max: 100,
+  ttl: CACHE_TTL_MS,
+  dispose: (...) => { _lastRefreshFailureAt.delete(key); },
+});
+const _lastRefreshFailureAt = new Map<string, number>();
 ```
 
-Could add: "The caller must add the key to `_refreshingKeys` BEFORE invoking this function and rely on the `finally` to remove it. This guarantees in-flight dedup."
+But: that requires the cooldown to be declared *after* it's referenced in `dispose`, which works only because `dispose` runs at call time. Cleaner: move the comment.
 
-**Fix:** Optional doc addition. Not blocking.
+**Exit criterion:** N/A this cycle (cosmetic).
 
-## Verification Notes
+---
 
-- Cycle-2 plan task statuses verified against `git show <commit-hash>` for each cited commit.
-- AGENTS.md vs password.ts divergence verified by reading both files.
-- README.md in `plans/open/` checked.
+### DOC4-4: [INFO] `__test_internals` JSDoc is good but unenforceable
 
-## Confidence
+**File:** `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:82-91`
 
-- MEDIUM: DOC3-1 (carried).
-- LOW: DOC3-2, DOC3-4 (optional doc tweaks).
-- INFO: DOC3-3.
+The JSDoc clearly states "Production code MUST NOT depend on this export." This is good documentation. As CR4-1 / ARCH4-1 / CRIT4-1 noted, this is policy-not-mechanism. The doc is fine as-is; if cycle 4 fixes the env-gating (per ARCH4-1), the doc should be updated to say "this export is only available when NODE_ENV === 'test'."
 
-No HIGH severity. Cycle-3 doc work is light: optional one-comment addition (DOC3-4) and possibly a one-line README convention (DOC3-2) — both deferrable.
+**No action this cycle** unless ARCH4-1 fix lands; in that case, update the JSDoc concurrently.
+
+---
+
+### DOC4-5: [LOW] CLAUDE.md "Korean letter-spacing" directive is project-specific and well-respected
+
+**File:** `CLAUDE.md:14-16`
+
+Spot-checked the recent changes for `tracking-*` or `letter-spacing` on Korean text: none found. The privacy notice dialog uses no tracking utilities. The compliance posture is healthy.
+
+**No action.**
+
+---
+
+### DOC4-6: [INFO] Cycle plan structure is consistent
+
+The cycle-3 plan (`plans/open/2026-04-27-rpf-cycle-3-review-remediation.md`, now archived) follows the established structure: status legend, summary, tasks with exit criteria, deferred items table with severity/confidence/reason/exit-criterion columns, repo-policy compliance section, gate plan. The cycle-4 plan should follow the same template.
+
+**No action — informational.**
+
+---
+
+## Workspace-to-Public Migration Doc Trail
+
+The directive at `user-injected/workspace-to-public-migration.md` is well-documented (constraints, current state, desired outcome, considerations). The standing plan at `plans/open/2026-04-19-workspace-to-public-migration.md` tracks ongoing work. Cycle 4 review surfaces no new concrete migration candidate (DES4-3); the directive remains accurate and current.
+
+**No action.**
+
+---
+
+## Confidence Summary
+
+- DOC4-1: HIGH (carried-deferred per repo policy).
+- DOC4-2: HIGH (housekeeping; will be addressed by cycle 4 plan).
+- DOC4-3: MEDIUM (cosmetic).
+- DOC4-4: HIGH (informational; conditional update).
+- DOC4-5: HIGH (compliance affirmed).
+- DOC4-6: HIGH (informational).

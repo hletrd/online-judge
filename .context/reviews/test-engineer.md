@@ -1,107 +1,123 @@
-# Test-Engineer Pass — RPF Cycle 3/100
+# Test Engineer Review — RPF Cycle 4/100
 
 **Date:** 2026-04-27
-**Lane:** test-engineer
-**Scope:** Test coverage gaps, flakiness, TDD opportunities, with emphasis on cycle-2 added tests (analytics route)
-
-## Summary
-
-Cycle 2 added 7 unit tests for the analytics route in `tests/unit/api/contests-analytics-route.test.ts`. They cover the cache-miss, cache-hit, stale, dedup, cooldown, and DB-time-fallback paths. Suite total is now 2217 (was 2210). All pass.
-
-The remaining test gaps are mostly carried forward (anti-cheat retry/backoff timing, AGG-13). Cycle 3 has small actionable test additions: a `getAuthSessionCookieNames` literal-value test (DBG3-4) and possibly a stress test for the analytics dedup guard.
+**Scope:** test coverage gaps, flaky tests, TDD opportunities
 
 ## Findings
 
-### TE3-1: [MEDIUM] No test for `getAuthSessionCookieNames()` literal-value contract
+### TE4-1: [LOW] `__test_internals` not exercised by every consumer it could be
 
-**File:** `tests/unit/security/env.test.ts`, `src/lib/security/env.ts:178-180`
-**Confidence:** MEDIUM
+**Severity:** LOW | **Confidence:** MEDIUM | **File:** `tests/unit/api/contests-analytics-route.test.ts:230-248`
 
-Cycle-2 commit `000bdfe5` added a "shape" test verifying `getAuthSessionCookieNames()` returns `{ name: string, secureName: string }`. There's no test asserting the literal values — i.e., that `name === "authjs.session-token"` and `secureName === "__Secure-authjs.session-token"`.
+Only one test currently uses `__test_internals` (the dispose-hook eviction test). The other helper, `__test_internals.cacheClear()`, is exposed but unused. If unused test helpers stay, they slowly accumulate as dead surface that future contributors must reason about. Either:
 
-A future refactor that swaps the two names (or accidentally renames one) would not be caught by tests. The proxy would clear the wrong cookie, leaving sessions valid on logout.
+1. Add a test that uses `cacheClear()` (e.g., between-test cache reset for isolation).
+2. Remove `cacheClear()` from `__test_internals` until a test needs it.
 
-**Failure scenario:** Refactor risk — if a future contributor changes the `name` constant in `env.ts` (e.g., for next-auth migration), the proxy would clear the new name but expect the old. Tests would still pass under the shape-only assertion.
+Option (2) is YAGNI-aligned. Option (1) could improve test isolation.
 
-**Fix:** Add a literal-value assertion:
+**Fix:** Pending product decision. Defer.
+
+**Exit criterion:** Either remove unused helpers or add a test that exercises them.
+
+---
+
+### TE4-2: [LOW, deferred] Anti-cheat retry/backoff lacks direct timing tests (carried)
+
+**Severity:** LOW | **Confidence:** LOW | **File:** `src/components/exam/anti-cheat-monitor.tsx`
+
+Carried from cycle 2 AGG-13 / cycle 3 AGG3-7. The exponential backoff (1s → 2s → 4s → 8s capped at 30s) has only indirect coverage. Direct testing would require:
+- `vi.useFakeTimers`
+- mock `apiFetch` to return `{ ok: false }` N times then `{ ok: true }`
+- mock `localStorage` (or use jsdom)
+- assert that `setTimeout` was called with expected delays
+
+**Test sketch:**
 ```ts
-it("returns the documented session cookie names", () => {
-  expect(getAuthSessionCookieNames()).toEqual({
-    name: "authjs.session-token",
-    secureName: "__Secure-authjs.session-token",
-  });
-});
+import { act, renderHook } from "@testing-library/react";
+// import the component, render, simulate failed sendEvent, advance timers, assert next sendEvent fires after backoff.
 ```
 
-This pins the contract.
+The setup is non-trivial (3+ mocks, jsdom, render hook). Defer to a dedicated testing-focused cycle.
+
+**Exit criterion:** Pick up in a dedicated testing cycle.
 
 ---
 
-### TE3-2: [LOW] Anti-cheat retry/backoff has only indirect test coverage (carried from cycle 2 AGG-13)
-
-**File:** `src/components/exam/anti-cheat-monitor.tsx`
-**Confidence:** LOW
-
-No unit tests for the exponential backoff timing. Component-level testing requires `vi.useFakeTimers` + `apiFetch` mock + simulated `localStorage`. Non-trivial setup.
-
-**Fix:** Defer. Pick up in a dedicated testing-focused cycle.
-
----
-
-### TE3-3: [LOW] Analytics route lacks a test for "stale-but-with-pending-refresh" → returns the in-flight refreshed value
+### TE4-3: [INFO] Analytics suite has good behavioral coverage
 
 **File:** `tests/unit/api/contests-analytics-route.test.ts`
-**Confidence:** LOW
 
-The current "triggers exactly one background refresh" test verifies that two concurrent stale GETs only trigger one refresh. But it doesn't verify that subsequent GETs (after the refresh completes) see the freshly-cached value. The `mockReturnValueOnce(slowPromise)` is resolved at the end with `resolveCompute?.({ summary: "fresh" })`, but the assertion is only that compute was called once — not that the cache contains the new value.
+Coverage of route GET behavior:
+- 404 (missing assignment): line 100-104.
+- 403 (forbidden): line 106-110.
+- Cache miss: line 112-118.
+- Cache hit (no DB call): line 120-140.
+- Stale + in-progress dedup: line 142-176.
+- Refresh failure logging: line 178-201.
+- Cooldown respected: line 203-228.
+- Dispose-hook eviction (new in cycle 3): line 230-248.
 
-**Failure scenario:** Refactor risk — if `refreshAnalyticsCacheInBackground` accidentally drops the `analyticsCache.set` call, the cache would never update, and the test would still pass.
+Comprehensive. The mock setup via `vi.hoisted` is correct, the `vi.useFakeTimers` + `vi.setSystemTime` pattern allows time control, and `vi.resetModules()` ensures module-state isolation between tests.
 
-**Fix:** Extend the dedup test to assert the cache contains the new value after the slow refresh resolves:
-```ts
-resolveCompute?.({ summary: "fresh" });
-await vi.runAllTimersAsync();
-
-vi.setSystemTime(new Date("2026-04-26T12:00:35.000Z"));
-const r3 = await GET(makeReq(), makeCtx());
-const body3 = await r3.json();
-expect(body3.data.summary).toBe("fresh"); // verifies cache was updated
-```
-
-LOW priority; pick up if cycle 3 has slack.
+**No action.**
 
 ---
 
-### TE3-4: [INFO] No `vi.useFakeTimers` warnings about leaked timers
+### TE4-4: [LOW] No test for `getAuthSessionCookieNames` shape against `proxy.ts` consumer
 
-**Confidence:** N/A (informational)
+**Severity:** LOW | **Confidence:** MEDIUM | **Files:** `tests/unit/security/env.test.ts:412-440`, `src/proxy.ts:87-97`
 
-The cycle-2 test file properly uses `afterEach(() => vi.useRealTimers())`. No leaked timers between tests.
+`env.test.ts` covers `getAuthSessionCookieNames` literal-value assertions (resolved per cycle 3 AGG3-2). `proxy.ts` consumes `getAuthSessionCookieNames()` in `clearAuthSessionCookies`. There's no integration test that asserts:
+1. `clearAuthSessionCookies` calls `response.cookies.set` with the names from `getAuthSessionCookieNames`.
+2. The non-secure variant doesn't have `secure: true`.
+
+Such a test would catch a refactor that swapped the names or accidentally set `secure` on the non-secure variant.
+
+**Test sketch:**
+```ts
+import { NextResponse } from "next/server";
+// (after extracting clearAuthSessionCookies as a testable export)
+const res = NextResponse.next();
+clearAuthSessionCookies(res);
+const cookieHeader = res.headers.get("Set-Cookie");
+expect(cookieHeader).toContain("authjs.session-token=;");
+expect(cookieHeader).toContain("__Secure-authjs.session-token=;");
+```
+
+But `clearAuthSessionCookies` is currently a private function in `proxy.ts`. Would require export-for-test.
+
+**Fix:** Defer. Add when `proxy.ts` next gets a refactor.
+
+**Exit criterion:** N/A this cycle.
 
 ---
 
-### TE3-5: [LOW] Test file uses `any` in the handler mock signature
+### TE4-5: [INFO] No flakes detected in unit suite
 
-**File:** `tests/unit/api/contests-analytics-route.test.ts:22`
-**Confidence:** LOW
+Cycle 3 ran the analytics suite cleanly (7/7 in 79ms). The full suite was reported at 2218 tests passing. The dispose-hook test added in cycle 3 is deterministic (no async, no timers — relies only on `analyticsCache.delete` firing the synchronous `dispose` callback).
 
-```ts
-handler: (req: NextRequest, ctx: { user: any; params: any }) => Promise<Response>
-```
+**No action.**
 
-`user: any` and `params: any` would be cleaner as `user: unknown` or the proper shape. Linting allows this in tests but it's a reach for stricter type-narrowing.
+---
 
-**Fix:** Optional. Defer; cosmetic.
+### TE4-6: [LOW] Cycle-4 review identifies `loadPendingEvents` cap recommendation; no test currently asserts behavior
 
-## Verification Notes
+**Severity:** LOW | **Confidence:** MEDIUM | **File:** `src/components/exam/anti-cheat-monitor.tsx:41-51`
 
-- Ran `npm run test:unit -- tests/unit/api/contests-analytics-route.test.ts`: 7/7 pass in 79ms.
-- No flaky timing assertions (system-time is mocked deterministically).
-- Mocks are reset properly in `beforeEach`.
+If CR4-2 is implemented (cap at 200 events), a test should assert: load → returns at most 200 events even when localStorage has more. No current test exists for this surface.
 
-## Confidence
+**Fix:** If CR4-2 lands, add the test. Else N/A.
 
-- MEDIUM: TE3-1 (literal-value cookie names test).
-- LOW: TE3-2 (carried), TE3-3 (extra dedup assertion), TE3-5 (cosmetic).
+**Exit criterion:** Conditional on CR4-2 implementation.
 
-No HIGH severity. Cycle-3 actionable test work: TE3-1 (small, high-value) and optionally TE3-3.
+---
+
+## Confidence Summary
+
+- TE4-1: MEDIUM (cosmetic).
+- TE4-2: LOW (carried-deferred).
+- TE4-3: HIGH (informational).
+- TE4-4: MEDIUM (defensible defer).
+- TE4-5: HIGH (informational).
+- TE4-6: MEDIUM (conditional).
