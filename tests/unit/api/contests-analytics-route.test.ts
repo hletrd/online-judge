@@ -227,6 +227,21 @@ describe("GET /api/v1/contests/[assignmentId]/analytics — staleness & cooldown
     expect(computeContestAnalyticsMock).not.toHaveBeenCalled();
   });
 
+  // Cycle 5 AGG5-7 / TE5-1: pin the production-mode runtime gate so that a
+  // future refactor that "cleans up" the conditional cannot silently expose
+  // the test-only mutators in production. vitest sets NODE_ENV=test by
+  // default, so we have to stub the env BEFORE re-importing the module.
+  it("__test_internals is undefined when NODE_ENV is not 'test'", async () => {
+    vi.resetModules();
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      const mod = await import("@/app/api/v1/contests/[assignmentId]/analytics/route");
+      expect(mod.__test_internals).toBeUndefined();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("evicts cooldown metadata when the cache entry is removed (dispose hook)", async () => {
     // Prime cache so `analyticsCache` has a populated entry to dispose.
     await callRoute();
