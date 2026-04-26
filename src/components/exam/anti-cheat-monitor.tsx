@@ -13,6 +13,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  loadPendingEvents,
+  savePendingEvents,
+  type PendingEvent,
+} from "./anti-cheat-storage";
 
 interface AntiCheatMonitorProps {
   assignmentId: string;
@@ -20,47 +25,9 @@ interface AntiCheatMonitorProps {
   warningMessage?: string;
 }
 
-const STORAGE_KEY = "judgekit_anticheat_pending";
 const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 1000;
 const HEARTBEAT_INTERVAL_MS = 30_000;
-
-interface PendingEvent {
-  eventType: string;
-  details?: string;
-  timestamp: number;
-  retries: number;
-}
-
-function isValidPendingEvent(entry: unknown): entry is PendingEvent {
-  if (typeof entry !== "object" || entry === null) return false;
-  const e = entry as Record<string, unknown>;
-  return typeof e.eventType === "string" && typeof e.retries === "number" && typeof e.timestamp === "number";
-}
-
-function loadPendingEvents(assignmentId: string): PendingEvent[] {
-  try {
-    const raw = localStorage.getItem(`${STORAGE_KEY}_${assignmentId}`);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isValidPendingEvent);
-  } catch {
-    return [];
-  }
-}
-
-function savePendingEvents(assignmentId: string, events: PendingEvent[]) {
-  try {
-    if (events.length === 0) {
-      localStorage.removeItem(`${STORAGE_KEY}_${assignmentId}`);
-    } else {
-      localStorage.setItem(`${STORAGE_KEY}_${assignmentId}`, JSON.stringify(events));
-    }
-  } catch {
-    // localStorage unavailable
-  }
-}
 
 export function AntiCheatMonitor({
   assignmentId,
