@@ -543,6 +543,26 @@ success "Database is ready"
 
 # ---------------------------------------------------------------------------
 # Step 6: Run database migrations before starting the app
+#
+# Strategy choice: we use `drizzle-kit push` (live schema-vs-DB diff, no
+# journal replay) instead of `drizzle-kit migrate` (apply numbered SQL
+# files from drizzle/pg/*.sql in order). Push is more flexible against
+# manual DB tweaks, BUT it prompts interactively on destructive changes
+# (e.g. DROP COLUMN). In a non-interactive deploy shell, the prompt is
+# left unanswered — drizzle-kit prints a warning, exits 0, and the
+# destructive change is NOT applied. To keep deploy honest, the block
+# below CAPTURES the push output, then scans for the data-loss prompt
+# markers; when detected, it downgrades the success log to a warning.
+#
+# To force-apply destructive changes via push, set DRIZZLE_PUSH_FORCE=1
+# (passes --force to drizzle-kit push). For journal-driven migrations
+# instead, change `drizzle-kit push` to `drizzle-kit migrate` here AND
+# verify drizzle/pg/meta/_journal.json + meta/<NN>_snapshot.json files
+# stay in sync with src/lib/db/schema.pg.ts.
+#
+# Cycle 5 aggregate AGG5-1 documents the prior failure mode where the
+# success log was printed even though the destructive change was
+# unapplied, masking schema drift across deploys.
 # ---------------------------------------------------------------------------
 info "Running database migrations (drizzle-kit push)..."
 
@@ -552,7 +572,13 @@ NETWORK_NAME="${NETWORK_NAME:-judgekit_default}"
 
 # Run drizzle-kit push via a temporary Node container connected to the DB network.
 # This uses the source code already synced to the remote host (has drizzle.config.ts + schema).
-remote "PG_PASS=\$(grep '^POSTGRES_PASSWORD=' ${REMOTE_DIR}/.env.production | cut -d= -f2-) && \
+# Output is CAPTURED so we can scan for the data-loss prompt below.
+PUSH_FORCE_FLAG=""
+if [[ "${DRIZZLE_PUSH_FORCE:-0}" == "1" ]]; then
+  PUSH_FORCE_FLAG=" --force"
+  info "DRIZZLE_PUSH_FORCE=1 set — destructive schema changes WILL be applied"
+fi
+PUSH_OUT=$(remote "PG_PASS=\$(grep '^POSTGRES_PASSWORD=' ${REMOTE_DIR}/.env.production | cut -d= -f2-) && \
     export POSTGRES_PASSWORD=\"\${PG_PASS}\" && \
     export PGPASSWORD=\"\${PG_PASS}\" && \
     export DATABASE_URL=\"postgres://judgekit:\${PG_PASS}@db:5432/judgekit\" && \
@@ -561,9 +587,17 @@ remote "PG_PASS=\$(grep '^POSTGRES_PASSWORD=' ${REMOTE_DIR}/.env.production | cu
       -v ${REMOTE_DIR}:/app -w /app \
       -e POSTGRES_PASSWORD -e PGPASSWORD -e DATABASE_URL \
       node:24-alpine \
-      sh -c 'npm install --no-save drizzle-kit drizzle-orm nanoid 2>&1 | tail -1 && npx drizzle-kit push'" 2>&1 || \
-  die "drizzle-kit push failed — aborting deploy"
-success "Database migrated"
+      sh -c 'npm install --no-save drizzle-kit drizzle-orm nanoid 2>&1 | tail -1 && npx drizzle-kit push${PUSH_FORCE_FLAG}'" 2>&1) || \
+  { printf '%s\n' "$PUSH_OUT"; die "drizzle-kit push failed — aborting deploy"; }
+# Re-emit captured output so operators see what drizzle-kit reported.
+printf '%s\n' "$PUSH_OUT"
+# Detect the data-loss / interactive-prompt markers. drizzle-kit emits these
+# when it finds a destructive diff and there's no TTY to answer the prompt.
+if grep -qiE "data loss|are you sure|warning:.*destructive|please confirm" <<<"$PUSH_OUT"; then
+  warn "drizzle-kit push detected a destructive schema change but did NOT apply it (interactive prompt unanswered or declined). Manual intervention required: review the diff above, then re-run with DRIZZLE_PUSH_FORCE=1 to apply, or use the journal-driven migrate strategy."
+else
+  success "Database migrated"
+fi
 
 # Apply additive schema repairs for columns that may be missing on older
 # PostgreSQL deployments even when drizzle-kit push reports no diff.
