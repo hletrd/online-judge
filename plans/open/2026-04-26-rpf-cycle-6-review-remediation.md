@@ -18,13 +18,20 @@ A second MEDIUM cluster: the `DRIZZLE_PUSH_FORCE` knob is undocumented for opera
 
 Per the deferred-fix rules, the AGG6-1 cluster (security + correctness + data-loss) is NOT deferrable. AGG6-2 (operator documentation gap) is also planned this cycle because it directly enables the AGG6-1 failure mode.
 
+**Implementation status (2026-04-26):**
+- Task A `[x]` — commit `18d93273` (pre-step secret_token backfill in deploy-docker.sh).
+- Task B `[x]` — commit `8a776241` (DRIZZLE_PUSH_FORCE documented in AGENTS.md + .env.example + .env.production.example + warn message references AGENTS.md).
+- Task C `[x]` — commit `e5d1dc64` (cycle-5 plan moved to plans/done/).
+
+Gates: lint 0 errors (14 unchanged warnings in untracked dev .mjs scripts); test:unit 2234/2234 pass; build EXIT=0.
+
 ---
 
 ## Tasks
 
 ### Task A — [MEDIUM, 4-agent convergence] Pre-execute the secret_token backfill DO-block in deploy-docker.sh, regardless of `drizzle-kit push --force` (AGG6-1 / SEC6-1 / ARCH6-2 / TRC6-1 / VER6-1)
 
-**Status:** `[ ]`
+**Status:** `[x]` — done in commit `18d93273`
 **Severity:** MEDIUM (security + correctness + data-loss)
 **Confidence:** HIGH
 **Reference:** `.context/reviews/_aggregate.md` AGG6-1; per-agent: `architect.md` ARCH6-2, `security-reviewer.md` SEC6-1, `tracer.md` TRC6-1, `verifier.md` VER6-1
@@ -52,7 +59,7 @@ Per the deferred-fix rules, the AGG6-1 cluster (security + correctness + data-lo
 
 ### Task B — [MEDIUM, 4-agent convergence] Document `DRIZZLE_PUSH_FORCE` knob in `AGENTS.md` and `.env.example` (AGG6-2 / ARCH6-1 / CRIT6-1 / DOC6-1 / VER6-3)
 
-**Status:** `[ ]`
+**Status:** `[x]` — done in commit `8a776241`
 **Severity:** MEDIUM (operational documentation gap)
 **Confidence:** HIGH
 **Reference:** `.context/reviews/_aggregate.md` AGG6-2; per-agent: `architect.md` ARCH6-1, `critic.md` CRIT6-1, `document-specialist.md` DOC6-1, `verifier.md` VER6-3
@@ -87,7 +94,7 @@ Per the deferred-fix rules, the AGG6-1 cluster (security + correctness + data-lo
 
 ### Task C — [LOW, housekeeping] Move cycle-5 plan to `plans/done/` (CRIT6-5 / AGG6-15)
 
-**Status:** `[ ]`
+**Status:** `[x]` — done in commit `e5d1dc64`
 **Severity:** LOW (process)
 **Confidence:** HIGH
 **Reference:** `.context/reviews/_aggregate.md` AGG6-15; per-agent: `critic.md` CRIT6-5
