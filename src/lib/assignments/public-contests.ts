@@ -1,9 +1,10 @@
 import { and, asc, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { assignments } from "@/lib/db/schema";
-import { getContestStatus, type ContestStatus } from "@/lib/assignments/contests";
+import { assignments, enrollments, contestAccessTokens, examSessions } from "@/lib/db/schema";
+import { getContestStatus, canManageContest, type ContestStatus } from "@/lib/assignments/contests";
 import type { ExamMode, ScoringModel } from "@/types";
 import { getDbNow } from "@/lib/db-time";
+import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 export type PublicContestEntry = {
   id: string;
@@ -134,5 +135,229 @@ export async function getPublicContestById(assignmentId: string): Promise<Public
         title: entry.problem?.title ?? "",
         difficulty: entry.problem?.difficulty ?? null,
       })),
+  };
+}
+
+// --- Enrolled contest detail (for auth-aware public pages) ---
+
+export type EnrolledContestProblem = {
+  id: string;
+  title: string;
+  difficulty: number | null;
+  visibility: string | null;
+  points: number;
+  sortOrder: number;
+};
+
+export type EnrolledContestDetail = {
+  id: string;
+  title: string;
+  description: string | null;
+  groupId: string;
+  groupName: string;
+  examMode: ExamMode;
+  examDurationMinutes: number | null;
+  scoringModel: ScoringModel;
+  startsAt: Date | null;
+  deadline: Date | null;
+  lateDeadline: Date | null;
+  freezeLeaderboardAt: Date | null;
+  enableAntiCheat: boolean;
+  status: ContestStatus;
+  problems: EnrolledContestProblem[];
+  publicProblemCount: number;
+  examSession: {
+    startedAt: Date;
+    personalDeadline: Date;
+  } | null;
+  canManage: boolean;
+};
+
+/**
+ * Check whether a user is enrolled in (or can manage) a contest.
+ * Returns "enrolled", "managing", or null.
+ */
+export async function getUserContestAccess(
+  assignmentId: string,
+  userId: string,
+  role: string
+): Promise<"enrolled" | "managing" | null> {
+  const assignment = await db.query.assignments.findFirst({
+    where: and(eq(assignments.id, assignmentId), ne(assignments.examMode, "none")),
+    columns: {
+      id: true,
+      groupId: true,
+      visibility: true,
+    },
+    with: {
+      group: {
+        columns: { id: true, instructorId: true },
+      },
+    },
+  });
+
+  if (!assignment) return null;
+
+  // Check management access first (instructor/admin)
+  const canManage = await canManageContest(
+    { id: userId, role },
+    { groupId: assignment.groupId, instructorId: assignment.group.instructorId }
+  );
+  if (canManage) return "managing";
+
+  // Check enrollment (student with group enrollment or access token)
+  const caps = await resolveCapabilities(role);
+  const canViewAll =
+    caps.has("groups.view_all") || caps.has("submissions.view_all");
+  if (canViewAll) return "managing";
+
+  const enrollmentRow = await db.query.enrollments.findFirst({
+    where: and(
+      eq(enrollments.groupId, assignment.groupId),
+      eq(enrollments.userId, userId)
+    ),
+    columns: { id: true },
+  });
+  if (enrollmentRow) return "enrolled";
+
+  const tokenRow = await db.query.contestAccessTokens.findFirst({
+    where: and(
+      eq(contestAccessTokens.assignmentId, assignmentId),
+      eq(contestAccessTokens.userId, userId)
+    ),
+    columns: { id: true },
+  });
+  if (tokenRow) return "enrolled";
+
+  // Public contests are viewable but not "enrolled"
+  if (assignment.visibility === "public") return null;
+
+  return null;
+}
+
+/**
+ * Get full contest detail for an enrolled user.
+ * Returns null if the user has no access (not enrolled, not managing, not public).
+ * For public contests the user is not enrolled in, returns null — use getPublicContestById instead.
+ */
+export async function getEnrolledContestDetail(
+  assignmentId: string,
+  userId: string,
+  role: string
+): Promise<EnrolledContestDetail | null> {
+  const assignment = await db.query.assignments.findFirst({
+    where: and(eq(assignments.id, assignmentId), ne(assignments.examMode, "none")),
+    with: {
+      group: {
+        columns: { id: true, name: true, instructorId: true },
+      },
+      assignmentProblems: {
+        with: {
+          problem: {
+            columns: {
+              id: true,
+              title: true,
+              difficulty: true,
+              visibility: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!assignment) return null;
+
+  const canManage = await canManageContest(
+    { id: userId, role },
+    { groupId: assignment.groupId, instructorId: assignment.group.instructorId }
+  );
+
+  // Check if user has access
+  const caps = await resolveCapabilities(role);
+  const canViewAll =
+    caps.has("groups.view_all") || caps.has("submissions.view_all");
+
+  if (!canManage && !canViewAll) {
+    const enrollmentRow = await db.query.enrollments.findFirst({
+      where: and(
+        eq(enrollments.groupId, assignment.groupId),
+        eq(enrollments.userId, userId)
+      ),
+      columns: { id: true },
+    });
+    const tokenRow = enrollmentRow ? null : await db.query.contestAccessTokens.findFirst({
+      where: and(
+        eq(contestAccessTokens.assignmentId, assignmentId),
+        eq(contestAccessTokens.userId, userId)
+      ),
+      columns: { id: true },
+    });
+    if (!enrollmentRow && !tokenRow) return null;
+  }
+
+  const sortedProblems = [...assignment.assignmentProblems]
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+  const examSession = assignment.examMode === "windowed"
+    ? await db.query.examSessions.findFirst({
+        where: and(
+          eq(examSessions.assignmentId, assignmentId),
+          eq(examSessions.userId, userId)
+        ),
+        columns: {
+          startedAt: true,
+          personalDeadline: true,
+        },
+      })
+    : null;
+
+  const now = await getDbNow();
+
+  const base = {
+    id: assignment.id,
+    title: assignment.title,
+    description: assignment.description ?? null,
+    groupId: assignment.groupId,
+    groupName: assignment.group.name,
+    examMode: assignment.examMode as ExamMode,
+    examDurationMinutes: assignment.examDurationMinutes ?? null,
+    scoringModel: assignment.scoringModel as ScoringModel,
+    startsAt: assignment.startsAt ? new Date(assignment.startsAt) : null,
+    deadline: assignment.deadline ? new Date(assignment.deadline) : null,
+    lateDeadline: assignment.lateDeadline ? new Date(assignment.lateDeadline) : null,
+    freezeLeaderboardAt: assignment.freezeLeaderboardAt ? new Date(assignment.freezeLeaderboardAt) : null,
+    enableAntiCheat: Boolean(assignment.enableAntiCheat),
+  };
+
+  return {
+    ...base,
+    status: getContestStatus(
+      {
+        ...base,
+        problemCount: sortedProblems.length,
+        startedAt: examSession?.startedAt ? new Date(examSession.startedAt) : null,
+        personalDeadline: examSession?.personalDeadline ? new Date(examSession.personalDeadline) : null,
+      },
+      now
+    ),
+    problems: sortedProblems.map((ap) => ({
+      id: ap.problem?.id ?? ap.problemId,
+      title: ap.problem?.title ?? "",
+      difficulty: ap.problem?.difficulty ?? null,
+      visibility: ap.problem?.visibility ?? null,
+      points: ap.points ?? 100,
+      sortOrder: ap.sortOrder ?? 0,
+    })),
+    publicProblemCount: sortedProblems.filter(
+      (ap) => ap.problem?.visibility === "public"
+    ).length,
+    examSession: examSession
+      ? {
+          startedAt: new Date(examSession.startedAt),
+          personalDeadline: new Date(examSession.personalDeadline),
+        }
+      : null,
+    canManage,
   };
 }
