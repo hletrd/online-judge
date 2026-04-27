@@ -23,7 +23,7 @@ The other ~4 LOW findings are observational (CRIT9-2 third-consecutive convergen
 All ~28 cycle-7 carried-deferred items plus AGG8-3 (cycle-8 SUNSET SHA defer) remain accurate at HEAD; the cycle-8 process commits did not change any executable code, so no defers had their preconditions altered.
 
 **Implementation status (2026-04-26):**
-- Task A `[ ]` — pending.
+- Task A `[x]` — done in commit `0915bac8` (cycle-8 plan archived to plans/done/).
 
 Gates at cycle-9 start: lint 0 errors (14 unchanged warnings in untracked dev .mjs scripts); test:unit 304 files / 2234 tests pass; build EXIT=0.
 
@@ -33,7 +33,7 @@ Gates at cycle-9 start: lint 0 errors (14 unchanged warnings in untracked dev .m
 
 ### Task A — [LOW, 3-agent convergence, housekeeping] Archive cycle-8 plan to `plans/done/` (AGG9-1 / ARCH9-1 / CRIT9-1 / VER9-2)
 
-**Status:** `[ ]` — pending
+**Status:** `[x]` — done in commit `0915bac8`
 **Severity:** LOW (process)
 **Confidence:** HIGH
 **Reference:** `.context/reviews/_aggregate.md` AGG9-1; per-agent: `architect.md` ARCH9-1, `critic.md` CRIT9-1, `verifier.md` VER9-2
