@@ -22,13 +22,20 @@ The cycle-7 findings cluster into ~50 LOW items (~28 deduplicated after cross-ag
 
 All ~28 other deduplicated LOW findings are defensible defers, recorded in the deferred table at the end of this plan with file+line, severity, deferral reason, and exit criteria per the deferred-fix rules.
 
+**Implementation status (2026-04-26):**
+- Task A `[x]` — commit `809446dc` (deploy-docker.sh Step 5b sunset criterion + AGENTS.md "Sunset criteria" subsection).
+- Task B `[x]` — commit `2aab3a33` (cycle-6 plan moved to plans/done/).
+- Task C `[x]` — commit `ea083609` (route.ts:84 first-set vs overwrite comment).
+
+Gates: lint 0 errors (14 unchanged warnings in untracked dev .mjs scripts); test:unit 304 files / 2234 tests pass; build EXIT=0.
+
 ---
 
 ## Tasks
 
 ### Task A — [LOW, 3-agent convergence] Document sunset criterion for `deploy-docker.sh` Step 5b backfill (AGG7-1 / CRIT7-1 / PERF7-1 / CRIT7-2)
 
-**Status:** `[ ]`
+**Status:** `[x]` — done in commit `809446dc`
 **Severity:** LOW (operational lifecycle / ops debt)
 **Confidence:** HIGH
 **Reference:** `.context/reviews/_aggregate.md` AGG7-1; per-agent: `critic.md` CRIT7-1, `critic.md` CRIT7-2, `perf-reviewer.md` PERF7-1
@@ -58,7 +65,7 @@ All ~28 other deduplicated LOW findings are defensible defers, recorded in the d
 
 ### Task B — [LOW, housekeeping] Archive cycle-6 plan to `plans/done/` (AGG7-2 / CRIT7-4)
 
-**Status:** `[ ]`
+**Status:** `[x]` — done in commit `2aab3a33`
 **Severity:** LOW (process)
 **Confidence:** HIGH
 **Reference:** `.context/reviews/_aggregate.md` AGG7-2; per-agent: `critic.md` CRIT7-4
@@ -80,7 +87,7 @@ All ~28 other deduplicated LOW findings are defensible defers, recorded in the d
 
 ### Task C — [LOW, 3-agent convergence] Document the dual nature of `_lastRefreshFailureAt.delete` in `route.ts:84` (AGG7-3 / DBG7-3 / TE7-2 / TE7-5)
 
-**Status:** `[ ]`
+**Status:** `[x]` — done in commit `ea083609`
 **Severity:** LOW (maintainability — invariant invisible to readers)
 **Confidence:** HIGH
 **Reference:** `.context/reviews/_aggregate.md` AGG7-3; per-agent: `debugger.md` DBG7-3, `test-engineer.md` TE7-2 / TE7-5
