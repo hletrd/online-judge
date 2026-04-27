@@ -1,95 +1,129 @@
-# Debugger — RPF Cycle 6/100
+# Debugger Review — RPF Cycle 7/100
 
 **Date:** 2026-04-26
-**Cycle:** 6/100
-**Lens:** latent bug surface, failure modes, regressions, defensive code review
+**Cycle:** 7/100
+**Lens:** latent bugs, failure modes, regressions, error recovery, edge cases
 
 ---
 
-**Cycle-5 carry-over verification:**
-- DBG5-1 (`_refreshingKeys` cleanup): VERIFIED resolved at `route.ts:79-99`.
-- DBG5-2 (`formatEventTime` ms-vs-seconds): UNCHANGED — carried deferred.
-- DBG5-3 (Distinct-event-type burst): UNCHANGED — carried deferred.
+## Cycle-6 carry-over verification
+
+All cycle-6 plan tasks confirmed at HEAD; no regressions detected.
+
+Specific re-verification of cycle-6 critical fix:
+- `deploy-docker.sh` Step 5b backfill is idempotent and runs before drizzle-kit push (confirmed at lines 570-596).
+- The hash semantics in step 5b match `src/lib/judge/auth.ts:21-23` (both produce `SHA-256` hex of UTF-8 bytes; `psql` uses `encode(sha256(secret_token::bytea), 'hex')`, Node uses `createHash('sha256').update(token).digest('hex')`).
 
 ---
 
-## DBG6-1: [LOW, NEW] `0020_drop_judge_workers_secret_token.sql` backfill DO-block uses `encode(sha256(secret_token::bytea), 'hex')` — assumes column type is text
+## DBG7-1: [LOW, NEW] `deploy-docker.sh` Step 5b uses heredoc `<<'SQL'` with single-quoted delimiter — multi-layer escaping is correct but fragile
 
-**Severity:** LOW (latent — only surfaces if column type ever changed)
+**Severity:** LOW (correctness verification, not a bug)
 **Confidence:** HIGH
 
 **Evidence:**
-- `drizzle/pg/0020_drop_judge_workers_secret_token.sql`:
-  ```sql
-  UPDATE judge_workers
-  SET secret_token_hash = encode(sha256(secret_token::bytea), 'hex')
-  WHERE secret_token_hash IS NULL AND secret_token IS NOT NULL
-  ```
-- The `::bytea` cast assumes `secret_token` is text. Pre-cycle-5 schema (per the cycle-5 architect review) had `secret_token` as `text`. Cycle 5's `0020_snapshot.json` removed it entirely.
+- `deploy-docker.sh:576-595`: Step 5b psql heredoc.
+- Outer `remote "..."` is double-quoted; inner heredoc delimiter `<<'SQL'` is single-quoted. The local shell expands `${REMOTE_DIR}` and the escape-prefix sequences `\$(...)`, `\$\$`, `\$sql\$` while preserving the heredoc delimiter through the double-quote layer.
+- Net effect: REMOTE bash sees a heredoc with no expansion; PL/pgSQL `$$ ... $$` and `$sql$ ... $sql$` delimiters are intact; psql executes correctly.
 
-**Why it's a problem:** The cast `secret_token::bytea` interprets the text as the BYTES of its UTF-8 encoding. This is correct ONLY IF the original token was ASCII. If any token contained non-ASCII bytes, the hash will not match what `hashToken()` in `src/lib/judge/auth.ts:21-23` produces:
-```ts
-return createHash("sha256").update(token).digest("hex");
+**Verification status:** Correct, but fragile — a future contributor reorganizing this block could break it.
+
+**Fix:** Add a comment block documenting the escape-map:
 ```
-Node's `createHash().update(token)` treats `token` as a string and encodes it to UTF-8 bytes by default. PostgreSQL's `text::bytea` cast also produces UTF-8 bytes. So they MATCH for any text — the cast is correct.
+# Escape map for the heredoc inside remote "..."
+#   ${VAR}        → expands locally (REMOTE_DIR)
+#   \${VAR}       → expands on remote (PG_PASS)
+#   \$(...)       → command substitution on remote
+#   \$\$          → PL/pgSQL $$ delimiter
+#   \$sql\$       → PL/pgSQL named delimiter
+#   <<'SQL'       → heredoc with no expansion (single-quoted delim)
+```
 
-**Why it's STILL worth recording:** The SQL works correctly today, but the dependency is implicit. A future contributor who changes either side (e.g., swapping `createHash().update(token, 'binary')` in Node, or swapping the SQL to `decode(secret_token, 'base64')`) without updating the other side will silently break worker auth. Add a brief comment in BOTH places cross-referencing the byte-encoding assumption.
+**Exit criteria:** Escape semantics documented at the call site.
 
-**Fix:** Add an inline comment in `src/lib/judge/auth.ts` near `hashToken()` and another in the SQL DO-block: "// SHA-256 of the UTF-8 byte sequence of the raw token. Both Node (createHash().update(string)) and Postgres (text::bytea) produce identical UTF-8 bytes; do not change one without changing the other."
-
-**Exit criteria:** Cross-references exist in both places. Gates green.
+**Carried-deferred status:** Defer (current code correct, doc improvement only).
 
 ---
 
-## DBG6-2: [LOW, NEW] `deploy-docker.sh:596` data-loss detection runs ONCE on a single capture; partial output (e.g., interrupted command) won't trigger the warn
+## DBG7-2: [LOW, NEW] `deploy-docker.sh:573` derives `NETWORK_NAME` via `docker network ls --format '{{.Name}}' | grep judgekit | head -1` — works for typical compose project but on a multi-project host could pick the wrong network
 
-**Severity:** LOW (edge-case; likely rare)
+**Severity:** LOW (defensive — current behavior may be wrong on multi-project hosts)
 **Confidence:** MEDIUM
 
 **Evidence:**
-- `deploy-docker.sh:581-591`:
+- `deploy-docker.sh:573-574`:
   ```sh
-  PUSH_OUT=$(remote "PG_PASS=... && export ... && \
-      docker run --rm \
-        --network ${NETWORK_NAME} \
-        ...
-        sh -c '... npx drizzle-kit push${PUSH_FORCE_FLAG}'" 2>&1) || \
-    { printf '%s\n' "$PUSH_OUT"; die "drizzle-kit push failed — aborting deploy"; }
+  NETWORK_NAME=$(remote "docker network ls --format '{{.Name}}' | grep judgekit | head -1" 2>/dev/null)
+  NETWORK_NAME="${NETWORK_NAME:-judgekit_default}"
   ```
-- If the remote SSH connection drops mid-command, `PUSH_OUT` may contain a partial output that doesn't include the data-loss prompt markers, even though the underlying drizzle-kit run was about to print them.
-- The `|| { die ... }` branch fires when SSH exits non-zero. But drizzle-kit can exit 0 with a truncated transcript if the remote shell wraps it differently.
+- The fallback `${NETWORK_NAME:-judgekit_default}` is correct — if grep finds no matching network, `NETWORK_NAME` is empty and the fallback fires.
+- BUT: `head -1` on multiple matches picks the FIRST one, alphabetical-ish but not deterministic.
 
-**Why it's a problem:** A partial transcript that does NOT contain "data loss"/"are you sure"/"warning:.*destructive" but ALSO does not contain a confirmation message will fall through to `success "Database migrated"` even though the migration may not have completed.
+**Failure scenario:** Operator runs deploy on a host with multiple judgekit-related networks (e.g., from a sibling deploy or stale compose project). `head -1` picks one arbitrarily. Step 5b backfill might attach to the wrong network, fail with `psql: error: connection to server at "db" (...): Name or service not known`, deploy aborts.
 
-**Fix:** Add a positive confirmation check: scan PUSH_OUT for `"changes applied"` or `"no changes detected"` (drizzle-kit's typical success markers). If neither is present, downgrade success to a different warn ("drizzle-kit output was inconclusive — verify manually").
+**Fix (defensive):**
+1. Use `--filter "label=com.docker.compose.project=judgekit"` instead of grep — more robust to network-naming variations.
+2. Or read the project name from `docker compose config --format json | jq -r .name`.
 
-**Exit criteria:** A truncated PUSH_OUT does not produce a misleading green "[OK] Database migrated". Gates green.
+**Exit criteria:** NETWORK_NAME selection is deterministic across multi-project hosts.
+
+**Carried-deferred status:** Defer (typical single-project deploy host is unaffected).
 
 ---
 
-## DBG6-3: [LOW, NEW] `analyticsCache.dispose` callback assumes synchronous `_lastRefreshFailureAt.delete` is safe under concurrent access
+## DBG7-3: [LOW, NEW] `refreshAnalyticsCacheInBackground` uses `analyticsCache.set` then `_lastRefreshFailureAt.delete` in success path — but analyticsCache.set ALREADY triggers dispose (which deletes the cooldown). The explicit delete is redundant on overwrite
 
-**Severity:** LOW (Node single-threaded execution mitigates)
+**Severity:** LOW (defensive redundancy / dead code)
 **Confidence:** HIGH
 
 **Evidence:**
-- `route.ts:34-47` registers `dispose: (_value, key) => { _lastRefreshFailureAt.delete(key); }`.
-- Node's event loop is single-threaded for JS code, so this is safe today.
-- BUT: if any future code adds an async operation inside the dispose callback, OR if the `dispose` is called inside a microtask that races with `_lastRefreshFailureAt.set` in the catch block, ordering becomes non-obvious.
+- `route.ts:82-84` (success path):
+  ```ts
+  const fresh = await computeContestAnalytics(assignmentId, true);
+  analyticsCache.set(cacheKey, { data: fresh, createdAt: await getDbNowMs() });
+  _lastRefreshFailureAt.delete(cacheKey);  // line 84
+  ```
+- `route.ts:37-46` dispose hook clears the cooldown on entry eviction.
+- When `analyticsCache.set` overwrites an existing entry, dispose fires for the OLD value — calling `_lastRefreshFailureAt.delete(key)` synchronously.
+- Then line 84 explicitly does `_lastRefreshFailureAt.delete(cacheKey)` AGAIN. Redundant on overwrite, NECESSARY on first-set (no prior entry → no dispose fires).
 
-**Why it's a problem (latent only):** The current code is correct. A future refactor that makes dispose async, or that uses `WeakMap` instead of `Map`, will need to revisit this assumption.
+**Why it's worth tracking:** The dual-nature of the delete is invisible to a casual reader.
 
-**Fix:** Add a one-line comment near the dispose callback noting "synchronous-only — do not await inside dispose; _lastRefreshFailureAt is also a synchronous Map. If this changes, audit the catch path at route.ts:95."
+**Fix (cosmetic):** Add a one-line comment above line 84:
+```ts
+// Explicit delete here covers the "first set" case (no prior value, no
+// dispose fires). On overwrite, dispose has already cleared the cooldown.
+_lastRefreshFailureAt.delete(cacheKey);
+```
 
-**Exit criteria:** Comment exists. Gates green.
+**Exit criteria:** Comment clarifies the dual nature of the delete.
+
+**Carried-deferred status:** Defer (cosmetic, code is correct).
 
 ---
 
-## Final Sweep — Latent Bugs
+## DBG7-4: [LOW, NEW] `anti-cheat-monitor.tsx` `scheduleRetryRef` uses `useRef<(remaining: PendingEvent[]) => void>(() => {})` — initial value is a no-op until useEffect at line 109 runs; theoretical timing window during first render
 
-- `route.ts` cooldown / dispose / refresh interactions are correct after cycle 5; the remaining concerns are documentation / future-proofing.
-- `anti-cheat-monitor.tsx` retry timer cleanup is sound (verified via cycle-5 cleanup function at line 265-268).
-- `anti-cheat-storage.ts` slice-cap (`MAX_PENDING_EVENTS = 200`) keeps incoming arrays bounded.
-- `proxy.ts` cookie-clearing is now under test (see security-reviewer.md).
+**Severity:** LOW (theoretical — React rendering order normally handles this)
+**Confidence:** LOW
 
-**No agent failures.**
+**Evidence:**
+- `anti-cheat-monitor.tsx:95`: `const scheduleRetryRef = useRef(() => {});` — initial no-op.
+- `anti-cheat-monitor.tsx:109-122`: useEffect that REPLACES `scheduleRetryRef.current` with the real implementation.
+- React's useEffect runs AFTER commit. If `flushPendingEvents` (called from line 164's useEffect) invokes `scheduleRetryRef.current(remaining)` and the effect at line 109 hasn't yet run for this render, the no-op fires.
+
+**Verification of timing:** React useEffect ordering follows declaration order. Line 109 is declared BEFORE line 162. So line 109's effect runs first, replacing the ref. Subsequent useEffects see the real implementation. ✓ Safe.
+
+**Conclusion:** Not a bug at HEAD. React's effect ordering protects this.
+
+**Fix (defensive, optional):** Replace the no-op default with a dev-only warning to surface unexpected calls.
+
+**Carried-deferred status:** Defer (current code correct, defensive improvement only).
+
+---
+
+## Summary
+
+**Cycle-7 NEW findings:** 0 HIGH, 0 MEDIUM, 4 LOW (all carried-deferable, mostly defensive).
+**Cycle-6 carry-over status:** All cycle-6 fixes hold; no latent bugs reintroduced.
+**Debug verdict:** No latent bugs at HEAD. The cycle-6 deploy-docker.sh fix is correctly implemented — the multi-layer escaping is fragile but works.

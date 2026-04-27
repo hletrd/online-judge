@@ -1,128 +1,125 @@
-# Critic — RPF Cycle 6/100
+# Critic Review — RPF Cycle 7/100
 
 **Date:** 2026-04-26
-**Cycle:** 6/100
-**Lens:** multi-perspective critique; what's missing, over-engineered, assumed-invisible
+**Cycle:** 7/100
+**Lens:** multi-perspective skeptic — challenge assumptions, look for second-order effects, identify blind spots
 
 ---
 
-**Cycle-5 carry-over verification:** All cycle-5 critic findings (CRIT5-1, CRIT5-2, CRIT5-3, CRIT5-4) are resolved at HEAD. Plan archive cleanup and directive freshness pass both done.
+## Cycle-6 carry-over verification
+
+All cycle-6 fixes confirmed at HEAD. The 4-agent cluster (AGG6-1) addressed via Step 5b backfill in deploy-docker.sh; the documentation cluster (AGG6-2) addressed via AGENTS.md "Database migration recovery" section + .env.example commented entries.
 
 ---
 
-## CRIT6-1: [MEDIUM, NEW] The cycle-5 fix to `deploy-docker.sh` "operators see the truth" goal is half-done — operators see the warn, but they don't see HOW to recover
+## CRIT7-1: [LOW, NEW] The cycle-6 fix is asymmetric — Step 5b runs on EVERY deploy regardless of whether `secret_token` column even exists; this works correctly via information_schema guard, but adds a docker container startup + psql round-trip on EVERY deploy forever
 
-**Severity:** MEDIUM (operational ergonomics)
+**Severity:** LOW (operational efficiency / lifecycle)
 **Confidence:** HIGH
 
 **Evidence:**
-- `deploy-docker.sh:596-600` correctly downgrades the success log to warn when the data-loss prompt is detected.
-- The warn message references `DRIZZLE_PUSH_FORCE=1` and "the journal-driven migrate strategy" — both undocumented in `AGENTS.md`/`CLAUDE.md`/`README.md` (verified via grep).
-- Mentioned only in the script-internal comment at `deploy-docker.sh:557-558` and in this warn string.
+- `deploy-docker.sh:570-596`: Step 5b spins up a `postgres:18-alpine` container, runs the DO-block, tears it down. Time cost: ~5-10s per deploy (image pull cached, container startup, psql connect, DO-block parse).
+- The DO-block is correctly idempotent — when `secret_token` column doesn't exist, the `IF EXISTS` check makes the UPDATE a no-op.
+- BUT: this Step 5b is a permanent fixture of the deploy script. Every future deploy (years from now, after `secret_token` column has been gone for ages) will continue to run this 5-10s no-op.
 
-**Why it's a problem:** The cycle-5 plan promised "[OK] Database migrated" no longer lies — TRUE. But the recovery path is opaque: an operator who sees this warn for the first time has no documentation to consult except the script itself. This forces tribal knowledge and re-discovery cost on every new operator.
+**Why it's worth tracking:** Cycle-6's fix prioritized correctness over cleanliness — correct call. But the fix should sunset eventually. After:
+1. All production environments are confirmed to have applied the DROP COLUMN, AND
+2. A reasonable retention period has passed (e.g., 6 months),
+the Step 5b block can be removed. Otherwise, future maintainers will see a 5-10s deploy step whose purpose is opaque ("why do we backfill secret_token? oh, because of cycle 5...") forever.
 
 **Fix:**
-1. Add a runbook section to `AGENTS.md` describing:
-   - What the warn means (drizzle-kit push hit data-loss prompt).
-   - DRIZZLE_PUSH_FORCE=1 escape hatch — when to use, when NOT to use (when a journal-only safety migration like `0020` exists).
-   - The fact that `push --force` SKIPS the journal — so the safety backfill in `0020_drop_judge_workers_secret_token.sql` won't run.
-   - Recovery: either (a) manually run the backfill DO-block via psql before push --force, or (b) switch the deploy to `drizzle-kit migrate` for that one deploy.
+1. Add an inline comment in `deploy-docker.sh` Step 5b (around line 567-569 with the cycle-6 plan reference) noting the SUNSET CRITERION: "Remove this Step 5b after the secret_token column is gone from ALL environments AND a 6-month retention has passed."
+2. Track it as a deferred TODO in plans/open/ with a calendar date for re-evaluation (e.g., 2026-10-26).
 
-**Exit criteria:**
-- Runbook section exists and is referenced from the warn or comment block.
-- A new operator following only the README + AGENTS.md can resolve the warn without consulting source code.
-- All gates green.
+**Exit criteria:** Sunset criterion documented in deploy-docker.sh; deferred-TODO entry exists with re-evaluation date.
+
+**Carried-deferred status:** Plan for cycle-7 minor implementation — adding a comment is small.
 
 ---
 
-## CRIT6-2: [LOW, NEW] Cycle-5 dispose-hook test name describes the mechanism, not the invariant
+## CRIT7-2: [LOW, NEW] `AGENTS.md` cycle-6 documentation says "The Step 5b psql backfill ... runs on every deploy regardless of this flag" — but doesn't mention the SUNSET CRITERION (when this safety net can be removed)
 
-**Severity:** LOW (test-quality / readability)
+**Severity:** LOW (documentation completeness)
 **Confidence:** HIGH
 
 **Evidence:**
-- `tests/unit/api/contests-analytics-route.test.ts:248-265`: test "evicts cooldown metadata when the cache entry is removed (dispose hook)".
-- The test reads `__test_internals!.setCooldown(...)` then `cacheDelete(...)` then asserts `hasCooldown(...) === false`.
+- `AGENTS.md:359`: documents that Step 5b runs unconditionally.
+- `AGENTS.md` does NOT mention when Step 5b can be removed.
+- A future maintainer reading the AGENTS.md section will assume Step 5b is forever-load-bearing.
 
-**Why it's a problem:** The test is correct but the name describes the mechanism (dispose hook), not the invariant. A future contributor who refactors away the dispose hook and replaces it with a different cleanup strategy may delete this test as "implementation detail" without realizing it pins a load-bearing memory-leak invariant.
+**Why it's a problem:** Same as CRIT7-1 from a doc angle. The documentation should track the operational lifecycle.
 
-**Fix:** Rename to "cooldown metadata cannot outlive its cache entry (memory leak guard)" or similar. The test body remains identical.
+**Fix:** Add a "Sunset criteria" subsection under "Database migration recovery (DRIZZLE_PUSH_FORCE)" in AGENTS.md describing when Step 5b can be removed.
 
-**Exit criteria:** Test name describes the invariant, not the mechanism. Gates green.
+**Exit criteria:** AGENTS.md references the sunset criterion.
+
+**Carried-deferred status:** Plan for cycle-7 alongside CRIT7-1.
 
 ---
 
-## CRIT6-3: [LOW, NEW] The `cycle 5 aggregate AGG5-1 documents the prior failure mode` comment in `deploy-docker.sh` will rot
+## CRIT7-3: [LOW, NEW] `deploy-docker.sh` "additive PostgreSQL schema repairs" block at lines 658-670 still has the same architectural smell — these `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` statements are a band-aid for older PostgreSQL deployments that never received the corresponding drizzle migration
 
-**Severity:** LOW (documentation rot)
+**Severity:** LOW (architectural — patch coupled to deploy strategy)
 **Confidence:** HIGH
 
 **Evidence:**
-- `deploy-docker.sh:563-565`:
-  ```sh
-  # Cycle 5 aggregate AGG5-1 documents the prior failure mode where the
-  # success log was printed even though the destructive change was
-  # unapplied, masking schema drift across deploys.
+- `deploy-docker.sh:658-670`:
+  ```sql
+  ALTER TABLE problems ADD COLUMN IF NOT EXISTS default_language text;
+  ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS default_language text;
   ```
-- `AGG5-1` references `.context/reviews/_aggregate.md` at the time of cycle 5. Once the aggregate is rotated (every cycle overwrites `_aggregate.md`), the AGG5-1 ID lives only in the cycle-5 archived copy `_aggregate-cycle-5.md`.
+- These columns ARE in `schema.pg.ts`. Drizzle-kit push should add them. So why is this band-aid here?
 
-**Why it's a problem:** Cross-references that point to ephemeral cycle artifacts will become stale.
+**Likely reason (verified by absence of explanation):** Old production DBs were deployed before drizzle-kit started tracking `default_language`. drizzle-kit push (vs migrate) compares schema-vs-DB and would synthesize the ADD COLUMN. So this block is either: (a) a pre-drizzle-kit-push leftover that's now redundant, or (b) a defensive belt for environments where drizzle-kit push silently no-ops.
 
-**Fix:** Replace the cycle-specific reference with a permanent doc citation, OR explicitly point to the archived path `.context/reviews/_aggregate-cycle-5.md` so the link stays stable.
+**Failure scenario:** If drizzle-kit push DOES correctly add the columns, this block is dead code — adds 5-10s per deploy. If drizzle-kit push DOESN'T correctly add them, this block is silently load-bearing — and any future column added to `problems` or `system_settings` will need its own band-aid here too. There's no documented invariant either way.
 
-**Exit criteria:** No cycle-specific aggregate IDs in long-lived source files (without an archived path). Gates green.
+**Fix:** Add a comment block explaining WHY these specific columns are pre-applied, and the criterion for adding/removing entries.
+
+**Exit criteria:** The block has a documented purpose and add/remove criterion.
+
+**Carried-deferred status:** Defer (operational, not blocking; pick up alongside future deploy-script refactor).
 
 ---
 
-## CRIT6-4: [LOW, NEW] `tags.updated_at` migration is added without `notNull()` default — silent semantic difference vs other tables
+## CRIT7-4: [LOW, NEW] The cycle-6 plan's deferred table is comprehensive but `plans/open/` still contains the cycle-6 plan even though all tasks are `[x]` done — the plan should be archived this cycle per the README convention
 
-**Severity:** LOW (consistency / migration semantics)
+**Severity:** LOW (process / housekeeping)
 **Confidence:** HIGH
 
 **Evidence:**
-- `src/lib/db/schema.pg.ts:1056-1057`:
-  ```ts
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .$defaultFn(() => new Date()),
-  ```
-- Compare to `users` table at `schema.pg.ts:54`:
-  ```ts
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .$defaultFn(() => new Date()),
-  ```
-- `drizzle/pg/0021_lethal_black_tom.sql`: `ALTER TABLE "tags" ADD COLUMN "updated_at" timestamp with time zone;` — no NOT NULL, no DEFAULT now().
+- `plans/open/2026-04-26-rpf-cycle-6-review-remediation.md` exists with all tasks `[x]` done (verified earlier in this cycle).
+- `plans/open/README.md:36-39`: "Once **every** task in such a plan is `[x]` (or `[d]` with a recorded deferral exit criterion), the plan must be moved to `plans/done/` in the next cycle's housekeeping pass — typically by the cycle that follows it."
 
-**Why it's a problem:** Existing rows in `tags` will have `updated_at = NULL` after the migration. The schema permits this (no `.notNull()`), but every other `updated_at` column in the schema is `.notNull()`. This inconsistency means:
-1. Code that does `tag.updatedAt.toISOString()` will throw on existing rows.
-2. ORDER BY `updated_at` will sort NULLs unpredictably.
+**Fix:** `git mv plans/open/2026-04-26-rpf-cycle-6-review-remediation.md plans/done/`
 
-**Fix:** Either (a) backfill existing rows + add `.notNull()` (run a follow-up migration `UPDATE tags SET updated_at = created_at WHERE updated_at IS NULL; ALTER TABLE tags ALTER COLUMN updated_at SET NOT NULL;` and update schema), or (b) document explicitly why this column is intentionally nullable (with a code comment in `schema.pg.ts:1056`).
+**Exit criteria:** Cycle-6 plan in `plans/done/`; `plans/open/` contains only standing plans + cycle-7 plan.
 
-**Exit criteria:** Schema and migration are consistent; consumers don't crash on NULL. Gates green.
+**Carried-deferred status:** Plan for cycle-7 housekeeping task.
 
 ---
 
-## CRIT6-5: [LOW, carry-forward from cycle 5] Plans archive convention drift continues to need housekeeping
+## CRIT7-5: [LOW, NEW] User-injected `workspace-to-public-migration.md` says "the migration as originally scoped ... is substantially complete" but doesn't have a hard exit criterion; it remains a "placeholder for opportunistic edge cases"
 
-**Severity:** LOW
+**Severity:** LOW (process — long-running directive without explicit exit)
 **Confidence:** HIGH
 
-**Evidence:** `plans/open/` currently contains cycle-5 plan + master plans. Cycle-5 plan should move to `plans/done/` once cycle-6 is in progress (or once verified all tasks `[x]`).
+**Evidence:**
+- `user-injected/workspace-to-public-migration.md:30-37`: "The migration as originally scoped ... is substantially complete. The directive remains open as a placeholder for opportunistic edge cases the per-cycle review may surface, but it does NOT need force-driven progress every cycle."
+- User instructions for this cycle: "Long-term architectural directive: ... workspace-to-public page migration is HIGH priority, ongoing, incremental. Make progress in this cycle ONLY where the review surfaces a relevant opportunity; do NOT force unrelated migration work."
 
-**Status:** The cycle-5 plan IS marked all `[x]` per `plans/open/2026-04-26-rpf-cycle-5-review-remediation.md`. Move it.
+**Why it's worth tracking:** This cycle's review didn't surface a workspace-to-public migration opportunity. The directive is therefore correctly NOT actioned this cycle.
 
-**Fix:** `git mv plans/open/2026-04-26-rpf-cycle-5-review-remediation.md plans/done/`.
+**Verification:** No new workspace-to-public migration issues found in this cycle's review (architect, code-reviewer, perf, security, test, designer, debugger, document-specialist, tracer, verifier, critic). The directive remains in monitoring mode.
 
-**Exit criteria:** Cycle-5 plan in `plans/done/`. Gates green.
+**Fix:** No action — orchestrator instruction is honored.
+
+**Carried-deferred status:** Resolved at verification. No migration work this cycle per surfacing rule.
 
 ---
 
-## Final Sweep — Critique Surface
+## Summary
 
-- The cycle-5 fixes addressed the symptoms and added safeguards, but the operational-knowledge gap (CRIT6-1) is the real follow-up. Tooling alone doesn't ship recovery procedures.
-- The cycle-5 dispose-hook test (CRIT6-2) is a great example of a load-bearing test whose name doesn't reflect what it pins.
-- The migration filename + nullability (CR6-3 / CRIT6-4) are easy housekeeping that compounds if left.
-
-**No agent failures.**
+**Cycle-7 NEW findings:** 0 HIGH, 0 MEDIUM, 5 LOW (CRIT7-1 / CRIT7-2 / CRIT7-4 plannable; others deferable; CRIT7-5 resolved).
+**Cycle-6 carry-over status:** All cycle-6 fixes hold. Documentation gaps remain around lifecycle/sunset criteria.
+**Critical verdict:** No cross-cutting concerns at HEAD. The cycle-6 cluster fix is pragmatic but should track operational lifecycle. Most findings are housekeeping/process.

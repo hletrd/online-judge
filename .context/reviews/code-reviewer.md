@@ -1,117 +1,166 @@
-# Code Reviewer — RPF Cycle 6/100
+# Code Reviewer — RPF Cycle 7/100
 
 **Date:** 2026-04-26
-**Cycle:** 6/100
-**Lens:** code quality, logic, SOLID, maintainability, naming, dead code
+**Cycle:** 7/100
+**Lens:** code quality, logic, SOLID, maintainability, naming, dead code, type discipline
 
 ---
 
-**Cycle-5 carry-over verification:**
-- CR5-1 (`cacheClear` removed): VERIFIED at `route.ts:115-130`. `grep -rn cacheClear src/ tests/` returns no hits.
-- CR5-2 (`_refreshingKeys` co-location): VERIFIED at `route.ts:75-99`. The function is the single owner.
-- CR5-3 (`MIN_INTERVAL_MS` placement): UNCHANGED at `anti-cheat-monitor.tsx:41` (carried-deferred).
-- CR5-4 (`lastEventRef` Record bound): UNCHANGED at `anti-cheat-monitor.tsx:40,127-129` (carried-deferred).
+## Cycle-6 carry-over verification
+
+All cycle-6 plan tasks confirmed at HEAD:
+- Task A: `deploy-docker.sh:570-596` Step 5b backfill psql block — present.
+- Task B: AGENTS.md / .env.example documentation — present.
+- Task C: cycle-5 plan archived — verified.
+
+Cycle-6 carried-deferred items reverified:
+- CR6-1 (`setCooldown.valueMs` ambiguous name) — still ambiguous at `route.ts:117,125`. Carried.
+- CR6-2 (`__test_internals` block-vs-expression body) — still inconsistent at `route.ts:121-130`. Carried.
+- CR6-3 (`0021_lethal_black_tom.sql` filename) — still auto-generated. Carried.
+- CR6-4 (`deploy-docker.sh:596` regex broadness) — unchanged. Carried.
 
 ---
 
-## CR6-1: [LOW, NEW] `setCooldown` parameter `valueMs` is named ambiguously — caller-side usage suggests it's a timestamp, not a duration
+## CR7-1: [LOW, NEW] `_lastRefreshFailureAt` map mutation in two places without a single owner — the LRU dispose hook deletes, the catch-block sets, and a comment in the catch-block is the only documentation of the dispose-vs-set ordering
 
-**Severity:** LOW (naming clarity)
+**Severity:** LOW (maintainability — invariant lives only in comments)
 **Confidence:** HIGH
 
 **Evidence:**
-- `route.ts:117,125-127`:
-  ```ts
-  setCooldown: (key: string, valueMs: number) => void;
-  ...
-  setCooldown: (key: string, valueMs: number): void => {
-    _lastRefreshFailureAt.set(key, valueMs);
-  },
-  ```
-- Caller in test (`tests/unit/api/contests-analytics-route.test.ts:257`): `__test_internals.setCooldown(ASSIGNMENT_ID, Date.now())` — passes a timestamp.
-- Production code (`route.ts:95`): `_lastRefreshFailureAt.set(cacheKey, Date.now())` — also a timestamp.
-- The map is named `_lastRefreshFailureAt` and stores Date.now() values.
+- `src/app/api/v1/contests/[assignmentId]/analytics/route.ts:32`: `const _lastRefreshFailureAt = new Map<string, number>();` declared at module scope.
+- Mutation site 1: `route.ts:45` (`dispose` hook): `_lastRefreshFailureAt.delete(key)`.
+- Mutation site 2: `route.ts:84` (success path): `_lastRefreshFailureAt.delete(cacheKey)`.
+- Mutation site 3: `route.ts:95` (catch path): `_lastRefreshFailureAt.set(cacheKey, Date.now())`.
+- The catch-path comment at lines 88-94 documents that `analyticsCache.set()` must not be called from this branch because the dispose hook would synchronously fire and delete the cooldown timestamp. This is a real invariant.
 
-**Why it's a problem:** The parameter name `valueMs` is misleading. `Ms` suffix idiomatically means "duration in milliseconds" (e.g., `REFRESH_FAILURE_COOLDOWN_MS = 5_000` = 5 seconds). But the value stored is an absolute timestamp from `Date.now()`. A future contributor might pass `5_000` thinking they're setting "5s of cooldown" and instead anchor the cooldown 1745702281 ms in the past, defeating the failure throttle.
+**Why it's a problem:** The map's correctness depends on a non-trivial invariant ("never call analyticsCache.set + _lastRefreshFailureAt.set in sequence for the same key without an intervening tick"). The invariant lives in a comment block 60 lines below the map declaration. A reader who only looks at line 32 sees a plain Map with no constraints.
 
-**Fix:**
-1. Rename the parameter to `failureAtMs` or `timestampMs`:
+**Fix (small, optional):**
+1. Wrap the map in an object with explicit methods that encode the invariant:
    ```ts
-   setCooldown: (key: string, failureAtMs: number) => void;
+   const refreshFailureCooldown = {
+     has: (key: string) => _lastRefreshFailureAt.has(key),
+     get: (key: string) => _lastRefreshFailureAt.get(key) ?? 0,
+     setFailureAt: (key: string, timestampMs: number) => _lastRefreshFailureAt.set(key, timestampMs),
+     clear: (key: string) => _lastRefreshFailureAt.delete(key),
+   };
    ```
-2. Update the test caller to use the same name.
+2. Move the dispose hook's call into `refreshFailureCooldown.clear(key)` so all three mutation sites go through the named API.
+3. The wrapper makes the invariant searchable (one grep for `setFailureAt` finds the producer).
 
-**Exit criteria:** No `valueMs` in `route.ts` or its tests; gates green.
+**Exit criteria:** Mutation sites for `_lastRefreshFailureAt` go through a named API; the invariant has a single owner.
+
+**Carried-deferred status:** Defer (current code correct, refactor is cosmetic improvement).
 
 ---
 
-## CR6-2: [LOW, NEW] `__test_internals` block has 3 of 3 methods that wrap a single line each — `setCooldown` uses block-body, others use expression-body (inconsistent)
+## CR7-2: [LOW, NEW] `performFlush` uses sequential `await sendEvent()` in a `for` loop — semantics intentional (rate-limit friendly) but the choice is undocumented
 
-**Severity:** LOW (cosmetic; non-blocking)
+**Severity:** LOW (clarity — intentional design choice not commented)
 **Confidence:** HIGH
 
 **Evidence:**
-- `route.ts:121-130`:
+- `src/components/exam/anti-cheat-monitor.tsx:67-80` (`performFlush`):
   ```ts
-  ? {
-      hasCooldown: (key: string): boolean => _lastRefreshFailureAt.has(key),
-      setCooldown: (key: string, valueMs: number): void => {
-        _lastRefreshFailureAt.set(key, valueMs);
-      },
-      cacheDelete: (key: string): boolean => analyticsCache.delete(key),
+  for (const event of pending) {
+    const ok = await sendEvent(event);
+    if (!ok && event.retries < MAX_RETRIES) {
+      remaining.push({ ...event, retries: event.retries + 1 });
     }
+  }
   ```
-- `setCooldown` uses block-body, the other two use expression-body. Inconsistent style within the same object literal.
+- The events are sent ONE AT A TIME, not via `Promise.all([...].map(sendEvent))`. With a typical pending queue of 5-200 events, this serializes 5-200 sequential HTTP round-trips.
 
-**Fix:** Make all three expression-body. Type narrowing is unaffected because the return types are pinned by `TestInternals`. Note `Map.set` returns `Map`, not `void`; preserve `void` return by wrapping with `{ _lastRefreshFailureAt.set(...); }` OR use the void operator. Cleanest is to keep block-body but make the styling consistent the other way (block-body all three). Either approach works — pick whichever is more readable.
+**Why it's a problem (or not):** The choice is correct — the rate-limit guard at `route.ts` would reject parallel bursts, and a serial flush avoids overwhelming the server. But there's no comment explaining the rationale. A well-meaning refactor to `Promise.all` would silently break the rate-limit contract.
 
-**Exit criteria:** Style is consistent across the three methods; gates green.
+**Fix:** Add a one-line comment above the `for` loop:
+```ts
+// Send sequentially (NOT Promise.all) to respect server rate-limit on
+// /api/v1/contests/[assignmentId]/anti-cheat. With MAX_RETRIES=3 and
+// localStorage cap of 200 events, worst-case latency is ~200 sequential
+// HTTP round-trips, but parallel send would 429-storm the server.
+```
 
----
+**Exit criteria:** The intentional serial-send design is documented at the call site.
 
-## CR6-3: [LOW, NEW] `0021_lethal_black_tom.sql` filename is auto-generated nonsense and not self-documenting
-
-**Severity:** LOW (operator readability)
-**Confidence:** HIGH
-
-**Evidence:**
-- `drizzle/pg/0021_lethal_black_tom.sql` content: `ALTER TABLE "tags" ADD COLUMN "updated_at" timestamp with time zone;`.
-- The filename is drizzle-kit's default random-tag-generator. Other migrations in the journal have meaningful names (`0018_add_late_penalty_check`, `0020_drop_judge_workers_secret_token`).
-
-**Why it's a problem:** Operators reading `git log` or browsing `drizzle/pg/` need to open `0021_lethal_black_tom.sql` to see what it does. By contrast, `0021_add_tags_updated_at.sql` is self-documenting.
-
-**Fix:** Rename to `0021_add_tags_updated_at.sql` AND update `meta/_journal.json` entry (`tag` field). The snapshot file `meta/0021_snapshot.json` is keyed by index, not name; verify drizzle-kit handles this rename cleanly (likely safe as the snapshot file name matches the index).
-
-**Exit criteria:** All `0021` references use the descriptive name; gates green.
+**Carried-deferred status:** Defer (current code correct, comment improvement only).
 
 ---
 
-## CR6-4: [LOW, NEW] `deploy-docker.sh:596` data-loss regex is broad
+## CR7-3: [LOW, NEW] `__test_internals.cacheDelete` exposes `analyticsCache.delete()` to tests — but the success-path on `refreshAnalyticsCacheInBackground` does NOT call `cacheDelete`, instead it calls `analyticsCache.set()` then `_lastRefreshFailureAt.delete(cacheKey)` — the test-only API surface name is ambiguous
 
-**Severity:** LOW (false-positive risk in deploy log scanning)
+**Severity:** LOW (test API naming)
 **Confidence:** MEDIUM
 
 **Evidence:**
-- `deploy-docker.sh:596`:
-  ```sh
-  if grep -qiE "data loss|are you sure|warning:.*destructive|please confirm" <<<"$PUSH_OUT"; then
-  ```
-- The pattern `warning:.*destructive` would also match if any of the npm install output includes the word "destructive". Likewise `please confirm` matches a wide variety of npm prompts.
+- `route.ts:118`: `cacheDelete: (key: string) => boolean;` — exposes `analyticsCache.delete`.
+- `route.ts:128`: `cacheDelete: (key: string): boolean => analyticsCache.delete(key)` — implementation.
+- The name `cacheDelete` suggests "delete from the analytics cache". But a test reader might wonder: does this also clear the cooldown? (Yes, via the dispose hook.) That side-effect is non-obvious from the name.
 
-**Why it's a problem:** A false positive triggers `warn` and prevents the success log, even when drizzle-kit actually applied the schema. This makes deploy "noisy yellow" instead of "definitive green/red".
+**Why it's a problem:** A test that calls `__test_internals.cacheDelete(ASSIGNMENT_ID)` thinking it ONLY deletes the cache entry is also clearing the cooldown timestamp. If the test had set a cooldown via `setCooldown` and then called `cacheDelete`, the cooldown would be gone — surprising.
 
-**Fix:** Anchor patterns more specifically to drizzle-kit's actual output. Prefer narrower patterns: `grep -qiE "you're about to delete|dropping a column|data-loss"` — narrower, less surface area.
+**Fix (cosmetic):**
+1. Rename to `evictCacheAndCooldown` or `clearCacheEntry` (the latter is shorter; the dispose-side-effect is documented in the JSDoc above the cache declaration).
+2. Or add a JSDoc to the `cacheDelete` field: `/** Delete the cache entry for this key; the dispose hook will also clear any cooldown timestamp. */`.
 
-**Exit criteria:** Pattern matches actual drizzle-kit prompts (verify via test in a sandbox) but does not match common npm warnings. Gates green.
+**Exit criteria:** The test API name or doc reflects the dispose side-effect.
+
+**Carried-deferred status:** Defer (test API stable, no consumer issue).
 
 ---
 
-## Final Sweep — Style + Naming
+## CR7-4: [LOW, NEW] `bytesToBase64` and `bytesToHex` in `src/proxy.ts:31-41` use inconsistent iteration patterns
 
-- `analytics/route.ts` is 193 lines, well-structured. No dead exports.
-- `anti-cheat-monitor.tsx` consistent with cycle 4-5 conventions.
-- `anti-cheat-storage.ts` is small and well-tested.
-- `proxy.ts` not modified this cycle.
-- `judge/auth.ts` clean.
+**Severity:** LOW (cosmetic / DRY)
+**Confidence:** HIGH
 
-**No agent failures.**
+**Evidence:**
+- `src/proxy.ts:31-37`:
+  ```ts
+  function bytesToBase64(bytes: Uint8Array) {
+    let binary = "";
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+    return btoa(binary);
+  }
+  ```
+- `src/proxy.ts:39-41`:
+  ```ts
+  function bytesToHex(bytes: Uint8Array) {
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+  ```
+- Both functions are stateless byte-level transformers; they could share an internal mapper.
+
+**Why it's a problem:** None significant. The `bytesToBase64` form has O(n) string growth (each += allocates a new string in older V8 — though modern V8 handles this fine). `Array.from(bytes, (b) => String.fromCharCode(b)).join("")` would be more consistent stylistically.
+
+**Fix (cosmetic):** Rewrite `bytesToBase64` using the same `Array.from` pattern as `bytesToHex`.
+
+**Exit criteria:** Both functions use the same iteration style.
+
+**Carried-deferred status:** Defer (current code correct, cosmetic improvement).
+
+---
+
+## CR7-5: [LOW, NEW] `clearAuthSessionCookies` writes `secureName` cookie unconditionally with `secure: true` — but on HTTP-only deployments the browser will silently drop this cookie (no error, just a no-op clear)
+
+**Severity:** LOW (defensive / dev-experience — already known per cycle-3 deferred item AGG3-6/SEC3-1)
+**Confidence:** HIGH
+
+**Evidence:**
+- `src/proxy.ts:94`: `response.cookies.set(secureName, "", { maxAge: 0, path: "/", secure: true });`
+- On HTTP (non-localhost dev), the browser drops `Set-Cookie` directives with `secure` attribute. Result: the secure cookie is never cleared, but it also was never set on HTTP, so the no-op is correct.
+- Per cycle-6 deferred AGG3-6/SEC3-1: "production HTTPS guaranteed; dev nuisance only".
+
+**Why it's a problem:** None at production. The deferred item from cycle 3 remains accurate. No new finding here — recording for completeness.
+
+**Carried-deferred status:** Defer per cycle-3 reasoning.
+
+---
+
+## Summary
+
+**Cycle-7 NEW findings:** 0 HIGH, 0 MEDIUM, 5 LOW (all carried-deferable).
+**Cycle-6 carry-over status:** All 4 cycle-6 cosmetic items remain unchanged.
+**Verdict:** Code quality at HEAD is high. No fresh issues that require implementation this cycle. All findings are cosmetic / defensive doc improvements.

@@ -1,77 +1,113 @@
-# Verifier — RPF Cycle 6/100
+# Verifier Review — RPF Cycle 7/100
 
 **Date:** 2026-04-26
-**Cycle:** 6/100
-**Lens:** evidence-based verification of cycle-5 task exit criteria + general correctness check
+**Cycle:** 7/100
+**Lens:** evidence-based correctness check against stated behavior
 
 ---
 
-## Cycle-5 task exit criterion verification
+## Cycle-6 verification
 
-| Cycle-5 Task | Exit Criterion | HEAD Verification | Status |
-|--------------|----------------|-------------------|--------|
-| Task A.1 | `meta/0020_snapshot.json` exists, no `secret_token` column | `python3 -c "..."` returns columns including `secret_token_hash` (no plain `secret_token`) | PASS |
-| Task A.2 | Pre-drop backfill SQL exists at 0020 (cycle-5 plan rolled it into 0020 + added 0021_lethal_black_tom) | `0020_drop_judge_workers_secret_token.sql` contains the DO-block + DROP | PASS |
-| Task A.3 | `deploy-docker.sh` no longer prints `[OK] Database migrated` when push hits data-loss prompt | `deploy-docker.sh:594-600` correctly downgrades to warn | PASS |
-| Task A.4 | Maintainer comment explains push-vs-migrate choice | `deploy-docker.sh:544-566` contains the comment block | PASS |
-| Task B | Workspace-to-public migration directive reflects reality | `user-injected/workspace-to-public-migration.md` Status section dated 2026-04-26 | PASS |
-| Task C | `__test_internals: TestInternals \| undefined` (no double-cast); cacheClear removed | `route.ts:115-130` — type is honest, cacheClear gone | PASS |
-| Task D | `_refreshingKeys` lifecycle co-located inside refresh function | `route.ts:79-99` — function is single owner | PASS |
-| Task E | New `clearAuthSessionCookies` dual-clear test passes | `tests/unit/proxy.test.ts:488-507` exists and asserts Max-Age=0 + Secure | PASS |
-| Task F | New test pins `__test_internals === undefined` in production NODE_ENV | `tests/unit/api/contests-analytics-route.test.ts:234-247` | PASS |
-| Task G | Cycle-4 plan moved to plans/done/ | Verified: plans/done/2026-04-27-rpf-cycle-4-review-remediation.md exists | PASS |
+All cycle-6 plan tasks verified complete at HEAD by direct evidence:
 
-**All cycle-5 exit criteria verified.**
+### Task A — `deploy-docker.sh` Step 5b backfill (commit `18d93273`)
+- `deploy-docker.sh:545`: comment `# Step 5b: Pre-drop secret_token backfill (idempotent, MUST run before push)` ✓
+- `deploy-docker.sh:570`: `info "Running pre-drop secret_token backfill (idempotent)..."` ✓
+- `deploy-docker.sh:583-595`: psql container with DO-block IF EXISTS guard + UPDATE judge_workers SET secret_token_hash = encode(sha256(...), 'hex') ✓
+- `deploy-docker.sh:596`: `success "secret_token backfill complete"` ✓
+- Comment block `deploy-docker.sh:544-569` cross-references cycle-6 plan + cycle-5 aggregate AGG5-1 ✓
+
+### Task B — `DRIZZLE_PUSH_FORCE` documentation (commit `8a776241`)
+- `AGENTS.md:349`: `### Database migration recovery (DRIZZLE_PUSH_FORCE)` heading ✓
+- `AGENTS.md:359`: describes `DRIZZLE_PUSH_FORCE=1` behavior + Step 5b unconditional backfill ✓
+- `.env.example:25-31`: commented `DRIZZLE_PUSH_FORCE=0` entry with full description ✓
+- `.env.production.example:14-20`: same commented entry ✓
+- `deploy-docker.sh:651`: warn message references AGENTS.md "Database migration recovery (DRIZZLE_PUSH_FORCE)" section ✓
+
+### Task C — Cycle-5 plan archived (commit `e5d1dc64`)
+- `plans/done/2026-04-26-rpf-cycle-5-review-remediation.md` exists ✓
+- `plans/open/` does not contain cycle-5 plan ✓
 
 ---
 
-## VER6-1: [MEDIUM, NEW] `0020` backfill DO-block exit criterion is incomplete — verifies presence, not execution
+## VER7-1: [LOW, NEW] Verify `deploy-docker.sh:573` NETWORK_NAME detection regex matches expected docker network names
 
-**Severity:** MEDIUM (verification gap — overlaps with SEC6-1, ARCH6-2, TRC6-1)
+**Severity:** LOW (verification of cycle-6 implementation correctness)
 **Confidence:** HIGH
 
-**Evidence:** Cycle-5 verifier confirmed the SQL DO-block exists in 0020. But the deploy script (`drizzle-kit push`) does NOT execute SQL files from the journal. So the DO-block is present-but-dead under the current deploy strategy. A complete exit criterion would require: "the backfill ACTUALLY runs against any deploy that targets a DB carrying `secret_token` — verified by either (a) deploy-time invocation of the DO-block via psql, or (b) switching the deploy to drizzle-kit migrate."
+**Evidence:**
+- `NETWORK_NAME=$(remote "docker network ls --format '{{.Name}}' | grep judgekit | head -1" 2>/dev/null)`
+- Fallback: `NETWORK_NAME="${NETWORK_NAME:-judgekit_default}"`
+- The grep pattern is bare `judgekit` (no anchor), so it matches networks containing "judgekit" anywhere in their name.
 
-**Fix:** Re-open the cycle-5 SEC5-1 finding under cycle-6 (now SEC6-1 / ARCH6-2 / TRC6-1) and ensure the backfill is actually executed during deploy, not just present in the file system.
+**Why it's worth tracking:** The bare `judgekit` pattern is too permissive (same as DBG7-2).
 
-**Exit criteria:** A deploy against a DB with `secret_token IS NOT NULL` produces zero `secret_token_hash IS NULL AND secret_token IS NOT NULL` rows immediately before the DROP. Gates green.
+**Fix:** Use anchored pattern or docker-compose's project label filter.
+
+**Exit criteria:** NETWORK_NAME selection is anchored to the active deploy's compose project.
+
+**Carried-deferred status:** Defer (typical deploy host has only the active project).
 
 ---
 
-## VER6-2: [LOW, NEW] `tags.updated_at` migration nullable is inconsistent with the schema's stated convention
+## VER7-2: [LOW, NEW] Verify schema-parity test passes for the cycle-5 added `tags.updated_at` column
 
-**Severity:** LOW (data-model consistency)
+**Severity:** LOW (carried from TE6-4 — verified)
 **Confidence:** HIGH
 
-**Evidence:** Schema convention (verified via grep) — every other `updated_at` column in `schema.pg.ts` uses `.notNull()`. Only `tags.updated_at` (line 1056-1057) omits it.
+**Evidence:**
+- `tests/unit/db/schema-parity.test.ts` (53 lines): 4 generic tests only.
+- The schema-parity test does NOT enumerate specific columns, so the addition of `tags.updated_at` does not break or strengthen this test.
+- `npm run test:unit` reports 2234 passing tests — schema-parity passes.
 
-**Fix:** Same as CRIT6-4 / SEC6-2. Backfill + add `.notNull()` OR explicit code comment justifying the deviation.
+**Conclusion:** Schema-parity test does not assert column-level details. Cycle-5 addition implicitly covered.
 
-**Exit criteria:** Either consistent NOT NULL OR explicit documented exception. Gates green.
+**Fix:** No action.
+
+**Carried-deferred status:** Resolved at verification.
 
 ---
 
-## VER6-3: [LOW, NEW] DRIZZLE_PUSH_FORCE knob has no operator-facing documentation
+## VER7-3: [LOW, NEW] Verify gates state at cycle-7 start
 
-**Severity:** LOW (verification gap on operator ergonomics)
+**Severity:** LOW (sanity check)
 **Confidence:** HIGH
 
-**Evidence:** Same as DOC6-1 / ARCH6-1.
+**Evidence:**
+- `npm run lint` exit 0; 14 warnings (untracked dev .mjs scripts) — verified.
+- `npm run test:unit` passed: 304 files, 2234 tests, 0 failures, 31s — verified.
+- `npm run build` exit 0 — verified.
 
-**Fix:** Document in AGENTS.md and .env.example.
-
-**Exit criteria:** Knob is discoverable from operator-facing docs. Gates green.
+**Conclusion:** All gates green at cycle-7 start. Cycle-7 has no inherited gate failures.
 
 ---
 
-## Final Sweep — Verification
+## VER7-4: [LOW, NEW] Verify `__test_internals` undefined in production NODE_ENV (cycle-5 AGG5-7)
 
-- All cycle-5 task exit criteria PASS.
-- New cycle-6 findings are smaller-scope (LOW-MEDIUM); the highest-impact one (SEC6-1 / ARCH6-2 / TRC6-1 / VER6-1) is the same root cluster as cycle-5 SEC5-1 — the safety mechanism exists in code but is bypassed by the actual deploy path.
+**Severity:** LOW (verification)
+**Confidence:** HIGH
 
-**Gates at cycle-6 baseline:**
-- `npm run lint`: 0 errors, 14 warnings (untracked dev .mjs scripts).
-- `npm run test:unit`: 304 files passed, 2234 tests passed, EXIT=0.
-- `npm run build`: EXIT=0.
+**Evidence:**
+- `route.ts:121-130`:
+  ```ts
+  export const __test_internals: TestInternals | undefined =
+    process.env.NODE_ENV === "test"
+      ? { ... }
+      : undefined;
+  ```
+- The runtime gate is `=== "test"` — strict equality. In production (`NODE_ENV === "production"`), the export is `undefined`.
+- The TypeScript type is `TestInternals | undefined`, forcing callers to null-check.
 
-**No agent failures.**
+**Conclusion:** The cycle-5 AGG5-7 fix is in place. Production callers cannot access internals without compile error.
+
+**Fix:** No action.
+
+**Carried-deferred status:** Resolved at verification.
+
+---
+
+## Summary
+
+**Cycle-7 NEW findings:** 0 HIGH, 0 MEDIUM, 4 LOW (mostly verification artifacts; VER7-2 / VER7-3 / VER7-4 resolved at verification).
+**Cycle-6 carry-over status:** All cycle-6 plan tasks fully verified by direct evidence.
+**Verifier verdict:** No regressions or unverified claims at HEAD. The cycle-6 fixes are present and correct as committed.

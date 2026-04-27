@@ -1,93 +1,103 @@
-# Tracer — RPF Cycle 6/100
+# Tracer Review — RPF Cycle 7/100
 
 **Date:** 2026-04-26
-**Cycle:** 6/100
-**Method:** causal tracing of suspicious flows; competing-hypothesis evaluation
+**Cycle:** 7/100
+**Lens:** causal tracing of suspicious flows, competing hypotheses, control-flow analysis
 
 ---
 
-**Cycle-5 carry-over verification:**
-- TRC5-1 (drizzle-kit push lifecycle drift): RESOLVED via cycle-5 fixes.
-- TRC5-2 (`__test_internals` cast hides production crash): RESOLVED at `route.ts:115-130`.
-- TRC5-3 (anti-cheat retry timer cross-assignment): UNCHANGED — carried deferred.
+## Cycle-6 carry-over verification
+
+The cycle-6 critical fix (Step 5b backfill in deploy-docker.sh) is correctly implemented. Tracer re-verifies the causal chain:
+
+1. **Trigger:** Deploy invokes `deploy-docker.sh`.
+2. **Step 5 (DB ready):** Postgres container becomes healthy.
+3. **Step 5b (cycle-6 fix):** psql container starts, runs DO-block.
+   - DO-block guard: `IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'judge_workers' AND column_name = 'secret_token') THEN ...`
+   - When column EXISTS: backfill any NULL secret_token_hash from secret_token via `encode(sha256(...), 'hex')`.
+   - When column GONE (already migrated): no-op.
+4. **Step 6 (drizzle-kit push):** synthesizes DDL from schema.pg.ts vs DB. With or without `--force`, the destructive `ALTER TABLE judge_workers DROP COLUMN secret_token` either applies (force) or is skipped (no-force).
+5. **End state:** All workers with valid plaintext tokens now have hashes; none are orphaned.
+
+The causal chain is sound. No traces of partial failure.
 
 ---
 
-## TRC6-1: [MEDIUM, NEW] Causal trace: `DRIZZLE_PUSH_FORCE=1` deploy path → bypasses 0020 backfill → orphan workers
+## TRC7-1: [LOW, NEW] Trace the `_lastRefreshFailureAt` mutation lifecycle across TTL boundaries — three mutation sites, dispose-coupling, and TTL eviction form a non-trivial state machine
 
-**Severity:** MEDIUM (matches SEC6-1; tracing the failure path explicitly)
+**Severity:** LOW (verification of correctness, not a bug)
 **Confidence:** HIGH
 
-**Trace:**
+**Evidence (causal trace):**
+1. **t=0:** Cache miss. `analyticsCache.set(key, entry)` populates cache. `_lastRefreshFailureAt` is empty.
+2. **t=30s:** Stale-revalidate. `refreshAnalyticsCacheInBackground` invoked. `_refreshingKeys.add(key)`.
+3. **t=30.1s:** `computeContestAnalytics` throws. Catch-block sets `_lastRefreshFailureAt.set(key, Date.now())`.
+4. **t=30.2s:** Subsequent request. Cache-hit, age=30.2s > 30s. Cooldown check: `nowMs - lastFailure = 100ms < 5000ms`. Refresh skipped. ✓
+5. **t=60s:** Cache TTL expires. `analyticsCache` evicts. Dispose fires: `_lastRefreshFailureAt.delete(key)`. Cooldown is GONE.
+6. **t=60.1s:** Next request. Cache miss → fresh compute → cache.set. Cooldown gone. If compute throws again, catch-block sets cooldown again. ✓
 
-1. Operator sees deploy warn: "drizzle-kit push detected a destructive schema change but did NOT apply it."
-2. Operator reads warn → identifies `DRIZZLE_PUSH_FORCE=1` as the recovery flag.
-3. Operator restarts deploy: `DRIZZLE_PUSH_FORCE=1 ./deploy-docker.sh ...`.
-4. `deploy-docker.sh:577-579` sets `PUSH_FORCE_FLAG=" --force"`.
-5. `deploy-docker.sh:590` invokes `npx drizzle-kit push --force`.
-6. `drizzle-kit push --force` reads `schema.pg.ts`, computes diff vs live DB, synthesizes its own DDL (`ALTER TABLE judge_workers DROP COLUMN secret_token`), and applies it.
-7. The DO-block in `0020_drop_judge_workers_secret_token.sql` is NOT executed because `push` ignores the journal.
-8. Workers with `secret_token IS NOT NULL AND secret_token_hash IS NULL` are immediately orphaned.
-9. `src/lib/judge/auth.ts:75-82` rejects them with `"workerSecretNotMigrated"`.
-10. Operator sees workers failing auth post-deploy. No clear connection to the schema change.
+**Edge case (TTL during refresh):** If TTL expires DURING a refresh:
+- lru-cache default `updateAgeOnGet: false` — get does NOT extend the entry. Entry expires at t=60s mid-refresh.
+- During the gap, a SECOND request comes in. Cache.get returns the current entry. Stale check triggers a SECOND refresh — but `_refreshingKeys.has(key)` = true, so it short-circuits. ✓
+- At t=60s: dispose fires: `_lastRefreshFailureAt.delete(key)`. First refresh still in flight.
+- At t=60.1s: First refresh completes successfully. `analyticsCache.set(key, freshEntry)` — FRESH set after dispose. Then `_lastRefreshFailureAt.delete(cacheKey)` no-op. ✓
 
-**Competing hypothesis (refuted):** "drizzle-kit push reads `_journal.json` and runs the SQL files." False — verified per drizzle-kit docs: push is schema-vs-DB diff only.
+**Conclusion:** No bug. The causal trace confirms state-machine correctness across TTL boundaries.
 
-**Competing hypothesis (refuted):** "0020 SQL would still run because it's in the journal directory." False — drizzle-kit push does not execute SQL from the journal directory.
-
-**Fix:** Same as SEC6-1. Inline the backfill DO-block (or call psql with the SQL file) before `drizzle-kit push` in the deploy script, regardless of force mode.
-
-**Exit criteria:** A traced deploy with DRIZZLE_PUSH_FORCE=1 against a DB carrying `secret_token` orphans zero workers (verified by SELECT COUNT(*) WHERE secret_token IS NOT NULL AND secret_token_hash IS NULL = 0 immediately before the DROP). Gates green.
+**Carried-deferred status:** Resolved at verification.
 
 ---
 
-## TRC6-2: [LOW, NEW] Causal trace: `_lastRefreshFailureAt.set` for a never-cached key → leak
+## TRC7-2: [LOW, NEW] Trace the `anti-cheat-monitor.tsx` retry timer lifecycle — the timer is cleared in the cleanup effect, but `scheduleRetryRef.current` is replaced via a separate effect; on `performFlush` identity change, in-flight timer holds stale closure
 
-**Severity:** LOW (latent; current code is correct)
+**Severity:** LOW (theoretical — assignmentId stable in practice)
+**Confidence:** MEDIUM
+
+**Evidence (causal trace):**
+- Line 109's effect REPLACES `scheduleRetryRef.current` whenever `performFlush` identity changes (deps: `[performFlush]`).
+- `performFlush` deps: `[assignmentId, sendEvent]` (line 80). `sendEvent` deps: `[assignmentId]` (line 60).
+- An in-flight timer's closure captured the OLD `performFlush`. When the effect re-runs, the timer is NOT cleared.
+
+**Trace conclusion:** Mid-life `assignmentId` change is theoretically problematic — OLD timer would post events to OLD endpoint. But `assignmentId` is set once per page mount and doesn't change without unmount.
+
+**Fix (defensive):** Clear `retryTimerRef` in the cleanup of line 109's effect:
+```ts
+useEffect(() => {
+  scheduleRetryRef.current = ...;
+  return () => {
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  };
+}, [performFlush]);
+```
+
+**Exit criteria:** Stale-closure risk on assignmentId change is eliminated.
+
+**Carried-deferred status:** Defer (assignmentId is stable in practice).
+
+---
+
+## TRC7-3: [LOW, NEW] Trace the `proxy.ts` token-validation flow — cache key includes `authenticatedAt`; legacy tokens with NULL authenticatedAt share `${userId}:` cache key
+
+**Severity:** LOW (cache-key collision for legacy tokens — bounded by AUTH_CACHE_TTL_MS=2s)
 **Confidence:** HIGH
 
-**Trace (showing why the current code is SAFE):**
+**Evidence:**
+- `src/proxy.ts:267`: `const cacheKey = ${userId}:${authenticatedAtSeconds ?? ""};` — when `authenticatedAtSeconds` is null, key is `${userId}:`.
+- All requests from the same user with NULL authenticatedAt share this key. Cache stores ONE user object, returned for 2s.
 
-1. Request hits `/api/v1/contests/[assignmentId]/analytics`.
-2. Cache miss path (route.ts:188-191) — `await computeContestAnalytics(...)` runs first, then `analyticsCache.set(...)`.
-3. If `computeContestAnalytics` throws here, the throw propagates to the caller. NO cooldown is set. The cache also remains empty for this key. Result: no leak.
-4. Cache hit path (route.ts:154-186) — only fires if there's already an entry. The cooldown can only be set in `refreshAnalyticsCacheInBackground`, which is invoked from the stale-but-fresh branch. So the cache MUST have an entry before cooldown is touched.
-5. When the cached entry is evicted (TTL or capacity), dispose fires and clears the cooldown.
+**Why it's worth tracking:** Within 2s, a revoked legacy user can still authenticate. Per the security tradeoff comment at lines 19-22, this is documented and accepted.
 
-**Conclusion:** The lifecycle is correct. The invariant "cooldown lifecycle is bounded by cache lifecycle" holds.
+**Fix:** No action — documented tradeoff.
 
-**Why it's STILL a tracer note:** A future contributor adding a new code path that sets the cooldown without first ensuring a cache entry will leak. The invariant is enforced by remote-coupling.
-
-**Fix:** Same as PERF6-1. Replace the Map with an LRU + TTL so the invariant is enforced locally.
-
-**Exit criteria:** No path can leak `_lastRefreshFailureAt` entries. Gates green.
+**Carried-deferred status:** Resolved at verification.
 
 ---
 
-## TRC6-3: [LOW, NEW] Causal trace: deploy log says `[OK] Database migrated` after the schema repairs, even when the additive block runs against a fully-aligned DB
+## Summary
 
-**Severity:** LOW (cosmetic — log is technically correct)
-**Confidence:** HIGH
-
-**Trace:**
-
-1. `deploy-docker.sh:566-600` runs drizzle-kit push and decides `success "Database migrated"` vs `warn "..."`.
-2. `deploy-docker.sh:603-617` runs additive PSQL repairs.
-3. `deploy-docker.sh:617`: `success "Schema repairs applied"`.
-4. The additive block always runs, even when there's nothing to repair (because `ADD COLUMN IF NOT EXISTS` is a no-op on aligned schemas).
-
-**Why it's a (low-severity) trace finding:** The "Schema repairs applied" log message claims something happened even when nothing was applied. Operators reading the deploy log can't distinguish "additive ran, made changes" from "additive ran, no-op".
-
-**Fix:** Either (a) capture and check the additive output, downgrading to `info "Schema repairs ran (no-op)"` when nothing happened, or (b) leave as-is and accept the log noise.
-
-**Exit criteria:** Log distinguishes no-op from real changes, OR explicit defer. Gates green.
-
----
-
-## Final Sweep — Causal Traces
-
-- `proxy.ts` flows: cookie clearing now traced + tested.
-- `analytics/route.ts` flows: cache lifecycle is correct; minor lifecycle invariant concerns documented above.
-- `deploy-docker.sh` flows: the `DRIZZLE_PUSH_FORCE=1 → push --force → skip backfill` path (TRC6-1 / SEC6-1) is the highest-priority trace this cycle.
-
-**No agent failures.**
+**Cycle-7 NEW findings:** 0 HIGH, 0 MEDIUM, 3 LOW (TRC7-1 / TRC7-3 resolved at verification; TRC7-2 deferable).
+**Cycle-6 carry-over status:** All cycle-6 fixes hold. Causal chains are sound across all surfaces traced.
+**Tracer verdict:** No control-flow defects at HEAD.
