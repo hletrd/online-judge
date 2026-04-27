@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { getLocale, getTranslations } from "next-intl/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { canAccessProblem } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
-import { languageConfigs, problems, submissions, problemTags } from "@/lib/db/schema";
+import { assignments, languageConfigs, problems, submissions, problemTags } from "@/lib/db/schema";
 import { PublicProblemDetail } from "@/app/(public)/_components/public-problem-detail";
 import { JsonLd } from "@/components/seo/json-ld";
 import { AssistantMarkdown } from "@/components/assistant-markdown";
@@ -16,7 +17,7 @@ import { AcceptedSolutions } from "@/components/problem/accepted-solutions";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
-import { formatDateTimeInTimeZone, formatDateInTimeZone } from "@/lib/datetime";
+import { formatDateTimeInTimeZone, formatDateInTimeZone, formatRelativeTimeFromNow } from "@/lib/datetime";
 import { formatNumber, formatDifficulty, formatScore } from "@/lib/formatting";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PublicQuickSubmit } from "@/components/problem/public-quick-submit";
+import { AntiCheatMonitor } from "@/components/exam/anti-cheat-monitor";
+import { CountdownTimer } from "@/components/exam/countdown-timer";
+import { StartExamButton } from "@/components/exam/start-exam-button";
 import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata, buildSocialImageUrl, NO_INDEX_METADATA, summarizeTextForMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { getResolvedSystemTimeZone } from "@/lib/system-settings";
@@ -32,7 +36,11 @@ import { getProblemTierInfo } from "@/lib/problem-tiers";
 import { getJudgeLanguageDefinition } from "@/lib/judge/languages";
 import { ProblemKeyboardNav } from "./problem-keyboard-nav";
 import { formatSubmissionIdPrefix } from "@/lib/submissions/format";
+import { validateAssignmentSubmission } from "@/lib/assignments/submissions";
+import { getExamSession } from "@/lib/assignments/exam-sessions";
+import { getDbNow } from "@/lib/db-time";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -97,8 +105,23 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   });
 }
 
-export default async function PublicProblemDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function PublicProblemDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ assignmentId?: string }>;
+}) {
+  const [resolvedParams, resolvedSearchParams] = await Promise.all([
+    params,
+    searchParams ?? Promise.resolve(undefined),
+  ]);
+  const { id } = resolvedParams;
+  const normalizedAssignmentId =
+    typeof resolvedSearchParams?.assignmentId === "string" && resolvedSearchParams.assignmentId.trim()
+      ? resolvedSearchParams.assignmentId.trim()
+      : null;
+
   const [t, tCommon, tProblems, tSubmissions, tRankings, session, locale] = await Promise.all([
     getTranslations("publicShell"),
     getTranslations("common"),
@@ -120,8 +143,82 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
     },
   });
 
-  if (!problem || problem.visibility !== "public") {
+  if (!problem) {
     notFound();
+  }
+
+  // --- Assignment context ---
+  // When assignmentId is provided, validate access and allow private problems.
+  let assignmentContext: {
+    id: string;
+    title: string;
+    deadline: Date | null;
+    lateDeadline: Date | null;
+    examMode: string;
+    enableAntiCheat: boolean;
+    personalDeadline: Date | null;
+    isSubmissionBlocked: boolean;
+    groupId: string;
+  } | null = null;
+
+  if (normalizedAssignmentId && session?.user) {
+    const validation = await validateAssignmentSubmission(
+      normalizedAssignmentId,
+      problem.id,
+      session.user.id,
+      session.user.role
+    );
+    if (!validation.ok) {
+      redirect(`/contests/${normalizedAssignmentId}`);
+    }
+
+    const assignment = await db.query.assignments.findFirst({
+      where: eq(assignments.id, normalizedAssignmentId),
+      columns: {
+        id: true,
+        title: true,
+        deadline: true,
+        lateDeadline: true,
+        examMode: true,
+        enableAntiCheat: true,
+        groupId: true,
+      },
+    });
+
+    if (assignment) {
+      let personalDeadline: Date | null = null;
+      if (assignment.examMode === "windowed") {
+        const examSession = await getExamSession(normalizedAssignmentId, session.user.id);
+        personalDeadline = examSession?.personalDeadline ?? null;
+      }
+
+      const now = await getDbNow();
+      const effectiveDeadline = personalDeadline ?? assignment.lateDeadline ?? assignment.deadline ?? null;
+      const isSubmissionBlocked = effectiveDeadline ? new Date(effectiveDeadline) < now : false;
+
+      assignmentContext = {
+        id: assignment.id,
+        title: assignment.title,
+        deadline: assignment.deadline ?? null,
+        lateDeadline: assignment.lateDeadline ?? null,
+        examMode: assignment.examMode ?? "none",
+        enableAntiCheat: Boolean(assignment.enableAntiCheat),
+        personalDeadline,
+        isSubmissionBlocked,
+        groupId: assignment.groupId,
+      };
+    }
+  }
+
+  // Access check: public problems are always accessible.
+  // Private/hidden problems require assignment context or direct access.
+  if (problem.visibility !== "public") {
+    if (!assignmentContext && session?.user) {
+      const hasAccess = await canAccessProblem(problem.id, session.user.id, session.user.role);
+      if (!hasAccess) notFound();
+    } else if (!assignmentContext && !session?.user) {
+      notFound();
+    }
   }
 
   // All queries after the problem lookup are independent — run in parallel
@@ -335,6 +432,17 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
     locale,
   );
 
+  // Exam session for windowed contests
+  let examSession: { startedAt: Date; personalDeadline: Date } | null = null;
+  if (assignmentContext?.examMode === "windowed" && session?.user) {
+    const session_ = await getExamSession(assignmentContext.id, session.user.id);
+    examSession = session_ ? { startedAt: session_.startedAt, personalDeadline: session_.personalDeadline } : null;
+  }
+
+  const resolvedBackHref = assignmentContext
+    ? buildLocalePath(`/contests/${assignmentContext.id}`, locale)
+    : buildLocalePath("/practice", locale);
+
   return (
     <>
       <JsonLd data={[problemJsonLd, breadcrumbJsonLd]} />
@@ -343,6 +451,49 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
         nextProblemId={nextProblem?.id ?? null}
         locale={locale}
       />
+
+      {/* Assignment context: anti-cheat, countdown, exam session */}
+      {assignmentContext && (
+        <>
+          <AntiCheatMonitor assignmentId={assignmentContext.id} enabled={assignmentContext.enableAntiCheat} />
+          {assignmentContext.enableAntiCheat && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 px-4 py-3">
+              <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                {tProblems("antiCheat.participantNoticeTitle")}
+              </p>
+              <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
+                {tProblems("antiCheat.participantNoticeBody")}
+              </p>
+            </div>
+          )}
+        </>
+      )}
+
+      {assignmentContext && !assignmentContext.isSubmissionBlocked && assignmentContext.examMode === "windowed" && !examSession && (
+        <div className="rounded-lg border p-6 text-center space-y-4">
+          <p className="text-muted-foreground">{tProblems("examNotStarted")}</p>
+          <StartExamButton
+            groupId={assignmentContext.groupId}
+            assignmentId={assignmentContext.id}
+            durationMinutes={0}
+          />
+        </div>
+      )}
+
+      {assignmentContext && assignmentContext.examMode === "windowed" && examSession && !assignmentContext.isSubmissionBlocked && (
+        <CountdownTimer
+          deadline={new Date(examSession.personalDeadline).getTime()}
+          label={tProblems("assignmentDeadlineNotice")}
+        />
+      )}
+
+      {assignmentContext && assignmentContext.examMode === "scheduled" && assignmentContext.deadline && !assignmentContext.isSubmissionBlocked && (
+        <CountdownTimer
+          deadline={new Date(assignmentContext.deadline).getTime()}
+          label={tProblems("assignmentDeadlineNotice")}
+        />
+      )}
+
       <div className="space-y-6">
         <Tabs defaultValue="problem">
           <TabsList>
@@ -355,8 +506,8 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
             <div className={session?.user ? "grid grid-cols-1 gap-6 lg:grid-cols-2" : "space-y-6"}>
               <div className="space-y-6">
                 <PublicProblemDetail
-                  backHref={buildLocalePath("/practice", locale)}
-                  backLabel={tCommon("back")}
+                  backHref={resolvedBackHref}
+                  backLabel={assignmentContext ? assignmentContext.title : tCommon("back")}
                   title={problem.title}
                   description={problem.description}
                   authorLabel={tProblems("badges.author", { name: problem.author?.name ?? t("practice.unknownAuthor") })}
@@ -470,6 +621,7 @@ export default async function PublicProblemDetailPage({ params }: { params: Prom
                         problemId={problem.id}
                         problemTitle={problem.title}
                         languages={enabledLanguages}
+                        assignmentId={assignmentContext?.id ?? null}
                         preferredLanguage={session.user.preferredLanguage ?? null}
                         problemDefaultLanguage={problem.defaultLanguage ?? null}
                         siteDefaultLanguage={settings.defaultLanguage ?? null}
