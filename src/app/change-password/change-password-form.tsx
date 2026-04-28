@@ -83,7 +83,7 @@ export function ChangePasswordForm({ username }: { username: string }) {
   if (reauthFailed) {
     return (
       <div className="space-y-3">
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3" role="alert">
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 dark:border-amber-400/30 dark:bg-amber-500/5 p-3" role="alert">
           <p className="text-sm text-amber-900 dark:text-amber-200">{t("reauthFailed")}</p>
           <Link
             href="/login"

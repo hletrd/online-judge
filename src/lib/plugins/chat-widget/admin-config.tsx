@@ -176,7 +176,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
             />
             <p className="text-xs text-muted-foreground">{t("apiKeyHint")}</p>
             {currentApiKeyConfigured && !currentApiKey ? (
-              <p className="text-xs text-green-600 font-medium">
+              <p className="text-xs text-green-600 dark:text-green-400 font-medium">
                 {t("currentKey")}: {t("storedKeyConfigured")}
               </p>
             ) : null}
@@ -239,7 +239,7 @@ export default function ChatWidgetAdminConfig({ config, onSave }: PluginAdminPro
               {isTesting ? tCommon("loading") : t("testConnection")}
             </Button>
             {testResult && (
-              <span role="status" aria-live="polite" className={`text-sm ${testResult.success ? "text-green-600" : "text-destructive"}`}>
+              <span role="status" aria-live="polite" className={`text-sm ${testResult.success ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
                 {testResult.success ? t("testSuccess") : testResult.error}
               </span>
             )}
