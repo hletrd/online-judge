@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-28
 **Source:** `.context/reviews/_aggregate.md` (cycle 11)
-**Status:** IN PROGRESS
+**Status:** DONE
 
 ---
 
@@ -18,7 +18,7 @@
   1. Change `text-slate-400` to `text-slate-400 dark:text-slate-300` (line 85)
   2. Change `text-amber-600` to `text-amber-600 dark:text-amber-400` (line 86)
 - **Exit criteria:** Both rank 2 and rank 3 trophy icons have dark mode text variants
-- [ ] Done
+- [x] Done
 
 ### Task B: [MEDIUM] Add dark mode variant to contest join CheckCircle2 icon
 
@@ -28,7 +28,7 @@
 - **Fix:**
   1. Change `text-green-500 animate-pulse` to `text-green-500 dark:text-green-400 animate-pulse`
 - **Exit criteria:** Large success icon has dark mode variant
-- [ ] Done
+- [x] Done
 
 ### Task C: [LOW] Add dark mode variants to API keys and copy-code-button check icons
 
@@ -40,7 +40,7 @@
   1. Change `text-green-500` to `text-green-500 dark:text-green-400` in api-keys-client.tsx
   2. Change `text-green-500` to `text-green-500 dark:text-green-400` in copy-code-button.tsx
 - **Exit criteria:** Both "copied" check icons have dark mode variants
-- [ ] Done
+- [x] Done
 
 ### Task D: [LOW] Add dark mode variants to status board override icons
 
@@ -51,7 +51,7 @@
 - **Fix:**
   1. Change both instances of `text-amber-500` to `text-amber-500 dark:text-amber-400`
 - **Exit criteria:** Override indicator icons have dark mode variants
-- [ ] Done
+- [x] Done
 
 ### Task E: [LOW] Add dark mode variants to compiler client status labels and output
 
@@ -65,7 +65,7 @@
   1. Change `text-yellow-600` to `text-yellow-600 dark:text-yellow-400` (line 524)
   2. Change `text-red-600` to `text-red-600 dark:text-red-400` (lines 529, 566, 577)
 - **Exit criteria:** All compiler status text colors have dark mode variants
-- [ ] Done
+- [x] Done
 
 ### Task F: [LOW] Add dark mode variants to problems page stat icons and labels
 
@@ -79,7 +79,7 @@
   1. Change `text-emerald-600` to `text-emerald-600 dark:text-emerald-400` (lines 436, 493)
   2. Change `text-amber-600` to `text-amber-600 dark:text-amber-400` (lines 456, 500)
 - **Exit criteria:** Problems page stat colors have dark mode variants
-- [ ] Done
+- [x] Done
 
 ### Task G: [LOW] Add dark mode variants to create-problem and assignment-form locked notices
 
@@ -90,7 +90,7 @@
 - **Fix:**
   1. Change both instances of `text-amber-600` to `text-amber-600 dark:text-amber-400`
 - **Exit criteria:** Locked notice text has dark mode variants
-- [ ] Done
+- [x] Done
 
 ### Task H: [LOW] Add dark mode variants to chat widget admin config success text
 
@@ -102,7 +102,7 @@
   1. Change `text-green-600 font-medium` to `text-green-600 dark:text-green-400 font-medium` (line 179)
   2. Change `"text-green-600"` to `"text-green-600 dark:text-green-400"` (line 242)
 - **Exit criteria:** Chat widget admin green text has dark mode variant
-- [ ] Done
+- [x] Done
 
 ### Task I: [LOW] Add dark mode variants to change password alert box border/background
 
@@ -112,7 +112,7 @@
 - **Fix:**
   1. Change `border-amber-500/40 bg-amber-500/10` to `border-amber-500/40 bg-amber-500/10 dark:border-amber-400/30 dark:bg-amber-500/5`
 - **Exit criteria:** Alert box border and background have dark mode variants
-- [ ] Done
+- [x] Done
 
 ---
 
