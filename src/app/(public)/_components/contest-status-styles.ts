@@ -58,3 +58,28 @@ export function formatDateLabel(value: Date | null, fallback: string, locale: st
     ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(value)
     : fallback;
 }
+
+export type ExamModeKey = "none" | "scheduled" | "windowed";
+export type ScoringModelKey = "ioi" | "icpc";
+
+/**
+ * Returns the CSS class string for an exam mode badge.
+ * Used by all contest pages for consistent badge styling including dark mode.
+ * The "none" mode defaults to the "windowed" style as a fallback,
+ * since exam badges are not rendered when examMode is "none".
+ */
+export function getExamModeBadgeClass(mode: ExamModeKey): string {
+  return mode === "scheduled"
+    ? "text-xs bg-blue-500 text-white dark:bg-blue-600 dark:text-white"
+    : "text-xs bg-purple-500 text-white dark:bg-purple-600 dark:text-white";
+}
+
+/**
+ * Returns the CSS class string for a scoring model badge.
+ * Used by all contest pages for consistent badge styling including dark mode.
+ */
+export function getScoringModelBadgeClass(model: ScoringModelKey): string {
+  return model === "icpc"
+    ? "text-xs bg-orange-500 text-white dark:bg-orange-600 dark:text-white"
+    : "text-xs bg-teal-500 text-white dark:bg-teal-600 dark:text-white";
+}

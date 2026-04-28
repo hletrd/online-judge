@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { PublicContestList } from "../_components/public-contest-list";
-import { getContestStatusBorderClass, getContestStatusBadgeVariant, formatDateLabel } from "../_components/contest-status-styles";
+import { getContestStatusBorderClass, getContestStatusBadgeVariant, formatDateLabel, getExamModeBadgeClass, getScoringModelBadgeClass } from "../_components/contest-status-styles";
 import { getPublicContests } from "@/lib/assignments/public-contests";
 import { getContestsForUser } from "@/lib/assignments/contests";
 import { getContestStatus } from "@/lib/assignments/contests";
@@ -152,10 +152,10 @@ export default async function PublicContestsPage() {
                     <Badge variant={getContestStatusBadgeVariant(contest.status)} className="text-xs">
                       {statusLabels[contest.status]}
                     </Badge>
-                    <Badge className={`text-xs ${contest.examMode === "scheduled" ? "bg-blue-500 text-white dark:bg-blue-600 dark:text-white" : "bg-purple-500 text-white dark:bg-purple-600 dark:text-white"}`}>
+                    <Badge className={getExamModeBadgeClass(contest.examMode)}>
                       {contest.examMode === "scheduled" ? tContests("modeScheduled") : tContests("modeWindowed")}
                     </Badge>
-                    <Badge className={`text-xs ${contest.scoringModel === "ioi" ? "bg-teal-500 text-white dark:bg-teal-600 dark:text-white" : "bg-orange-500 text-white dark:bg-orange-600 dark:text-white"}`}>
+                    <Badge className={getScoringModelBadgeClass(contest.scoringModel)}>
                       {contest.scoringModel === "ioi" ? tContests("scoringModelIoi") : tContests("scoringModelIcpc")}
                     </Badge>
                   </div>

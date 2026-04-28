@@ -646,7 +646,7 @@ export default async function ProblemsPage({
                   <TableCell>{t("timeLimitValue", { value: problem.timeLimitMs ?? 2000 })}</TableCell>
                   <TableCell>{t("memoryLimitValue", { value: problem.memoryLimitMb ?? 256 })}</TableCell>
                   <TableCell>
-                    {problem.difficulty != null ? t("difficultyValue", { value: formatDifficulty(problem.difficulty) }) : <span className="text-muted-foreground">-</span>}
+                    {problem.difficulty != null ? t("difficultyValue", { value: formatDifficulty(problem.difficulty, locale) }) : <span className="text-muted-foreground">-</span>}
                   </TableCell>
                   <TableCell>
                     <Badge variant={problem.visibility === "public" ? "default" : "secondary"}>

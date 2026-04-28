@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { eq } from "drizzle-orm";
 import { Badge } from "@/components/ui/badge";
+import { getExamModeBadgeClass, getScoringModelBadgeClass } from "@/app/(public)/_components/contest-status-styles";
 import { TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { HashTabs } from "@/components/hash-tabs";
 import { auth } from "@/lib/auth";
@@ -336,10 +337,10 @@ export default async function ContestDetailPage({
       {/* Header with scoring model badge */}
       <div className="space-y-2 overflow-hidden">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge className={assignment.examMode === "scheduled" ? "bg-blue-500 text-white dark:bg-blue-600 dark:text-white" : "bg-purple-500 text-white dark:bg-purple-600 dark:text-white"}>
+          <Badge className={getExamModeBadgeClass(assignment.examMode)}>
             {assignment.examMode === "scheduled" ? t("modeScheduled") : t("modeWindowed")}
           </Badge>
-          <Badge className={assignment.scoringModel === "icpc" ? "bg-orange-500 text-white dark:bg-orange-600 dark:text-white" : "bg-teal-500 text-white dark:bg-teal-600 dark:text-white"}>
+          <Badge className={getScoringModelBadgeClass(assignment.scoringModel)}>
             {assignment.scoringModel === "icpc" ? t("scoringModelIcpc") : t("scoringModelIoi")}
           </Badge>
           <Badge variant="outline">{t("group")}: {assignment.group?.name}</Badge>

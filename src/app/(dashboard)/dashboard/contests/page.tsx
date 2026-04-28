@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getContestsForUser, getContestStatus } from "@/lib/assignments/contests";
 import type { ContestStatus } from "@/lib/assignments/contests";
-import { getContestStatusBorderClass, getContestStatusBadgeVariant } from "@/app/(public)/_components/contest-status-styles";
+import { getContestStatusBorderClass, getContestStatusBadgeVariant, getExamModeBadgeClass, getScoringModelBadgeClass } from "@/app/(public)/_components/contest-status-styles";
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getDbNow } from "@/lib/db-time";
 import { CountdownTimer } from "@/components/exam/countdown-timer";
@@ -194,10 +194,10 @@ export default async function ContestsPage({
                     <Badge variant={getContestStatusBadgeVariant(status)} className="text-xs">
                       {statusLabelMap[status]}
                     </Badge>
-                    <Badge className={`text-xs ${contest.examMode === "scheduled" ? "bg-blue-500 text-white dark:bg-blue-600 dark:text-white" : "bg-purple-500 text-white dark:bg-purple-600 dark:text-white"}`}>
+                    <Badge className={getExamModeBadgeClass(contest.examMode)}>
                       {contest.examMode === "scheduled" ? t("modeScheduled") : t("modeWindowed")}
                     </Badge>
-                    <Badge className={`text-xs ${contest.scoringModel === "ioi" ? "bg-teal-500 text-white dark:bg-teal-600 dark:text-white" : "bg-orange-500 text-white dark:bg-orange-600 dark:text-white"}`}>
+                    <Badge className={getScoringModelBadgeClass(contest.scoringModel)}>
                       {contest.scoringModel === "ioi" ? t("scoringModelIoi") : t("scoringModelIcpc")}
                     </Badge>
                   </div>

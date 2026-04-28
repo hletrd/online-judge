@@ -3,7 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { PublicContestDetail } from "@/app/(public)/_components/public-contest-detail";
-import { formatDateLabel } from "@/app/(public)/_components/contest-status-styles";
+import { formatDateLabel, getContestStatusBadgeVariant, getExamModeBadgeClass, getScoringModelBadgeClass } from "@/app/(public)/_components/contest-status-styles";
 import { ContestReplay } from "@/components/contest/contest-replay";
 import { ContestStatistics } from "@/components/contest/contest-statistics";
 import { ContestClarifications } from "@/components/contest/contest-clarifications";
@@ -227,10 +227,13 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
 
         <div className="overflow-hidden">
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
-            <Badge className={contest.examMode === "scheduled" ? "bg-blue-500 text-white dark:bg-blue-600 dark:text-white" : "bg-purple-500 text-white dark:bg-purple-600 dark:text-white"}>
+            <Badge variant={getContestStatusBadgeVariant(contest.status)} className="text-xs">
+              {statusLabels[contest.status]}
+            </Badge>
+            <Badge className={getExamModeBadgeClass(contest.examMode)}>
               {contest.examMode === "scheduled" ? tContest("modeScheduled") : tContest("modeWindowed")}
             </Badge>
-            <Badge className={contest.scoringModel === "icpc" ? "bg-orange-500 text-white dark:bg-orange-600 dark:text-white" : "bg-teal-500 text-white dark:bg-teal-600 dark:text-white"}>
+            <Badge className={getScoringModelBadgeClass(contest.scoringModel)}>
               {contest.scoringModel === "icpc" ? tContest("scoringModelIcpc") : tContest("scoringModelIoi")}
             </Badge>
             <Badge variant="outline">{tContest("group")}: {contest.groupName}</Badge>
