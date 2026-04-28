@@ -3,8 +3,6 @@ import { ArrowLeft } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { eq } from "drizzle-orm";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { HashTabs } from "@/components/hash-tabs";
 import { auth } from "@/lib/auth";

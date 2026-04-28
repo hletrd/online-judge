@@ -17,7 +17,7 @@ import { AcceptedSolutions } from "@/components/problem/accepted-solutions";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { buildStatusLabels } from "@/lib/judge/status-labels";
 import { getLanguageDisplayLabel } from "@/lib/judge/languages";
-import { formatDateTimeInTimeZone, formatDateInTimeZone, formatRelativeTimeFromNow } from "@/lib/datetime";
+import { formatDateTimeInTimeZone, formatDateInTimeZone } from "@/lib/datetime";
 import { formatNumber, formatDifficulty, formatScore } from "@/lib/formatting";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,7 +40,6 @@ import { validateAssignmentSubmission } from "@/lib/assignments/submissions";
 import { getExamSession } from "@/lib/assignments/exam-sessions";
 import { getDbNow } from "@/lib/db-time";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {

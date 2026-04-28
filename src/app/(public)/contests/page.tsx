@@ -7,14 +7,13 @@ import { getContestsForUser } from "@/lib/assignments/contests";
 import { getContestStatus, type ContestStatus } from "@/lib/assignments/contests";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata } from "@/lib/seo";
-import { getResolvedSystemSettings, getResolvedSystemTimeZone } from "@/lib/system-settings";
+import { getResolvedSystemSettings } from "@/lib/system-settings";
 import { auth } from "@/lib/auth";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
 import { Button } from "@/components/ui/button";
 import { KeyRound, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CountdownTimer } from "@/components/exam/countdown-timer";
-import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { getDbNow } from "@/lib/db-time";
 import Link from "next/link";
 
