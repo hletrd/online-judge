@@ -1,8 +1,10 @@
-# Workspace-to-Public Page Migration Plan
+# Workspace-to-Public Page Migration Plan (ARCHIVED)
 
 **Date:** 2026-04-19
-**Status:** ALL PHASES COMPLETE — ready for archival (cycle 1 RPF orchestrator-driven, 2026-04-29). All 7 phases verified at HEAD `32621804`: `(workspace)` and `(control)` route groups removed; 7 308-redirects in `next.config.ts`; `WorkspaceNav`/`ControlNav`/`workspaceShell`/`controlShell` references purged from `src/`; remaining `(dashboard)` routes match the documented "must stay in authenticated area" list.
-**Source:** User-injected TODO #2, AGG-13
+**Archived:** 2026-04-29 (cycle 1 RPF orchestrator-driven)
+**Status:** ALL PHASES COMPLETE. Verified at HEAD `7e3509da`+ (after cycle 1 RPF commits): `(workspace)` and `(control)` route groups removed; 7 308-redirects in `next.config.ts`; `WorkspaceNav`/`ControlNav`/`workspaceShell`/`controlShell` references purged from `src/`; remaining `(dashboard)` routes (`dashboard/`, `dashboard/admin/*`, `dashboard/contests`, `dashboard/groups`, `dashboard/problem-sets`, `dashboard/problems`, `dashboard/profile`) match the documented "must stay in authenticated area" list.
+**Closure note (cycle 1, 2026-04-29):** All 7 phases done across cycles 1-27 of prior loops. Done criteria from user-injected TODO #1 satisfied: (workspace) removed, every non-admin dashboard page either migrated or explicitly listed as "stays" with a quoted reason, build passes, typecheck passes, lint clean, migration plan archived (this file).
+**Source:** User-injected TODO #2 (initial), AGG-13, User-injected TODO #1 (cycle 1 RPF orchestrator-driven 2026-04-29).
 
 ## Goal
 
