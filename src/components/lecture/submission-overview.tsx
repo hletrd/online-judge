@@ -174,20 +174,20 @@ export function SubmissionOverview({
               <span>{t("acceptedCount", { count: stats.accepted })}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <XCircle className="size-3.5 text-red-500" />
+              <XCircle className="size-3.5 text-red-500 dark:text-red-400" />
               <span>{t("wrongCount", { count: stats.wrongAnswer })}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <AlertTriangle className="size-3.5 text-orange-500" />
+              <AlertTriangle className="size-3.5 text-orange-500 dark:text-orange-400" />
               <span>{t("compileRuntimeCount", { count: stats.compileError + stats.runtimeError })}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Clock3 className="size-3.5 text-yellow-500" />
+              <Clock3 className="size-3.5 text-yellow-500 dark:text-yellow-400" />
               <span>{t("timeLimitCount", { count: stats.timeLimit })}</span>
             </div>
             {stats.pending > 0 && (
               <div className="flex items-center gap-1.5 col-span-2">
-                <Clock3 className="size-3.5 text-blue-500 animate-pulse" />
+                <Clock3 className="size-3.5 text-blue-500 dark:text-blue-400 animate-pulse" />
                 <span>{t("pendingCount", { count: stats.pending })}</span>
               </div>
             )}
