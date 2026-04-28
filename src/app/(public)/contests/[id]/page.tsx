@@ -22,7 +22,7 @@ import { computeContestAnalytics } from "@/lib/assignments/contest-analytics";
 import { computeContestReplay } from "@/lib/assignments/contest-replay";
 import { computeLeaderboard } from "@/lib/assignments/leaderboard";
 import { getStudentProblemStatuses } from "@/lib/assignments/submissions";
-import { getExamSession } from "@/lib/assignments/exam-sessions";
+
 import { getRecruitingAccessContext } from "@/lib/recruiting/access";
 import { buildAbsoluteUrl, buildLocalePath, buildPublicMetadata, buildSocialImageUrl, NO_INDEX_METADATA, summarizeTextForMetadata } from "@/lib/seo";
 import { getResolvedSystemSettings, getResolvedSystemTimeZone } from "@/lib/system-settings";
@@ -170,10 +170,7 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
 
     const statusLabelMap = buildStatusLabels(tSubmissions);
 
-    let examSession = contest.examSession;
-    if (contest.examMode === "windowed" && !examSession) {
-      examSession = await getExamSession(contest.id, session.user.id);
-    }
+    const examSession = contest.examSession;
 
     const isExamExpired = contest.examMode === "windowed" && examSession != null
       && new Date(examSession.personalDeadline) < now;
@@ -184,7 +181,7 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
       points: p.points,
       problem: { id: p.id, title: p.title },
     }));
-    const totalPoints = sortedProblems.reduce((sum, p) => sum + p.points, 100);
+    const totalPoints = sortedProblems.reduce((sum, p) => sum + p.points, 0);
 
     const overviewLabels = {
       overviewTitle: tAssignment("overviewTitle"),
@@ -233,10 +230,10 @@ export default async function PublicContestDetailPage({ params }: { params: Prom
 
         <div className="overflow-hidden">
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
-            <Badge className={contest.examMode === "scheduled" ? "bg-blue-500 text-white" : "bg-purple-500 text-white"}>
+            <Badge className={contest.examMode === "scheduled" ? "bg-blue-500 text-white dark:bg-blue-600 dark:text-white" : "bg-purple-500 text-white dark:bg-purple-600 dark:text-white"}>
               {contest.examMode === "scheduled" ? tContest("modeScheduled") : tContest("modeWindowed")}
             </Badge>
-            <Badge className={contest.scoringModel === "icpc" ? "bg-orange-500 text-white" : "bg-teal-500 text-white"}>
+            <Badge className={contest.scoringModel === "icpc" ? "bg-orange-500 text-white dark:bg-orange-600 dark:text-white" : "bg-teal-500 text-white dark:bg-teal-600 dark:text-white"}>
               {contest.scoringModel === "icpc" ? tContest("scoringModelIcpc") : tContest("scoringModelIoi")}
             </Badge>
             <Badge variant="outline">{tContest("group")}: {contest.groupName}</Badge>
