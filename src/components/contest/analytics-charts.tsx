@@ -228,13 +228,13 @@ function SVGStackedBar({
       <g clipPath={`url(#clip-${clipId})`}>
         {/* Solved segment */}
         {solved > 0 && (
-          <rect x={0} y={0} width={solvedW} height={svgH} className="fill-green-500">
+          <rect x={0} y={0} width={solvedW} height={svgH} className="fill-green-500 dark:fill-green-600">
             <title>{`${solvedLabel}: ${solved} (${solvedPct}%)`}</title>
           </rect>
         )}
         {/* Partial segment */}
         {partial > 0 && (
-          <rect x={solvedW} y={0} width={partialW} height={svgH} className="fill-yellow-500">
+          <rect x={solvedW} y={0} width={partialW} height={svgH} className="fill-yellow-500 dark:fill-yellow-600">
             <title>{`${partialLabel}: ${partial} (${partialPct}%)`}</title>
           </rect>
         )}
@@ -416,12 +416,12 @@ function CheatTypeBar({
 
   // Palette of muted colors for different event types
   const colors = [
-    "fill-orange-500",
-    "fill-red-500",
-    "fill-purple-500",
-    "fill-pink-500",
-    "fill-amber-500",
-    "fill-rose-600",
+    "fill-orange-500 dark:fill-orange-600",
+    "fill-red-500 dark:fill-red-600",
+    "fill-purple-500 dark:fill-purple-600",
+    "fill-pink-500 dark:fill-pink-600",
+    "fill-amber-500 dark:fill-amber-600",
+    "fill-rose-600 dark:fill-rose-700",
   ];
 
   const svgW = 400;
@@ -609,11 +609,11 @@ export function AnalyticsCharts({ assignmentId }: AnalyticsChartsProps) {
             <CardTitle className="text-base">{t("solveRates")}</CardTitle>
             <div className="flex gap-3 text-xs mt-1">
               <span className="flex items-center gap-1">
-                <span className="inline-block size-3 rounded bg-green-500" />
+                <span className="inline-block size-3 rounded bg-green-500 dark:bg-green-600" />
                 {t("solved")}
               </span>
               <span className="flex items-center gap-1">
-                <span className="inline-block size-3 rounded bg-yellow-500" />
+                <span className="inline-block size-3 rounded bg-yellow-500 dark:bg-yellow-600" />
                 {t("partial")}
               </span>
               <span className="flex items-center gap-1">
