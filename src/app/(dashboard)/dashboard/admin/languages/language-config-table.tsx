@@ -335,7 +335,7 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
             aria-label={t("diskUsage")}
           >
             <div
-              className={`h-full rounded-full ${usagePercent > 90 ? "bg-red-500" : usagePercent > 70 ? "bg-yellow-500" : "bg-green-500"}`}
+              className={`h-full rounded-full ${usagePercent > 90 ? "bg-red-500 dark:bg-red-600" : usagePercent > 70 ? "bg-yellow-500 dark:bg-yellow-600" : "bg-green-500 dark:bg-green-600"}`}
               style={{ width: widthValue }}
             />
           </div>
