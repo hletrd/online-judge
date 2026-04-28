@@ -176,13 +176,13 @@ export function ActiveTimedAssignmentSidebarPanel({
         <div className="mt-3">
           <div className={`mb-1 flex items-center justify-between text-[11px] font-medium uppercase${smallLabelTracking} text-sidebar-foreground/65`}>
             <span>{tNav("progress")}</span>
-            <span data-testid="active-timed-assignment-progress-label">{formatNumber(progressPercent, { maximumFractionDigits: 1 })}%</span>
+            <span data-testid="active-timed-assignment-progress-label">{formatNumber(progressPercent, { locale, maximumFractionDigits: 1 })}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-sidebar-border/80" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent} aria-label={tNav("progress")}>
             <div
               className={cn(
                 "h-full rounded-full transition-[width] duration-1000 ease-linear",
-                isUrgent ? "bg-red-500" : "bg-sidebar-primary"
+                isUrgent ? "bg-red-500 dark:bg-red-600" : "bg-sidebar-primary"
               )}
               style={{ width: `${Math.min(Math.max(progressPercent, 0), 100)}%` }}
               data-testid="active-timed-assignment-progress-bar"
