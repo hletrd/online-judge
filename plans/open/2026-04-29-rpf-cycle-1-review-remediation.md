@@ -8,6 +8,24 @@
 
 ## Tasks
 
+### Task I: [INFO — DEFERRED] Deploy attempt outcome
+
+- **Source:** Orchestrator `DEPLOY_MODE: per-cycle`.
+- **First attempt:** Failed because `deploy-docker.sh` did not honor `SKIP_LANGUAGES=true` env var (line 79 unconditionally reset `SKIP_LANGUAGES=false`). Script then attempted to build judge language images on the app server, which is forbidden per CLAUDE.md ("algo.xylolabs.com is the app server: Next.js app, PostgreSQL DB, Nginx only. Do NOT build judge/worker images on this server"). Build failed at judge-simula and judge-apl compilation.
+- **Recovery:** Fixed `deploy-docker.sh` (commit `bdfc79e1`) so `SKIP_LANGUAGES`, `SKIP_BUILD`, `LANGUAGE_FILTER` honor env-var overrides via `${VAR:-default}` parameter expansion (matching the pattern already used for `INCLUDE_WORKER` and `BUILD_WORKER_IMAGE`).
+- **Second attempt:** Got much further — synced source, built app image, started Postgres, started app, ran `drizzle-kit push`. Stopped at a **destructive schema change** that requires manual approval:
+  > Warning  Found data-loss statements:
+  > · You're about to delete secret_token column in judge_workers table with 38 items
+  > · You're about to delete token column in recruiting_invitations table with 1 items
+  > THIS ACTION WILL CAUSE DATA LOSS AND CANNOT BE REVERTED
+  > Do you still want to push changes? [interactive prompt — non-TTY refused]
+- **Result:** Deploy exit 255. This is the deploy script's correct behavior per the destructive-action safety rule in CLAUDE.md ("Before performing ANY destructive action, ALWAYS stop and explicitly ask the user for confirmation first... Database: Dropping tables ... modifying schemas destructively").
+- **Severity:** This is NOT a code defect from this cycle. The schema diff is between the deployed app's expected schema (current `src/lib/db/schema/`) and the live production DB. The cycle's source-code changes (eslint+gitignore) cannot affect schema. The drizzle schema diff was pre-existing.
+- **Recovery NOT performed:** Per orchestrator policy, "Before running destructive operations ... consider whether there is a safer alternative". Setting `DRIZZLE_PUSH_FORCE=1` is destructive (drops 38+1 production rows). I did NOT auto-apply this. The user must explicitly authorize the schema migration after reviewing whether `judge_workers.secret_token` and `recruiting_invitations.token` are safe to drop.
+- **Repo policy quote (justifying not auto-applying):** CLAUDE.md states "Destructive actions include but are not limited to: ... Database: Dropping tables, truncating data, deleting records, modifying schemas destructively. ... Never assume destructive intent. When in doubt, ask."
+- **Exit criterion to retry:** User reviews the destructive schema diff and either (a) authorizes `DRIZZLE_PUSH_FORCE=1`, or (b) rolls forward via journal-driven migrations (per AGENTS.md "Database migration recovery (DRIZZLE_PUSH_FORCE)" section), or (c) reverts the application schema changes that prompted the column deletions.
+- [x] Documented; deploy is `per-cycle-failed:drizzle-destructive-schema-change-needs-manual-approval`.
+
 ### Task A: [LOW] Add eslint config overrides for root `*.mjs` and `.context/tmp/**`
 
 - **Source:** C1-AGG-1 (C1-CR-1)
