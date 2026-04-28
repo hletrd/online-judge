@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-28
 **Source:** `.context/reviews/_aggregate.md` (cycle 8)
-**Status:** IN PROGRESS (Tasks A-E implemented, gates pending)
+**Status:** DONE
 
 ---
 
