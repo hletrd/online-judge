@@ -160,17 +160,17 @@ export function SubmissionOverview({
         <div className="p-4 space-y-4">
           <div>
             <div className="flex items-baseline justify-between mb-1.5">
-              <span className="text-3xl font-bold text-green-500">{formatNumber(acceptedPct, { locale, maximumFractionDigits: 0 })}%</span>
+              <span className="text-3xl font-bold text-green-500 dark:text-green-400">{formatNumber(acceptedPct, { locale, maximumFractionDigits: 0 })}%</span>
               <span className="text-sm text-muted-foreground">{t("acceptedSummary", { accepted: stats.accepted, total: stats.total })}</span>
             </div>
             <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
-              <div className="h-full rounded-full bg-green-500 transition-all duration-500" style={{ width: `${acceptedPct}%` }} />
+              <div className="h-full rounded-full bg-green-500 dark:bg-green-600 transition-all duration-500" style={{ width: `${acceptedPct}%` }} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="size-3.5 text-green-500" />
+              <CheckCircle2 className="size-3.5 text-green-500 dark:text-green-400" />
               <span>{t("acceptedCount", { count: stats.accepted })}</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -201,9 +201,9 @@ export function SubmissionOverview({
                   <div key={sub.id} className="flex items-center justify-between text-xs py-1 border-b border-border/50 last:border-0">
                     <span className={cn(
                       "font-medium",
-                      sub.status === "accepted" ? "text-green-500" :
-                      sub.status === "pending" || sub.status === "judging" || sub.status === "queued" ? "text-blue-500" :
-                      "text-red-500"
+                      sub.status === "accepted" ? "text-green-500 dark:text-green-400" :
+                      sub.status === "pending" || sub.status === "judging" || sub.status === "queued" ? "text-blue-500 dark:text-blue-400" :
+                      "text-red-500 dark:text-red-400"
                     )}>
                       {statusLabels[sub.status] ?? sub.status}
                     </span>
