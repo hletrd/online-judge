@@ -799,7 +799,7 @@ export default function CreateProblemForm({
             <h3 className="text-base font-semibold">{t("testCasesTitle")}</h3>
             <p className="text-sm text-muted-foreground">{t("testCasesDescription")}</p>
             {testCasesLocked && (
-              <p className="text-sm text-amber-600">
+              <p className="text-sm text-amber-600 dark:text-amber-400">
                 {testCaseOverrideEnabled && allowTestCaseOverride
                   ? t("testCasesUnlockWarning")
                   : t("testCasesLockedNotice")}

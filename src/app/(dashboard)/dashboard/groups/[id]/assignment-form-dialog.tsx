@@ -562,7 +562,7 @@ export default function AssignmentFormDialog({
                 <h3 className="text-base font-semibold">{t("assignmentProblemsTitle")}</h3>
                 <p className="text-sm text-muted-foreground">{t("assignmentProblemsDescription")}</p>
                 {problemsLocked && (
-                  <p className="text-sm text-amber-600">
+                  <p className="text-sm text-amber-600 dark:text-amber-400">
                     {problemOverrideEnabled && allowProblemOverride
                       ? t("assignmentProblemsUnlockWarning")
                       : t("assignmentProblemsLocked")}
