@@ -91,6 +91,23 @@ const eslintConfig = defineConfig([
     "judge-worker-rs/target/**",
     "code-similarity-rs/target/**",
     "rate-limiter-rs/target/**",
+    // One-off problem-solving / audit scripts at repo root and .context/tmp.
+    // These are not part of the production codebase; lint coverage adds noise
+    // without value.
+    "add-stress-tests.mjs",
+    "auto-solver.mjs",
+    "dedup-problems.mjs",
+    "fetch-problems.mjs",
+    "gen_test_cases.mjs",
+    "solve-all.mjs",
+    "solve-all2.mjs",
+    "solve-fixes.mjs",
+    "solve-problems.mjs",
+    "stress-tests.mjs",
+    "submit.mjs",
+    "verify-problems.mjs",
+    ".context/**",
+    "playwright.visual.config.ts",
   ]),
 ]);
 
