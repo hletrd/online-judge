@@ -59,6 +59,11 @@ function formatFrequency(speedMHz: number | undefined) {
     return null;
   }
 
+  // Intentionally uses the default en-US locale for technical data display.
+  // CPU frequencies are universally displayed in Western digit format regardless
+  // of the user's UI locale, so locale threading through the server-side
+  // call chain (getRuntimeSystemInfo -> formatCpuLabel -> formatFrequency)
+  // is not warranted.
   if (speedMHz >= 1000) {
     return `${formatNumber(speedMHz / 1000, { maximumFractionDigits: 1 })} GHz`;
   }
