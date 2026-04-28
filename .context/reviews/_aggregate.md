@@ -1,14 +1,14 @@
-# Aggregate Review — Cycle 5
+# Aggregate Review — Cycle 6
 
 **Date:** 2026-04-28
 **Reviewers:** code-reviewer (1 lane — focused verification + new findings)
-**Total findings:** 0 HIGH, 2 MEDIUM, 2 LOW (deduplicated, new findings only)
+**Total findings:** 0 HIGH, 2 MEDIUM, 1 LOW (deduplicated, new findings only)
 
 ---
 
-## Cycle 1-4 Fix Verification Summary
+## Cycle 1-5 Fix Verification Summary
 
-All 18 tasks from cycles 1-4 were verified:
+All 22 tasks from cycles 1-5 were verified:
 
 | Cycle | Task | Description | Status |
 |-------|------|-------------|--------|
@@ -32,68 +32,52 @@ All 18 tasks from cycles 1-4 were verified:
 | C4 | A | Dashboard dark mode badge variants | VERIFIED |
 | C4 | B | formatScore locale in public submissions | VERIFIED |
 | C4 | C | formatScore locale in dashboard pages | VERIFIED |
+| C5 | A | Dashboard contests page uses shared getContestStatusBorderClass | VERIFIED |
+| C5 | B | formatScore in 4 dashboard views | VERIFIED |
+| C5 | C | Removed misleading `as string | Date` cast | VERIFIED |
+| C5 | D | SubmissionStatusBadge locale prop passed by all callers | VERIFIED |
 
-All cycle 1-4 fixes are correctly implemented. No regressions found.
+All cycle 1-5 fixes are correctly implemented. No regressions found.
 
 ---
 
 ## Deduplicated Findings (sorted by severity)
 
-### C5-AGG-1: [MEDIUM] Dashboard contests page uses local `getStatusBorderClass` without dark mode, diverging from shared utility
+### C6-AGG-1: [MEDIUM] Duplicate `getStatusBadgeVariant` function in dashboard and public contests pages
 
-**Sources:** C5-CR-1 | **Confidence:** HIGH
+**Sources:** C6-CR-1 | **Confidence:** HIGH
 
-`src/app/(dashboard)/dashboard/contests/page.tsx:57-68` defines a local `getStatusBorderClass` that returns classes without dark mode variants (e.g., `border-l-blue-500` without `dark:border-l-blue-400`). All public pages import `getContestStatusBorderClass` from `contest-status-styles.ts` which includes dark mode. This is the same class of issue as C2-AGG-8 (which extracted the shared utility for public pages), but the dashboard contests page was not migrated.
+`src/app/(dashboard)/dashboard/contests/page.tsx:35-48` and `src/app/(public)/contests/page.tsx:20-33` both define an identical `getStatusBadgeVariant(status: ContestStatus)` function. This is the same duplication pattern as C2-AGG-8/C5-AGG-1 where `getStatusBorderClass` was duplicated and had to be extracted to a shared utility. If a new contest status is added or a variant mapping changes, only one copy may get updated, causing visual inconsistency.
 
-**Fix:** Delete the local `getStatusBorderClass` function and import `getContestStatusBorderClass` from `@/app/(public)/_components/contest-status-styles`. The function signature is compatible. Update line 181 to use the imported function.
-
----
-
-### C5-AGG-2: [MEDIUM] Score displays in 4 dashboard views use raw numbers instead of `formatScore(score, locale)`
-
-**Sources:** C5-CR-2 | **Confidence:** HIGH
-
-Four locations display submission scores as raw JavaScript numbers without locale-aware formatting:
-
-1. `src/app/(dashboard)/dashboard/contests/[assignmentId]/students/[userId]/page.tsx:186` — `{sub.score ?? 0}`
-2. `src/app/(dashboard)/dashboard/contests/[assignmentId]/participant/[userId]/submissions/page.tsx:173` — `{sub.score !== null && sub.score !== undefined ? sub.score : "-"}`
-3. `src/app/(dashboard)/dashboard/groups/[id]/assignments/[assignmentId]/student/[userId]/page.tsx:225-226` — `{sub.score !== null ... ? sub.score : "-"}`
-4. `src/components/contest/participant-timeline-view.tsx:340-341` — `{sub.score !== null ... ? sub.score : "-"}`
-
-This is the same bug class as C2-AGG-7/C4-AGG-2/C4-AGG-3 (formatScore without locale), but for raw numeric display. The `locale` variable is already available in all four files. Other score displays in the same files use `formatScore(sub.score, locale)`.
-
-**Fix:** Replace each raw `sub.score` display with `formatScore(sub.score, locale)`. Add `import { formatScore } from "@/lib/formatting"` where missing.
+**Fix:** Extract `getStatusBadgeVariant` to `src/app/(public)/_components/contest-status-styles.ts` alongside `getContestStatusBorderClass` and `formatDateLabel`, then import from both pages.
 
 ---
 
-### C5-AGG-3: [LOW] Misleading type cast `as string | Date` in dashboard contests page
+### C6-AGG-2: [MEDIUM] Missing scoring model badge in public contests page "My Contests" section
 
-**Sources:** C5-CR-3 | **Confidence:** HIGH
+**Sources:** C6-CR-2 | **Confidence:** HIGH
 
-`src/app/(dashboard)/dashboard/contests/page.tsx:213`:
-```tsx
-deadline={new Date(contest.personalDeadline ?? contest.deadline as string | Date).getTime()}
-```
+`src/app/(public)/contests/page.tsx:166-173` shows the status badge and exam mode badge in the "My Contests" section but is missing the scoring model badge (IOI/ICPC). Both the dashboard contests page (`src/app/(dashboard)/dashboard/contests/page.tsx:213-216`) and the public contest list component (`src/app/(public)/_components/public-contest-list.tsx:96,139`) display both badges. Users cannot distinguish IOI from ICPC contests in the "My Contests" section without navigating into each.
 
-The `as string | Date` cast only applies to `contest.deadline` due to operator precedence. Both fields are already `Date | null`, so the cast is misleading. The code works correctly at runtime but creates a false impression.
-
-**Fix:** Remove the `as string | Date` cast: `new Date(contest.personalDeadline ?? contest.deadline).getTime()`
+**Fix:** Add the scoring model badge after the exam mode badge using the same pattern as the dashboard page.
 
 ---
 
-### C5-AGG-4: [LOW] SubmissionStatusBadge locale prop not passed by any external caller
+### C6-AGG-3: [LOW] Inconsistent `dark:text-white` in public contest badges
 
-**Sources:** C5-CR-4 | **Confidence:** MEDIUM
+**Sources:** C6-CR-3 | **Confidence:** MEDIUM
 
-The `SubmissionStatusBadge` component accepts an optional `locale` prop for tooltip number formatting (defaults to "en-US"). None of the ~18 external callers pass `locale`, causing tooltips to always format numbers in en-US. This is related to the C4-AGG-2/C4-AGG-3 fix pattern (formatScore without locale) but applies to the tooltip content inside the component.
+5 badge instances across 2 public files have `text-white` but lack `dark:text-white`:
+- `src/app/(public)/contests/page.tsx:170` — exam mode badge
+- `src/app/(public)/_components/public-contest-list.tsx:93,96,136,139` — exam mode + scoring badges
 
-Hardcoded English strings in the component ("WA on test #", "Score:", "Runtime error") are already tracked under DEFER-34/DEFER-35.
+All equivalent badges in the dashboard contests page and contest detail page include `dark:text-white`. The inconsistency is a maintenance risk if Badge base styles change.
 
-**Fix:** Pass `locale` prop from each caller's existing `locale` variable. This is a simple prop pass-through.
+**Fix:** Add `dark:text-white` to all 5 badge instances for consistency.
 
 ---
 
-## Carried Deferred Items (unchanged from cycle 4)
+## Carried Deferred Items (unchanged from cycle 5)
 
 - DEFER-22: `.json()` before `response.ok` — 60+ instances
 - DEFER-23: Raw API error strings without translation — partially fixed
@@ -120,9 +104,15 @@ The review lane completed successfully.
 
 ---
 
+## Gate Status
+
+- **eslint:** PASS (0 errors, 0 warnings)
+- **tsc --noEmit:** PASS (0 errors)
+
+---
+
 ## Plannable Tasks for This Cycle
 
-1. **C5-AGG-1** (MEDIUM) — Replace local `getStatusBorderClass` with shared `getContestStatusBorderClass` import
-2. **C5-AGG-2** (MEDIUM) — Use `formatScore(sub.score, locale)` in 4 remaining raw score displays
-3. **C5-AGG-3** (LOW) — Remove misleading `as string | Date` cast
-4. **C5-AGG-4** (LOW) — Pass `locale` prop to SubmissionStatusBadge in all callers
+1. **C6-AGG-1** (MEDIUM) — Extract `getStatusBadgeVariant` to shared utility
+2. **C6-AGG-2** (MEDIUM) — Add scoring model badge to public contests "My Contests" section
+3. **C6-AGG-3** (LOW) — Add `dark:text-white` to 5 public contest badges
