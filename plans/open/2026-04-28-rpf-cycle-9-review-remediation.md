@@ -64,7 +64,7 @@
 - **Fix:**
   1. Change `bg-orange-500/10` to `bg-orange-500/10 dark:bg-orange-500/15`
 - **Exit criteria:** Icon background has slightly stronger visibility in dark mode
-- [ ] Done
+- [x] Done
 
 ### Task F: [LOW] Add dark mode variants to anti-cheat event type SVG chart palette
 
