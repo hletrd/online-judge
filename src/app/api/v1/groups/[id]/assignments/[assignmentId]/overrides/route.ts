@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { assignmentProblems, assignments, enrollments, scoreOverrides } from "@/lib/db/schema";
 import { recordAuditEvent } from "@/lib/audit/events";
 import { canManageGroupResourcesAsync } from "@/lib/assignments/management";
+import { DEFAULT_PROBLEM_POINTS } from "@/lib/assignments/constants";
 import { createApiHandler, forbidden, notFound } from "@/lib/api/handler";
 import type { AuthUser } from "@/lib/api/handler";
 import { getDbNowUncached } from "@/lib/db-time";
@@ -83,7 +84,7 @@ export const POST = createApiHandler({
       return apiError("problemNotInAssignment", 400);
     }
 
-    const maxPoints = assignmentProblem.points ?? 100;
+    const maxPoints = assignmentProblem.points ?? DEFAULT_PROBLEM_POINTS;
     if (overrideScore > maxPoints) {
       return apiError("overrideScoreExceedsMax", 400);
     }

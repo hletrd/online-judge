@@ -12,6 +12,7 @@ import {
 } from "@/lib/assignments/management";
 import { assignmentMutationSchema, assignmentPatchSchema } from "@/lib/validators/assignments";
 import { canAccessGroup } from "@/lib/auth/permissions";
+import { DEFAULT_PROBLEM_POINTS } from "@/lib/assignments/constants";
 import { createApiHandler, isAdminAsync, forbidden, notFound } from "@/lib/api/handler";
 import { getDbNowUncached } from "@/lib/db-time";
 
@@ -157,7 +158,7 @@ export const PATCH = createApiHandler({
           .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
           .map((problem) => ({
             problemId: problem.problemId,
-            points: problem.points ?? 100,
+            points: problem.points ?? DEFAULT_PROBLEM_POINTS,
           })),
     });
 

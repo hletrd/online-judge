@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDateTimeInTimeZone } from "@/lib/datetime";
 import { CountdownTimer } from "@/components/exam/countdown-timer";
 import type { StudentProblemProgress, StudentProblemStatus } from "@/lib/assignments/submissions";
+import { DEFAULT_PROBLEM_POINTS } from "@/lib/assignments/constants";
 
 interface AssignmentProblemEntry {
   id: string;
@@ -269,7 +270,7 @@ export function AssignmentOverview({
                       ) : "-"}
                     </div>
                   </TableCell>
-                  <TableCell>{problem.points ?? 100}</TableCell>
+                  <TableCell>{problem.points ?? DEFAULT_PROBLEM_POINTS}</TableCell>
                   <TableCell>
                     {problem.problem ? (
                       <Link href={buildProblemHref(problem.problem.id)}>

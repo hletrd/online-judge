@@ -2,6 +2,7 @@ import { and, asc, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { assignments, enrollments, contestAccessTokens, examSessions } from "@/lib/db/schema";
 import { getContestStatus, canManageContest, type ContestStatus } from "@/lib/assignments/contests";
+import { DEFAULT_PROBLEM_POINTS } from "@/lib/assignments/constants";
 import type { ExamMode, ScoringModel } from "@/types";
 import { getDbNow } from "@/lib/db-time";
 import { resolveCapabilities } from "@/lib/capabilities/cache";
@@ -346,7 +347,7 @@ export async function getEnrolledContestDetail(
       title: ap.problem?.title ?? "",
       difficulty: ap.problem?.difficulty ?? null,
       visibility: ap.problem?.visibility ?? null,
-      points: ap.points ?? 100,
+      points: ap.points ?? DEFAULT_PROBLEM_POINTS,
       sortOrder: ap.sortOrder ?? 0,
     })),
     publicProblemCount: sortedProblems.filter(

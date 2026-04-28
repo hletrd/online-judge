@@ -1,6 +1,7 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { mapSubmissionPercentageToAssignmentPoints } from "@/lib/assignments/scoring";
+import { DEFAULT_PROBLEM_POINTS } from "@/lib/assignments/constants";
 import {
   antiCheatEvents,
   assignments,
@@ -210,7 +211,7 @@ export async function getParticipantTimeline(
     const problemSnapshots = snapshotsByProblem.get(problemRow.problemId) ?? [];
     const firstSubmission = problemSubmissions[0] ?? null;
     const lastSubmission = problemSubmissions.at(-1) ?? null;
-    const problemPoints = problemRow.points ?? 100;
+    const problemPoints = problemRow.points ?? DEFAULT_PROBLEM_POINTS;
     // For ICPC: "accepted" status means full score (binary accept/reject).
     // For IOI: submissions are typically "scored" rather than "accepted", so
     // use score >= full points as the "first AC" condition. This is consistent
@@ -277,7 +278,7 @@ export async function getParticipantTimeline(
     return {
       problemId: problemRow.problemId,
       title: problemRow.title,
-      points: problemRow.points ?? 100,
+      points: problemRow.points ?? DEFAULT_PROBLEM_POINTS,
       sortOrder: problemRow.sortOrder ?? 0,
       summary: {
         totalAttempts: problemSubmissions.length,

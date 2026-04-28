@@ -20,6 +20,7 @@ import { getAssignedTeachingGroupIds, hasGroupInstructorRole } from "@/lib/assig
 import { getDbNowUncached } from "@/lib/db-time";
 import { TERMINAL_SUBMISSION_STATUSES_SQL_LIST } from "@/lib/submissions/status";
 import { buildIoiLatePenaltyCaseExpr } from "@/lib/assignments/scoring";
+import { DEFAULT_PROBLEM_POINTS } from "@/lib/assignments/constants";
 
 type AssignmentValidationError =
   | "invalidAssignmentId"
@@ -533,7 +534,7 @@ export async function getAssignmentStatusRows(
   const problemDefinitions = assignmentProblemRows.map((row) => ({
     problemId: row.problemId,
     title: row.title,
-    points: row.points ?? 100,
+    points: row.points ?? DEFAULT_PROBLEM_POINTS,
     sortOrder: row.sortOrder ?? 0,
   }));
 
