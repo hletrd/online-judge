@@ -14,6 +14,7 @@ import { usePathname } from "next/navigation";
  *   <a href="/contests/123" data-full-navigate>...</a>
  *
  * TODO: Remove this workaround once the upstream Next.js bug is fixed.
+ * An upstream issue should be filed/linked here if not already tracked.
  */
 export default function ContestDetailLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
