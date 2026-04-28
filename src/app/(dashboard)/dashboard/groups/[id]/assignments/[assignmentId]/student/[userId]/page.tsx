@@ -217,6 +217,7 @@ export default async function StudentSubmissionsPage({
                                   executionTimeMs={sub.executionTimeMs}
                                   memoryUsedKb={sub.memoryUsedKb}
                                   score={sub.score}
+                                  locale={locale}
                                 />
                               ) : (
                                 <Badge variant="outline">-</Badge>

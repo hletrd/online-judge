@@ -675,6 +675,7 @@ export default async function PublicProblemDetailPage({
                                       failedTestCaseIndex={sub.failedTestCaseIndex}
                                       runtimeErrorType={sub.runtimeErrorType}
                                       timeLimitMs={problem.timeLimitMs ?? null}
+                                      locale={locale}
                                     />
                                   </TableCell>
                                   <TableCell>{sub.score !== null ? formatScore(sub.score, locale) : "-"}</TableCell>

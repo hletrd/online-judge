@@ -332,6 +332,7 @@ export async function ParticipantTimelineView({
                               <SubmissionStatusBadge
                                 status={sub.status}
                                 label={statusLabels[sub.status] ?? sub.status}
+                                locale={locale}
                               />
                             ) : (
                               <Badge variant="outline">-</Badge>

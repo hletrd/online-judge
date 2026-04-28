@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { assignments, groups, submissions, users } from "@/lib/db/schema";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { getAssignedTeachingGroupIds } from "@/lib/assignments/management";
 
 type InstructorDashboardProps = {
@@ -18,6 +18,7 @@ export async function InstructorDashboard({ userId, capabilities }: InstructorDa
   const t = await getTranslations("dashboard");
   const tCommon = await getTranslations("common");
   const tNav = await getTranslations("nav");
+  const locale = await getLocale();
   const caps = new Set(capabilities);
   const canAccessProblemSets =
     caps.has("problem_sets.create")
@@ -161,6 +162,7 @@ export async function InstructorDashboard({ userId, capabilities }: InstructorDa
                       <SubmissionStatusBadge
                         label={submission.status ?? tCommon("unknown")}
                         status={submission.status}
+                        locale={locale}
                       />
                     </TableCell>
                     <TableCell>

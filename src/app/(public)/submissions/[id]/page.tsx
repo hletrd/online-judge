@@ -223,6 +223,7 @@ export default async function PublicSubmissionDetailPage({ params, searchParams 
                             score={sub.score}
                             failedTestCaseIndex={sub.failedTestCaseIndex}
                             runtimeErrorType={sub.runtimeErrorType}
+                            locale={locale}
                           />
                         </TableCell>
                         <TableCell>{formatScore(sub.score, locale)}</TableCell>

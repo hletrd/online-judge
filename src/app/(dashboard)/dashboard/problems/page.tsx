@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { CheckCircle2, CircleDashed, XCircle } from "lucide-react";
 import { SubmissionStatusBadge } from "@/components/submission-status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -128,6 +128,7 @@ export default async function ProblemsPage({
   const t = await getTranslations("problems");
   const tCommon = await getTranslations("common");
   const tSubmissions = await getTranslations("submissions");
+  const locale = await getLocale();
   const recruitingAccess = await getRecruitingAccessContext(session.user.id);
   const caps = await resolveCapabilities(session.user.role);
   const visibilityLabels = {
@@ -445,6 +446,7 @@ export default async function ProblemsPage({
         <SubmissionStatusBadge
           label={statusLabel}
           status={latestStatus}
+          locale={locale}
         />
       );
     }

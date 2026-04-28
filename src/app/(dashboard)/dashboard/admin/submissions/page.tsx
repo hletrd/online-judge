@@ -469,6 +469,7 @@ export default async function AdminSubmissionsPage({
                       executionTimeMs={sub.executionTimeMs}
                       memoryUsedKb={sub.memoryUsedKb}
                       score={sub.score}
+                      locale={locale}
                     />
                   </TableCell>
                   <TableCell>{formatScore(sub.score, locale)}</TableCell>

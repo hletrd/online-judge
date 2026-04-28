@@ -236,6 +236,7 @@ export function SubmissionDetailClient(props: SubmissionDetailClientProps) {
                 failedTestCaseIndex={submission.failedTestCaseIndex}
                 runtimeErrorType={submission.runtimeErrorType}
                 timeLimitMs={props.problemTimeLimitMs ?? null}
+                locale={locale}
               />
             </div>
           </div>

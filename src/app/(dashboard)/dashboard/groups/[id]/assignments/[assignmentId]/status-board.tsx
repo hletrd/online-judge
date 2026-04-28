@@ -164,6 +164,7 @@ function MobileStudentCard({
                   className="text-xs"
                   label={statusLabels[rowStatus]}
                   status={rowStatus}
+                  locale={locale}
                 />
               )}
             </div>
@@ -226,6 +227,7 @@ function MobileStudentCard({
                             className="text-xs"
                             label={statusLabels[problemRow.latestStatus as SubmissionStatus]}
                             status={problemRow.latestStatus}
+                            locale={locale}
                           />
                         ) : (
                           <Badge variant="outline" className="text-xs">{statusLabels.not_submitted}</Badge>
@@ -404,6 +406,7 @@ export function StatusBoard({
                         <SubmissionStatusBadge
                           label={statusLabels[rowStatus]}
                           status={rowStatus}
+                          locale={locale}
                         />
                       )}
                     </TableCell>
@@ -487,6 +490,7 @@ export function StatusBoard({
                                   className="text-xs"
                                   label={statusLabels[problem.latestStatus as SubmissionStatus]}
                                   status={problem.latestStatus}
+                                  locale={locale}
                                 />
                               ) : (
                                 <Badge variant="outline">{statusLabels.not_submitted}</Badge>

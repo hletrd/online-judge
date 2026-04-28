@@ -236,6 +236,7 @@ export async function StudentDashboard({ userId }: StudentDashboardProps) {
                     <SubmissionStatusBadge
                       label={submission.status ?? tCommon("unknown")}
                       status={submission.status}
+                      locale={locale}
                     />
                     <span className="text-sm text-muted-foreground">
                       {submission.submittedAt

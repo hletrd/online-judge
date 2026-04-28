@@ -444,6 +444,7 @@ export default async function SubmissionsPage({
                       executionTimeMs={sub.executionTimeMs}
                       memoryUsedKb={sub.memoryUsedKb}
                       score={sub.score}
+                      locale={locale}
                     />
                   </TableCell>
                   <TableCell>{formatScore(sub.score, locale)}</TableCell>
@@ -485,6 +486,7 @@ export default async function SubmissionsPage({
                       executionTimeMs={sub.executionTimeMs}
                       memoryUsedKb={sub.memoryUsedKb}
                       score={sub.score}
+                      locale={locale}
                     />
                   </div>
                   <div className="mt-1 text-sm">
