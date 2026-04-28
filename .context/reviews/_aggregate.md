@@ -1,199 +1,160 @@
-# Aggregate Review — Cycle 1 (New Session)
+# Aggregate Review — Cycle 2
 
 **Date:** 2026-04-28
-**Reviewers:** code-reviewer, security-reviewer, perf-reviewer, test-engineer, architect, debugger, verifier, critic, tracer, designer, document-specialist (11 lanes)
-**Total findings:** 2 HIGH, 5 MEDIUM, 8 LOW (deduplicated)
+**Reviewers:** code-reviewer, security-reviewer, perf-reviewer, debugger, verifier, architect, critic, test-engineer, tracer, designer (10 lanes)
+**Total findings:** 0 HIGH, 4 MEDIUM, 7 LOW (deduplicated, new findings only)
 
 ---
 
-## Cross-Agent Convergence Map
+## Cycle 1 Fix Verification Summary
+
+All 5 cycle 1 tasks were verified as correctly implemented:
+- **Task A** (totalPoints reduce initial value): VERIFIED OK — now uses 0
+- **Task B** (examDurationMinutes): VERIFIED OK — type, DB query, and prop passing all correct
+- **Task C** (redundant getExamSession): VERIFIED OK — removed, uses `contest.examSession` directly
+- **Task D** (dark mode badges): VERIFIED OK — contest detail page has dark variants
+- **Task E** (layout comment): VERIFIED OK — includes upstream tracking note
+
+**Notable gap:** The dark mode fix (Task D) was applied only to `contests/[id]/page.tsx` but not to `contests/page.tsx` (My Contests section), creating an inconsistency on the same page.
+
+---
+
+## Cross-Agent Convergence Map (Cycle 2 New Findings)
 
 | Topic | Agents flagging | Severity peak |
 |-------|-----------------|---------------|
-| `totalPoints` reduce initial value is 100 instead of 0 | CR-1, DBG-1, VER-1, CRIT-1, TRC-1, ARCH-3 | HIGH (5-agent convergence — confirmed bug) |
-| `StartExamButton` passes `durationMinutes={0}` on problem detail page | CR-2, DBG-2, VER-2, CRIT-2, TRC-2, ARCH-3 | MEDIUM (5-agent convergence — confirmed bug) |
-| Redundant queries in enrolled contest detail flow | PERF-1, ARCH-1, TRC-3 | MEDIUM (3-agent convergence) |
-| DB import error messages leak PostgreSQL internals | SEC-1 | MEDIUM |
-| `error.message` control-flow discrimination | CR-3, SEC-2 | MEDIUM (2-agent convergence) |
-| Import route unsafe cast | CR-4 | MEDIUM |
-| No tests for new public pages | TE-1, TE-2, CRIT-4 | MEDIUM (3-agent convergence) |
-| Contest layout workaround depends on `#main-content` | CR-5, DBG-4 | LOW |
-| Redundant getExamSession fallback | DBG-3, CRIT-3 | LOW |
-| Deprecated JSON import path still fully functional | SEC-3 | LOW |
-| Problem detail page query batching | PERF-3 | LOW |
-| `resolveCapabilities` called twice | PERF-4 | LOW |
-| Badge colors not dark-mode adaptive | DES-1 | LOW |
-| Virtual Practice section context confusion | DES-2 | LOW |
-| Layout comment missing upstream issue link | DOC-1 | LOW |
-| assignmentContext type missing examDurationMinutes comment | DOC-2 | LOW |
+| My Contests section badges missing dark mode variants | CR-6, DES-C2-1, CRIT-C2-1 | MEDIUM (3-agent convergence) |
+| `points ?? 100` default inflates totalPoints when null | CR-8, TRC-C2-1, ARCH-C2-2, CRIT-C2-3 | MEDIUM (4-agent convergence) |
+| No regression tests for cycle 1 bug fixes | CRIT-C2-2, TE-C2-1 | MEDIUM (2-agent convergence) |
+| Virtual Practice links lack assignmentId | DBG-C2-1, DES-C2-3 | MEDIUM (carried from AGG-14) |
+| Contest listing page sequential queries | PERF-C2-1 | LOW |
+| `getDbNow` called redundantly | PERF-C2-2 | LOW |
+| `formatScore` missing locale param | DBG-C2-2, TE-C2-2 | LOW (2-agent convergence) |
+| Duplicate `getContestStatusBorderClass` function | ARCH-C2-1, DES-C2-2 | LOW (2-agent convergence) |
+| Import route unsafe Record cast | SEC-C2-1 | MEDIUM |
+| CountdownTimer translation namespace mismatch | DBG-C2-3 | LOW |
 
 ---
 
 ## Deduplicated Findings (sorted by severity)
 
-### AGG-1: [HIGH] `totalPoints` reduce initial value is 100 instead of 0 — student-facing data integrity bug
+### C2-AGG-1: [MEDIUM] My Contests section badges missing dark mode variants — inconsistent with catalog section
 
-**Sources:** CR-1, DBG-1, VER-1, CRIT-1, TRC-1 | **Confidence:** HIGH (5-agent convergence)
+**Sources:** CR-6, DES-C2-1, CRIT-C2-1 | **Confidence:** HIGH (3-agent convergence)
 
-`src/app/(public)/contests/[id]/page.tsx:187` — The `reduce` call uses `100` as the initial value instead of `0`, inflating the displayed total points by 100. The value is passed to `AssignmentOverview` and displayed to students.
+`src/app/(public)/contests/page.tsx:188` — The "My Contests" section uses hardcoded `bg-blue-500`/`bg-purple-500` without dark mode variants. The same page's catalog section (rendered by `public-contest-list.tsx:105`) has proper dark variants. This was the same pattern fixed in cycle 1 (AGG-13) but the fix was not applied to the listing page.
 
-**Fix:** Change initial value from `100` to `0`.
-
----
-
-### AGG-2: [MEDIUM] `StartExamButton` on problem detail page passes `durationMinutes={0}` — breaks windowed exams
-
-**Sources:** CR-2, DBG-2, VER-2, CRIT-2, TRC-2, ARCH-3 | **Confidence:** HIGH (6-agent convergence)
-
-`src/app/(public)/practice/problems/[id]/page.tsx:478` — The `assignmentContext` type and DB query do not include `examDurationMinutes`, so the StartExamButton always receives 0. This could cause immediate exam session expiration.
-
-**Fix:** Add `examDurationMinutes` to the DB query columns (line 177-186), the `assignmentContext` type (lines 152-162), and pass it to `StartExamButton`.
+**Fix:** Add dark mode classes to badge at line 188: `dark:bg-blue-600`/`dark:bg-purple-600`. Also fix `getContestStatusBorderClass` at lines 26-37 to include dark mode border variants.
 
 ---
 
-### AGG-3: [MEDIUM] Redundant DB queries in enrolled contest detail flow
+### C2-AGG-2: [MEDIUM] `points ?? 100` default can inflate displayed totalPoints when problem points are null
 
-**Sources:** PERF-1, ARCH-1, TRC-3 | **Confidence:** MEDIUM (3-agent convergence)
+**Sources:** CR-8, TRC-C2-1, ARCH-C2-2, CRIT-C2-3 | **Confidence:** MEDIUM (4-agent convergence)
 
-`src/app/(public)/contests/[id]/page.tsx:123-176` — `getUserContestAccess` and `getEnrolledContestDetail` are called sequentially, resulting in 2-3 redundant DB roundtrips (same assignment row queried twice, enrollment checked twice, capabilities resolved twice, exam session queried twice).
+`src/lib/assignments/public-contests.ts:349` — When `ap.points` is null/undefined, the code defaults to 100. This default propagates into `totalPoints` which is displayed to students. The magic number `100` is scattered across 6+ files without a shared constant.
 
-**Fix:** Merge the two functions into a single `getContestDetailForUser()` that returns both access level and detail.
+**Data flow:** `public-contests.ts:349` → `contests/[id]/page.tsx:183-184` → `AssignmentOverview` total points display.
 
----
-
-### AGG-4: [MEDIUM] DB import error messages leak PostgreSQL internals to API responses
-
-**Sources:** SEC-1 | **Confidence:** HIGH
-
-`src/lib/db/import.ts:134,198,214` — When table truncation or batch insert fails, `err.message` (including PostgreSQL constraint/table names) propagates through `importDatabase` result to the API response.
-
-**Fix:** Sanitize error messages before including in `result.errors`. Use generic messages for API responses; log detailed errors server-side only.
+**Fix:** Extract `DEFAULT_PROBLEM_POINTS = 100` as a shared constant. Consider whether displaying a warning is appropriate when points are null rather than silently defaulting.
 
 ---
 
-### AGG-5: [MEDIUM] `error.message` used as control-flow discriminator across 15+ API routes
+### C2-AGG-3: [MEDIUM] No regression tests for the two confirmed bugs fixed in cycle 1
 
-**Sources:** CR-3, SEC-2 | **Confidence:** HIGH (carried from previous cycles)
+**Sources:** CRIT-C2-2, TE-C2-1 | **Confidence:** HIGH (2-agent convergence)
 
-Multiple API route handlers use `error.message === "someString"` or `switch (error.message)` to discriminate error types. This anti-pattern is fragile and can leak internal application structure.
+The totalPoints off-by-100 bug and the examDurationMinutes=0 bug were fixed without adding any tests. These are student-facing data integrity bugs that could regress in a future refactor.
 
-**Fix:** Introduce custom error classes with error codes. Plan incrementally.
-
----
-
-### AGG-6: [MEDIUM] Import route JSON path still uses unsafe `as JudgeKitExport` cast
-
-**Sources:** CR-4 | **Confidence:** HIGH (carried from previous cycles)
-
-`src/app/api/v1/admin/migrate/import/route.ts:164-166` — The Zod schema defines `data: z.unknown().optional()`, then the data is cast with `as JudgeKitExport` or `as unknown as JudgeKitExport`.
-
-**Fix:** Create a proper Zod schema for `JudgeKitExport` and use it as the `data` field type.
+**Fix:** Add (1) a test verifying `totalPoints` equals the sum of problem points, (2) a test verifying `StartExamButton` receives the correct `durationMinutes` from assignment context.
 
 ---
 
-### AGG-7: [MEDIUM] No tests for new public contest detail enrolled view or assignment context
+### C2-AGG-4: [MEDIUM] Import route JSON path has unsafe `as Record<string, unknown>` cast
 
-**Sources:** TE-1, TE-2, CRIT-4 | **Confidence:** HIGH (3-agent convergence)
+**Sources:** SEC-C2-1 | **Confidence:** HIGH
 
-The enrolled contest detail view and the assignment context on the problem detail page have zero test coverage. The `totalPoints` and `examDurationMinutes` bugs would not be caught by any existing test.
+`src/app/api/v1/admin/migrate/import/route.ts:162` — After Zod validation, `rawJsonBody` (typed as `unknown`) is cast to `Record<string, unknown>` without a runtime type check. If `rawJsonBody` is an array or non-object, the destructuring `{ password: _, data: _data, ...restFields }` produces unexpected results that are then cast as `JudgeKitExport`.
 
-**Fix:** Add component/integration tests for both views.
-
----
-
-### AGG-8: [LOW] Contest layout workaround depends on `#main-content` element
-
-**Sources:** CR-5, DBG-4 | **Confidence:** LOW
-
-`src/app/(public)/contests/[id]/layout.tsx:36-37` — If `#main-content` does not exist, the click handler is never attached and hard-navigation silently fails.
-
-**Fix:** Add development-only warning if `#main-content` is not found.
+**Fix:** Add runtime type guard: `if (typeof rawJsonBody !== "object" || rawJsonBody === null || Array.isArray(rawJsonBody)) return error response`.
 
 ---
 
-### AGG-9: [LOW] Redundant `getExamSession` fallback call in contest detail page
+### C2-AGG-5: [LOW] Virtual Practice section links lack `assignmentId` parameter — breaks exam context
 
-**Sources:** DBG-3, CRIT-3 | **Confidence:** LOW
+**Sources:** DBG-C2-1, DES-C2-3 | **Confidence:** MEDIUM (carried from AGG-14)
 
-`src/app/(public)/contests/[id]/page.tsx:173-176` — `getEnrolledContestDetail` already queries exam sessions, making the fallback `getExamSession` call redundant.
+`src/app/(public)/contests/[id]/page.tsx:665` — Links to `/practice/problems/${problem.id}` without `?assignmentId=...`. For private problems, this causes a 404. For public problems, the student loses exam context.
 
-**Fix:** Remove the redundant fallback call.
-
----
-
-### AGG-10: [LOW] Deprecated JSON import path still fully functional
-
-**Sources:** SEC-3 | **Confidence:** LOW
-
-`src/app/api/v1/admin/migrate/import/route.ts:120-199` — The JSON body import path is deprecated but has the same rate limit as the multipart path.
-
-**Fix:** Add stricter rate limit for the deprecated path, or disable after sunset date.
+**Fix:** Add `assignmentId` query parameter to Virtual Practice links.
 
 ---
 
-### AGG-11: [LOW] Problem detail page query batching could be optimized
+### C2-AGG-6: [LOW] Contest listing page runs independent queries sequentially
 
-**Sources:** PERF-3 | **Confidence:** LOW
+**Sources:** PERF-C2-1 | **Confidence:** LOW
 
-`src/app/(public)/practice/problems/[id]/page.tsx:125-143` — Translation/locale queries block the problem query but are independent.
+`src/app/(public)/contests/page.tsx:99-108` — `getContestsForUser` and `getPublicContests` are called sequentially but are independent. They could be parallelized with `Promise.all`.
 
-**Fix:** Parallelize with `Promise.all`.
-
----
-
-### AGG-12: [LOW] `resolveCapabilities` called twice in sequence
-
-**Sources:** PERF-4 | **Confidence:** LOW
-
-`src/lib/assignments/public-contests.ts:209,277` — Both `getUserContestAccess` and `getEnrolledContestDetail` call `resolveCapabilities(role)`. The function has a cache, but the redundant call adds overhead.
-
-**Fix:** Pass the capabilities set between functions or merge the functions.
+**Fix:** Use `Promise.all([getContestsForUser(...), getPublicContests()])`.
 
 ---
 
-### AGG-13: [LOW] Badge colors not dark-mode adaptive
+### C2-AGG-7: [LOW] `formatScore` called without locale parameter in enrolled contest view
 
-**Sources:** DES-1 | **Confidence:** MEDIUM
+**Sources:** DBG-C2-2, TE-C2-2 | **Confidence:** LOW (2-agent convergence)
 
-`src/app/(public)/contests/[id]/page.tsx:236-237` — Hardcoded `bg-blue-500`/`bg-purple-500` classes do not adapt to dark mode.
+`src/app/(public)/contests/[id]/page.tsx:396` — `formatScore(sub.score)` omits the `locale` parameter. The function supports locale-aware digit grouping but defaults to `en-US` when not provided.
 
-**Fix:** Use the Badge component's variant system or `dark:` prefixed classes.
-
----
-
-### AGG-14: [LOW] Virtual Practice section links lose contest context
-
-**Sources:** DES-2 | **Confidence:** LOW
-
-`src/app/(public)/contests/[id]/page.tsx:660-677` — Links to `/practice/problems/[id]` without `assignmentId` parameter.
-
-**Fix:** Add `assignmentId` parameter or add a note about context change.
+**Fix:** Change to `formatScore(sub.score, locale)`.
 
 ---
 
-### AGG-15: [LOW] Layout comment missing upstream Next.js issue link
+### C2-AGG-8: [LOW] Duplicate `getContestStatusBorderClass` function with inconsistent dark mode support
 
-**Sources:** DOC-1 | **Confidence:** LOW
+**Sources:** ARCH-C2-1, DES-C2-2 | **Confidence:** LOW (2-agent convergence)
 
-`src/app/(public)/contests/[id]/layout.tsx:7-9` — No link to upstream issue for the RSC streaming bug.
+`src/app/(public)/contests/page.tsx:26-37` defines `getContestStatusBorderClass` without dark mode variants, while `src/app/(public)/_components/public-contest-list.tsx:31-42` defines the same function with dark mode variants. This is a DRY violation leading to inconsistent styling.
 
-**Fix:** Add issue link if filed, or note that it needs to be reported.
-
----
-
-## Previously Resolved Items (confirmed in this review)
-
-- AGG-4 (previous cycles): Anti-cheat `describeElement` text capture — RESOLVED (verified by VER-3)
-- AGG-5 (previous cycles): CountdownTimer server time sync — RESOLVED (verified by VER-4)
-- AGG-6 (previous cycles): SSE connection tracking O(n) eviction — RESOLVED (verified by VER-6)
+**Fix:** Extract the function (with dark mode variants) to a shared utility and import it in both files.
 
 ---
 
-## Carried Deferred Items (unchanged from previous cycles)
+### C2-AGG-9: [LOW] `getDbNow` called redundantly in enrolled contest flow
+
+**Sources:** PERF-C2-2 | **Confidence:** LOW
+
+`src/lib/assignments/public-contests.ts:315` calls `getDbNow()` internally, but the caller (`contests/[id]/page.tsx:135`) already has a `now` value from an earlier `getDbNow()` call.
+
+**Fix:** Accept `now` as an optional parameter in `getEnrolledContestDetail`.
+
+---
+
+### C2-AGG-10: [LOW] CountdownTimer uses `useTranslations("groups")` — dashboard namespace in public pages
+
+**Sources:** DBG-C2-3 | **Confidence:** LOW
+
+`src/components/exam/countdown-timer.tsx:52` uses `useTranslations("groups")` for threshold messages. When rendered in public pages, this couples the public page to the dashboard translation namespace.
+
+**Fix:** Move exam countdown translations to a shared namespace (e.g., `common` or `contests`).
+
+---
+
+### C2-AGG-11: [LOW] Problem detail page calls `getExamSession` redundantly
+
+**Sources:** TRC-C2-2 | **Confidence:** LOW
+
+`src/app/(public)/practice/problems/[id]/page.tsx:441` calls `getExamSession()`, but `validateAssignmentSubmission` already queried exam session data internally.
+
+**Fix:** Have `validateAssignmentSubmission` return the exam session alongside the validation result.
+
+---
+
+## Carried Deferred Items (unchanged from cycle 1)
 
 - DEFER-22: `.json()` before `response.ok` — 60+ instances
 - DEFER-23: Raw API error strings without translation — partially fixed
-- DEFER-24: `migrate/import` unsafe casts — partially addressed by AGG-6
+- DEFER-24: `migrate/import` unsafe casts — partially addressed by C2-AGG-4
 - DEFER-27: Missing AbortController on polling fetches
 - DEFER-28: `as { error?: string }` pattern — 22+ instances
 - DEFER-29: Admin routes bypass `createApiHandler`
@@ -210,15 +171,17 @@ The enrolled contest detail view and the assignment context on the problem detai
 
 ## No Agent Failures
 
-All 11 reviewer lanes completed successfully. No retries needed.
+All 10 reviewer lanes completed successfully. No retries needed.
 
 ---
 
 ## Plannable Tasks for This Cycle
 
-1. **AGG-1** (HIGH, 5-agent convergence) — Fix `totalPoints` reduce initial value from 100 to 0
-2. **AGG-2** (MEDIUM, 6-agent convergence) — Add `examDurationMinutes` to assignmentContext type and DB query
-3. **AGG-9** (LOW) — Remove redundant `getExamSession` fallback call
-4. **AGG-13** (LOW) — Fix badge colors for dark mode
-5. **AGG-15** (LOW) — Add upstream issue link to layout comment
-6. **AGG-7** (MEDIUM) — Add tests for new public pages (test coverage gap)
+1. **C2-AGG-1** (MEDIUM, 3-agent convergence) — Add dark mode variants to My Contests badges and border classes
+2. **C2-AGG-2** (MEDIUM, 4-agent convergence) — Extract `DEFAULT_PROBLEM_POINTS = 100` constant; centralize default
+3. **C2-AGG-3** (MEDIUM) — Add regression tests for totalPoints and examDurationMinutes fixes
+4. **C2-AGG-4** (MEDIUM) — Add runtime type guard for rawJsonBody in import route
+5. **C2-AGG-5** (LOW, carried) — Add assignmentId to Virtual Practice links
+6. **C2-AGG-7** (LOW) — Pass locale to formatScore in enrolled contest view
+7. **C2-AGG-8** (LOW) — Extract shared getContestStatusBorderClass utility
+8. **C2-AGG-6** (LOW) — Parallelize independent queries on contest listing page
