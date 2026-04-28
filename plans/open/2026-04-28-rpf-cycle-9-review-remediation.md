@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-28
 **Source:** `.context/reviews/_aggregate.md` (cycle 9)
-**Status:** IN PROGRESS
+**Status:** DONE
 
 ---
 
@@ -18,7 +18,7 @@
   1. Change `className="fill-green-500"` to `className="fill-green-500 dark:fill-green-600"` (line 231)
   2. Change `className="fill-yellow-500"` to `className="fill-yellow-500 dark:fill-yellow-600"` (line 237)
 - **Exit criteria:** All SVG rect elements in SVGStackedBar have dark mode fill variants, matching the zero segment pattern
-- [ ] Done
+- [x] Done
 
 ### Task B: [MEDIUM] Add dark mode variants to analytics chart legend swatches
 
@@ -30,7 +30,7 @@
   1. Change `bg-green-500` to `bg-green-500 dark:bg-green-600` (line 612)
   2. Change `bg-yellow-500` to `bg-yellow-500 dark:bg-yellow-600` (line 616)
 - **Exit criteria:** Legend swatches have dark mode variants matching the zero swatch pattern
-- [ ] Done
+- [x] Done
 
 ### Task C: [LOW] Add dark mode variant to submission overview progress bar
 
@@ -40,7 +40,7 @@
 - **Fix:**
   1. Change `bg-green-500` to `bg-green-500 dark:bg-green-600`
 - **Exit criteria:** Progress bar has dark mode variant, consistent with C8-AGG-7 fix
-- [ ] Done
+- [x] Done
 
 ### Task D: [LOW] Add dark mode text color variants in submission overview
 
@@ -54,7 +54,7 @@
   2. Change `text-green-500` to `text-green-500 dark:text-green-400` (line 173)
   3. Change status label colors: `text-green-500 dark:text-green-400`, `text-blue-500 dark:text-blue-400`, `text-red-500 dark:text-red-400` (lines 204-206)
 - **Exit criteria:** All text color classes have dark mode variants for improved contrast
-- [ ] Done
+- [x] Done
 
 ### Task E: [LOW] Add dark mode variant to anti-cheat dashboard icon background
 
@@ -81,7 +81,7 @@
      - `"fill-rose-600 dark:fill-rose-700"`
   2. Tailwind JIT should handle the compound class strings correctly.
 - **Exit criteria:** Anti-cheat event type chart bars have dark mode fill variants
-- [ ] Done
+- [x] Done
 
 ---
 
