@@ -26,13 +26,13 @@ function formatDateLabel(value: Date | null, fallback: string, locale: string) {
 function getContestStatusBorderClass(status: ContestStatus): string {
   switch (status) {
     case "upcoming":
-      return "border-l-4 border-l-blue-500";
+      return "border-l-4 border-l-blue-500 dark:border-l-blue-400";
     case "open":
     case "in_progress":
-      return "border-l-4 border-l-green-500";
+      return "border-l-4 border-l-green-500 dark:border-l-green-400";
     case "expired":
     case "closed":
-      return "border-l-4 border-l-gray-400";
+      return "border-l-4 border-l-gray-400 dark:border-l-gray-500";
   }
 }
 
@@ -185,7 +185,7 @@ export default async function PublicContestsPage() {
                     <Badge variant={getStatusBadgeVariant(contest.status)} className="text-xs">
                       {statusLabels[contest.status]}
                     </Badge>
-                    <Badge className={`text-xs ${contest.examMode === "scheduled" ? "bg-blue-500 text-white" : "bg-purple-500 text-white"}`}>
+                    <Badge className={`text-xs ${contest.examMode === "scheduled" ? "bg-blue-500 text-white dark:bg-blue-600" : "bg-purple-500 text-white dark:bg-purple-600"}`}>
                       {contest.examMode === "scheduled" ? tContests("modeScheduled") : tContests("modeWindowed")}
                     </Badge>
                   </div>
