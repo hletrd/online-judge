@@ -159,6 +159,9 @@ export async function POST(request: NextRequest) {
 
     // Extract the actual export data, stripping the password field
     // Use Zod-validated data instead of unsafe casts
+    if (typeof rawJsonBody !== "object" || rawJsonBody === null || Array.isArray(rawJsonBody)) {
+      return NextResponse.json({ error: "invalidJson" }, { status: 400 });
+    }
     const rawRecord = rawJsonBody as Record<string, unknown>;
     const { password: _, data: _data, ...restFields } = rawRecord;
     const data: JudgeKitExport = parsedBody.data.data
