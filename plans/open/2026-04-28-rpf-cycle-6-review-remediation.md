@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-28
 **Source:** `.context/reviews/_aggregate.md` (cycle 6)
-**Status:** IN PROGRESS
+**Status:** DONE
 
 ---
 
@@ -22,6 +22,7 @@
   4. Import from shared utility in both pages
   5. Verify `ContestStatus` type is compatible (both use the same union from `@/lib/assignments/contests`)
 - **Exit criteria:** Both pages import `getStatusBadgeVariant` from shared utility; no local duplicate definitions
+- [x] Done (commit 1638e285)
 
 ### Task B: [MEDIUM] Add scoring model badge to public contests "My Contests" section
 
@@ -38,6 +39,7 @@
      ```
   3. Also add `dark:text-white` to the existing exam mode badge on line 170 (fixes Task C for this file)
 - **Exit criteria:** "My Contests" section shows IOI/ICPC scoring model badge; visual consistency with dashboard
+- [x] Done (commit 1638e285)
 
 ### Task C: [LOW] Add `dark:text-white` to 5 public contest badges missing it
 
@@ -52,6 +54,7 @@
   1. Add `dark:text-white` to each badge's className string
   2. Verify the badge pattern matches the dashboard versions (which all have `dark:text-white`)
 - **Exit criteria:** All colored badges in public contest pages include `dark:text-white`, consistent with dashboard pages
+- [x] Done (commit 1638e285)
 
 ---
 
