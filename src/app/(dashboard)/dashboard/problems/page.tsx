@@ -433,7 +433,7 @@ export default async function ProblemsPage({
   function renderProgress(problemProgress: ProblemProgress, latestStatus: string | null) {
     if (problemProgress === "solved") {
       return (
-        <span className="inline-flex items-center gap-2 text-emerald-600">
+        <span className="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 className="size-4" />
           {progressLabels.solved}
         </span>
@@ -453,7 +453,7 @@ export default async function ProblemsPage({
 
     if (problemProgress === "attempted") {
       return (
-        <span className="inline-flex items-center gap-2 text-amber-600">
+        <span className="inline-flex items-center gap-2 text-amber-600 dark:text-amber-400">
           <XCircle className="size-4" />
           {progressLabels.attempted}
         </span>
@@ -490,14 +490,14 @@ export default async function ProblemsPage({
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
         <div className="rounded-lg border bg-emerald-50/50 p-3 dark:bg-emerald-950/20">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <CheckCircle2 className="size-3.5 text-emerald-600" />
+            <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
             {progressLabels.solved}
           </div>
           <div className="text-lg font-semibold">{solvedCount}</div>
         </div>
         <div className="rounded-lg border bg-amber-50/50 p-3 dark:bg-amber-950/20">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <XCircle className="size-3.5 text-amber-600" />
+            <XCircle className="size-3.5 text-amber-600 dark:text-amber-400" />
             {progressLabels.attempted}
           </div>
           <div className="text-lg font-semibold">{attemptedCount}</div>
