@@ -471,7 +471,7 @@ export default async function AdminSubmissionsPage({
                       score={sub.score}
                     />
                   </TableCell>
-                  <TableCell>{formatScore(sub.score)}</TableCell>
+                  <TableCell>{formatScore(sub.score, locale)}</TableCell>
                   <TableCell>
                     {sub.submittedAt
                       ? formatDateTimeInTimeZone(sub.submittedAt, locale, timeZone)

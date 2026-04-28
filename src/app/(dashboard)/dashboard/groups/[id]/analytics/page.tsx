@@ -115,7 +115,7 @@ export default async function GroupAnalyticsPage({ params }: PageProps) {
         </div>
         <div className="rounded-lg border bg-muted/30 p-3">
           <div className="text-xs text-muted-foreground">{t("avgOverallScore")}</div>
-          <div className="text-lg font-semibold">{formatScore(avgOverallScore)}</div>
+          <div className="text-lg font-semibold">{formatScore(avgOverallScore, locale)}</div>
         </div>
       </div>
 
@@ -153,7 +153,7 @@ export default async function GroupAnalyticsPage({ params }: PageProps) {
                           {a.title}
                         </Link>
                       </TableCell>
-                      <TableCell>{formatScore(totalPoints)}</TableCell>
+                      <TableCell>{formatScore(totalPoints, locale)}</TableCell>
                       <TableCell>
                         <span>{stats?.uniqueSubmitters ?? 0}/{memberCount}</span>
                         {memberCount > 0 && (
@@ -162,9 +162,9 @@ export default async function GroupAnalyticsPage({ params }: PageProps) {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell>{formatScore(stats?.avgScore != null ? Number(stats.avgScore) : null)}</TableCell>
-                      <TableCell>{formatScore(stats?.maxScore != null ? Number(stats.maxScore) : null)}</TableCell>
-                      <TableCell>{formatScore(stats?.minScore != null ? Number(stats.minScore) : null)}</TableCell>
+                      <TableCell>{formatScore(stats?.avgScore != null ? Number(stats.avgScore) : null, locale)}</TableCell>
+                      <TableCell>{formatScore(stats?.maxScore != null ? Number(stats.maxScore) : null, locale)}</TableCell>
+                      <TableCell>{formatScore(stats?.minScore != null ? Number(stats.minScore) : null, locale)}</TableCell>
                       <TableCell>
                         {a.deadline
                           ? formatDateTimeInTimeZone(a.deadline, locale, timeZone)
