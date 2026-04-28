@@ -325,7 +325,7 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
           <span className="font-medium">{t("diskUsage")}</span>
           <span>{diskUsage.used} / {diskUsage.total} ({diskUsage.usePercent})</span>
           <span className="text-muted-foreground">·</span>
-          <span className="text-green-600">{diskUsage.available} {t("diskAvailable")}</span>
+          <span className="text-green-600 dark:text-green-400">{diskUsage.available} {t("diskAvailable")}</span>
           <div
             className="ml-auto h-2 w-32 rounded-full bg-muted overflow-hidden"
             role="progressbar"
@@ -421,13 +421,13 @@ export function LanguageConfigTable({ languages }: { languages: LanguageConfig[]
                     {imageStatusLoading && imageInfo.size === 0
                       ? <Badge variant="outline" className="w-fit text-xs text-muted-foreground">{tCommon("loading")}</Badge>
                       : imageStatusError && imageInfo.size === 0
-                        ? <Badge variant="outline" className="w-fit text-xs text-yellow-600 border-yellow-300">{t("imageStatus.loadError")}</Badge>
+                        ? <Badge variant="outline" className="w-fit text-xs text-yellow-600 border-yellow-300 dark:text-yellow-400 dark:border-yellow-700">{t("imageStatus.loadError")}</Badge>
                       : imageInfo.size > 0 && (
                         imageInfo.has(lang.dockerImage)
                           ? <div className="flex flex-col gap-0.5">
                               {imageInfo.get(lang.dockerImage)?.stale
-                                ? <Badge variant="outline" className="w-fit text-xs text-yellow-600 border-yellow-300">{t("imageStatus.stale")}{imageInfo.get(lang.dockerImage)?.size ? ` (${imageInfo.get(lang.dockerImage)?.size})` : ""}</Badge>
-                                : <Badge variant="outline" className="w-fit text-xs text-green-600 border-green-300">{t("imageStatus.available")}{imageInfo.get(lang.dockerImage)?.size ? ` (${imageInfo.get(lang.dockerImage)?.size})` : ""}</Badge>
+                                ? <Badge variant="outline" className="w-fit text-xs text-yellow-600 border-yellow-300 dark:text-yellow-400 dark:border-yellow-700">{t("imageStatus.stale")}{imageInfo.get(lang.dockerImage)?.size ? ` (${imageInfo.get(lang.dockerImage)?.size})` : ""}</Badge>
+                                : <Badge variant="outline" className="w-fit text-xs text-green-600 border-green-300 dark:text-green-400 dark:border-green-700">{t("imageStatus.available")}{imageInfo.get(lang.dockerImage)?.size ? ` (${imageInfo.get(lang.dockerImage)?.size})` : ""}</Badge>
                               }
                               {imageInfo.get(lang.dockerImage)?.created && (
                                 <span className="text-xs text-muted-foreground">{imageInfo.get(lang.dockerImage)?.created}</span>

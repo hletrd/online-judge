@@ -89,7 +89,7 @@ export function ContestJoinClient() {
           {success ? (
             <div className="flex flex-col items-center gap-4 py-6 text-center">
               <CheckCircle2 className="h-14 w-14 text-green-500 animate-pulse" />
-              <p className="text-base font-medium text-green-600">{t("successRedirect")}</p>
+              <p className="text-base font-medium text-green-600 dark:text-green-400">{t("successRedirect")}</p>
             </div>
           ) : (
             <form

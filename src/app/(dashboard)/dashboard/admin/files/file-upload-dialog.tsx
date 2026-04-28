@@ -186,7 +186,7 @@ export function FileUploadDialog({ open, onOpenChange, onComplete, maxFileSizeBy
                   <Loader2 className="size-4 animate-spin text-primary" />
                 )}
                 {item.status === "done" && (
-                  <span className="text-xs text-green-600">{t("done")}</span>
+                  <span className="text-xs text-green-600 dark:text-green-400">{t("done")}</span>
                 )}
                 {item.status === "error" && (
                   <span className="text-xs text-destructive">{item.error}</span>
