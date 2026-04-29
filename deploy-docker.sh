@@ -234,8 +234,13 @@ SUBMISSION_RATE_LIMIT_MAX_PER_MINUTE=10
 SUBMISSION_MAX_PENDING=5
 SUBMISSION_GLOBAL_QUEUE_LIMIT=200
 EOF
-    success "Generated .env.production with fresh secrets"
+    chmod 0600 "${SCRIPT_DIR}/.env.production"
+    success "Generated .env.production with fresh secrets (mode 0600)"
 else
+    # Defense-in-depth: enforce 0600 on existing .env.production too. Older
+    # deploys may have created the file under default umask 0022 (-> 0644);
+    # re-applying chmod is idempotent and harmless when already 0600.
+    chmod 0600 "${SCRIPT_DIR}/.env.production" 2>/dev/null || true
     info "Using existing .env.production"
 fi
 
